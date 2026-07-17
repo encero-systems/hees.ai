@@ -1,0 +1,54 @@
+name: RFC proposal
+description: Propose a new Hees capability or a material public-contract change
+title: "rfc - "
+labels:
+  - rfc-proposal
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to describe the desired public outcome at a high level. A
+        proposal issue starts discussion; it does not imply acceptance or an
+        implementation commitment.
+  - type: textarea
+    attributes:
+      label: Desired outcome
+      description: What should a caller be able to rely on when this capability exists?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Why this belongs in Hees
+      description: Explain why this is a reusable governance-runtime responsibility rather than Workbench, package, provider, or research behavior.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed boundary
+      description: Describe the public contract and ownership boundaries without prescribing an implementation.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Non-goals
+      description: Identify behavior that should remain with callers, implementation packages, providers, Workbench, or research tooling.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Acceptance evidence
+      description: What positive, fail-closed, interoperability, and documentation evidence would make the capability trustworthy?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Open questions and risks
+      description: Include compatibility, privacy, security, provenance, or authority concerns that need resolution.
+    validations:
+      required: true
+  - type: checkboxes
+    attributes:
+      label: Publication safety
+      options:
+        - label: This proposal contains no confidential material, private package contents, client data, credentials, raw corpora, local paths, model artifacts, or unpublished research results.
+          required: true

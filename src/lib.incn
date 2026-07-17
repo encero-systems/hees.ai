@@ -1,0 +1,26 @@
+"""Small, checked public surface for the pre-v0.1 Hees kernel."""
+
+pub from package_loader import (
+    PackageLoaderDescriptor,
+    PackageLoaderValidation,
+    package_loader_descriptor,
+    package_loader_summary,
+    validate_package_loader_descriptor,
+)
+pub from runtime import (
+    ActionContract,
+    AdmissionResult,
+    EvidenceRecord,
+    GovernedPackage,
+    ModelProposal,
+    PackageValidation,
+    ReviewStatus,
+    RightsStatus,
+    RuntimeDecision,
+    action_contract,
+    admit_model_proposal,
+    evidence_record,
+    governed_package,
+    model_proposal,
+    validate_governed_package,
+)

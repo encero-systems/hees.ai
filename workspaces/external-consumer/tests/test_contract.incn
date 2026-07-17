@@ -1,0 +1,29 @@
+from std.testing import assert_eq
+from pub::hees import (
+    PackageLoaderDescriptor,
+    PackageLoaderValidation,
+    package_loader_descriptor,
+    package_loader_summary,
+    validate_package_loader_descriptor,
+)
+
+
+def checked_descriptor() -> PackageLoaderValidation:
+    descriptor: PackageLoaderDescriptor = package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "packages/lesson_support/package/domain.json",
+        "0.1",
+        "source_controlled_domain_package",
+    )
+    return validate_package_loader_descriptor(descriptor)
+
+
+def test_external_dependency_can_use_the_checked_loader_surface() -> None:
+    validation = checked_descriptor()
+    assert_eq(validation.valid, true)
+    assert_eq(validation.reason, "ok")
+    assert_eq(
+        package_loader_summary(validation),
+        "package_loader package=lesson_support domain=lesson_support source=source_controlled_domain_package valid=true reason=ok",
+    )

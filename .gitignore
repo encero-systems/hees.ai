@@ -1,0 +1,42 @@
+# Incan and generated Rust
+target/
+**/target/
+
+# Documentation output
+site/
+**/site/
+
+# Local tools and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+__pycache__/
+*.py[cod]
+node_modules/
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Material that is outside the public framework boundary
+.agents/
+outputs/
+reference/
+research/
+corpora/
+models/
+*.gguf
+*.safetensors
+*.onnx
+*.pdf
+*.pptx
+*.docx
+*.zip
+*.tar
+*.tar.gz

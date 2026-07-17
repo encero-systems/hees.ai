@@ -1,0 +1,296 @@
+"""
+Generic in-memory package and proposal-admission contracts.
+
+The runtime does not invoke a model, retrieve evidence, or claim semantic verification. A caller supplies a package and
+an untrusted proposal; Hees checks structural authority before admitting the visible output.
+"""
+
+const GOVERNED_PACKAGE_SCHEMA_VERSION: str = "0.1"
+
+
+def contains_control_characters(value: str) -> bool:
+    return value.contains("\n") or value.contains("\r") or value.contains("\t")
+
+
+@derive(Clone)
+pub enum ReviewStatus(str):
+    """Review state carried by a deployable evidence record."""
+
+    Approved = "approved"
+    Pending = "pending"
+    Rejected = "rejected"
+
+
+@derive(Clone)
+pub enum RightsStatus(str):
+    """Whether runtime use of an evidence record is allowed."""
+
+    Allowed = "allowed"
+    Restricted = "restricted"
+    Denied = "denied"
+
+
+@derive(Clone)
+pub enum RuntimeDecision(str):
+    """Terminal structural-admission result."""
+
+    Admit = "admit"
+    Reject = "reject"
+
+
+@derive(Clone)
+pub model ActionContract:
+    """Package-declared action and its evidence requirement."""
+
+    pub id: str
+    pub evidence_required: bool
+
+
+@derive(Clone)
+pub model EvidenceRecord:
+    """Reviewed support record; raw source text is deliberately absent."""
+
+    pub id: str
+    pub claim: str
+    pub guidance: str
+    pub source_ref: str
+    pub rights_status: RightsStatus
+    pub review_status: ReviewStatus
+
+
+@derive(Clone)
+pub model GovernedPackage:
+    """Small runtime-ready package contract owned by an external implementation."""
+
+    pub schema_version: str
+    pub package_id: str
+    pub domain_id: str
+    pub mission: str
+    pub actions: list[ActionContract]
+    pub evidence: list[EvidenceRecord]
+
+
+@derive(Clone)
+pub model ModelProposal:
+    """Untrusted visible output and the package artifacts it claims to use."""
+
+    pub package_id: str
+    pub domain_id: str
+    pub action_id: str
+    pub visible_output: str
+    pub evidence_ids: list[str]
+
+
+@derive(Clone)
+pub model PackageValidation:
+    """Complete structural validation result for a runtime package."""
+
+    pub valid: bool
+    pub errors: list[str]
+
+
+@derive(Clone)
+pub model AdmissionResult:
+    """Runtime decision and cited evidence identifiers, without chain-of-thought."""
+
+    pub admitted: bool
+    pub decision: RuntimeDecision
+    pub reason: str
+    pub evidence_ids: list[str]
+    pub package_errors: list[str]
+
+
+pub def action_contract(id: str, evidence_required: bool) -> ActionContract:
+    """Construct one package-owned action declaration."""
+    return ActionContract(id=id, evidence_required=evidence_required)
+
+
+pub def evidence_record(
+    id: str,
+    claim: str,
+    guidance: str,
+    source_ref: str,
+    rights_status: RightsStatus,
+    review_status: ReviewStatus,
+) -> EvidenceRecord:
+    """Construct one source-safe support record."""
+    return EvidenceRecord(
+        id=id,
+        claim=claim,
+        guidance=guidance,
+        source_ref=source_ref,
+        rights_status=rights_status,
+        review_status=review_status,
+    )
+
+
+pub def governed_package(
+    schema_version: str,
+    package_id: str,
+    domain_id: str,
+    mission: str,
+    actions: list[ActionContract],
+    evidence: list[EvidenceRecord],
+) -> GovernedPackage:
+    """Construct a runtime package without loading files or invoking providers."""
+    return GovernedPackage(
+        schema_version=schema_version,
+        package_id=package_id,
+        domain_id=domain_id,
+        mission=mission,
+        actions=actions,
+        evidence=evidence,
+    )
+
+
+pub def model_proposal(
+    package_id: str,
+    domain_id: str,
+    action_id: str,
+    visible_output: str,
+    evidence_ids: list[str],
+) -> ModelProposal:
+    """Construct untrusted model output for admission at the runtime boundary."""
+    return ModelProposal(
+        package_id=package_id,
+        domain_id=domain_id,
+        action_id=action_id,
+        visible_output=visible_output,
+        evidence_ids=evidence_ids,
+    )
+
+
+def identifier_is_safe(value: str) -> bool:
+    if value == "" or value.strip() != value or contains_control_characters(value):
+        return false
+    if value.contains("/") or value.contains("\\") or value.contains(":") or value.contains(" "):
+        return false
+    return true
+
+
+def source_ref_is_safe(value: str) -> bool:
+    if value == "" or value.strip() != value or contains_control_characters(value):
+        return false
+    if value.contains("\\") or value.contains("..") or value.contains("file://") or value.contains(":/"):
+        return false
+    parts = value.split("/")
+    if len(parts) > 0 and parts[0] == "":
+        return false
+    return true
+
+
+def has_duplicate_action_ids(actions: list[ActionContract]) -> bool:
+    mut seen: list[str] = []
+    for action in actions:
+        if seen.contains(f"{action.id}"):
+            return true
+        seen.append(f"{action.id}")
+    return false
+
+
+def has_duplicate_evidence_ids(evidence: list[EvidenceRecord]) -> bool:
+    mut seen: list[str] = []
+    for record in evidence:
+        if seen.contains(f"{record.id}"):
+            return true
+        seen.append(f"{record.id}")
+    return false
+
+
+def has_duplicate_strings(values: list[str]) -> bool:
+    mut seen: list[str] = []
+    for value in values:
+        if seen.contains(value):
+            return true
+        seen.append(value)
+    return false
+
+
+pub def validate_governed_package(package: GovernedPackage) -> PackageValidation:
+    """Reject malformed, ambiguous, unreviewed, or rights-blocked runtime packages."""
+    mut errors: list[str] = []
+    if package.schema_version != GOVERNED_PACKAGE_SCHEMA_VERSION:
+        errors.append("unsupported_schema_version")
+    if not identifier_is_safe(package.package_id):
+        errors.append("invalid_package_id")
+    if not identifier_is_safe(package.domain_id):
+        errors.append("invalid_domain_id")
+    if package.mission.strip() == "":
+        errors.append("missing_mission")
+    if len(package.actions) == 0:
+        errors.append("missing_actions")
+    if has_duplicate_action_ids(package.actions):
+        errors.append("duplicate_action_id")
+    for action in package.actions:
+        if not identifier_is_safe(f"{action.id}"):
+            errors.append("invalid_action_id")
+    if has_duplicate_evidence_ids(package.evidence):
+        errors.append("duplicate_evidence_id")
+    for record in package.evidence:
+        if not identifier_is_safe(f"{record.id}"):
+            errors.append("invalid_evidence_id")
+        if record.claim.strip() == "":
+            errors.append("missing_evidence_claim")
+        if record.guidance.strip() == "":
+            errors.append("missing_evidence_guidance")
+        if not source_ref_is_safe(f"{record.source_ref}"):
+            errors.append("unsafe_source_ref")
+        if record.rights_status != RightsStatus.Allowed:
+            errors.append("evidence_rights_not_allowed")
+        if record.review_status != ReviewStatus.Approved:
+            errors.append("evidence_not_approved")
+    return PackageValidation(valid=len(errors) == 0, errors=errors)
+
+
+def rejected_admission(reason: str, package_errors: list[str]) -> AdmissionResult:
+    return AdmissionResult(
+        admitted=false,
+        decision=RuntimeDecision.Reject,
+        reason=reason,
+        evidence_ids=[],
+        package_errors=package_errors,
+    )
+
+
+pub def admit_model_proposal(package: GovernedPackage, proposal: ModelProposal) -> AdmissionResult:
+    """Admit only a visible proposal whose declared action and evidence belong to a valid package."""
+    validation = validate_governed_package(package)
+    if not validation.valid:
+        return rejected_admission("invalid_package", validation.errors)
+    if proposal.package_id != package.package_id:
+        return rejected_admission("package_id_mismatch", [])
+    if proposal.domain_id != package.domain_id:
+        return rejected_admission("domain_id_mismatch", [])
+    if proposal.visible_output.strip() == "":
+        return rejected_admission("missing_visible_output", [])
+
+    mut action_known = false
+    mut evidence_required = false
+    for action in package.actions:
+        if action.id == proposal.action_id:
+            action_known = true
+            evidence_required = action.evidence_required
+    if not action_known:
+        return rejected_admission("unknown_action", [])
+    if has_duplicate_strings(proposal.evidence_ids):
+        return rejected_admission("duplicate_evidence_reference", [])
+    if evidence_required and len(proposal.evidence_ids) == 0:
+        return rejected_admission("evidence_required", [])
+
+    mut admitted_evidence: list[str] = []
+    for evidence_id in proposal.evidence_ids:
+        mut known = false
+        for record in package.evidence:
+            if record.id == evidence_id:
+                known = true
+        if not known:
+            return rejected_admission("unknown_evidence", [])
+        admitted_evidence.append(f"{evidence_id}")
+
+    return AdmissionResult(
+        admitted=true,
+        decision=RuntimeDecision.Admit,
+        reason="admitted",
+        evidence_ids=admitted_evidence,
+        package_errors=[],
+    )

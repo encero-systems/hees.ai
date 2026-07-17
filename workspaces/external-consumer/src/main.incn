@@ -1,0 +1,14 @@
+"""External consumer smoke for the Hees package-loader contract."""
+
+from pub::hees import package_loader_descriptor, package_loader_summary, validate_package_loader_descriptor
+
+
+def main() -> None:
+    descriptor = package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "packages/lesson_support/package/domain.json",
+        "0.1",
+        "source_controlled_domain_package",
+    )
+    println(package_loader_summary(validate_package_loader_descriptor(descriptor)))

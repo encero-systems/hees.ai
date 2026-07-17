@@ -1,0 +1,6 @@
+[project]
+name = "hees_external_consumer"
+version = "0.0.1"
+
+[dependencies]
+hees = { path = "../.." }

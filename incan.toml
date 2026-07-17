@@ -1,0 +1,7 @@
+[project]
+name = "hees"
+version = "0.0.1"
+description = "Incan-first contracts for admitting governed AI proposals"
+authors = ["Encero Systems"]
+license = "Apache-2.0"
+readme = "README.md"

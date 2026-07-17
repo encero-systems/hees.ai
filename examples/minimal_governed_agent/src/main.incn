@@ -1,0 +1,38 @@
+"""Fictional external implementation using the checked Hees public API."""
+
+from pub::hees import (
+    ReviewStatus,
+    RightsStatus,
+    action_contract,
+    admit_model_proposal,
+    evidence_record,
+    governed_package,
+    model_proposal,
+)
+
+
+def main() -> None:
+    package = governed_package(
+        "0.1",
+        "minimal_stationery",
+        "stationery_help",
+        "Offer one bounded stationery suggestion from reviewed evidence.",
+        [action_contract("answer", true), action_contract("refuse", false)],
+        [evidence_record(
+            "visible_note",
+            "A visible note can keep a reminder in view.",
+            "Suggest a sticky note for a small visible reminder.",
+            "source:stationery/visible-note",
+            RightsStatus.Allowed,
+            ReviewStatus.Approved,
+        )],
+    )
+    proposal = model_proposal(
+        "minimal_stationery",
+        "stationery_help",
+        "answer",
+        "Use a sticky note for a small reminder that should remain visible.",
+        ["visible_note"],
+    )
+    result = admit_model_proposal(package, proposal)
+    println(f"decision={result.decision.value()} reason={result.reason}")

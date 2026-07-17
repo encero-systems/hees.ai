@@ -1,0 +1,30 @@
+site_name: Hees documentation
+site_description: Checked contracts for the pre-v0.1 Hees governed AI kernel
+repo_name: encero-systems/hees.ai
+repo_url: https://github.com/encero-systems/hees.ai
+docs_dir: docs
+site_dir: site
+use_directory_urls: true
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - content.code.copy
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Contracts: contracts.md
+  - Architecture: architecture.md
+  - Development: development.md

@@ -1,0 +1,114 @@
+from std.testing import assert_eq
+from crate.package_loader import (
+    PackageLoaderDescriptor,
+    package_loader_descriptor,
+    package_loader_summary,
+    validate_package_loader_descriptor,
+)
+
+
+def valid_descriptor() -> PackageLoaderDescriptor:
+    return package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "packages/lesson_support/package/domain.json",
+        "0.1",
+        "source_controlled_domain_package",
+    )
+
+
+def test_external_package_descriptor_is_valid() -> None:
+    validation = validate_package_loader_descriptor(valid_descriptor())
+    assert_eq(validation.valid, true)
+    assert_eq(validation.reason, "ok")
+    assert_eq(
+        package_loader_summary(validation),
+        "package_loader package=lesson_support domain=lesson_support source=source_controlled_domain_package valid=true reason=ok",
+    )
+
+
+def test_missing_package_path_is_rejected() -> None:
+    descriptor = package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "",
+        "0.1",
+        "source_controlled_domain_package",
+    )
+    assert_eq(validate_package_loader_descriptor(descriptor).reason, "missing_package_path")
+
+
+def test_traversal_and_absolute_paths_are_rejected() -> None:
+    traversal = package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "../lesson_support/package/domain.json",
+        "0.1",
+        "source_controlled_domain_package",
+    )
+    absolute = package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "/tmp/lesson_support/package/domain.json",
+        "0.1",
+        "source_controlled_domain_package",
+    )
+    dot_segment = package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "./package/domain.json",
+        "0.1",
+        "source_controlled_domain_package",
+    )
+    assert_eq(validate_package_loader_descriptor(traversal).reason, "unsafe_package_path")
+    assert_eq(validate_package_loader_descriptor(absolute).reason, "unsafe_package_path")
+    assert_eq(validate_package_loader_descriptor(dot_segment).reason, "unsafe_package_path")
+
+
+def test_noncanonical_path_is_rejected() -> None:
+    descriptor = package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "packages/lesson_support/domain.json",
+        "0.1",
+        "source_controlled_domain_package",
+    )
+    assert_eq(validate_package_loader_descriptor(descriptor).reason, "unsafe_package_path")
+
+
+def test_unsupported_schema_and_source_kind_are_rejected() -> None:
+    bad_schema = package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "packages/lesson_support/package/domain.json",
+        "1.0",
+        "source_controlled_domain_package",
+    )
+    bad_source = package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "packages/lesson_support/package/domain.json",
+        "0.1",
+        "generated_runtime_archive",
+    )
+    assert_eq(validate_package_loader_descriptor(bad_schema).reason, "unsupported_schema_version")
+    assert_eq(validate_package_loader_descriptor(bad_source).reason, "unsupported_source_kind")
+
+
+def test_control_characters_in_ids_and_paths_are_rejected() -> None:
+    bad_id = package_loader_descriptor(
+        "lesson\nsupport",
+        "lesson_support",
+        "packages/lesson_support/package/domain.json",
+        "0.1",
+        "source_controlled_domain_package",
+    )
+    bad_path = package_loader_descriptor(
+        "lesson_support",
+        "lesson_support",
+        "packages/lesson\tsupport/package/domain.json",
+        "0.1",
+        "source_controlled_domain_package",
+    )
+    assert_eq(validate_package_loader_descriptor(bad_id).reason, "invalid_package_id")
+    assert_eq(validate_package_loader_descriptor(bad_path).reason, "unsafe_package_path")

@@ -1,0 +1,26 @@
+name: Bug report
+description: Report a reproducible problem using fictional, non-sensitive data
+title: "bug - "
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Minimal reproduction
+      description: Do not include private package contents, credentials, personal data, or raw corpora.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Hees revision
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Incan version
+      placeholder: 0.4.0
+    validations:
+      required: true

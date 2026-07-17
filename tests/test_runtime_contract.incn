@@ -1,0 +1,166 @@
+from std.testing import assert_eq
+from crate.runtime import (
+    GovernedPackage,
+    ReviewStatus,
+    RightsStatus,
+    RuntimeDecision,
+    action_contract,
+    admit_model_proposal,
+    evidence_record,
+    governed_package,
+    model_proposal,
+    validate_governed_package,
+)
+
+
+def approved_package() -> GovernedPackage:
+    return governed_package(
+        "0.1",
+        "minimal_stationery",
+        "stationery_help",
+        "Offer one bounded stationery suggestion from reviewed evidence.",
+        [action_contract("answer", true), action_contract("refuse", false)],
+        [evidence_record(
+            "visible_note",
+            "A visible note can keep a reminder in view.",
+            "Suggest a sticky note for a small visible reminder.",
+            "source:stationery/visible-note",
+            RightsStatus.Allowed,
+            ReviewStatus.Approved,
+        )],
+    )
+
+
+def test_valid_package_and_supported_visible_proposal_are_admitted() -> None:
+    package = approved_package()
+    assert_eq(validate_governed_package(package).valid, true)
+    proposal = model_proposal(
+        "minimal_stationery",
+        "stationery_help",
+        "answer",
+        "Use a sticky note for a small reminder that should remain visible.",
+        ["visible_note"],
+    )
+    result = admit_model_proposal(package, proposal)
+    assert_eq(result.admitted, true)
+    assert_eq(result.decision, RuntimeDecision.Admit)
+    assert_eq(result.reason, "admitted")
+    assert_eq(result.evidence_ids, ["visible_note"])
+
+
+def test_rights_blocked_and_unreviewed_evidence_invalidates_package() -> None:
+    denied = evidence_record(
+        "blocked",
+        "A claim.",
+        "Some guidance.",
+        "source:stationery/blocked",
+        RightsStatus.Denied,
+        ReviewStatus.Pending,
+    )
+    package = governed_package(
+        "0.1",
+        "minimal_stationery",
+        "stationery_help",
+        "A mission.",
+        [action_contract("answer", true)],
+        [denied],
+    )
+    validation = validate_governed_package(package)
+    assert_eq(validation.valid, false)
+    assert_eq(validation.errors.contains("evidence_rights_not_allowed"), true)
+    assert_eq(validation.errors.contains("evidence_not_approved"), true)
+
+
+def test_duplicate_package_ids_fail_closed() -> None:
+    record = evidence_record(
+        "same_id",
+        "A claim.",
+        "Some guidance.",
+        "source:stationery/one",
+        RightsStatus.Allowed,
+        ReviewStatus.Approved,
+    )
+    package = governed_package(
+        "0.1",
+        "minimal_stationery",
+        "stationery_help",
+        "A mission.",
+        [action_contract("answer", true), action_contract("answer", false)],
+        [record, record],
+    )
+    validation = validate_governed_package(package)
+    assert_eq(validation.errors.contains("duplicate_action_id"), true)
+    assert_eq(validation.errors.contains("duplicate_evidence_id"), true)
+
+
+def test_missing_visible_synthesis_is_rejected() -> None:
+    proposal = model_proposal("minimal_stationery", "stationery_help", "answer", "", ["visible_note"])
+    result = admit_model_proposal(approved_package(), proposal)
+    assert_eq(result.reason, "missing_visible_output")
+    assert_eq(result.decision, RuntimeDecision.Reject)
+
+
+def test_unknown_action_and_unknown_evidence_are_rejected() -> None:
+    action = model_proposal("minimal_stationery", "stationery_help", "invented", "Visible refusal.", [])
+    evidence = model_proposal("minimal_stationery", "stationery_help", "answer", "Visible answer.", ["invented"])
+    assert_eq(admit_model_proposal(approved_package(), action).reason, "unknown_action")
+    assert_eq(admit_model_proposal(approved_package(), evidence).reason, "unknown_evidence")
+
+
+def test_required_and_duplicate_evidence_references_are_rejected() -> None:
+    missing = model_proposal("minimal_stationery", "stationery_help", "answer", "Visible answer.", [])
+    duplicate = model_proposal(
+        "minimal_stationery",
+        "stationery_help",
+        "answer",
+        "Visible answer.",
+        ["visible_note", "visible_note"],
+    )
+    assert_eq(admit_model_proposal(approved_package(), missing).reason, "evidence_required")
+    assert_eq(admit_model_proposal(approved_package(), duplicate).reason, "duplicate_evidence_reference")
+
+
+def test_package_and_domain_mismatches_are_rejected() -> None:
+    package_mismatch = model_proposal("other", "stationery_help", "refuse", "I cannot help with that.", [])
+    domain_mismatch = model_proposal("minimal_stationery", "other", "refuse", "I cannot help with that.", [])
+    assert_eq(admit_model_proposal(approved_package(), package_mismatch).reason, "package_id_mismatch")
+    assert_eq(admit_model_proposal(approved_package(), domain_mismatch).reason, "domain_id_mismatch")
+
+
+def test_invalid_package_is_rejected_before_proposal_admission() -> None:
+    package = governed_package("9.0", "bad package", "", "", [], [])
+    proposal = model_proposal("bad package", "", "answer", "Visible output.", [])
+    result = admit_model_proposal(package, proposal)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(len(result.package_errors) > 0, true)
+
+
+def test_windows_drive_and_control_character_inputs_fail_closed() -> None:
+    windows_source = evidence_record(
+        "windows_source",
+        "A claim.",
+        "Some guidance.",
+        "C:/private/source.txt",
+        RightsStatus.Allowed,
+        ReviewStatus.Approved,
+    )
+    control_source = evidence_record(
+        "control_source",
+        "A claim.",
+        "Some guidance.",
+        "source:stationery/private\nrecord",
+        RightsStatus.Allowed,
+        ReviewStatus.Approved,
+    )
+    package = governed_package(
+        "0.1",
+        "minimal_stationery",
+        "stationery_help",
+        "A mission.",
+        [action_contract("answer\tquietly", true)],
+        [windows_source, control_source],
+    )
+    validation = validate_governed_package(package)
+    assert_eq(validation.valid, false)
+    assert_eq(validation.errors.contains("invalid_action_id"), true)
+    assert_eq(validation.errors.contains("unsafe_source_ref"), true)

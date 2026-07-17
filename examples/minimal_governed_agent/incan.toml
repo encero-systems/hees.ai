@@ -1,0 +1,6 @@
+[project]
+name = "minimal_governed_agent"
+version = "0.0.1"
+
+[dependencies]
+hees = { path = "../.." }
