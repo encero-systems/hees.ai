@@ -11,7 +11,7 @@
     - RFC 005 (Evidence-Grounded Claim Verification Findings)
     - RFC 006 (Governed behavior envelopes)
 - **Issue:** https://github.com/encero-systems/hees.ai/issues/9
-- **RFC PR:** —
+- **RFC PR:** https://github.com/encero-systems/hees.ai/pull/10
 - **Written against:** Hees 0.0.1 / Incan 0.4.0
 - **Shipped in:** —
 

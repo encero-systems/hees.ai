@@ -10,7 +10,7 @@
     - RFC 004 (Export-Safe Governance Receipts)
     - RFC 007 (Governed Visible Response Lifecycle)
 - **Issue:** https://github.com/encero-systems/hees.ai/issues/6
-- **RFC PR:** —
+- **RFC PR:** https://github.com/encero-systems/hees.ai/pull/10
 - **Written against:** Hees 0.0.1 / Incan 0.4.0
 - **Shipped in:** —
 

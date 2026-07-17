@@ -8,7 +8,7 @@
     - RFC 003 (Canonical Package Artifact Admission)
     - RFC 004 (Export-Safe Governance Receipts)
 - **Issue:** https://github.com/encero-systems/hees.ai/issues/2
-- **RFC PR:** —
+- **RFC PR:** https://github.com/encero-systems/hees.ai/pull/10
 - **Written against:** Hees 0.0.1 / Incan 0.4.0
 - **Shipped in:** —
 
