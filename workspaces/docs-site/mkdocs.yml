@@ -26,5 +26,6 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - Contracts: contracts.md
+  - RFC proposals: rfcs.md
   - Architecture: architecture.md
   - Development: development.md

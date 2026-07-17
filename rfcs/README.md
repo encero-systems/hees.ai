@@ -21,3 +21,39 @@ paths, model artifacts, or unpublished research results.
 
 Until an RFC and its implementation are both merged, the repository's README
 and checked public API remain the source of truth for what Hees implements.
+
+## Numbering and headers
+
+RFC documents use monotonically increasing three-digit numbers and the filename
+form `NNN-short-title.md`. New documents start at `Draft` and record their
+creation date, authors, related RFCs, proposal issue, RFC pull request, the Hees
+and Incan versions they were written against, and the release in which they
+eventually ship. Draft RFCs describe proposed behavior and do not imply that the
+checked public API implements it.
+
+## Document statuses
+
+- **Draft:** Design or review is in progress and unresolved questions are
+  allowed. An implementation plan or progress checklist must not be present.
+- **Planned:** The design is accepted with no unresolved questions, but
+  implementation has not started. An implementation plan or progress checklist
+  must still not be present.
+- **In Progress:** Implementation is actually underway. An implementation plan
+  and progress checklist may be added and must reflect active work rather than
+  intent.
+- **Implemented:** The implementation is merged and released, the progress
+  checklist is complete, and `Shipped in` records the actual release.
+- **Rejected:** The proposal was considered and intentionally declined; it does
+  not describe supported behavior.
+- **Superseded:** Another named RFC owns the active design; the superseded
+  document must point to it and does not describe supported behavior.
+
+## Current documents
+
+- [RFC 001: Governed Memory and Retrieval Results](001-governed-memory-and-retrieval-results.md) — Draft
+- [RFC 002: Composable Governance Constraints](002-composable-governance-constraints.md) — Draft
+- [RFC 003: Canonical Package Artifact Admission](003-canonical-package-artifact-admission.md) — Draft
+- [RFC 004: Export-Safe Governance Receipts](004-export-safe-governance-receipts.md) — Draft
+- [RFC 005: Evidence-Grounded Claim Verification Findings](005-evidence-grounded-claim-verification-findings.md) — Draft
+- [RFC 006: Governed Behavior Envelopes](006-governed-behavior-envelopes.md) — Draft
+- [RFC 007: Governed Visible Response Lifecycle](007-governed-visible-response-lifecycle.md) — Draft
