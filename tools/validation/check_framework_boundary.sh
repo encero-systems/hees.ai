@@ -62,7 +62,7 @@ scan_tracked_paths() {
             *.mjs | *.js | *.bin | *.pdf | *.pptx | *.docx | *.gguf | *.safetensors | *.onnx | *.zip | *.tar | *.tar.gz)
                 fail "tracked disallowed artifact type is present: $path"
                 ;;
-            *.incn | *.md | *.json | *.toml | *.lock | *.sh | *.yml | *.yaml | *.txt | *.ndjson | .editorconfig | .gitattributes | .gitignore | */.gitignore | LICENSE | NOTICE | Makefile)
+            *.incn | *.md | *.json | *.toml | *.lock | *.sh | *.hbs | *.yml | *.yaml | *.txt | *.ndjson | .editorconfig | .gitattributes | .gitignore | */.gitignore | LICENSE | NOTICE | Makefile)
                 ;;
             *)
                 fail "tracked file type is outside the public allowlist: $path"
@@ -95,6 +95,10 @@ required_files=(
     tests/test_package_loader_contract.incn
     tests/test_runtime_contract.incn
     tools/validation/test_framework_boundary.sh
+    tools/licenses/about.toml
+    tools/licenses/deny.toml
+    tools/licenses/third-party-licenses.hbs
+    workspaces/hees-console/packaging/THIRD_PARTY_LICENSES.md
     workspaces/hees-console/contracts/transport/console_runner_request_0_1.schema.json
     workspaces/hees-console/contracts/transport/console_runner_response_0_1.schema.json
     workspaces/hees-console/runner/incan.lock
@@ -149,7 +153,7 @@ while IFS= read -r path; do
         *.mjs | *.js | *.bin | *.pdf | *.pptx | *.docx | *.gguf | *.safetensors | *.onnx | *.zip | *.tar | *.tar.gz)
             fail "disallowed artifact type is present: ${path#./}"
             ;;
-        *.incn | *.md | *.json | *.toml | *.lock | *.sh | *.yml | *.yaml | *.txt | *.ndjson | ./.editorconfig | ./.gitattributes | ./.gitignore | */.gitignore | ./LICENSE | ./NOTICE | ./Makefile)
+        *.incn | *.md | *.json | *.toml | *.lock | *.sh | *.hbs | *.yml | *.yaml | *.txt | *.ndjson | ./.editorconfig | ./.gitattributes | ./.gitignore | */.gitignore | ./LICENSE | ./NOTICE | ./Makefile)
             ;;
         *)
             fail "file type is outside the public allowlist: ${path#./}"

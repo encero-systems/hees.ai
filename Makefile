@@ -1,6 +1,8 @@
 INCAN ?= incan
 INCAN_FLAGS ?= --locked
 MDBOOK ?= mdbook
+CARGO_ABOUT ?= cargo-about
+CARGO_DENY ?= cargo-deny
 CONSOLE_ROOT := workspaces/hees-console
 CONSOLE_SOURCE := src/main.incn
 CONSOLE_NATIVE_TEST := tests/native_console_test.incn
@@ -10,6 +12,10 @@ CONSOLE_BINARY := $(abspath $(CONSOLE_ROOT)/target/incan/.cargo-target/release/h
 CONSOLE_BUILD_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/build-report.json)
 CONSOLE_RELEASE_TOOL := $(abspath $(CONSOLE_ROOT)/packaging/release_candidate.sh)
 CONSOLE_RELEASE_TEST := $(abspath $(CONSOLE_ROOT)/packaging/test_release_candidate.sh)
+CONSOLE_GENERATED_ROOT := $(abspath $(CONSOLE_ROOT)/target/incan/hees_console)
+CONSOLE_LICENSE_REPORT := $(abspath $(CONSOLE_ROOT)/packaging/THIRD_PARTY_LICENSES.md)
+CONSOLE_GENERATED_LICENSE_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/THIRD_PARTY_LICENSES.md)
+LICENSE_CONFIG_ROOT := $(abspath tools/licenses)
 INCAN_RESOLVED := $(shell command -v "$(INCAN)" 2>/dev/null || printf '%s' "$(INCAN)")
 INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
 CONSOLE_RUSTFLAGS := --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(HOME)=/build-home --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain
@@ -18,7 +24,7 @@ RELEASE_PLATFORM ?=
 SOURCE_COMMIT ?= $(shell git rev-parse HEAD)
 SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct HEAD)
 
-.PHONY: fmt lib test consumer example boundary boundary-self-test docs ci console-build console-test console-native-smoke console-release-candidate console-release-contract-test console-release-lint
+.PHONY: fmt lib test consumer example boundary boundary-self-test docs ci console-build console-test console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-lint
 
 fmt:
 	$(INCAN) fmt --check .
@@ -59,6 +65,13 @@ console-test:
 console-native-smoke: console-build
 	$(CONSOLE_RELEASE_TOOL) smoke-binary --binary $(CONSOLE_BINARY)
 
+console-license-audit: console-build
+	install -m 644 LICENSE target/lib/LICENSE
+	install -m 644 LICENSE $(CONSOLE_GENERATED_ROOT)/LICENSE
+	$(CARGO_DENY) --manifest-path $(CONSOLE_GENERATED_ROOT)/Cargo.toml check --config $(LICENSE_CONFIG_ROOT)/deny.toml licenses
+	$(CARGO_ABOUT) generate $(LICENSE_CONFIG_ROOT)/third-party-licenses.hbs --config $(LICENSE_CONFIG_ROOT)/about.toml --manifest-path $(CONSOLE_GENERATED_ROOT)/Cargo.toml --locked --offline --fail --output-file $(CONSOLE_GENERATED_LICENSE_REPORT)
+	cmp $(CONSOLE_LICENSE_REPORT) $(CONSOLE_GENERATED_LICENSE_REPORT)
+
 console-release-contract-test:
 	$(CONSOLE_RELEASE_TEST)
 
@@ -67,7 +80,7 @@ console-release-lint:
 	shellcheck -s sh $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST)
 	actionlint .github/workflows/console-release-candidate.yml
 
-console-release-candidate: console-release-contract-test console-test console-native-smoke
+console-release-candidate: console-release-contract-test console-test console-native-smoke console-license-audit
 	@test -n "$(RELEASE_PLATFORM)" || { echo "RELEASE_PLATFORM is required" >&2; exit 1; }
 	$(CONSOLE_RELEASE_TOOL) validate-platform --platform "$(RELEASE_PLATFORM)"
 	$(CONSOLE_RELEASE_TOOL) package --binary "$(CONSOLE_BINARY)" --platform "$(RELEASE_PLATFORM)" --output-directory "$(RELEASE_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --source-date-epoch "$(SOURCE_DATE_EPOCH)" --incan-root "$(INCAN_RELEASE_ROOT)" --incan-lock "$(CONSOLE_LOCK)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"

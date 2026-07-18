@@ -118,6 +118,7 @@ make_fake_incan "$fake_incan"
 printf '%s\n' 'lock-version = "1"' >"$fake_incan_lock"
 fake_incan_lock_sha256=$(sha256_file "$fake_incan_lock")
 repository_notice_sha256=$(sha256_file "$REPOSITORY_ROOT/NOTICE")
+third_party_licenses_sha256=$(sha256_file "$SCRIPT_DIR/THIRD_PARTY_LICENSES.md")
 
 expect_failure \
     "missing Console dependency lock is rejected" \
@@ -154,6 +155,7 @@ grep -F '"language":"Incan"' "$manifest" >/dev/null || fail "manifest does not i
 grep -F '"compiler_version":"0.4.0"' "$manifest" >/dev/null || fail "manifest does not pin Incan 0.4.0"
 grep -F "\"incan_lock_sha256\":\"$fake_incan_lock_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind the Console dependency lock"
 grep -F "\"notice_source\":\"repository_root\",\"notice_sha256\":\"$repository_notice_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind repository NOTICE provenance"
+grep -F "\"third_party_licenses_sha256\":\"$third_party_licenses_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind third-party license provenance"
 pass "native release archive and provenance are assembled"
 
 HEES_RELEASE_ALLOW_TEST_EXECUTABLE=1 \
@@ -171,12 +173,13 @@ for expected in \
     "$expected_root/" \
     "$expected_root/LICENSE" \
     "$expected_root/NOTICE" \
+    "$expected_root/THIRD-PARTY-LICENSES.md" \
     "$expected_root/RELEASE-MANIFEST.json" \
     "$expected_root/hees-console"
 do
     grep -Fx "$expected" "$listing" >/dev/null || fail "archive is missing $expected"
 done
-[ "$(wc -l <"$listing" | tr -d ' ')" = 5 ] || fail "archive contains unexpected entries"
+[ "$(wc -l <"$listing" | tr -d ' ')" = 6 ] || fail "archive contains unexpected entries"
 pass "archive layout is exact"
 
 leaking_console="$TEST_ROOT/leaking-console"

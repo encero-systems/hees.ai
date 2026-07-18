@@ -1,0 +1,18 @@
+# Third-party licenses
+
+This file lists the third-party software included in the Hees Console executable and the license terms selected from each dependency's declared SPDX expression. It is generated from the locked native release graph; it is not legal advice.
+
+{{#each licenses}}
+## {{{name}}}
+
+Used by:
+{{#each used_by}}
+
+- {{crate.name}} {{crate.version}}{{#if crate.repository}} — {{crate.repository}}{{/if}}
+{{/each}}
+
+```text
+{{{text}}}
+```
+
+{{/each}}

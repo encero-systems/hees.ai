@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/console-release-candidate.yml
       - Makefile
+      - tools/licenses/**
       - workspaces/hees-console/**
 
 permissions:
@@ -24,6 +25,10 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+      - name: Install Rust 1.93
+        uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66 # 1.93.0
+        with:
+          toolchain: 1.93.0
       - name: Install checksum-pinned actionlint 1.7.12
         env:
           ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -37,6 +42,20 @@ jobs:
           printf '%s\n' "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
       - name: Validate release mechanics and workflow
         run: make console-release-lint console-release-contract-test
+      - name: Install pinned license-audit tools
+        run: |
+          cargo install cargo-deny --version 0.19.0 --locked
+          cargo install cargo-about --version 0.9.1 --locked --features cli
+      - name: Fetch released Incan for dependency audit
+        run: >-
+          workspaces/hees-console/packaging/release_candidate.sh
+          fetch-incan
+          --platform linux-x86_64
+          --destination "$RUNNER_TEMP/incan-0.4.0"
+      - name: Audit the locked native license graph
+        run: >-
+          make console-license-audit
+          INCAN="$RUNNER_TEMP/incan-0.4.0/bin/incan"
 
   build:
     needs: validate
