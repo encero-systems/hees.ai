@@ -93,8 +93,8 @@ See [TESTING.md](TESTING.md) for the complete judge path, expected trust labels,
 | `2` | Undeclared-action scenario |
 | `3` | Unknown memory scenario |
 | `4` | Non-admitted memory scenario |
-| `←` or `→` | Previous or next inspector |
-| `↑` or `↓` | Previous or next scenario |
+| `←` / `→` or `h` / `l` | Previous or next inspector |
+| `↑` / `↓` or `k` / `j` | Previous or next scenario |
 | `enter` | Next inspector |
 | `q` | Quit |
 

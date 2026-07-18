@@ -374,7 +374,7 @@ GPT-5.6 is the initial adapter, not a permanent Console dependency or authority.
 
 The initial UI must show the fixed package and sources, optional atom comparison, untrusted proposal, distinct evidence and memory support, manifest target identities, provider observations, Hees findings, `BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1`, terminal reason, selected memory, experimental Content DNA, profile receipt, trace, and replay integrity.
 
-Keyboard actions select the valid, undeclared-action, unknown-memory, and non-admitted-memory scenarios; move through the package, source, optional atom-comparison, proposal, support, manifest, observation, finding, Spectrum, selected-memory, Content DNA, receipt, and trace inspectors; execute; and quit. Colour cannot carry meaning alone. All source, question, model, provider, fixture, and error text is escaped before terminal rendering. Rejected prose appears only inside an untrusted inspection view.
+Keyboard actions select and rerun the valid, undeclared-action, unknown-memory, and non-admitted-memory scenarios; move through the package, source, optional atom-comparison, proposal, support, manifest, observation, finding, Spectrum, selected-memory, Content DNA, receipt, and trace inspectors; and quit. Colour cannot carry meaning alone. All source, question, model, provider, fixture, and error text is escaped before terminal rendering. Rejected prose appears only inside an untrusted inspection view.
 
 The release publishes a self-contained prebuilt executable that defaults to offline replay and requires no Incan compiler, external language runtime, package manager, source checkout, network, or API key. At least one Linux artifact must be built and smoke-tested; a macOS artifact is claimed only when verified under the same frozen profile. A hosted terminal invokes the same executable without exposing a shell, unrelated files, persistent cross-session data, or credentials.
 
@@ -557,4 +557,5 @@ Separating the public local-first Console from an operations product also requir
 - What exact cross-profile resource ceilings and workspace-retention defaults are safe on supported developer machines, and what stricter limits apply to self-contained or constrained-device releases?
 - Which platforms must the first permanent-product release support, and under what reproducibility and license gates?
 
-<!-- An RFC cannot move from Draft to Planned until no unresolved questions remain. -->
+<!-- Rename this section to "Design Decisions" once all questions have been resolved.
+     An RFC cannot move from Draft to Planned until no unresolved questions remain. -->
