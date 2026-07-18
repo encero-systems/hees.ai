@@ -29,7 +29,9 @@ EOF
 }
 
 require_value() {
-    [ "$#" -ge 2 ] && [ -n "$2" ] || fail "missing_option_value"
+    if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+        fail "missing_option_value"
+    fi
 }
 
 normalize_machine() {
@@ -132,7 +134,9 @@ set_file_mtime() {
 assert_native_executable() {
     binary=$1
     platform=${2:-}
-    [ -f "$binary" ] && [ -x "$binary" ] || fail "binary_not_executable"
+    if [ ! -f "$binary" ] || [ ! -x "$binary" ]; then
+        fail "binary_not_executable"
+    fi
     if [ "${HEES_RELEASE_ALLOW_TEST_EXECUTABLE:-0}" = 1 ]; then
         return
     fi
@@ -339,8 +343,12 @@ package_release() {
     printf '%s\n' "$source_date_epoch" | grep -Eq '^[0-9]{1,12}$' || fail "invalid_source_date_epoch"
     [ -x "$incan_root/bin/incan" ] || fail "incan_binary_missing"
     [ "$("$incan_root/bin/incan" --version 2>/dev/null)" = "incan $INCAN_VERSION" ] || fail "incan_version_mismatch"
-    [ -f "$incan_lock" ] && [ -s "$incan_lock" ] || fail "incan_lock_missing"
-    [ -f "$THIRD_PARTY_LICENSES_SOURCE" ] && [ -s "$THIRD_PARTY_LICENSES_SOURCE" ] || fail "third_party_licenses_missing"
+    if [ ! -f "$incan_lock" ] || [ ! -s "$incan_lock" ]; then
+        fail "incan_lock_missing"
+    fi
+    if [ ! -f "$THIRD_PARTY_LICENSES_SOURCE" ] || [ ! -s "$THIRD_PARTY_LICENSES_SOURCE" ]; then
+        fail "third_party_licenses_missing"
+    fi
     tree_state=$(source_tree_state)
     append_forbidden "$incan_root"
 
@@ -349,7 +357,9 @@ package_release() {
     archive="$output_directory/$archive_name"
     checksum="$archive.sha256"
     sidecar_manifest="$output_directory/$PRODUCT_NAME-$PRODUCT_VERSION-$platform.manifest.json"
-    [ ! -e "$archive" ] && [ ! -e "$checksum" ] && [ ! -e "$sidecar_manifest" ] || fail "release_output_exists"
+    if [ -e "$archive" ] || [ -e "$checksum" ] || [ -e "$sidecar_manifest" ]; then
+        fail "release_output_exists"
+    fi
 
     scratch=$(make_temp_directory)
     trap 'rm -rf "$scratch"' EXIT HUP INT TERM

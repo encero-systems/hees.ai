@@ -18,6 +18,7 @@ from crate.provider import GPT56_MODEL, ProviderFailure
 from rendering import bounded_text, render_headless, render_screen
 from replays import embedded_inputs_are_non_terminal, load_offline_scenario
 from state import apply_command, initial_state, selected_inspector_name, selected_scenario_slug
+from terminal import command_for_byte, command_for_escape_sequence
 
 
 @derive(json)
@@ -258,7 +259,7 @@ def test_headless_output_exposes_stable_sections_and_reasons() -> None:
 
 
 def test_state_transitions_wrap_and_select_scenarios_and_inspectors() -> None:
-    """Exercise deterministic raw-key commands without terminal I/O."""
+    """Exercise deterministic state commands without terminal I/O."""
 
     mut state = initial_state()
     assert_eq(selected_scenario_slug(state.clone()), "valid")
@@ -275,6 +276,25 @@ def test_state_transitions_wrap_and_select_scenarios_and_inspectors() -> None:
     assert_eq(selected_inspector_name(state.clone()), "PACKAGE")
     state = apply_command(state, "quit")
     assert_eq(state.running, false)
+
+
+def test_portable_raw_key_decoder_maps_shortcuts_and_cursor_sequences() -> None:
+    """Keep raw terminal decoding deterministic without crossterm event metadata."""
+
+    assert_eq(command_for_byte(49), "scenario-1")
+    assert_eq(command_for_byte(52), "scenario-4")
+    assert_eq(command_for_byte(104), "previous-inspector")
+    assert_eq(command_for_byte(108), "next-inspector")
+    assert_eq(command_for_byte(107), "previous-scenario")
+    assert_eq(command_for_byte(106), "next-scenario")
+    assert_eq(command_for_byte(13), "next-inspector")
+    assert_eq(command_for_byte(113), "quit")
+    assert_eq(command_for_byte(0), "noop")
+    assert_eq(command_for_escape_sequence(91, 68), "previous-inspector")
+    assert_eq(command_for_escape_sequence(91, 67), "next-inspector")
+    assert_eq(command_for_escape_sequence(91, 65), "previous-scenario")
+    assert_eq(command_for_escape_sequence(91, 66), "next-scenario")
+    assert_eq(command_for_escape_sequence(79, 65), "noop")
 
 
 def test_terminal_sanitizer_removes_controls_and_preserves_unicode_bounds() -> None:

@@ -1,14 +1,13 @@
 """
 Raw-key terminal boundary for the native Incan Console.
 
-Crossterm supplies only raw-mode and key-event primitives. Incan owns state transitions, scenario evaluation, rendering, and all application behavior.
+Crossterm supplies only raw-mode and alternate-screen primitives. Incan owns byte-level key decoding, state transitions, scenario evaluation, rendering, and all application behavior.
 """
 
-from rust::std::io import stdout
+from rust::std::io import Read, stdin, stdout
 from rust::std::string import String as RustString
 from rust::crossterm import ExecutableCommand
 from rust::crossterm::cursor import Hide, Show
-from rust::crossterm::event import Event, KeyCode, read
 from rust::crossterm::terminal import EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode
 from evaluation import ConsoleRun, evaluate_offline_scenario
 from rendering import render_screen
@@ -16,39 +15,70 @@ from replays import scenario_slugs
 from state import ConsoleState, apply_command, initial_state, selected_scenario_slug
 
 
-def command_for_key(code: KeyCode) -> str:
-    """Map one crossterm key code to a pure Console state command."""
+pub def command_for_byte(value: int) -> str:
+    """Map one ASCII terminal byte to a pure Console state command."""
 
-    match code:
-        KeyCode.Char(value) =>
-            key = value.to_string()
-            if key == "q":
-                return "quit"
-            if key == "1":
-                return "scenario-1"
-            if key == "2":
-                return "scenario-2"
-            if key == "3":
-                return "scenario-3"
-            if key == "4":
-                return "scenario-4"
-            return "noop"
-        KeyCode.Left => return "previous-inspector"
-        KeyCode.Right => return "next-inspector"
-        KeyCode.Up => return "previous-scenario"
-        KeyCode.Down => return "next-scenario"
-        KeyCode.Enter => return "next-inspector"
-        KeyCode.Esc => return "quit"
-        _ => return "noop"
+    if value == 113:
+        return "quit"
+    if value == 49:
+        return "scenario-1"
+    if value == 50:
+        return "scenario-2"
+    if value == 51:
+        return "scenario-3"
+    if value == 52:
+        return "scenario-4"
+    if value == 104:
+        return "previous-inspector"
+    if value == 108:
+        return "next-inspector"
+    if value == 107:
+        return "previous-scenario"
+    if value == 106:
+        return "next-scenario"
+    if value == 10 or value == 13:
+        return "next-inspector"
+    return "noop"
+
+
+pub def command_for_escape_sequence(second: int, third: int) -> str:
+    """Map one complete ANSI cursor-key sequence to a pure Console state command."""
+
+    if second != 91:
+        return "noop"
+    if third == 68:
+        return "previous-inspector"
+    if third == 67:
+        return "next-inspector"
+    if third == 65:
+        return "previous-scenario"
+    if third == 66:
+        return "next-scenario"
+    return "noop"
+
+
+def read_byte() -> Result[int, str]:
+    """Read exactly one raw terminal byte through the portable standard-I/O trait boundary."""
+
+    mut input = stdin()
+    mut buffer: bytes = b""
+    match input.take(1).read_to_end(buffer):
+        Err(_) => return Err("terminal_read_failed")
+        Ok(count) =>
+            if count != 1 or len(buffer) != 1:
+                return Err("terminal_input_closed")
+            return Ok(int(buffer[0]))
 
 
 def read_command() -> Result[str, str]:
-    """Wait for one key event and return a pure application command."""
+    """Wait for one raw key sequence and return a pure application command."""
 
-    event = read().map_err((_error) => f"terminal_read_failed")?
-    match event:
-        Event.Key(key) => return Ok(command_for_key(key.code))
-        _ => return Ok("noop")
+    first = read_byte()?
+    if first != 27:
+        return Ok(command_for_byte(first))
+    second = read_byte()?
+    third = read_byte()?
+    return Ok(command_for_escape_sequence(second, third))
 
 
 def clear_and_home() -> str:

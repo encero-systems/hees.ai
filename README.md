@@ -96,7 +96,7 @@ See [TESTING.md](TESTING.md) for the complete judge path, expected trust labels,
 | `←` or `→` | Previous or next inspector |
 | `↑` or `↓` | Previous or next scenario |
 | `enter` | Next inspector |
-| `q` or `escape` | Quit |
+| `q` | Quit |
 
 Colour reinforces status but is not the only status signal. Trusted and untrusted surfaces use explicit text labels and stable symbols so the boundary remains legible in monochrome and narrow terminals.
 
