@@ -93,6 +93,7 @@ The first decision profile identifier is exactly `console_profile_0_1`. The firs
 | --- | --- |
 | Fictional package | `console_package_0_1` |
 | Optional atom comparison candidate | `console_atom_candidate_0_1` |
+| Optional atom comparison result | `console_atom_comparison_0_1` |
 | Model proposal | `console_proposal_0_1` |
 | Relation observation | `console_relation_observation_0_1` |
 | Synthesis observation | `console_synthesis_observation_0_1` |
@@ -156,6 +157,8 @@ An optional untrusted comparison candidate under `console_atom_candidate_0_1` mu
 The candidate must not contain a trusted memory or evidence identifier, review state, review revision, rights state, authority class, evidence kind, provenance digest, admission state, terminal action, selected-memory state, Content DNA, receipt data, arbitrary metadata, or hidden reasoning. Hees may compare its exact source binding, text fields, language, and digest with a canonical atom and return a non-authoritative match or mismatch record for display. A match does not create memory or strengthen its authority, and a mismatch does not mutate the package or affect terminal selection.
 
 `candidate_digest` must be `sha256:` followed by the lowercase SHA-256 digest of the RFC 8785 JCS candidate object after removing only `candidate_digest`. The digest establishes normalized candidate integrity; it does not establish provider provenance, review, rights, or package membership.
+
+An optional Hees comparison result under `console_atom_comparison_0_1` must contain exactly `contract_version`, `profile_id`, `package_id`, `domain_id`, `candidate_digest`, `matched_memory_id`, `comparison_state`, and `package_effect`. `contract_version` must equal `console_atom_comparison_0_1`, `comparison_state` must equal `exact_match` or `mismatch`, and `package_effect` must equal `none`. `matched_memory_id` must name the one exact canonical atom when the state is `exact_match` and must be JSON `null` for `mismatch`. The host or provider cannot nominate the matched memory identifier.
 
 The terminal path therefore never depends on an atom-candidate provider. If an optional candidate is absent, refused, malformed, or mismatched, the Console may show that comparison as unavailable or mismatched, but the canonical package and admitted-memory context remain unchanged.
 
