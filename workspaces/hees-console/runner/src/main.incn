@@ -1,0 +1,705 @@
+"""Bounded NDJSON transport for the complete ``console_profile_0_1`` authority path."""
+
+from pub::hees import (
+    ConsoleAtom,
+    ConsolePackage,
+    ConsoleProposal,
+    ConsoleRequestBinding,
+    RelationObservation,
+    SupportMapping,
+    SynthesisObservation,
+    VisibleUnit,
+    evaluate_console_profile_json,
+)
+from rust::std::io import Read, Write, stderr, stdin, stdout
+from rust::std::process import exit
+from rust::std::string import String as RustString
+from std.encoding.hex import hexlify
+from std.hash import sha256
+from std.json import JsonValue
+from std.serde import json
+
+const MAX_REQUEST_BYTES: int = 262144
+const MAX_RESPONSE_BYTES: int = 65536
+const REQUEST_CONTRACT: str = "console_runner_request_0_1"
+const RESPONSE_CONTRACT: str = "console_runner_response_0_1"
+const PROFILE_ID: str = "console_profile_0_1"
+const OPERATION: str = "evaluate_console_profile"
+const REASON_NAMESPACE: str = "console_admission_0_1"
+const RUNNER_ID: str = "hees_console_runner_0_1"
+const HEES_VERSION: str = "0.0.1"
+const TOOLCHAIN_VERSION: str = "incan_0.4.0"
+const PROPOSAL_SCHEMA_DIGEST: str = "sha256:f042eeab88670c8431b3cb6cb79d36d09cc618d9a03fadf4baaa82b2fd4e9d41"
+const RELATION_SCHEMA_DIGEST: str = "sha256:85cd5aaa0684430f6414d138d961af13a4806d3705b7d151fed16c80b5bb2b65"
+const SYNTHESIS_SCHEMA_DIGEST: str = "sha256:6558a7e0df960b7493e6b7f17606dd9110c208e28205a658779867d9823a0316"
+const REPLAY_MODEL_FINGERPRINT: str = "sha256:0d36065526d4b9ee377f0ec145f83745d519dc086259d3fa2eb3416e90d6d4e6"
+const REPLAY_CONFIGURATION_FINGERPRINT: str = "sha256:e7e220e5fea960397d903f2379c3639d9d7a3d3d8cd5a48e451e1d428057e54f"
+const RELATION_PROMPT_FINGERPRINT: str = "sha256:5afc179a8c9d5293e6efcd86489bb193ddbfb88093a473ab3fffc975b8f51c27"
+const CONTRADICTION_PROMPT_FINGERPRINT: str = "sha256:014a1878cb28136a920a9764490d258ff1252b6b3d38abfa252da4bffa2e9dfc"
+const SYNTHESIS_PROMPT_FINGERPRINT: str = "sha256:aed38decfe39079be2788dce47df46207f4709bcea2b8b7fefd5c41f886025b3"
+
+
+@derive(Clone, json)
+model SchemaDigest:
+    """One replay-bound domain schema identity."""
+
+    pub contract_version: str
+    pub schema_digest: str
+
+
+@derive(Clone, json)
+model ReplayBinding:
+    """Integrity identity and schema set for one deterministic replay."""
+
+    pub scenario_id: str
+    pub schema_digests: list[SchemaDigest]
+    pub replay_id: str
+
+
+@derive(Clone, json)
+model RunnerCompatibility:
+    """Exact runner, toolchain, schema, provider, and build compatibility tuple."""
+
+    pub runner_id: str
+    pub hees_version: str
+    pub toolchain_version: str
+    pub build_id: str
+    pub provider_id: str
+    pub request_schema_id: str
+    pub response_schema_id: str
+
+
+@derive(Clone, json)
+model RunnerRequest:
+    """Closed raw transport request accepted by the profile runner."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub request_id: str
+    pub operation: str
+    pub mode: str
+    pub compatibility: RunnerCompatibility
+    pub package: Option[ConsolePackage]
+    pub request: ConsoleRequestBinding
+    pub proposal: Option[ConsoleProposal]
+    pub relation_observations: list[RelationObservation]
+    pub synthesis_observations: list[SynthesisObservation]
+    pub replay: Option[ReplayBinding]
+
+
+@derive(Clone, json)
+model ReplayBody:
+    """Canonical replay body covered by the replay digest."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub scenario_id: str
+    pub request: ConsoleRequestBinding
+    pub proposal: ConsoleProposal
+    pub relation_observations: list[RelationObservation]
+    pub synthesis_observations: list[SynthesisObservation]
+    pub schema_digests: list[SchemaDigest]
+
+
+@derive(Clone, json)
+model ProposalProjection:
+    """Transport-local canonical projection of one untrusted proposal input."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub proposal_id: str
+    pub action_id: str
+    pub evidence_ids: list[str]
+    pub visible_units: list[VisibleUnit]
+    pub support_mappings: list[SupportMapping]
+
+
+@derive(Clone, json)
+model PremiseIdentityProjection:
+    """Transport-local premise identity returned by the closed Hees evaluation."""
+
+    pub memory_id: str
+    pub content_digest: str
+
+
+@derive(Clone, json)
+model ManifestTargetBodyProjection:
+    """Transport-local verifier target body returned by the closed Hees evaluation."""
+
+    pub profile_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_digest: str
+    pub candidate_digest: str
+    pub target_id: str
+    pub evaluator_role: str
+    pub target_role: str
+    pub subject_digest: str
+    pub premises: list[PremiseIdentityProjection]
+
+
+@derive(Clone, json)
+model ManifestTargetProjection:
+    """Transport-local canonical target envelope returned by Hees."""
+
+    pub body: ManifestTargetBodyProjection
+    pub target_digest: str
+
+
+@derive(Clone, json)
+model DerivedFindingProjection:
+    """Transport-local copy of one Hees-classified finding."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub finding_id: str
+    pub observation_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub candidate_digest: str
+    pub target_id: str
+    pub target_digest: str
+    pub evaluator_role: str
+    pub target_role: str
+    pub classification: str
+    pub constraint_plan_id: str
+    pub constraint_plan_revision: str
+
+
+@derive(Clone, json)
+model SpectrumProjection:
+    """Transport-local terminal decision returned by the closed Hees evaluation."""
+
+    pub decision_id: str
+    pub admitted: bool
+    pub decision: str
+    pub reason_namespace: str
+    pub reason: str
+    pub structural_reason: Option[str]
+    pub admitted_evidence_ids: list[str]
+    pub selected_memory_ids: list[str]
+
+
+@derive(Clone, json)
+model CompleteProfileProjection:
+    """Canonical JSON projection returned by the sole public profile operation."""
+
+    pub manifest: list[ManifestTargetProjection]
+    pub findings: list[DerivedFindingProjection]
+    pub spectrum: SpectrumProjection
+    pub admitted_visible_units: list[VisibleUnit]
+    pub selected_memory: list[ConsoleAtom]
+    pub content_dna_json: Option[str]
+    pub receipt_json: Option[str]
+
+
+@derive(Clone, json)
+model EstablishedIdentity:
+    """Package, request, and proposal identity safe to expose with a receipt."""
+
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub proposal_id: str
+    pub candidate_digest: str
+
+
+@derive(Clone, json)
+model TraceObservation:
+    """Non-authoritative evaluator fingerprints retained in the operator trace."""
+
+    pub observation_id: str
+    pub model_fingerprint: str
+    pub prompt_fingerprint: str
+    pub configuration_fingerprint: str
+
+
+@derive(Clone, json)
+model ConsoleTrace:
+    """Bounded non-authoritative operator trace for one runner invocation."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub mode: str
+    pub replay_id: Option[str]
+    pub build_id: str
+    pub runner_id: str
+    pub hees_version: str
+    pub toolchain_version: str
+    pub provider_id: str
+    pub request_schema_id: str
+    pub response_schema_id: str
+    pub proposal_id: Option[str]
+    pub candidate_digest: Option[str]
+    pub observations: list[TraceObservation]
+    pub finding_ids: list[str]
+    pub constraint_plan_id: Option[str]
+    pub constraint_plan_revision: Option[str]
+    pub policy_effect: str
+
+
+@derive(json)
+model RunnerResponse:
+    """Closed transport projection of one Hees terminal evaluation."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub request_id: str
+    pub operation: str
+    pub established_identity: Option[EstablishedIdentity]
+    pub decision: str
+    pub reason_namespace: str
+    pub reason: str
+    pub structural_reason: Option[str]
+    pub manifest: list[ManifestTargetProjection]
+    pub findings: list[DerivedFindingProjection]
+    pub admitted_visible_units: list[VisibleUnit]
+    pub selected_memory: list[ConsoleAtom]
+    pub content_dna: Option[JsonValue]
+    pub receipt: Option[JsonValue]
+    pub trace: ConsoleTrace
+
+
+def write_stderr(code: str) -> None:
+    """Write one stable runner error code without input-derived diagnostics."""
+
+    mut err = stderr()
+    _ = err.write_all(RustString.from(f"hees-runner: {code}\n").into_bytes())
+
+
+def fail(code: str, exit_code: i32) -> None:
+    """Emit a stable process error and terminate with its sysexits-style status."""
+
+    write_stderr(code)
+    exit(exit_code)
+
+
+def read_request_line() -> Result[str, str]:
+    """Read exactly one bounded UTF-8 JSON record with a terminal LF."""
+    mut source: str = ""
+    input = stdin()
+    match input.take(MAX_REQUEST_BYTES + 1).read_to_string(source):
+        Err(_) => return Err("stdin_io")
+        Ok(bytes_read) =>
+            if int(bytes_read) > MAX_REQUEST_BYTES:
+                return Err("request_too_large")
+    lines = source.split("\n")
+    if len(lines) != 2 or lines[0] == "" or lines[1] != "":
+        return Err("invalid_json")
+    return Ok(lines[0])
+
+
+def canonical_json(value: JsonValue) -> Result[str, str]:
+    """Serialize a parsed JSON value into the runner's canonical form."""
+
+    return value.to_json().map_err((_error) => f"json_serialization")
+
+
+def digest_canonical_json(source: str) -> str:
+    """Hash canonical JSON for non-authoritative replay and trace bindings."""
+
+    match JsonValue.parse(source):
+        Err(_) => return ""
+        Ok(value) =>
+            match value.to_json():
+                Err(_) => return ""
+                Ok(canonical) => return f"sha256:{hexlify(sha256.digest(RustString.from(canonical).into_bytes()))}"
+
+
+def digest_proposal(proposal: ConsoleProposal) -> str:
+    """Recompute the candidate digest for non-authoritative runner metadata."""
+
+    projection = ProposalProjection(
+        contract_version=proposal.contract_version,
+        profile_id=proposal.profile_id,
+        package_id=proposal.package_id,
+        domain_id=proposal.domain_id,
+        package_revision=proposal.package_revision,
+        artifact_digest=proposal.artifact_digest,
+        request_id=proposal.request_id,
+        request_digest=proposal.request_digest,
+        proposal_id=proposal.proposal_id,
+        action_id=proposal.action_id,
+        evidence_ids=proposal.evidence_ids,
+        visible_units=proposal.visible_units,
+        support_mappings=proposal.support_mappings,
+    )
+    return digest_canonical_json(projection.to_json())
+
+
+def parse_closed_request(line: str) -> Result[RunnerRequest, str]:
+    """Reject duplicate/unknown fields through canonical typed round-trip equality."""
+    value = JsonValue.parse(line).map_err((_error) => f"invalid_json")?
+    canonical = canonical_json(value)?
+    if canonical != line:
+        return Err("noncanonical_json")
+    request = RunnerRequest.from_json(line).map_err((_error) => f"invalid_request_schema")?
+    round_trip = JsonValue.parse(request.to_json()).map_err((_error) => f"invalid_request_schema")?
+    if canonical_json(round_trip)? != line:
+        return Err("invalid_request_schema")
+    if request.contract_version != REQUEST_CONTRACT or request.profile_id != PROFILE_ID:
+        return Err("unsupported_request_contract")
+    if request.operation != OPERATION:
+        return Err("unsupported_request_contract")
+    return Ok(request)
+
+
+def compatibility_reason(compatibility: RunnerCompatibility) -> str:
+    """Select the closed reason for an incompatible runner envelope."""
+
+    if compatibility.runner_id != RUNNER_ID or compatibility.hees_version != HEES_VERSION:
+        return "unsupported_request_contract"
+    if compatibility.toolchain_version != TOOLCHAIN_VERSION:
+        return "unsupported_request_contract"
+    if compatibility.request_schema_id != REQUEST_CONTRACT or compatibility.response_schema_id != RESPONSE_CONTRACT:
+        return "unsupported_request_contract"
+    if not compatibility.build_id.startswith("sha256:") or len(compatibility.build_id) != 71:
+        return "invalid_request_schema"
+    if compatibility.provider_id == "" or len(compatibility.provider_id) > 128:
+        return "invalid_request_schema"
+    return "ok"
+
+
+def schema_digests_are_exact(values: list[SchemaDigest]) -> bool:
+    """Require the exact replay schema identities in their frozen canonical order."""
+
+    if len(values) != 3:
+        return false
+    return (
+        values[0].contract_version == "console_proposal_0_1"
+        and values[0].schema_digest == PROPOSAL_SCHEMA_DIGEST
+        and values[1].contract_version == "console_relation_observation_0_1"
+        and values[1].schema_digest == RELATION_SCHEMA_DIGEST
+        and values[2].contract_version == "console_synthesis_observation_0_1"
+        and values[2].schema_digest == SYNTHESIS_SCHEMA_DIGEST
+    )
+
+
+def replay_fingerprints_are_exact(relations: list[RelationObservation], syntheses: list[SynthesisObservation]) -> bool:
+    """Require every replay observation to use the frozen evaluator fingerprints."""
+
+    for observation in relations:
+        if observation.model_fingerprint != REPLAY_MODEL_FINGERPRINT:
+            return false
+        if observation.configuration_fingerprint != REPLAY_CONFIGURATION_FINGERPRINT:
+            return false
+        if observation.evaluator_role == "contradiction_cross_check":
+            if observation.prompt_fingerprint != CONTRADICTION_PROMPT_FINGERPRINT:
+                return false
+        elif observation.prompt_fingerprint != RELATION_PROMPT_FINGERPRINT:
+            return false
+    for observation in syntheses:
+        if observation.model_fingerprint != REPLAY_MODEL_FINGERPRINT:
+            return false
+        if observation.configuration_fingerprint != REPLAY_CONFIGURATION_FINGERPRINT:
+            return false
+        if observation.prompt_fingerprint != SYNTHESIS_PROMPT_FINGERPRINT:
+            return false
+    return true
+
+
+def replay_reason(request: RunnerRequest) -> str:
+    """Validate replay integrity before any package or proposal semantics."""
+
+    if request.mode == "live":
+        match request.replay:
+            None => return "ok"
+            Some(_) => return "replay_integrity_mismatch"
+    if request.mode != "replay":
+        return "invalid_request_schema"
+    match request.replay:
+        None => return "replay_integrity_mismatch"
+        Some(replay) =>
+            if not schema_digests_are_exact(replay.schema_digests.clone()):
+                return "replay_integrity_mismatch"
+            if not replay_fingerprints_are_exact(
+                request.relation_observations.clone(),
+                request.synthesis_observations.clone(),
+            ):
+                return "replay_integrity_mismatch"
+            match request.proposal:
+                None => return "replay_integrity_mismatch"
+                Some(proposal) =>
+                    body = ReplayBody(
+                        contract_version="console_replay_0_1",
+                        profile_id=PROFILE_ID,
+                        scenario_id=replay.scenario_id,
+                        request=request.request,
+                        proposal=proposal,
+                        relation_observations=request.relation_observations,
+                        synthesis_observations=request.synthesis_observations,
+                        schema_digests=replay.schema_digests,
+                    )
+                    if digest_canonical_json(body.to_json()) != replay.replay_id:
+                        return "replay_integrity_mismatch"
+    return "ok"
+
+
+def trace_contains(observations: list[TraceObservation], observation_id: str) -> bool:
+    """Keep malformed duplicate identities from invalidating the response trace."""
+
+    for observation in observations:
+        if observation.observation_id == observation_id:
+            return true
+    return false
+
+
+def trace_observations(request: RunnerRequest) -> list[TraceObservation]:
+    """Project each bounded observation identity once into the non-authoritative trace."""
+
+    mut result: list[TraceObservation] = []
+    for observation in request.relation_observations:
+        if not trace_contains(result, observation.observation_id):
+            result.append(
+                TraceObservation(
+                    observation_id=observation.observation_id,
+                    model_fingerprint=observation.model_fingerprint,
+                    prompt_fingerprint=observation.prompt_fingerprint,
+                    configuration_fingerprint=observation.configuration_fingerprint,
+                ),
+            )
+    for observation in request.synthesis_observations:
+        if not trace_contains(result, observation.observation_id):
+            result.append(
+                TraceObservation(
+                    observation_id=observation.observation_id,
+                    model_fingerprint=observation.model_fingerprint,
+                    prompt_fingerprint=observation.prompt_fingerprint,
+                    configuration_fingerprint=observation.configuration_fingerprint,
+                ),
+            )
+    return result
+
+
+def replay_id(request: RunnerRequest) -> Option[str]:
+    """Return replay identity only when a replay envelope is present."""
+
+    match request.replay:
+        None => return None
+        Some(replay) => return Some(replay.replay_id)
+
+
+def proposal_identity(proposal: Option[ConsoleProposal]) -> Option[str]:
+    """Return the proposal identifier only when the provider supplied one."""
+
+    match proposal:
+        None => return None
+        Some(value) => return Some(value.proposal_id)
+
+
+def proposal_digest(proposal: Option[ConsoleProposal]) -> Option[str]:
+    """Recompute candidate identity only when the provider supplied a proposal."""
+
+    match proposal:
+        None => return None
+        Some(value) => return Some(digest_proposal(value))
+
+
+def finding_ids(findings: list[DerivedFindingProjection]) -> list[str]:
+    """Project finding identifiers in deterministic manifest order."""
+
+    mut result: list[str] = []
+    for finding in findings:
+        result.append(finding.finding_id)
+    return result
+
+
+def make_trace(request: RunnerRequest, findings: list[DerivedFindingProjection], policy_effect: str) -> ConsoleTrace:
+    """Construct the bounded non-authoritative trace without response or source prose."""
+
+    constraint_plan_id = match request.package.clone():
+        None => None
+        Some(package) => Some(package.policy.constraint_plan_id)
+
+    constraint_plan_revision = match request.package:
+        None => None
+        Some(package) => Some(package.policy.constraint_plan_revision)
+
+    return ConsoleTrace(
+        contract_version="console_trace_0_1",
+        profile_id=PROFILE_ID,
+        mode=request.mode,
+        replay_id=replay_id(request.clone()),
+        build_id=request.compatibility.build_id,
+        runner_id=RUNNER_ID,
+        hees_version=HEES_VERSION,
+        toolchain_version=TOOLCHAIN_VERSION,
+        provider_id=request.compatibility.provider_id,
+        request_schema_id=REQUEST_CONTRACT,
+        response_schema_id=RESPONSE_CONTRACT,
+        proposal_id=proposal_identity(request.proposal.clone()),
+        candidate_digest=proposal_digest(request.proposal),
+        observations=trace_observations(request),
+        finding_ids=finding_ids(findings),
+        constraint_plan_id=constraint_plan_id,
+        constraint_plan_revision=constraint_plan_revision,
+        policy_effect=policy_effect,
+    )
+
+
+def rejected_response(request: RunnerRequest, reason: str) -> RunnerResponse:
+    """Return an early rejection before a safe receipt identity exists."""
+
+    return RunnerResponse(
+        contract_version=RESPONSE_CONTRACT,
+        profile_id=PROFILE_ID,
+        request_id=request.request_id,
+        operation=OPERATION,
+        established_identity=None,
+        decision="reject",
+        reason_namespace=REASON_NAMESPACE,
+        reason=reason,
+        structural_reason=None,
+        manifest=[],
+        findings=[],
+        admitted_visible_units=[],
+        selected_memory=[],
+        content_dna=None,
+        receipt=None,
+        trace=make_trace(request, [], reason),
+    )
+
+
+def established_identity(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> EstablishedIdentity:
+    """Project the exact safely validated package, request, and proposal identity."""
+
+    return EstablishedIdentity(
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        request_id=request.request_id,
+        request_digest=request.request_digest,
+        proposal_id=proposal.proposal_id,
+        candidate_digest=digest_proposal(proposal),
+    )
+
+
+def projected_json(source: Option[str]) -> Option[JsonValue]:
+    """Parse one Hees-authored projection into this runner's JSON value type."""
+    match source:
+        None => return None
+        Some(value) =>
+            match JsonValue.parse(value):
+                Err(_) => return None
+                Ok(projected) => return Some(projected)
+
+
+def evaluated_response(
+    request_envelope: RunnerRequest,
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    evaluation_source: str,
+) -> Result[RunnerResponse, str]:
+    """Serialize one complete Hees evaluation without reconstructing authority."""
+
+    evaluation = CompleteProfileProjection
+        .from_json(evaluation_source)
+        .map_err((_error) => f"evaluation_projection_failed")?
+    content_dna = projected_json(evaluation.content_dna_json)
+    receipt = projected_json(evaluation.receipt_json)
+    identity = match receipt.clone():
+        None => None
+        Some(_) => Some(established_identity(package, request, proposal))
+
+    return Ok(
+        RunnerResponse(
+            contract_version=RESPONSE_CONTRACT,
+            profile_id=PROFILE_ID,
+            request_id=request_envelope.request_id,
+            operation=OPERATION,
+            established_identity=identity,
+            decision=evaluation.spectrum.decision,
+            reason_namespace=evaluation.spectrum.reason_namespace,
+            reason=evaluation.spectrum.reason,
+            structural_reason=evaluation.spectrum.structural_reason,
+            manifest=evaluation.manifest,
+            findings=evaluation.findings.clone(),
+            admitted_visible_units=evaluation.admitted_visible_units,
+            selected_memory=evaluation.selected_memory,
+            content_dna=content_dna,
+            receipt=receipt,
+            trace=make_trace(request_envelope, evaluation.findings, evaluation.spectrum.reason),
+        ),
+    )
+
+
+def run_request(request: RunnerRequest) -> Result[RunnerResponse, str]:
+    """Run compatibility, replay, package, and profile stages in public precedence."""
+
+    compatibility = compatibility_reason(request.compatibility.clone())
+    if compatibility != "ok":
+        return Ok(rejected_response(request, compatibility))
+    replay = replay_reason(request.clone())
+    if replay != "ok":
+        return Ok(rejected_response(request, replay))
+    match request.package.clone():
+        None => return Ok(rejected_response(request, "package_unavailable"))
+        Some(package) =>
+            match request.proposal.clone():
+                None => return Ok(rejected_response(request, "proposal_provider_unavailable"))
+                Some(proposal) =>
+                    evaluation_source = evaluate_console_profile_json(
+                        package.clone(),
+                        request.request.clone(),
+                        proposal.clone(),
+                        request.relation_observations.clone(),
+                        request.synthesis_observations.clone(),
+                    )
+                    return evaluated_response(request.clone(), package, request.request, proposal, evaluation_source)
+
+
+def write_response(response: RunnerResponse) -> Result[None, str]:
+    """Write one bounded canonical response record followed by a terminal LF."""
+
+    rendered = response.to_json()
+    data = RustString.from(rendered + "\n").into_bytes()
+    if len(data) > MAX_RESPONSE_BYTES:
+        return Err("response_too_large")
+    mut out = stdout()
+    return out.write_all(data).map_err((_error) => f"stdout_io")
+
+
+def main() -> None:
+    """Execute exactly one bounded request-response exchange."""
+
+    match read_request_line():
+        Err(code) =>
+            if code == "stdin_io":
+                fail(code, 74)
+            else:
+                fail(code, 64)
+        Ok(source) =>
+            match parse_closed_request(source):
+                Err(code) => fail(code, 64)
+                Ok(request) =>
+                    match run_request(request):
+                        Err(code) => fail(code, 70)
+                        Ok(response) =>
+                            match write_response(response):
+                                Err(code) =>
+                                    if code == "stdout_io":
+                                        fail(code, 74)
+                                    else:
+                                        fail(code, 70)
+                                Ok(_) => return

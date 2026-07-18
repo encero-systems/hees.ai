@@ -1,0 +1,273 @@
+"""
+Typed, integrity-checked offline replay selection for the native Console.
+
+Replay envelopes are untrusted inputs. This module verifies their closed identity before handing transport projections to the public Hees profile, but it never predicts or embeds the terminal decision.
+"""
+
+from rust::std::string import String as RustString
+from std.encoding.hex import hexlify
+from std.hash import sha256
+from std.json import JsonValue
+from std.serde import json
+from embedded_data import (
+    non_admitted_memory_replay_json,
+    package_json,
+    undeclared_action_replay_json,
+    unknown_memory_replay_json,
+    valid_replay_json,
+)
+
+const REPLAY_CONTRACT: str = "console_replay_0_1"
+const PROFILE_ID: str = "console_profile_0_1"
+const PROPOSAL_SCHEMA_DIGEST: str = "sha256:f042eeab88670c8431b3cb6cb79d36d09cc618d9a03fadf4baaa82b2fd4e9d41"
+const RELATION_SCHEMA_DIGEST: str = "sha256:85cd5aaa0684430f6414d138d961af13a4806d3705b7d151fed16c80b5bb2b65"
+const SYNTHESIS_SCHEMA_DIGEST: str = "sha256:6558a7e0df960b7493e6b7f17606dd9110c208e28205a658779867d9823a0316"
+
+
+@derive(Clone, json)
+pub model SchemaDigest:
+    """One schema identity carried by an offline replay input."""
+
+    pub contract_version: str
+    pub schema_digest: str
+
+
+@derive(Clone, json)
+pub model RequestProjection:
+    """Exact request identity and question carried by a replay."""
+
+    pub request_id: str
+    pub question: str
+    pub request_digest: str
+
+
+@derive(Clone, json)
+pub model VisibleUnitProjection:
+    """One bounded untrusted visible-answer unit."""
+
+    pub unit_id: str
+    pub text: str
+    pub requirement_ids: list[str]
+
+
+@derive(Clone, json)
+pub model SupportMappingProjection:
+    """One untrusted link from visible output to a claimed memory atom."""
+
+    pub support_claim_id: str
+    pub unit_id: str
+    pub memory_id: str
+    pub evidence_ids: Option[list[str]]
+
+
+@derive(Clone, json)
+pub model ProposalProjection:
+    """Complete untrusted proposal transport projection carried by a replay."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub proposal_id: str
+    pub action_id: str
+    pub evidence_ids: list[str]
+    pub visible_units: list[VisibleUnitProjection]
+    pub support_mappings: list[SupportMappingProjection]
+
+
+@derive(Clone, json)
+pub model RelationObservationProjection:
+    """Non-authoritative relation scores carried by an offline replay."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub observation_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub candidate_digest: str
+    pub target_id: str
+    pub target_digest: str
+    pub evaluator_role: str
+    pub target_role: str
+    pub support_bps: int
+    pub contradiction_bps: int
+    pub unresolved_bps: int
+    pub model_fingerprint: str
+    pub prompt_fingerprint: str
+    pub configuration_fingerprint: str
+
+
+@derive(Clone, json)
+pub model SynthesisObservationProjection:
+    """Non-authoritative synthesis scores carried by an offline replay."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub observation_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub candidate_digest: str
+    pub target_id: str
+    pub target_digest: str
+    pub evaluator_role: str
+    pub target_role: str
+    pub covered_bps: int
+    pub gap_bps: int
+    pub unresolved_bps: int
+    pub model_fingerprint: str
+    pub prompt_fingerprint: str
+    pub configuration_fingerprint: str
+
+
+@derive(Clone, json)
+pub model ReplayBody:
+    """Complete non-terminal transport body for one credential-free scenario."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub scenario_id: str
+    pub request: RequestProjection
+    pub proposal: ProposalProjection
+    pub relation_observations: list[RelationObservationProjection]
+    pub synthesis_observations: list[SynthesisObservationProjection]
+    pub schema_digests: list[SchemaDigest]
+
+
+@derive(Clone, json)
+model ReplayEnvelope:
+    """Integrity-sealed replay body without any Hees terminal result."""
+
+    body: ReplayBody
+    replay_id: str
+
+
+@derive(Clone)
+pub model OfflineScenario:
+    """Named offline scenario ready for conversion at the public Hees boundary."""
+
+    pub slug: str
+    pub title: str
+    pub replay_id: str
+    pub package_source: str
+    pub body: ReplayBody
+
+
+pub def scenario_slugs() -> list[str]:
+    """Return the stable public scenario slugs in keyboard order."""
+
+    return ["valid", "undeclared-action", "unknown-memory", "non-admitted-memory"]
+
+
+pub def scenario_title(slug: str) -> str:
+    """Return the concise operator-facing title for one stable scenario slug."""
+
+    if slug == "valid":
+        return "Valid reviewed evidence"
+    if slug == "undeclared-action":
+        return "Undeclared action"
+    if slug == "unknown-memory":
+        return "Unknown memory reference"
+    if slug == "non-admitted-memory":
+        return "Non-admitted memory reference"
+    return "Unknown scenario"
+
+
+def expected_scenario_id(slug: str) -> str:
+    """Map each public slug to the immutable replay scenario identity."""
+
+    if slug == "valid":
+        return "scenario_valid_lantern"
+    return f"scenario_{slug.replace("-", "_")}"
+
+
+def replay_source(slug: str) -> Result[str, str]:
+    """Select one immutable embedded replay source by its public slug."""
+
+    if slug == "valid":
+        return Ok(valid_replay_json())
+    if slug == "undeclared-action":
+        return Ok(undeclared_action_replay_json())
+    if slug == "unknown-memory":
+        return Ok(unknown_memory_replay_json())
+    if slug == "non-admitted-memory":
+        return Ok(non_admitted_memory_replay_json())
+    return Err("unknown_scenario")
+
+
+def digest_canonical_json(source: str) -> str:
+    """Return a lowercase SHA-256 identity over canonical JSON."""
+
+    match JsonValue.parse(source):
+        Err(_) => return ""
+        Ok(value) =>
+            match value.to_json():
+                Err(_) => return ""
+                Ok(canonical) => return f"sha256:{hexlify(sha256.digest(RustString.from(canonical).into_bytes()))}"
+
+
+def replay_source_is_integral(source: str) -> bool:
+    """Verify a replay's contract, profile, schema identities, and canonical body digest."""
+
+    match ReplayEnvelope.from_json(source):
+        Err(_) => return false
+        Ok(envelope) =>
+            if envelope.body.contract_version != REPLAY_CONTRACT or envelope.body.profile_id != PROFILE_ID:
+                return false
+            if len(envelope.body.schema_digests) != 3:
+                return false
+            proposal_schema = envelope.body.schema_digests[0]
+            relation_schema = envelope.body.schema_digests[1]
+            synthesis_schema = envelope.body.schema_digests[2]
+            if proposal_schema.contract_version != "console_proposal_0_1" or proposal_schema.schema_digest != PROPOSAL_SCHEMA_DIGEST:
+                return false
+            if relation_schema.contract_version != "console_relation_observation_0_1" or relation_schema.schema_digest != RELATION_SCHEMA_DIGEST:
+                return false
+            if synthesis_schema.contract_version != "console_synthesis_observation_0_1" or synthesis_schema.schema_digest != SYNTHESIS_SCHEMA_DIGEST:
+                return false
+            return digest_canonical_json(envelope.body.to_json()) == envelope.replay_id
+
+
+pub def embedded_inputs_are_non_terminal() -> bool:
+    """Prove the embedded replay records contain no decision or terminal artifact fields."""
+
+    for source in [valid_replay_json(), undeclared_action_replay_json(), unknown_memory_replay_json(), non_admitted_memory_replay_json()]:
+        if source.contains("\"decision\"") or source.contains("\"reason\""):
+            return false
+        if source.contains("\"content_dna\"") or source.contains("\"receipt\""):
+            return false
+        if source.contains("\"terminal_result\""):
+            return false
+    return true
+
+
+pub def load_offline_scenario(slug: str) -> Result[OfflineScenario, str]:
+    """Decode and integrity-check one embedded replay beside the fixed fictional package source."""
+
+    source = replay_source(slug)?
+    if not replay_source_is_integral(source):
+        return Err("replay_integrity_mismatch")
+    envelope = ReplayEnvelope.from_json(source).map_err((_error) => f"invalid_replay")?
+    expected_id = expected_scenario_id(slug)
+    if envelope.body.scenario_id != expected_id:
+        return Err("replay_scenario_mismatch")
+    return Ok(
+        OfflineScenario(
+            slug=slug,
+            title=scenario_title(slug),
+            replay_id=envelope.replay_id,
+            package_source=package_json(),
+            body=envelope.body,
+        ),
+    )

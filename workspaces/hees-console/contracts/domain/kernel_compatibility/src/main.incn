@@ -1,0 +1,137 @@
+"""Prove the Build Week initial-profile fixture reaches checked Hees 0.0.1."""
+
+from rust::std::process import exit
+from std.fs import Path
+from std.json import JsonValue
+from pub::hees import (
+    ReviewStatus,
+    RightsStatus,
+    action_contract,
+    admit_model_proposal,
+    evidence_record,
+    governed_package,
+    model_proposal,
+)
+
+
+def read_json_fixture(path: str) -> Result[JsonValue, str]:
+    """Read and parse one checked Build Week JSON fixture."""
+    text = Path(path).read_text("utf-8", "strict").map_err((err) => f"read {path}: {err.message()}")?
+    return JsonValue.parse(text).map_err((err) => f"parse {path}: {err.message()}")
+
+
+def require_text(value: JsonValue, key: str, expected: str) -> Result[None, str]:
+    """Require one exact string member in a parsed fixture object."""
+    actual = value.require(key).map_err((err) => err.message())?.expect_str().map_err((err) => err.message())?
+    if actual != expected:
+        return Err(f"expected {key}={expected}, got {actual}")
+    return Ok(None)
+
+
+def verify_fixture_parsing() -> Result[None, str]:
+    """Parse the rewritten request, proposal, target, observation, finding, and replay shapes."""
+    package = read_json_fixture("../../../fixtures/fictional_lesson_support/package/package.json")?
+    require_text(package.clone(), "contract_version", "console_package_0_1")?
+    require_text(package.clone(), "profile_id", "console_profile_0_1")?
+    require_text(package.clone(), "package_id", "lantern_labs")?
+    require_text(package, "domain_id", "fictional_lesson_support")?
+
+    request = read_json_fixture("../../../fixtures/fictional_lesson_support/requests/valid_lantern.json")?
+    require_text(request.clone(), "request_id", "request_valid_lantern")?
+    require_text(request, "request_digest", "sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71")?
+
+    proposal = read_json_fixture("../../../fixtures/fictional_lesson_support/proposals/valid_lantern.json")?
+    require_text(proposal.clone(), "contract_version", "console_proposal_0_1")?
+    require_text(proposal.clone(), "profile_id", "console_profile_0_1")?
+    require_text(proposal.clone(), "package_id", "lantern_labs")?
+    require_text(proposal.clone(), "domain_id", "fictional_lesson_support")?
+    require_text(proposal.clone(), "package_revision", "1.0.0")?
+    require_text(proposal, "request_digest", "sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71")?
+
+    target = read_json_fixture("../../../fixtures/fictional_lesson_support/targets/visible_sequence.json")?
+    target_body = target.clone().require("body").map_err((err) => err.message())?
+    require_text(target_body.clone(), "profile_id", "console_profile_0_1")?
+    require_text(target_body.clone(), "package_revision", "1.0.0")?
+    require_text(target_body.clone(), "target_id", "target_visible_unit_sequence")?
+    require_text(target, "target_digest", "sha256:271b2e6039cd713abe53435fcacb820e5a311bca6e87b99e06ea55cc09646336")?
+
+    observation = read_json_fixture(
+        "../../../fixtures/fictional_lesson_support/observations/relation_visible_sequence.json",
+    )?
+    require_text(observation.clone(), "package_revision", "1.0.0")?
+    require_text(
+        observation.clone(),
+        "request_digest",
+        "sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71",
+    )?
+    require_text(observation, "target_digest", "sha256:271b2e6039cd713abe53435fcacb820e5a311bca6e87b99e06ea55cc09646336")?
+
+    finding = read_json_fixture("../../../fixtures/fictional_lesson_support/findings/visible_sequence.json")?
+    require_text(finding.clone(), "package_revision", "1.0.0")?
+    require_text(
+        finding.clone(),
+        "request_digest",
+        "sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71",
+    )?
+    require_text(finding, "target_digest", "sha256:271b2e6039cd713abe53435fcacb820e5a311bca6e87b99e06ea55cc09646336")?
+
+    replay = read_json_fixture("../../../fixtures/fictional_lesson_support/replays/valid_lantern.json")?
+    replay_body = replay.clone().require("body").map_err((err) => err.message())?
+    require_text(replay_body.clone(), "contract_version", "console_replay_0_1")?
+    require_text(replay_body.clone(), "profile_id", "console_profile_0_1")?
+    replay_request = replay_body.clone().require("request").map_err((err) => err.message())?
+    require_text(replay_request, "request_id", "request_valid_lantern")?
+    replay_proposal = replay_body.require("proposal").map_err((err) => err.message())?
+    require_text(replay_proposal, "package_revision", "1.0.0")?
+    return Ok(None)
+
+
+def main() -> None:
+    """Run fixture parsing before exercising checked Hees 0.0.1 admission."""
+    match verify_fixture_parsing():
+        Ok(_) => println("fixtures=parsed")
+        Err(err) =>
+            println(f"fixture_error={err}")
+            exit(1)
+
+    package = governed_package(
+        "0.1",
+        "lantern_labs",
+        "fictional_lesson_support",
+        "Support the Hees Console Build Week initial profile with bounded explanations and practice steps using only this package's original fictional lesson records.",
+        [action_contract("explain_lesson", true), action_contract("compare_observations", true), action_contract(
+            "propose_practice_step",
+            true,
+        )],
+        [evidence_record(
+            "evidence_lantern_path",
+            "Learners place an amber card, then a blue card, then a green card before testing the route.",
+            "Explain the amber-blue-green order and ask the learner to check it against the three-card example.",
+            "fictional/lesson/lantern_path",
+            RightsStatus.Allowed,
+            ReviewStatus.Approved,
+        ), evidence_record(
+            "evidence_echo_map",
+            "A bell icon marks something the learner directly notices, while a cloud icon marks an interpretation.",
+            "Use the bell for a direct observation and the cloud for an interpretation.",
+            "fictional/lesson/echo_map",
+            RightsStatus.Allowed,
+            ReviewStatus.Approved,
+        ), evidence_record(
+            "evidence_pebble_workshop",
+            "A group starts with twelve wooden tokens and sets three aside for reflection before allocating the rest to activities.",
+            "Reserve three of the twelve tokens for reflection before allocating the remainder.",
+            "fictional/lesson/pebble_workshop",
+            RightsStatus.Allowed,
+            ReviewStatus.Approved,
+        )],
+    )
+    proposal = model_proposal(
+        "lantern_labs",
+        "fictional_lesson_support",
+        "explain_lesson",
+        "Place the amber card first, the blue card second, and the green card third.\nThen check that order against the lesson's three-card example.",
+        ["evidence_lantern_path"],
+    )
+    result = admit_model_proposal(package, proposal)
+    println(f"decision={result.decision.value()} reason={result.reason}")

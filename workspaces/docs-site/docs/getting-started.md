@@ -7,7 +7,6 @@ Use the released Incan `0.4.0` toolchain. The lockfiles in this repository were 
 ## Verify the repository
 
 ```bash
-python3 -m pip install -r workspaces/docs-site/requirements.txt
 make ci
 ```
 
@@ -29,6 +28,17 @@ from pub::hees import package_loader_descriptor, validate_package_loader_descrip
 ```
 
 The test project under `workspaces/external-consumer/` compiles and tests this exact dependency boundary.
+
+## Verify the initial console profile
+
+The console workspace uses only fictional acceptance data. Its current deterministic proof builds the native Incan Console and reruns all four replay inputs through Hees:
+
+```bash
+make console-test console-native-smoke \
+  INCAN=/path/to/incan-0.4.0/bin/incan
+```
+
+This proves the closed `console_profile_0_1` path. It does not download or invoke a language model, perform retrieval, or grant the provider-facing Console module admission authority.
 
 ## Run the fictional runtime example
 

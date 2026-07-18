@@ -1,0 +1,432 @@
+"""
+Direct public-Hees evaluation boundary for the native Console.
+
+This module transports typed offline inputs into the Incan-authored Hees profile and decodes its complete projection for inspection. It owns no admission policy and cannot construct a terminal decision.
+"""
+
+from pub::hees import (
+    ConsolePackage,
+    ConsoleProposal,
+    ConsoleRequestBinding,
+    RelationObservation,
+    SynthesisObservation,
+    bind_console_request_json,
+    evaluate_console_profile_json,
+    plan_console_manifest_json,
+    plan_console_provider_context_json,
+)
+from std.json import JsonValue
+from std.serde import json
+from embedded_data import package_json
+from replays import (
+    OfflineScenario,
+    ProposalProjection,
+    ReplayBody,
+    RelationObservationProjection,
+    RequestProjection,
+    SchemaDigest,
+    SynthesisObservationProjection,
+    VisibleUnitProjection,
+    embedded_inputs_are_non_terminal,
+    load_offline_scenario,
+)
+
+const LIVE_PLAN_CONTRACT: str = "console_live_question_plan_0_1"
+const PROPOSAL_RESULT_CONTRACT: str = "console_provider_proposal_result_0_1"
+const COMMITTEE_RESULT_CONTRACT: str = "console_provider_committee_result_0_1"
+const CONSOLE_PROFILE: str = "console_profile_0_1"
+
+
+@derive(Clone, json)
+pub model PremiseIdentityProjection:
+    """Digest-only memory premise returned in a Hees verifier target."""
+
+    pub memory_id: str
+    pub content_digest: str
+
+
+@derive(Clone, json)
+pub model ManifestTargetBodyProjection:
+    """Hees-authored target body available to the Console inspector."""
+
+    pub profile_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_digest: str
+    pub candidate_digest: str
+    pub target_id: str
+    pub evaluator_role: str
+    pub target_role: str
+    pub subject_digest: str
+    pub premises: list[PremiseIdentityProjection]
+
+
+@derive(Clone, json)
+pub model ManifestTargetProjection:
+    """Canonical verifier target envelope returned by Hees."""
+
+    pub body: ManifestTargetBodyProjection
+    pub target_digest: str
+
+
+@derive(Clone, json)
+pub model FindingProjection:
+    """Hees-classified result derived from one non-authoritative observation."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub finding_id: str
+    pub observation_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub candidate_digest: str
+    pub target_id: str
+    pub target_digest: str
+    pub evaluator_role: str
+    pub target_role: str
+    pub classification: str
+    pub constraint_plan_id: str
+    pub constraint_plan_revision: str
+
+
+@derive(Clone, json)
+pub model SpectrumProjection:
+    """Terminal admission or rejection returned only by the Hees profile."""
+
+    pub decision_id: str
+    pub admitted: bool
+    pub decision: str
+    pub reason_namespace: str
+    pub reason: str
+    pub structural_reason: Option[str]
+    pub admitted_evidence_ids: list[str]
+    pub selected_memory_ids: list[str]
+
+
+@derive(Clone, json)
+pub model CompleteProfileProjection:
+    """Complete terminal profile output decoded without reconstructing authority."""
+
+    pub manifest: list[ManifestTargetProjection]
+    pub findings: list[FindingProjection]
+    pub spectrum: SpectrumProjection
+    pub admitted_visible_units: list[VisibleUnitProjection]
+    pub selected_memory: list[SelectedMemoryProjection]
+    pub content_dna_json: Option[str]
+    pub receipt_json: Option[str]
+
+
+@derive(Clone)
+pub model ConsoleInteraction:
+    """One live or replay input projected for inspection without terminal authority."""
+
+    pub mode: str
+    pub slug: str
+    pub title: str
+    pub input_id: str
+    pub body: ReplayBody
+
+
+@derive(Clone)
+pub model ConsoleRun:
+    """One evaluated Console interaction and its Hees-authored terminal projection."""
+
+    pub scenario: ConsoleInteraction
+    pub result: CompleteProfileProjection
+
+
+@derive(Clone, json)
+pub model SourceSpanProjection:
+    """Source coordinates retained on selected memory without source text."""
+
+    pub start_utf8_byte: int
+    pub end_utf8_byte: int
+
+
+@derive(Clone, json)
+pub model SelectedMemoryProjection:
+    """Source-safe memory atom selected only by the terminal Hees evaluation."""
+
+    pub memory_id: str
+    pub evidence_id: str
+    pub source_id: str
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: str
+    pub source_span: SourceSpanProjection
+    pub claim: str
+    pub guidance: str
+    pub language: str
+    pub review_state: str
+    pub review_revision: str
+    pub rights_state: str
+    pub authority_class: str
+    pub evidence_kind: str
+    pub provenance_digest: str
+
+
+@derive(Clone, json)
+model AuthorityInputProjection:
+    """Local JSON bridge from embedded replay projections to public Hees input types."""
+
+    package: JsonValue
+    request: RequestProjection
+    proposal: ProposalProjection
+    relation_observations: list[RelationObservationProjection]
+    synthesis_observations: list[SynthesisObservationProjection]
+
+
+@derive(Clone, json)
+model HeesAuthorityInput:
+    """Typed public-Hees inputs decoded together through one local serde boundary."""
+
+    package: ConsolePackage
+    request: ConsoleRequestBinding
+    proposal: ConsoleProposal
+    relation_observations: list[RelationObservation]
+    synthesis_observations: list[SynthesisObservation]
+
+
+@derive(Clone, json)
+model InteractionBodyProjection:
+    """Typed live inputs projected into the same non-terminal inspector shape as replay data."""
+
+    contract_version: str
+    profile_id: str
+    scenario_id: str
+    request: ConsoleRequestBinding
+    proposal: ConsoleProposal
+    relation_observations: list[RelationObservation]
+    synthesis_observations: list[SynthesisObservation]
+    schema_digests: list[SchemaDigest]
+
+
+@derive(Clone, json)
+model LiveRequestPlan:
+    """Closed request plan decoded from the public Hees request-binding projection."""
+
+    contract_version: str
+    profile_id: str
+    plannable: bool
+    request: Option[ConsoleRequestBinding]
+
+
+@derive(Clone, json)
+model LiveQuestionPlan:
+    """Private typed authority inputs plus the source-safe provider context for one live question."""
+
+    contract_version: str
+    profile_id: str
+    package: ConsolePackage
+    request: ConsoleRequestBinding
+    context_plan_json: str
+
+
+@derive(Clone, json)
+model ProviderCommitteeProjection:
+    """Non-authoritative observations decoded from the native provider boundary."""
+
+    contract_version: str
+    profile_id: str
+    relations: list[RelationObservation]
+    syntheses: list[SynthesisObservation]
+
+
+@derive(Clone, json)
+model PackageSourceProjection:
+    """JSON-value wrapper used to decode the embedded package through one typed envelope."""
+
+    package: JsonValue
+
+
+@derive(Clone, json)
+model TypedPackageProjection:
+    """Typed package decoded without invoking an external type's serde trait directly."""
+
+    package: ConsolePackage
+
+
+@derive(Clone, json)
+model ProviderProposalProjection:
+    """Untrusted proposal envelope returned by the native provider module."""
+
+    contract_version: str
+    profile_id: str
+    proposal: ConsoleProposal
+
+
+def decode_authority_input(scenario: OfflineScenario) -> Result[HeesAuthorityInput, str]:
+    """Decode the fixed package and replay values together without reconstructing either contract."""
+
+    package = JsonValue.parse(scenario.package_source).map_err((_error) => f"invalid_package_input")?
+    projection = AuthorityInputProjection(
+        package=package,
+        request=scenario.body.request,
+        proposal=scenario.body.proposal,
+        relation_observations=scenario.body.relation_observations,
+        synthesis_observations=scenario.body.synthesis_observations,
+    )
+    return HeesAuthorityInput.from_json(projection.to_json()).map_err((_error) => f"invalid_authority_input")
+
+
+def decode_embedded_package() -> Result[ConsolePackage, str]:
+    """Decode the embedded fictional package through a local derived envelope."""
+
+    value = JsonValue.parse(package_json()).map_err((_error) => f"live_package_invalid")?
+    source = PackageSourceProjection(package=value).to_json()
+    projection = TypedPackageProjection.from_json(source).map_err((_error) => f"live_package_invalid")?
+    return Ok(projection.package)
+
+
+def decode_live_plan(source: str) -> Result[LiveQuestionPlan, str]:
+    """Decode one private live plan and reject contract or profile drift."""
+
+    plan = LiveQuestionPlan.from_json(source).map_err((_error) => f"live_plan_invalid")?
+    if plan.contract_version != LIVE_PLAN_CONTRACT or plan.profile_id != CONSOLE_PROFILE:
+        return Err("live_plan_invalid")
+    return Ok(plan)
+
+
+def decode_provider_proposal(source: str) -> Result[ProviderProposalProjection, str]:
+    """Decode one untrusted provider proposal envelope and reject boundary drift."""
+
+    projection = ProviderProposalProjection.from_json(source).map_err((_error) => f"live_proposal_invalid")?
+    if projection.contract_version != PROPOSAL_RESULT_CONTRACT or projection.profile_id != CONSOLE_PROFILE:
+        return Err("live_proposal_invalid")
+    return Ok(projection)
+
+
+def decode_provider_committee(source: str) -> Result[ProviderCommitteeProjection, str]:
+    """Decode one non-authoritative committee envelope and reject boundary drift."""
+
+    projection = ProviderCommitteeProjection.from_json(source).map_err((_error) => f"live_committee_invalid")?
+    if projection.contract_version != COMMITTEE_RESULT_CONTRACT or projection.profile_id != CONSOLE_PROFILE:
+        return Err("live_committee_invalid")
+    return Ok(projection)
+
+
+def evaluate_inputs(interaction: ConsoleInteraction, inputs: HeesAuthorityInput) -> Result[ConsoleRun, str]:
+    """Call the terminal Hees profile once and decode only its complete public projection."""
+
+    source = evaluate_console_profile_json(
+        inputs.package,
+        inputs.request,
+        inputs.proposal,
+        inputs.relation_observations,
+        inputs.synthesis_observations,
+    )
+    result = CompleteProfileProjection.from_json(source).map_err((_error) => f"evaluation_projection_failed")?
+    return Ok(ConsoleRun(scenario=interaction, result=result))
+
+
+pub def evaluate_offline_scenario(slug: str) -> Result[ConsoleRun, str]:
+    """Evaluate one embedded input through the real public Hees profile exactly once."""
+
+    if not embedded_inputs_are_non_terminal():
+        return Err("embedded_terminal_result")
+    scenario = load_offline_scenario(slug)?
+    inputs = decode_authority_input(scenario.clone())?
+    interaction = ConsoleInteraction(
+        mode="OFFLINE",
+        slug=scenario.slug,
+        title=scenario.title,
+        input_id=scenario.replay_id,
+        body=scenario.body,
+    )
+    return evaluate_inputs(interaction, inputs)
+
+
+pub def evaluate_live_interaction(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    relation_observations: list[RelationObservation],
+    synthesis_observations: list[SynthesisObservation],
+) -> Result[ConsoleRun, str]:
+    """Evaluate live untrusted inputs while preserving the replay inspector's non-terminal shape."""
+
+    projection = InteractionBodyProjection(
+        contract_version="console_live_input_0_1",
+        profile_id="console_profile_0_1",
+        scenario_id="live_question",
+        request=request.clone(),
+        proposal=proposal.clone(),
+        relation_observations=relation_observations.clone(),
+        synthesis_observations=synthesis_observations.clone(),
+        schema_digests=[],
+    )
+    body = ReplayBody.from_json(projection.to_json()).map_err((_error) => f"live_projection_failed")?
+    interaction = ConsoleInteraction(
+        mode="LIVE",
+        slug="live",
+        title="Live GPT-5.6 proposal",
+        input_id=proposal.proposal_id,
+        body=body,
+    )
+    inputs = HeesAuthorityInput(
+        package=package,
+        request=request,
+        proposal=proposal,
+        relation_observations=relation_observations,
+        synthesis_observations=synthesis_observations,
+    )
+    return evaluate_inputs(interaction, inputs)
+
+
+pub def plan_live_question_json(question: str) -> Result[str, str]:
+    """Bind one question and return only the inputs required by native live composition."""
+
+    package = decode_embedded_package()?
+    source = bind_console_request_json("request_live_console", question)
+    plan = LiveRequestPlan.from_json(source).map_err((_error) => f"live_request_plan_invalid")?
+    if not plan.plannable:
+        return Err("live_request_not_plannable")
+    match plan.request:
+        None => return Err("live_request_not_plannable")
+        Some(request) =>
+            context_plan_json = plan_console_provider_context_json(package.clone(), request.clone())
+            return Ok(
+                LiveQuestionPlan(
+                    contract_version=LIVE_PLAN_CONTRACT,
+                    profile_id=CONSOLE_PROFILE,
+                    package=package,
+                    request=request,
+                    context_plan_json=context_plan_json,
+                ).to_json(),
+            )
+
+
+pub def live_context_plan_json(live_plan_json: str) -> Result[str, str]:
+    """Read the exact Hees-authored provider context from one private live plan."""
+
+    plan = decode_live_plan(live_plan_json)?
+    return Ok(plan.context_plan_json)
+
+
+pub def plan_live_manifest_from_json(live_plan_json: str, proposal_json: str) -> Result[str, str]:
+    """Plan verifier targets in Hees from typed live inputs and an untrusted proposal source."""
+
+    plan = decode_live_plan(live_plan_json)?
+    proposal = decode_provider_proposal(proposal_json)?
+    return Ok(plan_console_manifest_json(plan.package, plan.request, proposal.proposal))
+
+
+pub def evaluate_live_sources(live_plan_json: str, proposal_json: str, committee_json: str) -> Result[ConsoleRun, str]:
+    """Decode untrusted provider sources and return their only terminal evaluation to Hees."""
+
+    plan = decode_live_plan(live_plan_json)?
+    proposal = decode_provider_proposal(proposal_json)?
+    committee = decode_provider_committee(committee_json)?
+    return evaluate_live_interaction(
+        plan.package,
+        plan.request,
+        proposal.proposal,
+        committee.relations,
+        committee.syntheses,
+    )

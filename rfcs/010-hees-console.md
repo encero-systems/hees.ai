@@ -376,7 +376,7 @@ The initial UI must show the fixed package and sources, optional atom comparison
 
 Keyboard actions select the valid, undeclared-action, and unknown-evidence-or-memory scenarios; open atom, proposal, finding, evidence, Content DNA, and receipt views; execute; and quit. Colour cannot carry meaning alone. All source, question, model, provider, fixture, and error text is escaped before terminal rendering. Rejected prose appears only inside an untrusted inspection view.
 
-The release publishes a self-contained prebuilt executable that defaults to offline replay and requires no Incan compiler, Python runtime, package manager, source checkout, network, or API key. At least one Linux artifact must be built and smoke-tested; a macOS artifact is claimed only when verified under the same frozen profile. A hosted terminal invokes the same executable without exposing a shell, unrelated files, persistent cross-session data, or credentials.
+The release publishes a self-contained prebuilt executable that defaults to offline replay and requires no Incan compiler, external language runtime, package manager, source checkout, network, or API key. At least one Linux artifact must be built and smoke-tested; a macOS artifact is claimed only when verified under the same frozen profile. A hosted terminal invokes the same executable without exposing a shell, unrelated files, persistent cross-session data, or credentials.
 
 Build Week video, submission, deadline, and hosted-judge requirements are release obligations for this profile. They do not belong to the permanent provider, domain, package-authoring, or authority contract.
 
@@ -396,7 +396,7 @@ The Build Week 2026 profile requires:
 - adversarial fixtures for invalid package, stale package revision, artifact-digest mismatch, request-digest mismatch, proposal-request mismatch, undeclared action, evidence and memory failures, missing observations, target-digest mismatch, premise-content and order mutation, unsupported content, contradiction, incomplete synthesis, provider failure, and tampered replay with exact reasons;
 - manifest fixtures proving independent package revision, artifact, request, candidate, subject, requirement, premise-content, premise-order, target, observation, and finding digest agreement;
 - authority-negative fixtures proving a model, evaluator, host, replay, copied response, copied Content DNA, or copied receipt cannot create or override a terminal decision;
-- offline artifact tests proving all shipped scenarios run without compiler, Python, package manager, checkout, network, or credential;
+- offline artifact tests proving all shipped scenarios run without a compiler, external language runtime, package manager, checkout, network, or credential;
 - one secret-gated GPT-5.6 canary proving exact structured outputs reach the same runner without provider authority;
 - escaping, privacy, hosted-session, license, build-provenance, and publication-boundary checks; and
 - documentation and submission materials that label the implementation profile and do not present its fixed package or adapter as permanent requirements.

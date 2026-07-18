@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/request_binding_0_1.schema.json",
+  "title": "Hees Console Build Week initial-profile request binding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "question", "request_digest"],
+  "properties": {
+    "request_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "question": {"type": "string", "pattern": ".*\\S.*", "maxLength": 512},
+    "request_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

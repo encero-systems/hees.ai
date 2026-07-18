@@ -1,0 +1,6 @@
+[project]
+name = "console_kernel_compatibility"
+version = "0.0.1"
+
+[dependencies]
+hees = { path = "../../../../.." }

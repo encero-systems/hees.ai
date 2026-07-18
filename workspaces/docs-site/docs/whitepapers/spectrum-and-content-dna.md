@@ -2,7 +2,7 @@
 
 ## Status
 
-This whitepaper explains the architectural intent behind Spectrum and Content DNA. It is not a statement of implemented Hees 0.0.1 behavior and is not a substitute for the normative contracts in [RFC 000](https://github.com/encero-systems/hees.ai/blob/main/rfcs/000-foundational-governance-authority.md), [RFC 001](https://github.com/encero-systems/hees.ai/blob/main/rfcs/001-spectrum-terminal-adjudication.md), and [RFC 002](https://github.com/encero-systems/hees.ai/blob/main/rfcs/002-content-dna-answer-time-provenance.md).
+This whitepaper explains the broader architectural intent behind Spectrum and Content DNA. Hees now includes an experimental `console_profile_0_1` that implements one closed, fictional acceptance slice of those responsibilities. That slice is not the generalized architecture, and this whitepaper is not a substitute for the normative contracts in [RFC 000](https://github.com/encero-systems/hees.ai/blob/main/rfcs/000-foundational-governance-authority.md), [RFC 001](https://github.com/encero-systems/hees.ai/blob/main/rfcs/001-spectrum-terminal-adjudication.md), and [RFC 002](https://github.com/encero-systems/hees.ai/blob/main/rfcs/002-content-dna-answer-time-provenance.md).
 
 ## The problem is authority, not only generation
 
@@ -41,7 +41,7 @@ Content DNA contains identifiers, governance state, source-safe references, and 
 
 The proposed runtime flow is:
 
-1. Workbench or another package authoring system compiles reviewed knowledge, policy, source-safe provenance, rights state, and acceptance fixtures into a governed package.
+1. A package-authoring system compiles reviewed knowledge, policy, source-safe provenance, rights state, and acceptance fixtures into a governed package.
 2. Hees admits the exact package artifact and establishes its trusted identity.
 3. A retrieval provider nominates logical memory identifiers under a package-approved binding.
 4. Hees validates the complete retrieval result and materializes package-owned memory rather than trusting provider-returned text.
@@ -78,11 +78,11 @@ The authority model does not require a network service. Package admission, provi
 
 Consumer-device constraints still shape the detailed contracts. Memory counts, finding batches, canonicalization buffers, retained repair state, Content DNA entries, and traces require absolute bounds and representative measurements alongside the resident model. Low-memory implementations may stream or fuse internal work, but truncating Content DNA, dropping selected memory, or returning the answer before provenance completion is not an acceptable optimization.
 
-## Workbench and Hees
+## Package authoring and Hees
 
-Workbench owns build-time preparation: source intake, semantic transformation, human review, provenance compilation, rights and policy declarations, package construction, and acceptance suites. Hees owns runtime authority: package admission, provider-result validation, Spectrum adjudication, response admission, and Content DNA construction.
+Package-authoring systems own build-time preparation: source intake, semantic transformation, human review, provenance compilation, rights and policy declarations, package construction, and acceptance suites. Hees owns runtime authority: package admission, provider-result validation, Spectrum adjudication, response admission, and Content DNA construction.
 
-That boundary keeps runtime behavior portable. Another package authoring system can produce the same accepted package contract, and another Hees implementation can consume it, without changing who decides the live outcome. Workbench may generate synthetic expected Content DNA for fixtures, but Hees must recompute the live value from the terminal selected memory.
+That boundary keeps runtime behavior portable. Different package-authoring systems can produce the same accepted package contract, and another Hees implementation can consume it, without changing who decides the live outcome. Build-time tooling may generate synthetic expected Content DNA for fixtures, but Hees must recompute the live value from the terminal selected memory.
 
 ## What the architecture does not claim
 

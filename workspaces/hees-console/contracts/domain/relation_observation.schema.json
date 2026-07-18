@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/console_relation_observation_0_1.schema.json",
+  "title": "Hees Console Build Week initial-profile non-authoritative relation observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "profile_id", "observation_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "candidate_digest", "target_id", "target_digest", "evaluator_role", "target_role", "support_bps", "contradiction_bps", "unresolved_bps", "model_fingerprint", "prompt_fingerprint", "configuration_fingerprint"],
+  "properties": {
+    "contract_version": {"const": "console_relation_observation_0_1"},
+    "profile_id": {"const": "console_profile_0_1"},
+    "observation_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "package_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "domain_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "package_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32},
+    "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "request_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "request_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "target_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "target_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "evaluator_role": {"enum": ["evidence_relation", "contradiction_cross_check"]},
+    "target_role": {"enum": ["visible_unit_union", "support_claim_memory", "proposal_union"]},
+    "support_bps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "contradiction_bps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "unresolved_bps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "model_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "prompt_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "configuration_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

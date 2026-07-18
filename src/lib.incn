@@ -1,4 +1,4 @@
-"""Small, checked public surface for the pre-v0.1 Hees kernel."""
+"""Checked public surface for the Hees kernel and bounded Console profile."""
 
 pub from package_loader import (
     PackageLoaderDescriptor,
@@ -23,4 +23,24 @@ pub from runtime import (
     governed_package,
     model_proposal,
     validate_governed_package,
+)
+pub from console_profile import (
+    ConsoleAction,
+    ConsoleAtom,
+    ConsolePackage,
+    ConsolePolicy,
+    ConsoleProposal,
+    ConsoleRequestBinding,
+    ConsoleRequirement,
+    ConsoleSource,
+    RelationObservation,
+    SourceSpan,
+    SupportMapping,
+    SynthesisObservation,
+    VisibleUnit,
+    bind_console_request_json,
+    evaluate_console_profile_json,
+    identify_console_proposal_json,
+    plan_console_manifest_json,
+    plan_console_provider_context_json,
 )

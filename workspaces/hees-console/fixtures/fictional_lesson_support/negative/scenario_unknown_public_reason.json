@@ -1,0 +1,20 @@
+{
+  "scenario_contract": "console_scenario_0_1",
+  "scenario_id": "scenario_unknown_public_reason",
+  "title": "Unknown public reason",
+  "proposal_path": "proposals/undeclared_action.json",
+  "observation_paths": [],
+  "expected_result": {
+    "decision": "reject",
+    "reason_namespace": "console_admission_0_1",
+    "reason": "invented_public_reason",
+    "selected_memory_ids": []
+  },
+  "profile_id": "console_profile_0_1",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "package_revision": "1.0.0",
+  "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+  "request_path": "requests/undeclared_action.json",
+  "manifest_target_paths": []
+}

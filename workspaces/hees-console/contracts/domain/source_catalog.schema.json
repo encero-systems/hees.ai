@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/source_catalog_0_1.schema.json",
+  "title": "Hees Console Build Week initial-profile fictional source catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "sources"],
+  "properties": {
+    "contract_version": {"const": "console_source_catalog_0_1"},
+    "sources": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_id", "title", "language", "source_ref", "source_kind", "content_path", "source_fingerprint", "content_bytes", "original_author_statement", "rights_state", "review_state", "review_revision", "spans"],
+        "properties": {
+          "source_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "title": {"type": "string", "minLength": 1, "maxLength": 128},
+          "language": {"const": "en"},
+          "source_ref": {"type": "string", "pattern": "^fictional/(?!.*\\.\\.)[a-z0-9_./-]+$", "maxLength": 256},
+          "source_kind": {"const": "fictional_lesson_note"},
+          "content_path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[a-z0-9_./-]+$", "maxLength": 256},
+          "source_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "content_bytes": {"type": "integer", "minimum": 1, "maximum": 4096},
+          "original_author_statement": {"const": "Original fictional English content authored for the public Hees Console Build Week initial-profile fixture."},
+          "rights_state": {"const": "fictional_use_allowed"},
+          "review_state": {"const": "approved"},
+          "review_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32},
+          "spans": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["span_id", "start_utf8_byte", "end_utf8_byte"],
+              "properties": {
+                "span_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+                "start_utf8_byte": {"type": "integer", "minimum": 0, "maximum": 4095},
+                "end_utf8_byte": {"type": "integer", "minimum": 1, "maximum": 4096}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

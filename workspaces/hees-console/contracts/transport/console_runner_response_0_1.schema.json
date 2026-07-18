@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/schemas/transport/console_runner_response_0_1.schema.json",
+  "title": "Hees Console profile runner response 0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "profile_id",
+    "request_id",
+    "operation",
+    "established_identity",
+    "decision",
+    "reason_namespace",
+    "reason",
+    "structural_reason",
+    "manifest",
+    "findings",
+    "admitted_visible_units",
+    "selected_memory",
+    "content_dna",
+    "receipt",
+    "trace"
+  ],
+  "properties": {
+    "contract_version": {"const": "console_runner_response_0_1"},
+    "profile_id": {"const": "console_profile_0_1"},
+    "request_id": {"$ref": "#/$defs/identifier"},
+    "operation": {"const": "evaluate_console_profile"},
+    "established_identity": {
+      "oneOf": [
+        {"$ref": "#/$defs/established_identity"},
+        {"type": "null"}
+      ]
+    },
+    "decision": {"enum": ["admit", "reject"]},
+    "reason_namespace": {"const": "console_admission_0_1"},
+    "reason": {"$ref": "#/$defs/public_reason"},
+    "structural_reason": {"$ref": "#/$defs/structural_reason"},
+    "manifest": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 24,
+      "uniqueItems": true,
+      "items": {"$ref": "https://hees.ai/contracts/console/manifest_target_0_1.schema.json"}
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 24,
+      "uniqueItems": true,
+      "items": {"$ref": "https://hees.ai/contracts/console/console_finding_0_1.schema.json"}
+    },
+    "admitted_visible_units": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "https://hees.ai/contracts/console/console_proposal_0_1.schema.json#/properties/visible_units/items"
+      }
+    },
+    "selected_memory": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "https://hees.ai/contracts/console/console_package_0_1.schema.json#/properties/atoms/items"
+      }
+    },
+    "content_dna": {
+      "oneOf": [
+        {"$ref": "https://hees.ai/contracts/console/console_content_dna_0_1.schema.json"},
+        {"type": "null"}
+      ]
+    },
+    "receipt": {
+      "oneOf": [
+        {"$ref": "https://hees.ai/contracts/console/console_profile_receipt_0_1.schema.json"},
+        {"type": "null"}
+      ]
+    },
+    "trace": {"$ref": "#/$defs/trace"}
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "public_reason": {
+      "enum": [
+        "request_too_large",
+        "invalid_json",
+        "unsupported_request_contract",
+        "invalid_request_schema",
+        "replay_integrity_mismatch",
+        "package_unavailable",
+        "invalid_package",
+        "memory_context_invalid",
+        "package_id_mismatch",
+        "domain_id_mismatch",
+        "package_revision_mismatch",
+        "artifact_digest_mismatch",
+        "request_id_invalid",
+        "request_digest_mismatch",
+        "proposal_provider_unavailable",
+        "unsupported_proposal_contract",
+        "invalid_proposal_schema",
+        "proposal_too_large",
+        "proposal_request_mismatch",
+        "missing_visible_output",
+        "invalid_visible_unit",
+        "unknown_action",
+        "duplicate_evidence_reference",
+        "evidence_required",
+        "unknown_evidence",
+        "support_mapping_invalid",
+        "duplicate_memory_reference",
+        "unknown_memory",
+        "memory_not_admitted",
+        "manifest_construction_failed",
+        "unsupported_observation_contract",
+        "observation_identity_mismatch",
+        "observation_coverage_invalid",
+        "observation_malformed",
+        "observation_unavailable",
+        "support_not_established",
+        "contradiction_detected",
+        "synthesis_incomplete",
+        "finding_uncertain",
+        "structural_admission_rejected",
+        "selected_memory_invalid",
+        "content_dna_construction_failed",
+        "receipt_projection_failed",
+        "admitted"
+      ]
+    },
+    "structural_reason": {
+      "enum": [
+        "invalid_package",
+        "package_id_mismatch",
+        "domain_id_mismatch",
+        "missing_visible_output",
+        "unknown_action",
+        "duplicate_evidence_reference",
+        "evidence_required",
+        "unknown_evidence",
+        "admitted",
+        null
+      ]
+    },
+    "established_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_id",
+        "domain_id",
+        "package_revision",
+        "artifact_digest",
+        "request_id",
+        "request_digest",
+        "proposal_id",
+        "candidate_digest"
+      ],
+      "properties": {
+        "package_id": {"$ref": "#/$defs/identifier"},
+        "domain_id": {"$ref": "#/$defs/identifier"},
+        "package_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "artifact_digest": {"$ref": "#/$defs/digest"},
+        "request_id": {"$ref": "#/$defs/identifier"},
+        "request_digest": {"$ref": "#/$defs/digest"},
+        "proposal_id": {"$ref": "#/$defs/identifier"},
+        "candidate_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "trace_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_id",
+        "model_fingerprint",
+        "prompt_fingerprint",
+        "configuration_fingerprint"
+      ],
+      "properties": {
+        "observation_id": {"$ref": "#/$defs/identifier"},
+        "model_fingerprint": {"$ref": "#/$defs/digest"},
+        "prompt_fingerprint": {"$ref": "#/$defs/digest"},
+        "configuration_fingerprint": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "profile_id",
+        "mode",
+        "replay_id",
+        "build_id",
+        "runner_id",
+        "hees_version",
+        "toolchain_version",
+        "provider_id",
+        "request_schema_id",
+        "response_schema_id",
+        "proposal_id",
+        "candidate_digest",
+        "observations",
+        "finding_ids",
+        "constraint_plan_id",
+        "constraint_plan_revision",
+        "policy_effect"
+      ],
+      "properties": {
+        "contract_version": {"const": "console_trace_0_1"},
+        "profile_id": {"const": "console_profile_0_1"},
+        "mode": {"enum": ["live", "replay"]},
+        "replay_id": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "build_id": {"$ref": "#/$defs/digest"},
+        "runner_id": {"const": "hees_console_runner_0_1"},
+        "hees_version": {"const": "0.0.1"},
+        "toolchain_version": {"const": "incan_0.4.0"},
+        "provider_id": {"$ref": "#/$defs/identifier"},
+        "request_schema_id": {"const": "console_runner_request_0_1"},
+        "response_schema_id": {"const": "console_runner_response_0_1"},
+        "proposal_id": {"oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]},
+        "candidate_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "observations": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 24,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/trace_observation"}
+        },
+        "finding_ids": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 24,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "constraint_plan_id": {"oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]},
+        "constraint_plan_revision": {
+          "oneOf": [
+            {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+            {"type": "null"}
+          ]
+        },
+        "policy_effect": {"$ref": "#/$defs/public_reason"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"decision": {"const": "admit"}},
+        "required": ["decision"]
+      },
+      "then": {
+        "properties": {
+          "established_identity": {"$ref": "#/$defs/established_identity"},
+          "reason": {"const": "admitted"},
+          "admitted_visible_units": {"minItems": 1},
+          "selected_memory": {"minItems": 1},
+          "content_dna": {"$ref": "https://hees.ai/contracts/console/console_content_dna_0_1.schema.json"},
+          "receipt": {"$ref": "https://hees.ai/contracts/console/console_profile_receipt_0_1.schema.json"}
+        }
+      },
+      "else": {
+        "properties": {
+          "reason": {"not": {"const": "admitted"}},
+          "admitted_visible_units": {"maxItems": 0},
+          "selected_memory": {"maxItems": 0},
+          "content_dna": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"receipt": {"type": "object"}},
+        "required": ["receipt"]
+      },
+      "then": {
+        "properties": {
+          "established_identity": {"$ref": "#/$defs/established_identity"}
+        }
+      }
+    }
+  ]
+}

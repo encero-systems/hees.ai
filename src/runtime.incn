@@ -9,6 +9,8 @@ const GOVERNED_PACKAGE_SCHEMA_VERSION: str = "0.1"
 
 
 def contains_control_characters(value: str) -> bool:
+    """Detect control characters forbidden by the structural runtime contracts."""
+
     return value.contains("\n") or value.contains("\r") or value.contains("\t")
 
 
@@ -124,6 +126,26 @@ pub def evidence_record(
     )
 
 
+pub def approved_evidence_record(id: str, claim: str, guidance: str, source_ref: str) -> EvidenceRecord:
+    """Construct the approved/allowed projection used by checked profile adapters."""
+    return evidence_record(id, claim, guidance, source_ref, RightsStatus.Allowed, ReviewStatus.Approved)
+
+
+pub def admission_is_admitted(result: AdmissionResult) -> bool:
+    """Expose structural admission without leaking model representation across module boundaries."""
+    return result.admitted
+
+
+pub def admission_reason(result: AdmissionResult) -> str:
+    """Return the checked kernel's stable structural reason."""
+    return result.reason
+
+
+pub def admission_evidence_ids(result: AdmissionResult) -> list[str]:
+    """Return the kernel-admitted evidence identifiers in checked order."""
+    return result.evidence_ids
+
+
 pub def governed_package(
     schema_version: str,
     package_id: str,
@@ -161,6 +183,8 @@ pub def model_proposal(
 
 
 def identifier_is_safe(value: str) -> bool:
+    """Accept a non-empty structural identifier without path or control syntax."""
+
     if value == "" or value.strip() != value or contains_control_characters(value):
         return false
     if value.contains("/") or value.contains("\\") or value.contains(":") or value.contains(" "):
@@ -169,6 +193,8 @@ def identifier_is_safe(value: str) -> bool:
 
 
 def source_ref_is_safe(value: str) -> bool:
+    """Accept a repository-style source reference without traversal or URI syntax."""
+
     if value == "" or value.strip() != value or contains_control_characters(value):
         return false
     if value.contains("\\") or value.contains("..") or value.contains("file://") or value.contains(":/"):
@@ -180,6 +206,8 @@ def source_ref_is_safe(value: str) -> bool:
 
 
 def has_duplicate_action_ids(actions: list[ActionContract]) -> bool:
+    """Return whether package actions repeat an earlier identifier."""
+
     mut seen: list[str] = []
     for action in actions:
         if seen.contains(f"{action.id}"):
@@ -189,6 +217,8 @@ def has_duplicate_action_ids(actions: list[ActionContract]) -> bool:
 
 
 def has_duplicate_evidence_ids(evidence: list[EvidenceRecord]) -> bool:
+    """Return whether package evidence repeats an earlier identifier."""
+
     mut seen: list[str] = []
     for record in evidence:
         if seen.contains(f"{record.id}"):
@@ -198,6 +228,8 @@ def has_duplicate_evidence_ids(evidence: list[EvidenceRecord]) -> bool:
 
 
 def has_duplicate_strings(values: list[str]) -> bool:
+    """Return whether a bounded string list repeats an earlier value."""
+
     mut seen: list[str] = []
     for value in values:
         if seen.contains(value):
@@ -243,6 +275,8 @@ pub def validate_governed_package(package: GovernedPackage) -> PackageValidation
 
 
 def rejected_admission(reason: str, package_errors: list[str]) -> AdmissionResult:
+    """Construct a structural rejection without admitted evidence identifiers."""
+
     return AdmissionResult(
         admitted=false,
         decision=RuntimeDecision.Reject,

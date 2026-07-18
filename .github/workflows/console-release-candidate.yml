@@ -1,0 +1,89 @@
+name: Console release candidates
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/console-release-candidate.yml
+      - Makefile
+      - workspaces/hees-console/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: console-release-candidate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out Hees
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Install checksum-pinned actionlint 1.7.12
+        env:
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          ACTIONLINT_URL: https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          curl --fail --location --proto '=https' --tlsv1.2 "$ACTIONLINT_URL" --output "$RUNNER_TEMP/actionlint.tar.gz"
+          printf '%s  %s\n' "$ACTIONLINT_SHA256" "$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/actionlint" actionlint
+          printf '%s\n' "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
+      - name: Validate release mechanics and workflow
+        run: make console-release-lint console-release-contract-test
+
+  build:
+    needs: validate
+    name: Build ${{ matrix.platform }} candidate
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-24.04
+          - platform: macos-aarch64
+            runner: macos-15
+          - platform: macos-x86_64
+            runner: macos-15-intel
+    env:
+      RELEASE_PLATFORM: ${{ matrix.platform }}
+    steps:
+      - name: Check out Hees
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Configure release paths
+        run: |
+          printf 'INCAN_ROOT=%s\n' "$RUNNER_TEMP/incan-0.4.0" >> "$GITHUB_ENV"
+          printf 'RELEASE_OUTPUT=%s\n' "$RUNNER_TEMP/hees-console-release" >> "$GITHUB_ENV"
+      - name: Install Rust 1.93
+        uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66 # 1.93.0
+        with:
+          toolchain: 1.93.0
+      - name: Fetch checksum-pinned released Incan 0.4.0
+        run: |
+          set -euo pipefail
+          workspaces/hees-console/packaging/release_candidate.sh fetch-incan --platform "$RELEASE_PLATFORM" --destination "$INCAN_ROOT"
+      - name: Build and clean-smoke the release archive
+        run: >-
+          make console-release-candidate
+          INCAN="$INCAN_ROOT/bin/incan"
+          RELEASE_PLATFORM="$RELEASE_PLATFORM"
+          RELEASE_OUTPUT="$RELEASE_OUTPUT"
+      - name: Upload untrusted release-candidate evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hees-console-${{ matrix.platform }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          path: ${{ runner.temp }}/hees-console-release/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+          overwrite: false

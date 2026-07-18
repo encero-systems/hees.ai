@@ -1,8 +1,24 @@
 INCAN ?= incan
 INCAN_FLAGS ?= --locked
-PYTHON ?= python3
+MDBOOK ?= mdbook
+CONSOLE_ROOT := workspaces/hees-console
+CONSOLE_SOURCE := src/main.incn
+CONSOLE_NATIVE_TEST := tests/native_console_test.incn
+CONSOLE_PROVIDER_TEST := tests/test_provider.incn
+CONSOLE_LOCK := $(abspath $(CONSOLE_ROOT)/incan.lock)
+CONSOLE_BINARY := $(abspath $(CONSOLE_ROOT)/target/incan/.cargo-target/release/hees_console)
+CONSOLE_BUILD_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/build-report.json)
+CONSOLE_RELEASE_TOOL := $(abspath $(CONSOLE_ROOT)/packaging/release_candidate.sh)
+CONSOLE_RELEASE_TEST := $(abspath $(CONSOLE_ROOT)/packaging/test_release_candidate.sh)
+INCAN_RESOLVED := $(shell command -v "$(INCAN)" 2>/dev/null || printf '%s' "$(INCAN)")
+INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
+CONSOLE_RUSTFLAGS := --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(HOME)=/build-home --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain
+RELEASE_OUTPUT ?= $(abspath $(CONSOLE_ROOT)/target/release)
+RELEASE_PLATFORM ?=
+SOURCE_COMMIT ?= $(shell git rev-parse HEAD)
+SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct HEAD)
 
-.PHONY: fmt lib test consumer example boundary docs ci
+.PHONY: fmt lib test consumer example boundary boundary-self-test docs ci console-build console-test console-native-smoke console-release-candidate console-release-contract-test console-release-lint
 
 fmt:
 	$(INCAN) fmt --check .
@@ -22,7 +38,39 @@ example: lib
 boundary:
 	bash tools/validation/check_framework_boundary.sh
 
-docs:
-	$(PYTHON) -m mkdocs build --strict --config-file workspaces/docs-site/mkdocs.yml
+boundary-self-test:
+	bash tools/validation/test_framework_boundary.sh
 
-ci: fmt lib test consumer example boundary docs
+docs:
+	$(MDBOOK) build workspaces/docs-site
+
+console-build:
+	@test "$$($(INCAN) --version)" = "incan 0.4.0" || { echo "Hees Console requires released Incan 0.4.0" >&2; exit 1; }
+	@mkdir -p "$(dir $(CONSOLE_BUILD_REPORT))"
+	RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build --lib $(INCAN_FLAGS)
+	cd $(CONSOLE_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build $(CONSOLE_SOURCE) $(INCAN_FLAGS) --release --report json --report-output $(CONSOLE_BUILD_REPORT)
+	@test -x "$(CONSOLE_BINARY)" || { echo "released Incan did not emit $(CONSOLE_BINARY)" >&2; exit 1; }
+
+console-test:
+	@test "$$($(INCAN) --version)" = "incan 0.4.0" || { echo "Hees Console requires released Incan 0.4.0" >&2; exit 1; }
+	cd $(CONSOLE_ROOT) && $(INCAN) test $(CONSOLE_NATIVE_TEST) $(INCAN_FLAGS) --fail-on-empty
+	cd $(CONSOLE_ROOT) && $(INCAN) test $(CONSOLE_PROVIDER_TEST) $(INCAN_FLAGS) --fail-on-empty
+
+console-native-smoke: console-build
+	$(CONSOLE_RELEASE_TOOL) smoke-binary --binary $(CONSOLE_BINARY)
+
+console-release-contract-test:
+	$(CONSOLE_RELEASE_TEST)
+
+console-release-lint:
+	sh -n $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST)
+	shellcheck -s sh $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST)
+	actionlint .github/workflows/console-release-candidate.yml
+
+console-release-candidate: console-release-contract-test console-test console-native-smoke
+	@test -n "$(RELEASE_PLATFORM)" || { echo "RELEASE_PLATFORM is required" >&2; exit 1; }
+	$(CONSOLE_RELEASE_TOOL) validate-platform --platform "$(RELEASE_PLATFORM)"
+	$(CONSOLE_RELEASE_TOOL) package --binary "$(CONSOLE_BINARY)" --platform "$(RELEASE_PLATFORM)" --output-directory "$(RELEASE_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --source-date-epoch "$(SOURCE_DATE_EPOCH)" --incan-root "$(INCAN_RELEASE_ROOT)" --incan-lock "$(CONSOLE_LOCK)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
+	$(CONSOLE_RELEASE_TOOL) smoke-archive --archive "$(RELEASE_OUTPUT)/hees-console-0.1.0-$(RELEASE_PLATFORM).tar.gz" --platform "$(RELEASE_PLATFORM)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
+
+ci: fmt lib test consumer example boundary boundary-self-test docs console-test console-release-contract-test

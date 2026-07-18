@@ -1,0 +1,66 @@
+{
+  "body": {
+    "contract_version": "console_replay_0_1",
+    "profile_id": "console_profile_0_1",
+    "scenario_id": "scenario_undeclared_action",
+    "request": {
+      "request_id": "request_undeclared_action",
+      "question": "Assign a final grade from this lesson.",
+      "request_digest": "sha256:649e874b195d04a10302df9702c2a4aa5e7a326f876f85a5cba0df845cace1b5"
+    },
+    "proposal": {
+      "contract_version": "console_proposal_0_1",
+      "profile_id": "console_profile_0_1",
+      "package_id": "lantern_labs",
+      "domain_id": "fictional_lesson_support",
+      "package_revision": "1.0.0",
+      "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+      "request_id": "request_undeclared_action",
+      "request_digest": "sha256:649e874b195d04a10302df9702c2a4aa5e7a326f876f85a5cba0df845cace1b5",
+      "proposal_id": "proposal_undeclared_action",
+      "action_id": "assign_final_grade",
+      "evidence_ids": [
+        "evidence_lantern_path"
+      ],
+      "visible_units": [
+        {
+          "unit_id": "unit_grade",
+          "text": "Assign a final grade from the lesson sequence.",
+          "requirement_ids": [
+            "ground_in_lesson"
+          ]
+        }
+      ],
+      "support_mappings": [
+        {
+          "support_claim_id": "support_grade",
+          "unit_id": "unit_grade",
+          "memory_id": "memory_lantern_sequence",
+          "evidence_ids": [
+            "evidence_lantern_path"
+          ]
+        }
+      ]
+    },
+    "relation_observations": [],
+    "synthesis_observations": [],
+    "schema_digests": [
+      {
+        "contract_version": "console_proposal_0_1",
+        "schema_digest": "sha256:f042eeab88670c8431b3cb6cb79d36d09cc618d9a03fadf4baaa82b2fd4e9d41"
+      },
+      {
+        "contract_version": "console_relation_observation_0_1",
+        "schema_digest": "sha256:85cd5aaa0684430f6414d138d961af13a4806d3705b7d151fed16c80b5bb2b65"
+      },
+      {
+        "contract_version": "console_synthesis_observation_0_1",
+        "schema_digest": "sha256:6558a7e0df960b7493e6b7f17606dd9110c208e28205a658779867d9823a0316"
+      }
+    ],
+    "terminal_result": {
+      "decision": "reject"
+    }
+  },
+  "replay_id": "sha256:32fccb7ecea7237441837f0a14869936d2fade486737a6bee91a9c4dd040091b"
+}

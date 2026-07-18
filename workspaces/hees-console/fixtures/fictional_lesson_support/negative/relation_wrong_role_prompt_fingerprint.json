@@ -1,0 +1,22 @@
+{
+  "contract_version": "console_relation_observation_0_1",
+  "profile_id": "console_profile_0_1",
+  "observation_id": "observation_wrong_role_prompt_fingerprint",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "request_id": "request_valid_lantern",
+  "candidate_digest": "sha256:1eb12d81b9766254c61281524d9c18cd68ec9027ec65f4f059944b4638ed2b19",
+  "target_id": "target_wrong_role_prompt_fingerprint",
+  "evaluator_role": "evidence_relation",
+  "target_role": "visible_unit_union",
+  "support_bps": 9000,
+  "contradiction_bps": 500,
+  "unresolved_bps": 500,
+  "model_fingerprint": "sha256:0d36065526d4b9ee377f0ec145f83745d519dc086259d3fa2eb3416e90d6d4e6",
+  "prompt_fingerprint": "sha256:014a1878cb28136a920a9764490d258ff1252b6b3d38abfa252da4bffa2e9dfc",
+  "configuration_fingerprint": "sha256:e7e220e5fea960397d903f2379c3639d9d7a3d3d8cd5a48e451e1d428057e54f",
+  "package_revision": "1.0.0",
+  "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+  "request_digest": "sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71",
+  "target_digest": "sha256:271b2e6039cd713abe53435fcacb820e5a311bca6e87b99e06ea55cc09646336"
+}

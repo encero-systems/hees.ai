@@ -1,0 +1,40 @@
+{
+  "scenario_contract": "console_scenario_0_1",
+  "profile_id": "console_profile_0_1",
+  "scenario_id": "scenario_valid_lantern",
+  "title": "Admit a grounded sequencing explanation",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "package_revision": "1.0.0",
+  "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+  "request_path": "requests/valid_lantern.json",
+  "proposal_path": "proposals/valid_lantern.json",
+  "manifest_target_paths": [
+    "targets/visible_sequence.json",
+    "targets/visible_grounding.json",
+    "targets/support_sequence.json",
+    "targets/support_grounding.json",
+    "targets/proposal_contradiction.json",
+    "targets/request_coverage.json",
+    "targets/requirement_explain_sequence.json",
+    "targets/requirement_ground_in_lesson.json"
+  ],
+  "observation_paths": [
+    "observations/relation_visible_sequence.json",
+    "observations/relation_visible_grounding.json",
+    "observations/relation_support_sequence.json",
+    "observations/relation_support_grounding.json",
+    "observations/relation_contradiction.json",
+    "observations/synthesis_request.json",
+    "observations/synthesis_explain_sequence.json",
+    "observations/synthesis_ground_in_lesson.json"
+  ],
+  "expected_result": {
+    "decision": "admit",
+    "reason_namespace": "console_admission_0_1",
+    "reason": "admitted",
+    "selected_memory_ids": ["memory_lantern_sequence"],
+    "content_dna_path": "provenance/valid_content_dna.json",
+    "receipt_path": "receipts/valid_receipt.json"
+  }
+}

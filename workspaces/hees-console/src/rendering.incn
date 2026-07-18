@@ -1,0 +1,270 @@
+"""
+Bounded, terminal-safe renderers for native Console output.
+
+All provider- or package-derived strings pass through one finite sanitizer before reaching a terminal. Headless output deliberately contains no terminal escape sequences and keeps authority-bearing sections visibly separate.
+"""
+
+from evaluation import ConsoleRun, FindingProjection
+from replays import ProposalProjection, RelationObservationProjection, SynthesisObservationProjection
+from state import ConsoleState, inspector_names, selected_inspector_name
+from std.regex import Regex
+
+const MAX_TEXT_CHARACTERS: int = 240
+const MAX_JSON_CHARACTERS: int = 1200
+const MAX_INSPECTOR_ITEMS: int = 8
+
+
+def replace_terminal_controls(value: str) -> str:
+    """Replace every C0 and delete control through the safe standard regex engine."""
+
+    match Regex("[\\x00-\\x1F\\x7F]"):
+        Err(_) => return ""
+        Ok(pattern) => return pattern.replace_all(value, " ")
+
+
+pub def bounded_text(value: str, limit: int) -> str:
+    """Replace terminal controls and cap one untrusted value by Unicode character count."""
+
+    if limit <= 0:
+        return ""
+    clean = replace_terminal_controls(value)
+    mut characters: list[str] = []
+    for character in clean:
+        if len(characters) >= limit:
+            characters.append("…")
+            break
+        characters.append(character)
+    return "".join(characters)
+
+
+def status_label(run: ConsoleRun) -> str:
+    """Render the terminal Spectrum state without inferring a decision."""
+
+    if run.result.spectrum.admitted:
+        return "ADMITTED"
+    return "REJECTED"
+
+
+def option_presence(value: Option[str]) -> str:
+    """Render whether one terminal artifact is present without inventing it."""
+
+    match value:
+        Some(_) => return "present"
+        None => return "absent"
+
+
+def option_text(value: Option[str]) -> str:
+    """Render one optional terminal artifact as bounded safe JSON."""
+
+    match value:
+        Some(source) => return bounded_text(source, MAX_JSON_CHARACTERS)
+        None => return "absent"
+
+
+def bounded_identifiers(values: list[str]) -> str:
+    """Sanitize and join untrusted identifiers before terminal rendering."""
+
+    mut result: list[str] = []
+    for value in values:
+        result.append(bounded_text(value, 128))
+    return ", ".join(result)
+
+
+def proposal_lines(proposal: ProposalProjection) -> list[str]:
+    """Render the normalized untrusted proposal without assigning authority."""
+
+    mut lines = ["UNTRUSTED PROPOSAL", f"proposal_id={bounded_text(proposal.proposal_id, 128)} action={bounded_text(
+        proposal.action_id,
+        128,
+    )}", f"evidence=[{bounded_identifiers(proposal.evidence_ids)}] visible_units={len(proposal.visible_units)} support_mappings={len(
+        proposal.support_mappings,
+    )}"]
+    mut count = 0
+    for unit in proposal.visible_units:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("… additional visible units omitted")
+            break
+        lines.append(f"  {bounded_text(unit.unit_id, 128)}: {bounded_text(unit.text, MAX_TEXT_CHARACTERS)}")
+        count += 1
+    return lines
+
+
+def relation_line(observation: RelationObservationProjection) -> str:
+    """Render one relation observation as explicitly non-authoritative input."""
+
+    return (f"  {bounded_text(observation.observation_id, 128)} role={bounded_text(observation.evaluator_role, 64)} " + f"support={observation.support_bps} contradiction={observation.contradiction_bps} unresolved={observation.unresolved_bps}")
+
+
+def synthesis_line(observation: SynthesisObservationProjection) -> str:
+    """Render one synthesis observation as explicitly non-authoritative input."""
+
+    return (f"  {bounded_text(observation.observation_id, 128)} role={bounded_text(observation.evaluator_role, 64)} " + f"covered={observation.covered_bps} gap={observation.gap_bps} unresolved={observation.unresolved_bps}")
+
+
+def observation_lines(run: ConsoleRun) -> list[str]:
+    """Render bounded relation and synthesis observations in replay order."""
+
+    relations = run.scenario.body.relation_observations
+    syntheses = run.scenario.body.synthesis_observations
+    mut lines = [f"NON-AUTHORITATIVE OBSERVATIONS relation={len(relations)} synthesis={len(syntheses)}"]
+    mut count = 0
+    for observation in relations:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional observations omitted")
+            return lines
+        lines.append(relation_line(observation))
+        count += 1
+    for observation in syntheses:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional observations omitted")
+            return lines
+        lines.append(synthesis_line(observation))
+        count += 1
+    return lines
+
+
+def finding_line(finding: FindingProjection) -> str:
+    """Render one Hees-owned finding classification and its target role."""
+
+    return (f"  {bounded_text(finding.finding_id, 128)} classification={bounded_text(finding.classification, 64)} " + f"role={bounded_text(
+        finding.evaluator_role,
+        64,
+    )} target={bounded_text(finding.target_role, 64)}")
+
+
+def finding_lines(run: ConsoleRun) -> list[str]:
+    """Render bounded Hees-derived findings in manifest order."""
+
+    mut lines = [f"HEES FINDINGS count={len(run.result.findings)}"]
+    mut count = 0
+    for finding in run.result.findings:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional findings omitted")
+            break
+        lines.append(finding_line(finding))
+        count += 1
+    return lines
+
+
+def spectrum_lines(run: ConsoleRun) -> list[str]:
+    """Render the exact Hees terminal Spectrum decision and reasons."""
+
+    spectrum = run.result.spectrum
+    structural = match spectrum.structural_reason:
+        Some(reason) => bounded_text(reason, 128)
+        None => f"none"
+
+    return [f"SPECTRUM {status_label(run)}", f"decision={bounded_text(spectrum.decision, 64)} reason={bounded_text(
+        spectrum.reason,
+        128,
+    )} namespace={bounded_text(spectrum.reason_namespace, 128)}", f"structural_reason={structural} decision_id={bounded_text(
+        spectrum.decision_id,
+        128,
+    )}"]
+
+
+def memory_lines(run: ConsoleRun) -> list[str]:
+    """Render only memory selected by the terminal Hees evaluation."""
+
+    mut lines = [f"SELECTED MEMORY count={len(run.result.selected_memory)}"]
+    mut count = 0
+    for atom in run.result.selected_memory:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional memory omitted")
+            break
+        lines.append(
+            f"  {bounded_text(atom.memory_id, 128)} source={bounded_text(atom.source_ref, 128)} claim={bounded_text(
+                atom.claim,
+                MAX_TEXT_CHARACTERS,
+            )}",
+        )
+        count += 1
+    return lines
+
+
+def content_dna_lines(run: ConsoleRun, include_json: bool) -> list[str]:
+    """Render admitted-only Content DNA presence and optionally its bounded JSON envelope."""
+
+    mut lines = [f"CONTENT DNA {option_presence(run.result.content_dna_json.clone())}"]
+    if include_json:
+        lines.append(option_text(run.result.content_dna_json))
+    return lines
+
+
+def receipt_lines(run: ConsoleRun, include_json: bool) -> list[str]:
+    """Render terminal receipt presence and optionally its bounded JSON envelope."""
+
+    mut lines = [f"RECEIPT {option_presence(run.result.receipt_json.clone())}"]
+    if include_json:
+        lines.append(option_text(run.result.receipt_json))
+    return lines
+
+
+def append_section(lines: list[str], section: list[str]) -> list[str]:
+    """Append one separated inspector section to a headless output buffer."""
+
+    mut result = lines
+    if len(result) > 0:
+        result.append("")
+    result.extend(section)
+    return result
+
+
+pub def render_headless(run: ConsoleRun) -> str:
+    """Render stable control-free output for automation and judge replay."""
+
+    mut lines = ["HEES CONSOLE 0.1.0", f"MODE {run.scenario.mode}", f"SCENARIO {run.scenario.slug}", f"QUESTION {bounded_text(
+        run.scenario.body.request.question,
+        MAX_TEXT_CHARACTERS,
+    )}"]
+    lines = append_section(lines, proposal_lines(run.scenario.body.proposal.clone()))
+    lines = append_section(lines, observation_lines(run.clone()))
+    lines = append_section(lines, finding_lines(run.clone()))
+    lines = append_section(lines, spectrum_lines(run.clone()))
+    lines = append_section(lines, memory_lines(run.clone()))
+    lines = append_section(lines, content_dna_lines(run.clone(), false))
+    lines = append_section(lines, receipt_lines(run, false))
+    return "\n".join(lines)
+
+
+def inspector_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
+    """Select one full-screen inspector without changing evaluated data."""
+
+    if state.inspector_index == 0:
+        return proposal_lines(run.scenario.body.proposal)
+    if state.inspector_index == 1:
+        return observation_lines(run)
+    if state.inspector_index == 2:
+        return finding_lines(run)
+    if state.inspector_index == 3:
+        return spectrum_lines(run)
+    if state.inspector_index == 4:
+        return memory_lines(run)
+    if state.inspector_index == 5:
+        return content_dna_lines(run, true)
+    return receipt_lines(run, true)
+
+
+pub def render_screen(state: ConsoleState, run: ConsoleRun) -> str:
+    """Render one bounded full-screen frame without terminal control sequences."""
+
+    tabs = " · ".join(inspector_names())
+    mut mode_line = "OFFLINE REPLAY  ·  1 valid  2 undeclared action  3 unknown memory  4 non-admitted memory"
+    if run.scenario.mode == "LIVE":
+        mode_line = f"LIVE GPT-5.6  ·  provider output remains untrusted"
+    mut lines = ["HEES CONSOLE 0.1.0  ·  GPT-5.6 proposes. Hees decides.", mode_line, f"SCENARIO  {bounded_text(
+        run.scenario.slug,
+        64,
+    )}  ·  {bounded_text(run.scenario.title, 96)}", f"STATE  {status_label(run)}  ·  reason={bounded_text(
+        run.result.spectrum.reason,
+        128,
+    )}", "────────────────────────────────────────────────────────────────────────────────", f"INSPECTOR  {selected_inspector_name(
+        state,
+    )}", bounded_text(tabs, 300), "────────────────────────────────────────────────────────────────────────────────"]
+    lines.extend(inspector_lines(state, run))
+    lines.append("")
+    if run.scenario.mode == "LIVE":
+        lines.append("Keys: ←/→ inspector  Enter next inspector  q quit")
+    else:
+        lines.append("Keys: 1–4 scenario  ←/→ inspector  ↑/↓ scenario  q quit")
+    return "\n".join(lines)

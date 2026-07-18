@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/console_replay_fixture_fingerprints_0_1.schema.json",
+  "title": "Hees Console Build Week initial-profile reserved replay fingerprints",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "profile_id", "model", "configuration", "prompts"],
+  "properties": {
+    "contract_version": {"const": "console_replay_fixture_fingerprints_0_1"},
+    "profile_id": {"const": "console_profile_0_1"},
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projection", "fingerprint"],
+      "properties": {
+        "projection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["namespace", "profile_id", "identity_kind", "identity"],
+          "properties": {
+            "namespace": {"const": "hees_console_replay_fixture_0_1"},
+            "profile_id": {"const": "console_profile_0_1"},
+            "identity_kind": {"const": "reserved_replay_fixture_model"},
+            "identity": {"const": "hees_console_reserved_replay_model_0_1"}
+          }
+        },
+        "fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projection", "fingerprint"],
+      "properties": {
+        "projection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["namespace", "profile_id", "identity_kind", "identity"],
+          "properties": {
+            "namespace": {"const": "hees_console_replay_fixture_0_1"},
+            "profile_id": {"const": "console_profile_0_1"},
+            "identity_kind": {"const": "reserved_replay_fixture_configuration"},
+            "identity": {"const": "hees_console_reserved_replay_configuration_0_1"}
+          }
+        },
+        "fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "prompts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_relation", "contradiction_cross_check", "synthesis_coverage"],
+      "properties": {
+        "evidence_relation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["projection", "fingerprint"],
+          "properties": {
+            "projection": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["namespace", "profile_id", "identity_kind", "evaluator_role", "identity"],
+              "properties": {
+                "namespace": {"const": "hees_console_replay_fixture_0_1"},
+                "profile_id": {"const": "console_profile_0_1"},
+                "identity_kind": {"const": "reserved_replay_fixture_prompt"},
+                "evaluator_role": {"const": "evidence_relation"},
+                "identity": {"const": "hees_console_reserved_replay_prompt_evidence_relation_0_1"}
+              }
+            },
+            "fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+          }
+        },
+        "contradiction_cross_check": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["projection", "fingerprint"],
+          "properties": {
+            "projection": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["namespace", "profile_id", "identity_kind", "evaluator_role", "identity"],
+              "properties": {
+                "namespace": {"const": "hees_console_replay_fixture_0_1"},
+                "profile_id": {"const": "console_profile_0_1"},
+                "identity_kind": {"const": "reserved_replay_fixture_prompt"},
+                "evaluator_role": {"const": "contradiction_cross_check"},
+                "identity": {"const": "hees_console_reserved_replay_prompt_contradiction_cross_check_0_1"}
+              }
+            },
+            "fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+          }
+        },
+        "synthesis_coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["projection", "fingerprint"],
+          "properties": {
+            "projection": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["namespace", "profile_id", "identity_kind", "evaluator_role", "identity"],
+              "properties": {
+                "namespace": {"const": "hees_console_replay_fixture_0_1"},
+                "profile_id": {"const": "console_profile_0_1"},
+                "identity_kind": {"const": "reserved_replay_fixture_prompt"},
+                "evaluator_role": {"const": "synthesis_coverage"},
+                "identity": {"const": "hees_console_reserved_replay_prompt_synthesis_coverage_0_1"}
+              }
+            },
+            "fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+          }
+        }
+      }
+    }
+  }
+}

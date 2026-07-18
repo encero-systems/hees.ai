@@ -1,0 +1,359 @@
+"""Native Console acceptance tests over embedded replay, Hees, state, and rendering boundaries."""
+
+from std.fs import Path
+from std.json import JsonValue
+from std.serde import json
+from std.testing import assert_eq, assert_is_err, assert_is_ok
+from embedded_data import (
+    non_admitted_memory_replay_json,
+    package_json,
+    undeclared_action_replay_json,
+    unknown_memory_replay_json,
+    valid_replay_json,
+)
+from evaluation import ConsoleRun, evaluate_offline_scenario, live_context_plan_json, plan_live_question_json
+from live import evaluate_live_with_transports
+from main import cli_error
+from crate.provider import GPT56_MODEL, ProviderFailure
+from rendering import bounded_text, render_headless, render_screen
+from replays import embedded_inputs_are_non_terminal, load_offline_scenario
+from state import apply_command, initial_state, selected_inspector_name, selected_scenario_slug
+
+
+@derive(json)
+model ControlPayload:
+    """JSON-decoded control sequence used to exercise terminal sanitization."""
+
+    value: str
+
+
+@derive(json)
+model ProviderFixtureContent:
+    """One structured-output text item returned by an injected provider transport."""
+
+    type_ as "type": str
+    text: str
+
+
+@derive(json)
+model ProviderFixtureOutput:
+    """One injected Responses message containing structured output text."""
+
+    type_ as "type": str
+    content: list[ProviderFixtureContent]
+
+
+@derive(json)
+model ProviderFixtureResponse:
+    """Minimal Responses envelope consumed by the native provider decoder."""
+
+    status: str
+    model_name as "model": str
+    output: list[ProviderFixtureOutput]
+
+
+def read_fixture(path: str) -> Result[str, str]:
+    """Read one checked fictional fixture relative to the Console project root."""
+
+    return Path(path).read_text("utf-8", "strict").map_err((error) => error.message())
+
+
+def canonical_json(source: str) -> Result[str, str]:
+    """Canonicalize one JSON source before comparing embedded and checked fixtures."""
+
+    value = JsonValue.parse(source).map_err((_error) => f"invalid_json")?
+    return value.to_json().map_err((_error) => f"json_serialization_failed")
+
+
+def required(value: JsonValue, key: str) -> JsonValue:
+    """Require one JSON object field in a deterministic transport fixture."""
+
+    return assert_is_ok(value.require(key))
+
+
+def required_str(value: JsonValue, key: str) -> str:
+    """Require one JSON string field in a deterministic transport fixture."""
+
+    return assert_is_ok(required(value, key).expect_str())
+
+
+def provider_payload(request_body: str) -> JsonValue:
+    """Decode the exact user payload from one prepared Responses request."""
+
+    request = assert_is_ok(JsonValue.parse(request_body))
+    inputs = assert_is_ok(required(request, "input").expect_array())
+    content = assert_is_ok(required(inputs[0], "content").expect_array())
+    return assert_is_ok(JsonValue.parse(required_str(content[0], "text")))
+
+
+def provider_response(output_text: str) -> str:
+    """Wrap structured output in the fixed live-provider response envelope."""
+
+    response = ProviderFixtureResponse(
+        status="completed",
+        model_name=GPT56_MODEL,
+        output=[ProviderFixtureOutput(
+            type_="message",
+            content=[ProviderFixtureContent(type_="output_text", text=output_text)],
+        )],
+    )
+    return response.to_json()
+
+
+def proposal_transport_from(relative: str, request_body: str) -> Result[str, ProviderFailure]:
+    """Bind one proposal fixture to the exact live request supplied by Hees."""
+
+    context = provider_payload(request_body)
+    request = required(context, "request")
+    mut proposal = assert_is_ok(JsonValue.parse(assert_is_ok(read_fixture(relative))))
+    assert_is_ok(proposal.set("request_id", JsonValue.str(required_str(request.clone(), "request_id"))))
+    assert_is_ok(proposal.set("request_digest", JsonValue.str(required_str(request, "request_digest"))))
+    return Ok(provider_response(assert_is_ok(proposal.to_json())))
+
+
+def valid_live_proposal_transport(request_body: str) -> Result[str, ProviderFailure]:
+    """Return a request-bound valid proposal without environment or network access."""
+
+    return proposal_transport_from("fixtures/fictional_lesson_support/proposals/valid_lantern.json", request_body)
+
+
+def undeclared_live_proposal_transport(request_body: str) -> Result[str, ProviderFailure]:
+    """Return a schema-valid undeclared action without environment or network access."""
+
+    return proposal_transport_from("fixtures/fictional_lesson_support/proposals/undeclared_action.json", request_body)
+
+
+def committee_transport(request_body: str) -> Result[str, ProviderFailure]:
+    """Return bound high-support scores for each exact Hees-authored committee target."""
+
+    payload = provider_payload(request_body)
+    request = required(payload.clone(), "request")
+    target = required(payload.clone(), "target")
+    target_digest = required_str(target.clone(), "target_digest")
+    body = required(target, "body")
+    evaluator_role = required_str(body.clone(), "evaluator_role")
+    mut observation = {"contract_version": JsonValue.str("console_relation_observation_0_1"), "profile_id": JsonValue.str(
+        required_str(payload.clone(), "profile_id"),
+    ), "observation_id": JsonValue.str(required_str(payload.clone(), "observation_id")), "package_id": JsonValue.str(
+        required_str(payload.clone(), "package_id"),
+    ), "domain_id": JsonValue.str(required_str(payload.clone(), "domain_id")), "package_revision": JsonValue.str(
+        required_str(payload.clone(), "package_revision"),
+    ), "artifact_digest": JsonValue.str(required_str(payload, "artifact_digest")), "request_id": JsonValue.str(
+        required_str(request.clone(), "request_id"),
+    ), "request_digest": JsonValue.str(required_str(request, "request_digest")), "candidate_digest": JsonValue.str(
+        required_str(body.clone(), "candidate_digest"),
+    ), "target_id": JsonValue.str(required_str(body.clone(), "target_id")), "target_digest": JsonValue.str(target_digest), "evaluator_role": JsonValue.str(
+        evaluator_role,
+    ), "target_role": JsonValue.str(required_str(body, "target_role"))}
+    if evaluator_role == "synthesis_coverage":
+        observation["contract_version"] = JsonValue.str("console_synthesis_observation_0_1")
+        observation["covered_bps"] = JsonValue.int(9_000)
+        observation["gap_bps"] = JsonValue.int(500)
+        observation["unresolved_bps"] = JsonValue.int(500)
+    else:
+        observation["support_bps"] = JsonValue.int(9_000)
+        observation["contradiction_bps"] = JsonValue.int(500)
+        observation["unresolved_bps"] = JsonValue.int(500)
+    return Ok(provider_response(assert_is_ok(JsonValue.object(observation).to_json())))
+
+
+def assert_fixture_parity(embedded: str, path: str) -> None:
+    """Assert one embedded replay or package is canonically identical to its fixture."""
+
+    fixture = assert_is_ok(read_fixture(path))
+    assert_eq(assert_is_ok(canonical_json(embedded)), assert_is_ok(canonical_json(fixture)))
+
+
+def assert_decision(slug: str, admitted: bool, reason: str) -> ConsoleRun:
+    """Evaluate one scenario and assert the exact Hees Spectrum outcome."""
+
+    run = assert_is_ok(evaluate_offline_scenario(slug))
+    assert_eq(run.result.spectrum.admitted, admitted)
+    assert_eq(run.result.spectrum.reason, reason)
+    return run
+
+
+def option_has_value(value: Option[str]) -> bool:
+    """Return whether one optional terminal artifact is present."""
+
+    match value:
+        Some(_) => return true
+        None => return false
+
+
+def test_embedded_package_and_replays_match_checked_fixtures() -> None:
+    """Prevent embedded replay data from drifting away from the reviewed fixture set."""
+
+    assert_fixture_parity(package_json(), "fixtures/fictional_lesson_support/package/package.json")
+    assert_eq(GPT56_MODEL, "gpt-5.6-sol")
+    assert_fixture_parity(valid_replay_json(), "fixtures/fictional_lesson_support/replays/valid_lantern.json")
+    assert_fixture_parity(
+        undeclared_action_replay_json(),
+        "fixtures/fictional_lesson_support/replays/undeclared_action.json",
+    )
+    assert_fixture_parity(unknown_memory_replay_json(), "fixtures/fictional_lesson_support/replays/unknown_memory.json")
+    assert_fixture_parity(
+        non_admitted_memory_replay_json(),
+        "fixtures/fictional_lesson_support/replays/non_admitted_memory.json",
+    )
+
+
+def test_embedded_replays_are_non_terminal_and_keep_reviewed_ids() -> None:
+    """Bind each non-terminal replay to the reviewed integrity identifier."""
+
+    assert_eq(embedded_inputs_are_non_terminal(), true)
+    assert_eq(
+        assert_is_ok(load_offline_scenario("valid")).replay_id,
+        "sha256:5319b88152ffb04bd8b9e3298333fd370ff33e359d2d8f91ca5ab453fd7a928a",
+    )
+    assert_eq(
+        assert_is_ok(load_offline_scenario("undeclared-action")).replay_id,
+        "sha256:b2a9664c73e4f2a4dde8cc81e53b75f760f3b93358eba93d6533053f80c83f1d",
+    )
+    assert_eq(
+        assert_is_ok(load_offline_scenario("unknown-memory")).replay_id,
+        "sha256:e8e18b99bf00727068fb1df8849ab369d1e84af36543a159e9665cee28473f44",
+    )
+    assert_eq(
+        assert_is_ok(load_offline_scenario("non-admitted-memory")).replay_id,
+        "sha256:4d77d6539d848e96899f63787e26fe21980cf4c665cfa3cbce3c93672382b618",
+    )
+
+
+def test_real_hees_evaluation_returns_all_four_terminal_outcomes() -> None:
+    """Exercise the public Hees profile for the admitted and three rejection paths."""
+
+    valid = assert_decision("valid", true, "admitted")
+    assert_eq(option_has_value(valid.result.content_dna_json), true)
+    assert_eq(option_has_value(valid.result.receipt_json), true)
+    assert_eq(len(valid.result.selected_memory), 1)
+    assert_decision("undeclared-action", false, "unknown_action")
+    assert_decision("unknown-memory", false, "unknown_memory")
+    assert_decision("non-admitted-memory", false, "memory_not_admitted")
+
+
+def test_headless_output_exposes_stable_sections_and_reasons() -> None:
+    """Keep judge-facing automation output stable across every replay outcome."""
+
+    valid = render_headless(assert_decision("valid", true, "admitted"))
+    assert_eq(valid.contains("UNTRUSTED PROPOSAL"), true)
+    assert_eq(valid.contains("HEES FINDINGS"), true)
+    assert_eq(valid.contains("SPECTRUM ADMITTED"), true)
+    assert_eq(valid.contains("CONTENT DNA present"), true)
+    assert_eq(valid.contains("RECEIPT present"), true)
+    for slug, reason in [("undeclared-action", "unknown_action"), ("unknown-memory", "unknown_memory"), ("non-admitted-memory", "memory_not_admitted")]:
+        output = render_headless(assert_decision(slug, false, reason))
+        assert_eq(output.contains("SPECTRUM REJECTED"), true)
+        assert_eq(output.contains(f"reason={reason}"), true)
+
+
+def test_state_transitions_wrap_and_select_scenarios_and_inspectors() -> None:
+    """Exercise deterministic raw-key commands without terminal I/O."""
+
+    mut state = initial_state()
+    assert_eq(selected_scenario_slug(state.clone()), "valid")
+    assert_eq(selected_inspector_name(state.clone()), "PROPOSAL")
+    state = apply_command(state, "previous-scenario")
+    assert_eq(selected_scenario_slug(state.clone()), "non-admitted-memory")
+    state = apply_command(state, "next-scenario")
+    assert_eq(selected_scenario_slug(state.clone()), "valid")
+    state = apply_command(state, "scenario-3")
+    assert_eq(selected_scenario_slug(state.clone()), "unknown-memory")
+    state = apply_command(state, "previous-inspector")
+    assert_eq(selected_inspector_name(state.clone()), "RECEIPT")
+    state = apply_command(state, "next-inspector")
+    assert_eq(selected_inspector_name(state.clone()), "PROPOSAL")
+    state = apply_command(state, "quit")
+    assert_eq(state.running, false)
+
+
+def test_terminal_sanitizer_removes_controls_and_preserves_unicode_bounds() -> None:
+    """Remove actual terminal controls while bounding text by Unicode characters."""
+
+    payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b[31mred\\u001b[0m\"}"))
+    assert_eq(bounded_text(payload.value, 100), " [31mred [0m")
+    assert_eq(bounded_text("line one\nline two\tend", 100), "line one line two end")
+    assert_eq(bounded_text("isiZulu", 4), "isiZ…")
+
+
+def test_proposal_evidence_ids_are_sanitized_before_rendering() -> None:
+    """Prevent one hostile evidence identifier from injecting terminal controls."""
+
+    payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"evidence\\u001b[31m-red\"}"))
+    mut run = assert_is_ok(evaluate_offline_scenario("valid"))
+    mut scenario = run.scenario
+    mut body = scenario.body
+    mut proposal = body.proposal
+    proposal.evidence_ids = [payload.value]
+    body.proposal = proposal
+    scenario.body = body
+    run.scenario = scenario
+    output = render_headless(run)
+    assert_eq(output.contains("evidence [31m-red"), true)
+
+
+def test_full_screen_carries_the_exact_build_week_product_line() -> None:
+    """Keep the proposal-versus-decision distinction explicit in the interactive frame."""
+
+    state = initial_state()
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    screen = render_screen(state, run)
+    assert_eq(screen.contains("GPT-5.6 proposes. Hees decides."), true)
+    assert_eq(screen.contains("UNTRUSTED PROPOSAL"), true)
+
+
+def test_injected_live_composition_returns_only_the_real_hees_admission() -> None:
+    """Exercise question binding, proposal, committee, Hees evaluation, and live rendering without network access."""
+
+    question = "What order should I use for the Lantern Path cards?"
+    run = assert_is_ok(evaluate_live_with_transports(question, valid_live_proposal_transport, committee_transport))
+    assert_eq(run.scenario.mode, "LIVE")
+    assert_eq(run.scenario.body.request.question, question)
+    assert_eq(run.result.spectrum.admitted, true)
+    assert_eq(run.result.spectrum.reason, "admitted")
+    output = render_headless(run)
+    assert_eq(output.contains("MODE LIVE"), true)
+    assert_eq(output.contains("UNTRUSTED PROPOSAL"), true)
+    assert_eq(output.contains("SPECTRUM ADMITTED"), true)
+
+
+def test_injected_live_undeclared_action_reaches_the_exact_hees_rejection() -> None:
+    """Prove schema-valid provider output cannot acquire undeclared authority in the live path."""
+
+    run = assert_is_ok(
+        evaluate_live_with_transports(
+            "Can you assign my final grade?",
+            undeclared_live_proposal_transport,
+            committee_transport,
+        ),
+    )
+    assert_eq(run.result.spectrum.admitted, false)
+    assert_eq(run.result.spectrum.reason, "unknown_action")
+
+
+def test_cli_rejects_ambiguous_or_cross_mode_arguments() -> None:
+    """Keep live activation explicit and prevent last-flag-wins command ambiguity."""
+
+    assert_eq(cli_error(["--mode", "live", "--question", "What is the sequence?"]), None)
+    assert_eq(
+        cli_error(["--mode", "offline", "--question", "What is the sequence?"]),
+        Some("question_requires_live_mode"),
+    )
+    assert_eq(
+        cli_error(["--mode", "live", "--scenario", "valid", "--question", "Question"]),
+        Some("scenario_requires_offline_mode"),
+    )
+    assert_eq(cli_error(["--scenario", "missing", "--question", "Question"]), Some("unknown_scenario"))
+    assert_eq(cli_error(["--mode", "live", "--mode", "offline", "--question", "Question"]), Some("duplicate_argument"))
+    assert_eq(cli_error(["--mode", "live", "--question", "   "]), Some("invalid_question"))
+
+
+def test_private_live_plan_rejects_contract_drift() -> None:
+    """Fail closed before a provider call when the private composition envelope changes."""
+
+    source = assert_is_ok(plan_live_question_json("What is the Lantern Path sequence?"))
+    mut plan = assert_is_ok(JsonValue.parse(source))
+    assert_eq(required_str(plan.clone(), "contract_version"), "console_live_question_plan_0_1")
+    assert_is_ok(plan.set("contract_version", JsonValue.str("console_live_question_plan_9_9")))
+    error = assert_is_err(live_context_plan_json(assert_is_ok(plan.to_json())))
+    assert_eq(error, "live_plan_invalid")

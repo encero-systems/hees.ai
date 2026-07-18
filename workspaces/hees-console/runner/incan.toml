@@ -1,0 +1,9 @@
+[project]
+name = "hees_runner"
+version = "0.0.1"
+description = "Bounded process adapter for the Hees admission kernel"
+authors = ["Encero Systems"]
+license = "Apache-2.0"
+
+[dependencies]
+hees = { path = "../../.." }

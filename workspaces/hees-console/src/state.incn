@@ -1,0 +1,87 @@
+"""Deterministic scenario and inspector state for the native Console UI."""
+
+from replays import scenario_slugs
+
+
+@derive(Clone)
+pub model ConsoleState:
+    """Current scenario, inspector, and run-loop state."""
+
+    pub scenario_index: int
+    pub inspector_index: int
+    pub running: bool
+
+
+pub def inspector_names() -> list[str]:
+    """Return inspector names in stable keyboard-navigation order."""
+
+    return ["PROPOSAL", "OBSERVATIONS", "FINDINGS", "SPECTRUM", "SELECTED MEMORY", "CONTENT DNA", "RECEIPT"]
+
+
+pub def initial_state() -> ConsoleState:
+    """Start on the admitted replay and untrusted proposal inspector."""
+
+    return ConsoleState(scenario_index=0, inspector_index=0, running=true)
+
+
+pub def selected_scenario_slug(state: ConsoleState) -> str:
+    """Return the stable scenario slug for the current state."""
+
+    slugs = scenario_slugs()
+    if state.scenario_index < 0 or state.scenario_index >= len(slugs):
+        return slugs[0]
+    return slugs[state.scenario_index]
+
+
+pub def selected_inspector_name(state: ConsoleState) -> str:
+    """Return the stable inspector label for the current state."""
+
+    names = inspector_names()
+    if state.inspector_index < 0 or state.inspector_index >= len(names):
+        return names[0]
+    return names[state.inspector_index]
+
+
+def scenario_index_for_command(command: str) -> Option[int]:
+    """Map direct scenario commands to their stable indexes."""
+
+    if command == "scenario-1":
+        return Some(0)
+    if command == "scenario-2":
+        return Some(1)
+    if command == "scenario-3":
+        return Some(2)
+    if command == "scenario-4":
+        return Some(3)
+    return None
+
+
+pub def apply_command(state: ConsoleState, command: str) -> ConsoleState:
+    """Apply one terminal command without performing evaluation or I/O."""
+
+    mut next = state.clone()
+    if command == "quit":
+        next.running = false
+        return next
+    match scenario_index_for_command(command):
+        Some(index) =>
+            next.scenario_index = index
+            return next
+        None => pass
+    if command == "next-scenario":
+        next.scenario_index = next.scenario_index + 1
+        if next.scenario_index >= len(scenario_slugs()):
+            next.scenario_index = 0
+    elif command == "previous-scenario":
+        next.scenario_index = next.scenario_index - 1
+        if next.scenario_index < 0:
+            next.scenario_index = len(scenario_slugs()) - 1
+    elif command == "next-inspector":
+        next.inspector_index = next.inspector_index + 1
+        if next.inspector_index >= len(inspector_names()):
+            next.inspector_index = 0
+    elif command == "previous-inspector":
+        next.inspector_index = next.inspector_index - 1
+        if next.inspector_index < 0:
+            next.inspector_index = len(inspector_names()) - 1
+    return next

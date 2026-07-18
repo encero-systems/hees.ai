@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/validation_manifest_0_1.schema.json",
+  "title": "Hees Console Build Week initial-profile fixture validation manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_contract", "positive", "negative"],
+  "properties": {
+    "manifest_contract": {"const": "console_domain_validation_manifest_0_1"},
+    "positive": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "schema"],
+        "properties": {
+          "path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[a-z0-9_./-]+$"},
+          "schema": {"type": "string", "pattern": "^[a-z0-9_]+\\.schema\\.json$"}
+        }
+      }
+    },
+    "negative": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "schema", "expected_error"],
+        "properties": {
+          "path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[a-z0-9_./-]+$"},
+          "schema": {"type": "string", "pattern": "^[a-z0-9_]+\\.schema\\.json$"},
+          "expected_error": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "invariant": {
+            "enum": ["source_catalog_integrity", "replay_fixture_fingerprint", "request_binding_integrity", "proposal_identity", "manifest_target_integrity"]
+          }
+        }
+      }
+    }
+  }
+}

@@ -27,3 +27,15 @@ Despite the historical `Loader` name, this surface validates metadata only. It r
 Admission proves only those structural conditions. It does not prove factual correctness, semantic support, source ownership, licensing, cryptographic integrity, retrieval quality, model correctness, or policy completeness.
 
 `AdmissionResult` records a terminal `RuntimeDecision`, a stable reason, cited evidence identifiers, and package errors. It contains no hidden reasoning or chain-of-thought.
+
+## Initial console profile
+
+`console_profile_0_1` is a separate, closed experimental profile over the fictional console acceptance corpus. It does not make the generic runtime synonymous with the complete Draft RFC series.
+
+The profile validates exact package, request-binding, and proposal identities; recomputes the package, provenance, request, proposal, manifest-target, Content DNA, and receipt digests; constructs the complete verifier manifest; validates exact observation coverage and fingerprints; and derives findings under package-owned basis-point thresholds. Provider observations remain non-authoritative inputs. The profile, not the provider-facing Console module, selects the public reason and terminal decision.
+
+On the admitted path, the profile delegates structural checks to `admit_model_proposal`, freezes every and only the admitted package atoms referenced by the support mappings, constructs Content DNA from that ordered selection, and returns the visible units and provenance atomically. A rejected path exposes no visible units, selected memory, or Content DNA. Once the fixed package, request, and proposal identity are safely established, it returns a redacted rejection receipt; raw-contract, replay, package, request, and unsafe-proposal-identity failures return no receipt.
+
+The native Incan Console calls the public profile directly. The `console_runner_request_0_1` and `console_runner_response_0_1` schemas remain a bounded compatibility and diagnostic seam rather than the product's application boundary. Authority-bearing finding, Spectrum, evaluation, Content DNA, and receipt types stay internal; only their canonical terminal projection crosses the package ABI. Live mode accepts bounded provider-normalized inputs. Replay mode additionally binds the checked schema, model, configuration, prompt, and replay identities used by the fictional acceptance corpus.
+
+This first profile does not provide retrieval, a semantic verifier model, a general package compiler, or a stable production protocol. Its fixed counts, languages, source kinds, policy values, and fixture identities are deliberate acceptance-profile constraints.

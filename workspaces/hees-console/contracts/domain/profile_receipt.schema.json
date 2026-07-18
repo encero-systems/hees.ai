@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/console_profile_receipt_0_1.schema.json",
+  "title": "Hees Console Build Week initial-profile receipt envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["body", "receipt_id"],
+  "properties": {
+    "body": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contract_version", "profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "proposal_id", "candidate_digest", "decision", "reason_namespace", "reason", "structural_reason", "admitted_evidence_ids", "selected_memory_ids", "content_dna_id"],
+          "properties": {
+            "contract_version": {"const": "console_profile_receipt_0_1"},
+            "profile_id": {"const": "console_profile_0_1"},
+            "package_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "domain_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "package_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+            "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "request_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "request_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "proposal_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "decision": {"const": "admit"},
+            "reason_namespace": {"const": "console_admission_0_1"},
+            "reason": {"const": "admitted"},
+            "structural_reason": {
+              "enum": [
+                "invalid_package",
+                "package_id_mismatch",
+                "domain_id_mismatch",
+                "missing_visible_output",
+                "unknown_action",
+                "duplicate_evidence_reference",
+                "evidence_required",
+                "unknown_evidence",
+                "admitted",
+                null
+              ]
+            },
+            "admitted_evidence_ids": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"}},
+            "selected_memory_ids": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"}},
+            "content_dna_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contract_version", "profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "proposal_id", "candidate_digest", "decision", "reason_namespace", "reason", "structural_reason"],
+          "properties": {
+            "contract_version": {"const": "console_profile_receipt_0_1"},
+            "profile_id": {"const": "console_profile_0_1"},
+            "package_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "domain_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "package_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+            "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "request_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "request_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "proposal_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "decision": {"const": "reject"},
+            "reason_namespace": {"const": "console_admission_0_1"},
+            "reason": {
+              "enum": [
+                "request_too_large",
+                "invalid_json",
+                "unsupported_request_contract",
+                "invalid_request_schema",
+                "replay_integrity_mismatch",
+                "package_unavailable",
+                "invalid_package",
+                "memory_context_invalid",
+                "package_id_mismatch",
+                "domain_id_mismatch",
+                "package_revision_mismatch",
+                "artifact_digest_mismatch",
+                "request_id_invalid",
+                "request_digest_mismatch",
+                "proposal_provider_unavailable",
+                "unsupported_proposal_contract",
+                "invalid_proposal_schema",
+                "proposal_too_large",
+                "proposal_request_mismatch",
+                "missing_visible_output",
+                "invalid_visible_unit",
+                "unknown_action",
+                "duplicate_evidence_reference",
+                "evidence_required",
+                "unknown_evidence",
+                "support_mapping_invalid",
+                "duplicate_memory_reference",
+                "unknown_memory",
+                "memory_not_admitted",
+                "manifest_construction_failed",
+                "unsupported_observation_contract",
+                "observation_identity_mismatch",
+                "observation_coverage_invalid",
+                "observation_malformed",
+                "observation_unavailable",
+                "support_not_established",
+                "contradiction_detected",
+                "synthesis_incomplete",
+                "finding_uncertain",
+                "structural_admission_rejected",
+                "selected_memory_invalid",
+                "content_dna_construction_failed",
+                "receipt_projection_failed"
+              ]
+            },
+            "structural_reason": {
+              "enum": [
+                "invalid_package",
+                "package_id_mismatch",
+                "domain_id_mismatch",
+                "missing_visible_output",
+                "unknown_action",
+                "duplicate_evidence_reference",
+                "evidence_required",
+                "unknown_evidence",
+                "admitted",
+                null
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "receipt_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

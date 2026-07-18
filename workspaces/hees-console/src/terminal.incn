@@ -1,0 +1,147 @@
+"""
+Raw-key terminal boundary for the native Incan Console.
+
+Crossterm supplies only raw-mode and key-event primitives. Incan owns state transitions, scenario evaluation, rendering, and all application behavior.
+"""
+
+from rust::std::io import stdout
+from rust::std::string import String as RustString
+from rust::crossterm import ExecutableCommand
+from rust::crossterm::cursor import Hide, Show
+from rust::crossterm::event import Event, KeyCode, read
+from rust::crossterm::terminal import EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode
+from evaluation import ConsoleRun, evaluate_offline_scenario
+from rendering import render_screen
+from replays import scenario_slugs
+from state import ConsoleState, apply_command, initial_state, selected_scenario_slug
+
+
+def command_for_key(code: KeyCode) -> str:
+    """Map one crossterm key code to a pure Console state command."""
+
+    match code:
+        KeyCode.Char(value) =>
+            key = value.to_string()
+            if key == "q":
+                return "quit"
+            if key == "1":
+                return "scenario-1"
+            if key == "2":
+                return "scenario-2"
+            if key == "3":
+                return "scenario-3"
+            if key == "4":
+                return "scenario-4"
+            return "noop"
+        KeyCode.Left => return "previous-inspector"
+        KeyCode.Right => return "next-inspector"
+        KeyCode.Up => return "previous-scenario"
+        KeyCode.Down => return "next-scenario"
+        KeyCode.Enter => return "next-inspector"
+        KeyCode.Esc => return "quit"
+        _ => return "noop"
+
+
+def read_command() -> Result[str, str]:
+    """Wait for one key event and return a pure application command."""
+
+    event = read().map_err((_error) => f"terminal_read_failed")?
+    match event:
+        Event.Key(key) => return Ok(command_for_key(key.code))
+        _ => return Ok("noop")
+
+
+def clear_and_home() -> str:
+    """Decode a fixed ANSI clear-and-home byte sequence at the terminal boundary."""
+
+    match RustString.from_utf8(b"\x1b[2J\x1b[H"):
+        Err(_) => return ""
+        Ok(value) => return value
+
+
+def enter_terminal_screen() -> None:
+    """Enter crossterm's alternate screen and hide the cursor."""
+
+    mut output = stdout()
+    output.execute(EnterAlternateScreen)
+    output.execute(Hide)
+
+
+def leave_terminal_screen() -> None:
+    """Restore the cursor and leave crossterm's alternate screen."""
+
+    mut output = stdout()
+    output.execute(Show)
+    output.execute(LeaveAlternateScreen)
+
+
+def draw_frame(state: ConsoleState, run: ConsoleRun) -> None:
+    """Replace the alternate-screen frame with bounded native Incan output."""
+
+    frame = render_screen(state, run).replace("\n", "\r\n")
+    println(f"{clear_and_home()}{frame}")
+
+
+def live_safe_command(command: str) -> str:
+    """Suppress replay-only navigation while inspecting one already evaluated live interaction."""
+
+    if command == "next-scenario" or command == "previous-scenario" or command.starts_with("scenario-"):
+        return "noop"
+    return command
+
+
+def run_screen(initial_state: ConsoleState, initial_run: ConsoleRun, allow_scenarios: bool) -> Result[None, str]:
+    """Run one full-screen inspector with optional replay scenario switching."""
+
+    mut state = initial_state
+    mut run = initial_run
+    enable_raw_mode().map_err((_error) => f"terminal_raw_mode_failed")?
+    enter_terminal_screen()
+    draw_frame(state.clone(), run.clone())
+    mut failure: Option[str] = None
+    while state.running:
+        match read_command():
+            Err(code) =>
+                failure = Some(code)
+                state.running = false
+            Ok(command) =>
+                previous_slug = selected_scenario_slug(state.clone())
+                mut selected_command = command
+                if not allow_scenarios:
+                    selected_command = live_safe_command(selected_command)
+                state = apply_command(state, selected_command)
+                next_slug = selected_scenario_slug(state.clone())
+                if allow_scenarios and next_slug != previous_slug:
+                    match evaluate_offline_scenario(next_slug):
+                        Err(code) =>
+                            failure = Some(code)
+                            state.running = false
+                        Ok(next_run) =>
+                            run = next_run
+                if state.running:
+                    draw_frame(state.clone(), run.clone())
+    leave_terminal_screen()
+    match disable_raw_mode():
+        Err(_) => return Err("terminal_restore_failed")
+        Ok(_) =>
+            match failure:
+                Some(code) => return Err(code)
+                None => return Ok(None)
+
+
+pub def run_interactive(initial_slug: str) -> Result[None, str]:
+    """Run the offline raw-key Console from a selected replay until quit or I/O failure."""
+
+    mut state = initial_state()
+    slugs = scenario_slugs()
+    for index, slug in enumerate(slugs):
+        if slug == initial_slug:
+            state.scenario_index = index
+    run = evaluate_offline_scenario(selected_scenario_slug(state.clone()))?
+    return run_screen(state, run, true)
+
+
+pub def run_evaluated_interactive(run: ConsoleRun) -> Result[None, str]:
+    """Inspect one live evaluated interaction without exposing replay navigation."""
+
+    return run_screen(initial_state(), run, false)

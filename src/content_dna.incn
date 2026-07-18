@@ -1,0 +1,180 @@
+"""
+Closed admitted-answer Content DNA and profile-receipt envelope builders.
+
+The profile passes only already-validated terminal projections into this module. Hashing remains Incan-authored and no
+host or provider can construct these authority-bearing envelopes.
+"""
+
+from rust::std::string import String as RustString
+from std.encoding.hex import hexlify
+from std.hash import sha256
+from std.json import JsonValue
+from std.serde import json
+
+
+@derive(Clone, json)
+pub model ContentDnaPackage:
+    """Fixed governed-package identity bound into admitted-answer provenance."""
+
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+
+
+@derive(Clone, json)
+pub model ContentDnaTerminal:
+    """Terminal Spectrum decision recorded by admitted-answer provenance."""
+
+    pub decision: str
+    pub reason_namespace: str
+    pub reason: str
+
+
+@derive(Clone, json)
+pub model ContentDnaPolicy:
+    """Package-owned constraint and response-contract identity for one answer."""
+
+    pub constraint_plan_id: str
+    pub constraint_plan_revision: str
+    pub response_contract_id: str
+    pub response_contract_revision: str
+
+
+@derive(Clone, json)
+pub model ContentDnaEntry:
+    """Source-safe provenance projection for one terminally selected memory atom."""
+
+    pub memory_id: str
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: str
+    pub provenance_digest: str
+    pub review_state: str
+    pub review_revision: str
+    pub rights_state: str
+    pub authority_class: str
+    pub evidence_kind: str
+
+
+@derive(Clone, json)
+pub model ContentDnaBody:
+    """Closed admitted-answer provenance body before envelope sealing."""
+
+    pub contract_version: str
+    pub state: str
+    pub package: ContentDnaPackage
+    pub proposal_id: str
+    pub spectrum_decision_id: str
+    pub terminal: ContentDnaTerminal
+    pub policy: ContentDnaPolicy
+    pub entries: list[ContentDnaEntry]
+    pub source_digests: list[str]
+    pub answer_digest: str
+
+
+@derive(Clone, json)
+pub model ContentDna:
+    """Internally sealed Content DNA envelope and its canonical identity."""
+
+    pub body: ContentDnaBody
+    pub content_dna_id: str
+
+
+@derive(Clone, json)
+pub model AdmittedReceiptBody:
+    """Redacted terminal receipt body for an admitted visible answer."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub proposal_id: str
+    pub candidate_digest: str
+    pub decision: str
+    pub reason_namespace: str
+    pub reason: str
+    pub structural_reason: Option[str]
+    pub admitted_evidence_ids: list[str]
+    pub selected_memory_ids: list[str]
+    pub content_dna_id: str
+
+
+@derive(Clone, json)
+pub model RejectedReceiptBody:
+    """Redacted receipt body for a rejection with safely established identity."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub proposal_id: str
+    pub candidate_digest: str
+    pub decision: str
+    pub reason_namespace: str
+    pub reason: str
+    pub structural_reason: Option[str]
+
+
+@derive(Clone, json)
+pub model ProfileReceipt:
+    """Internally sealed receipt projection and its canonical identity."""
+
+    pub body: JsonValue
+    pub receipt_id: str
+
+
+def digest_canonical_json(source: str) -> str:
+    """Return the lowercase SHA-256 identity of one canonical JSON value."""
+
+    match JsonValue.parse(source):
+        Err(_) => return ""
+        Ok(value) =>
+            match value.to_json():
+                Err(_) => return ""
+                Ok(canonical) => return f"sha256:{hexlify(sha256.digest(RustString.from(canonical).into_bytes()))}"
+
+
+pub def construct_content_dna(body: ContentDnaBody) -> ContentDna:
+    """Seal one complete admitted-answer body under its canonical digest."""
+    return ContentDna(body=body.clone(), content_dna_id=digest_canonical_json(body.to_json()))
+
+
+pub def content_dna_identity(value: ContentDna) -> str:
+    """Expose the sealed identity without requiring sibling modules to inspect model storage."""
+    return value.content_dna_id
+
+
+pub def content_dna_answer_digest(value: ContentDna) -> str:
+    """Expose the answer binding without making the sealed body caller-constructible."""
+    return value.body.answer_digest
+
+
+def construct_profile_receipt(body_source: str) -> Option[ProfileReceipt]:
+    """Seal one typed receipt body after converting it to an opaque JSON projection."""
+    match JsonValue.parse(body_source):
+        Err(_) => return None
+        Ok(body) => return Some(ProfileReceipt(body=body, receipt_id=digest_canonical_json(body_source)))
+
+
+pub def construct_admitted_receipt(body: AdmittedReceiptBody) -> Option[ProfileReceipt]:
+    """Seal one redacted admitted receipt under its canonical digest."""
+    return construct_profile_receipt(body.to_json())
+
+
+pub def construct_rejected_receipt(body: RejectedReceiptBody) -> Option[ProfileReceipt]:
+    """Seal one redacted rejected receipt without admitted-only members."""
+    return construct_profile_receipt(body.to_json())
+
+
+pub def profile_receipt_identity(value: ProfileReceipt) -> str:
+    """Expose the receipt digest while keeping its sealed body non-constructible."""
+    return value.receipt_id

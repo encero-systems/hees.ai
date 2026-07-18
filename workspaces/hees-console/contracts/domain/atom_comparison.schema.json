@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/console_atom_comparison_0_1.schema.json",
+  "title": "Hees Console Build Week initial-profile display-only atom comparison",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "profile_id", "package_id", "domain_id", "candidate_digest", "matched_memory_id", "comparison_state", "package_effect"],
+  "properties": {
+    "contract_version": {"const": "console_atom_comparison_0_1"},
+    "profile_id": {"const": "console_profile_0_1"},
+    "package_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "domain_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "matched_memory_id": {"type": ["string", "null"], "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "comparison_state": {"enum": ["exact_match", "mismatch"]},
+    "package_effect": {"const": "none"}
+  }
+}

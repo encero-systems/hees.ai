@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/console_finding_0_1.schema.json",
+  "title": "Hees Console Build Week initial-profile non-authoritative finding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "profile_id", "finding_id", "observation_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "candidate_digest", "target_id", "target_digest", "evaluator_role", "target_role", "classification", "constraint_plan_id", "constraint_plan_revision"],
+  "properties": {
+    "contract_version": {"const": "console_finding_0_1"},
+    "profile_id": {"const": "console_profile_0_1"},
+    "finding_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "observation_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "package_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "domain_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "package_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32},
+    "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "request_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "request_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "target_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "target_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "evaluator_role": {"enum": ["evidence_relation", "contradiction_cross_check", "synthesis_coverage"]},
+    "target_role": {"enum": ["visible_unit_union", "support_claim_memory", "proposal_union", "request_coverage", "requirement_coverage"]},
+    "classification": {"enum": ["supported", "contradicted", "uncertain", "unsupported", "covered", "not_covered"]},
+    "constraint_plan_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "constraint_plan_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32}
+  }
+}

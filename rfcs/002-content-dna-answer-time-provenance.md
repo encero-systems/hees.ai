@@ -17,14 +17,14 @@
 
 ## Summary
 
-Hees should construct deterministic Content DNA at answer time from every and only the reviewed governed-memory atoms selected by Spectrum for one terminal response. An admitted visible answer and its Content DNA must be returned atomically. The Content DNA value binds the answer, request, proposal, package, policy, Spectrum decision, selected memory, source-safe provenance, review state, rights state, and canonical digest without reproducing source text, answer prose, provider scores, hidden reasoning, or Workbench history. Model, provider, caller, package, and Workbench values may supply governed inputs, but none may author the terminal Content DNA projection.
+Hees should construct deterministic Content DNA at answer time from every and only the reviewed governed-memory atoms selected by Spectrum for one terminal response. An admitted visible answer and its Content DNA must be returned atomically. The Content DNA value binds the answer, request, proposal, package, policy, Spectrum decision, selected memory, source-safe provenance, review state, rights state, and canonical digest without reproducing source text, answer prose, provider scores, hidden reasoning, or build-time review history. Models, providers, callers, packages, and build-time tooling may supply governed inputs, but none may author the terminal Content DNA projection.
 
 ## Core model
 
 1. **Content DNA is answer-time provenance.** It records which reviewed memory made one terminal answer admissible; it is not a corpus-ingestion manifest or model citation format.
 2. **Spectrum fixes the membership.** Every admitted-answer entry corresponds to one Spectrum-selected memory atom, in the exact terminal order, with no omissions or additions.
 3. **The package supplies provenance facts.** Source-safe references, source fingerprints, review and rights state, authority classification, and provenance identity come from the exact RFC 005-admitted package.
-4. **Hees constructs the projection.** A model, retrieval provider, verifier, caller, Workbench process, or package field cannot submit a completed Content DNA value for admission.
+4. **Hees constructs the projection.** A model, retrieval provider, verifier, caller, package-authoring process, or package field cannot submit a completed Content DNA value for admission.
 5. **The answer and provenance are atomic.** Hees must not expose admitted visible prose if Content DNA construction, validation, canonicalization, or digest computation fails.
 6. **No-answer outcomes are explicit.** A package-authored clarification, or a future package-authored refusal, may carry a closed zero-entry no-answer value; rejection does not masquerade as answer provenance.
 7. **Canonical identity is not terminal authority.** A Content DNA identifier proves deterministic content identity and integrity for the covered body, but a copied or verified document cannot recreate the original Spectrum capability.
@@ -47,7 +47,7 @@ Content DNA also closes an important failure mode in which the visible answer is
 - Distinguish admitted-answer provenance from the permitted zero-entry no-answer representation.
 - Define the relationship between Content DNA and generic RFC 006 receipts without merging their responsibilities.
 - Keep raw source text, answer prose, provider observations, verifier scores, hidden reasoning, private review notes, and unrestricted implementation metadata outside the artifact.
-- Preserve Workbench's package-compilation role without allowing build-time tools to author answer-specific provenance.
+- Preserve the package-compilation role without allowing build-time tools to author answer-specific provenance.
 - Define cross-implementation, privacy, authority-negative, and constrained-device acceptance evidence.
 
 ## Non-Goals
@@ -56,7 +56,7 @@ Content DNA also closes an important failure mode in which the visible answer is
 - Reproducing source passages, complete documents, visible answers, model transcripts, prompts, or hidden reasoning.
 - Replacing source-rights review, organizational policy, semantic claim verification, or Spectrum adjudication.
 - Defining document ingestion, chunking, semantic extraction, embeddings, indexes, retrieval, reranking, or model inference.
-- Exposing complete Workbench review history, reviewer identity, private notes, client metadata, or raw corpus structure.
+- Exposing complete build-time review history, reviewer identity, private notes, client metadata, or raw corpus structure.
 - Acting as a general telemetry, observability, analytics, audit-log, or receipt-chain format.
 - Establishing producer authenticity, signatures, remote attestation, federation, or replay protection.
 
@@ -72,7 +72,7 @@ Applications may display authorized source references or retain the Content DNA 
 
 Content DNA must be constructed inside the terminal Spectrum operation from direct trusted values. The construction function may accept only the trusted RFC 001 decision state, the exact RFC 009 terminal response state, and the RFC 005-admitted package view needed to project selected RFC 003 memory provenance. It must not accept a caller-authored entry list, caller-authored source reference, caller-authored answer digest, or prebuilt Content DNA body.
 
-The package must not contain an answer-specific Content DNA object. It may contain the reviewed source-safe provenance fields from which Hees later constructs entries. Workbench may compile and validate those package fields and may create synthetic expected outputs for acceptance fixtures, but it cannot declare the memory selected for a live answer.
+The package must not contain an answer-specific Content DNA object. It may contain the reviewed source-safe provenance fields from which Hees later constructs entries. Package-authoring tooling may compile and validate those package fields and may create synthetic expected outputs for acceptance fixtures, but it cannot declare the memory selected for a live answer.
 
 A model may emit visible answer units and identifier-only support through RFC 009. It must not emit Content DNA fields, entry order, provenance digests, review status, rights claims, source references, or the Content DNA identifier. A retrieval provider may nominate memory identifiers but cannot determine terminal membership. A verifier may classify exact target-premise relations but cannot author entries.
 
@@ -194,11 +194,11 @@ For admitted_original and admitted_repaired proposal outcomes, the RFC 006 propo
 
 A proposal receipt and Content DNA answer different questions. The receipt records the governed terminal outcome and redacted admitted identifiers; Content DNA records the exact selected reviewed memory and source-safe provenance for the admitted answer. Neither replaces the other, and matching identifiers do not turn an external receipt into in-process authority.
 
-### Workbench and package authoring
+### Package authoring
 
-Workbench may transform approved source material into governed-memory atoms, collect source-safe references and fingerprints, record review and rights state, assign package-owned authority and evidence classifications, compute build-time provenance fixtures, and compile those values into an RFC 005 package artifact.
+Package-authoring tooling may transform approved source material into governed-memory atoms, collect source-safe references and fingerprints, record review and rights state, assign package-owned authority and evidence classifications, compute build-time provenance fixtures, and compile those values into an RFC 005 package artifact.
 
-Workbench must not place answer-specific Content DNA, a live Spectrum decision identifier, a response answer digest, or a terminal selected-memory list into the package. It may generate synthetic expected Content DNA for acceptance fixtures only when the fixture is clearly non-authoritative and Hees recomputes the runtime value independently.
+Package-authoring tooling must not place answer-specific Content DNA, a live Spectrum decision identifier, a response answer digest, or a terminal selected-memory list into the package. It may generate synthetic expected Content DNA for acceptance fixtures only when the fixture is clearly non-authoritative and Hees recomputes the runtime value independently.
 
 Package validation must reject provenance fields that contain raw source text, local paths, credentials, unrestricted private locators, unbounded review notes, or unknown extensions. Source-rights review remains a package-authoring responsibility; Hees validates only the admitted state and policy semantics defined by the contract.
 
@@ -273,7 +273,7 @@ RFC 009 owns exact visible answer units, proposal identity, attempt state, clari
 - Fail-closed fixtures must cover missing, extra, duplicate, reordered, unknown, stale, unreviewed, rights-blocked, package-mismatched, proposal-mismatched, decision-mismatched, policy-mismatched, terminal-mismatched, answer-mismatched, and digest-mismatched entries.
 - State fixtures must reject zero-entry admitted answers, answer digests on no-answer values, entries on clarification, Content DNA on repair-requested or rejected terminals, and artifacts produced before safe identity exists.
 - Cross-implementation fixtures must agree on canonical bytes, answer digest, every provenance digest, source_digests order, content_dna_id, and public verification result.
-- Authority-negative fixtures must prove that models, providers, callers, Workbench, packages, traces, receipts, and publicly verified Content DNA cannot author or recreate the direct terminal value.
+- Authority-negative fixtures must prove that models, providers, callers, package-authoring tooling, packages, traces, receipts, and publicly verified Content DNA cannot author or recreate the direct terminal value.
 - Privacy fixtures must reject source text, answer text, prompts, hidden reasoning, local paths, credentials, arbitrary URIs, provider scores, reviewer identity, private notes, timestamps, and unknown fields.
 - Constrained-device measurements must justify final per-field, entry-count, canonical-body, retained-state, and atomic-return ceilings before Planned.
 
@@ -291,9 +291,9 @@ Rejected because retrieval nomination and context admission do not prove that ev
 
 Rejected because a package is built before a live request and cannot know the answer, terminal decision, or selected-memory subset. The package owns provenance facts, not answer-specific projection.
 
-### Let Workbench emit the final value
+### Let package-authoring tooling emit the final value
 
-Rejected because Workbench owns build-time review and compilation rather than runtime terminal authority. It may create fixtures but Hees must recompute the live result.
+Rejected because package-authoring tooling owns build-time review and compilation rather than runtime terminal authority. It may create fixtures but Hees must recompute the live result.
 
 ### Use only the generic proposal receipt
 
@@ -321,7 +321,7 @@ Those costs are necessary for a system that claims answer-specific governed prov
 - **Package admission:** Exact canonical field schemas and bounds required for entry projection.
 - **Visible response:** Exact answer digest binding and terminal-state emission rules.
 - **Receipts:** Content DNA identifier projection for admitted answers without schema conflation.
-- **Workbench:** Build-time provenance compilation and synthetic fixtures, never live answer-specific authorship.
+- **Package-authoring tooling:** Build-time provenance compilation and synthetic fixtures, never live answer-specific authorship.
 - **Testing:** Golden, fail-closed, authority-negative, privacy, interoperability, and constrained-device evidence.
 
 ## Design Decisions

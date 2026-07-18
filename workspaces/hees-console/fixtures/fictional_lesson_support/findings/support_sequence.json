@@ -1,0 +1,20 @@
+{
+  "contract_version": "console_finding_0_1",
+  "profile_id": "console_profile_0_1",
+  "finding_id": "finding_support_sequence",
+  "observation_id": "observation_support_sequence",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "package_revision": "1.0.0",
+  "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+  "request_id": "request_valid_lantern",
+  "request_digest": "sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71",
+  "candidate_digest": "sha256:1eb12d81b9766254c61281524d9c18cd68ec9027ec65f4f059944b4638ed2b19",
+  "target_id": "target_support_claim_sequence",
+  "target_digest": "sha256:6a12e4324d63e1df7a769c0262370b53e15373a7593a8f32e0164dda4855de3f",
+  "evaluator_role": "evidence_relation",
+  "target_role": "support_claim_memory",
+  "classification": "supported",
+  "constraint_plan_id": "fictional_lesson_constraints",
+  "constraint_plan_revision": "1.0.0"
+}

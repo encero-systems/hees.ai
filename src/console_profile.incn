@@ -1,0 +1,2112 @@
+"""
+Authoritative Incan runtime for the bounded ``console_profile_0_1`` slice.
+
+Provider proposals and verifier observations are untrusted inputs. This module owns profile validation, deterministic
+classification, and the hand-off to the checked structural admission kernel.
+"""
+
+from rust::std::string import String as RustString
+from std.encoding.hex import hexlify
+from std.hash import sha256
+from std.json import JsonValue
+from std.serde import json
+from crate.content_dna import (
+    AdmittedReceiptBody,
+    ContentDna,
+    ContentDnaBody,
+    ContentDnaEntry,
+    ContentDnaPackage,
+    ContentDnaPolicy,
+    ContentDnaTerminal,
+    ProfileReceipt,
+    RejectedReceiptBody,
+    construct_admitted_receipt,
+    construct_content_dna,
+    construct_rejected_receipt,
+    content_dna_identity,
+)
+from crate.runtime import (
+    action_contract,
+    admission_evidence_ids,
+    admission_is_admitted,
+    admission_reason,
+    admit_model_proposal,
+    approved_evidence_record,
+    governed_package,
+    model_proposal,
+)
+
+const CONSOLE_PROFILE_ID: str = "console_profile_0_1"
+const PACKAGE_CONTRACT: str = "console_package_0_1"
+const PROPOSAL_CONTRACT: str = "console_proposal_0_1"
+const RELATION_OBSERVATION_CONTRACT: str = "console_relation_observation_0_1"
+const SYNTHESIS_OBSERVATION_CONTRACT: str = "console_synthesis_observation_0_1"
+const FINDING_CONTRACT: str = "console_finding_0_1"
+const MANIFEST_PLAN_CONTRACT: str = "console_manifest_plan_0_1"
+const PROVIDER_CONTEXT_PLAN_CONTRACT: str = "console_provider_context_plan_0_1"
+const PROPOSAL_IDENTITY_CONTRACT: str = "console_proposal_identity_0_1"
+const REQUEST_PLAN_CONTRACT: str = "console_request_plan_0_1"
+const REASON_NAMESPACE: str = "console_admission_0_1"
+const FIXED_PACKAGE_ID: str = "lantern_labs"
+const FIXED_DOMAIN_ID: str = "fictional_lesson_support"
+const FIXED_PACKAGE_REVISION: str = "1.0.0"
+const FIXED_ARTIFACT_DIGEST: str = "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335"
+
+
+@derive(Clone, json)
+pub model SourceSpan:
+    """Bounded page coordinates retained as source-safe package metadata."""
+
+    pub start_utf8_byte: int
+    pub end_utf8_byte: int
+
+
+@derive(Clone, json)
+pub model ConsoleSource:
+    """Reviewed source identity admitted by the fixed console package."""
+
+    pub source_id: str
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: str
+    pub language: str
+    pub rights_state: str
+    pub text: str
+
+
+@derive(Clone, json)
+pub model ConsoleAction:
+    """Package-owned action and its evidence requirement."""
+
+    pub action_id: str
+    pub evidence_required: bool
+
+
+@derive(Clone, json)
+pub model ConsoleRequirement:
+    """Package-owned visible-answer requirement checked by synthesis findings."""
+
+    pub requirement_id: str
+    pub description: str
+
+
+@derive(Clone, json)
+pub model ConsoleAtom:
+    """Governed memory atom with review, rights, evidence, and provenance identity."""
+
+    pub memory_id: str
+    pub evidence_id: str
+    pub source_id: str
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: str
+    pub source_span: SourceSpan
+    pub claim: str
+    pub guidance: str
+    pub language: str
+    pub review_state: str
+    pub review_revision: str
+    pub rights_state: str
+    pub authority_class: str
+    pub evidence_kind: str
+    pub provenance_digest: str
+
+
+@derive(Clone, json)
+pub model ConsolePolicy:
+    """Package-owned thresholds and constraint identities for finding policy."""
+
+    pub constraint_plan_id: str
+    pub constraint_plan_revision: str
+    pub response_contract_id: str
+    pub response_contract_revision: str
+    pub min_support_bps: int
+    pub max_contradiction_bps: int
+    pub max_relation_unresolved_bps: int
+    pub min_coverage_bps: int
+    pub max_gap_bps: int
+    pub max_synthesis_unresolved_bps: int
+
+
+@derive(Clone, json)
+pub model ConsolePackage:
+    """Closed fictional package accepted by the Build Week console profile."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub mission: str
+    pub sources: list[ConsoleSource]
+    pub actions: list[ConsoleAction]
+    pub requirements: list[ConsoleRequirement]
+    pub atoms: list[ConsoleAtom]
+    pub policy: ConsolePolicy
+
+
+@derive(Clone, json)
+pub model ConsoleRequestBinding:
+    """Exact user question bound to a caller-safe request identity and digest."""
+
+    pub request_id: str
+    pub question: str
+    pub request_digest: str
+
+
+@derive(Clone, json)
+pub model VisibleUnit:
+    """One bounded piece of model-authored visible answer text."""
+
+    pub unit_id: str
+    pub text: str
+    pub requirement_ids: list[str]
+
+
+@derive(Clone, json)
+pub model SupportMapping:
+    """Declared link from one visible support claim to one governed memory atom."""
+
+    pub support_claim_id: str
+    pub unit_id: str
+    pub memory_id: str
+    pub evidence_ids: Option[list[str]]
+
+
+@derive(Clone, json)
+pub model ConsoleProposal:
+    """Untrusted normalized answer candidate submitted to the console profile."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub proposal_id: str
+    pub action_id: str
+    pub evidence_ids: list[str]
+    pub visible_units: list[VisibleUnit]
+    pub support_mappings: list[SupportMapping]
+
+
+@derive(Clone, json)
+pub model PremiseIdentity:
+    """Digest-only memory premise projected into a verifier target."""
+
+    pub memory_id: str
+    pub content_digest: str
+
+
+@derive(Clone, json)
+pub model ManifestTargetBody:
+    """Canonical verifier target identity before its target digest is attached."""
+
+    pub profile_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_digest: str
+    pub candidate_digest: str
+    pub target_id: str
+    pub evaluator_role: str
+    pub target_role: str
+    pub subject_digest: str
+    pub premises: list[PremiseIdentity]
+
+
+@derive(Clone, json)
+pub model ManifestTarget:
+    """Hees-authored verifier target body sealed by a canonical digest."""
+
+    pub body: ManifestTargetBody
+    pub target_digest: str
+
+
+@derive(Clone, json)
+model ConsoleManifestPlan:
+    """Non-terminal Hees-authored evaluator targets for one plannable proposal."""
+
+    contract_version: str
+    profile_id: str
+    plannable: bool
+    targets: list[ManifestTarget]
+
+
+@derive(Clone, json)
+model ConsoleProviderMemory:
+    """Source-safe admitted-memory projection for one untrusted provider context."""
+
+    evidence_id: str
+    memory_id: str
+    claim: str
+    guidance: str
+    language: str
+    source_ref: str
+    source_kind: str
+    source_fingerprint: str
+    review_state: str
+    review_revision: str
+    rights_state: str
+    authority_class: str
+    evidence_kind: str
+
+
+@derive(Clone, json)
+model ConsoleProviderContext:
+    """Validated package and request context safe for an untrusted proposal call."""
+
+    profile_id: str
+    package_id: str
+    domain_id: str
+    package_revision: str
+    artifact_digest: str
+    mission: str
+    request: ConsoleRequestBinding
+    declared_actions: list[ConsoleAction]
+    requirements: list[ConsoleRequirement]
+    admitted_memory: list[ConsoleProviderMemory]
+
+
+@derive(Clone, json)
+model ConsoleProviderContextPlan:
+    """Non-terminal Hees-authored provider context or a closed non-plannable result."""
+
+    contract_version: str
+    profile_id: str
+    plannable: bool
+    context: Option[ConsoleProviderContext]
+
+
+@derive(Clone, json)
+model ConsoleRequestPlan:
+    """Bound request input or a closed non-plannable result for Console composition."""
+
+    contract_version: str
+    profile_id: str
+    plannable: bool
+    request: Option[ConsoleRequestBinding]
+
+
+@derive(Clone, json)
+model ConsoleProposalIdentity:
+    """Read-only canonical identity for provider target binding and inspection."""
+
+    contract_version: str
+    profile_id: str
+    proposal_id: str
+    candidate_digest: str
+
+
+@derive(Clone, json)
+pub model RelationObservation:
+    """Bounded non-authoritative relation scores over one manifest target."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub observation_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub candidate_digest: str
+    pub target_id: str
+    pub target_digest: str
+    pub evaluator_role: str
+    pub target_role: str
+    pub support_bps: int
+    pub contradiction_bps: int
+    pub unresolved_bps: int
+    pub model_fingerprint: str
+    pub prompt_fingerprint: str
+    pub configuration_fingerprint: str
+
+
+@derive(Clone, json)
+pub model SynthesisObservation:
+    """Bounded non-authoritative synthesis scores over one manifest target."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub observation_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub candidate_digest: str
+    pub target_id: str
+    pub target_digest: str
+    pub evaluator_role: str
+    pub target_role: str
+    pub covered_bps: int
+    pub gap_bps: int
+    pub unresolved_bps: int
+    pub model_fingerprint: str
+    pub prompt_fingerprint: str
+    pub configuration_fingerprint: str
+
+
+@derive(Clone, json)
+pub model DerivedFinding:
+    """Hees-owned classification derived from one validated observation."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub finding_id: str
+    pub observation_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub request_id: str
+    pub request_digest: str
+    pub candidate_digest: str
+    pub target_id: str
+    pub target_digest: str
+    pub evaluator_role: str
+    pub target_role: str
+    pub classification: str
+    pub constraint_plan_id: str
+    pub constraint_plan_revision: str
+
+
+@derive(Clone, json)
+pub model ProfileValidation:
+    """Closed validation outcome with one public reason and bounded diagnostics."""
+
+    pub valid: bool
+    pub reason: str
+    pub errors: list[str]
+
+
+@derive(Clone, json)
+pub model SpectrumResult:
+    """Terminal profile decision returned by the bounded Spectrum operation."""
+
+    pub decision_id: str
+    pub admitted: bool
+    pub decision: str
+    pub reason_namespace: str
+    pub reason: str
+    pub structural_reason: Option[str]
+    pub admitted_evidence_ids: list[str]
+    pub selected_memory_ids: list[str]
+
+
+@derive(Clone, json)
+pub model ProfileEvaluation:
+    """Pre-artifact terminal evaluation and its admitted output projections."""
+
+    pub manifest: list[ManifestTarget]
+    pub findings: list[DerivedFinding]
+    pub spectrum: SpectrumResult
+    pub admitted_visible_units: list[VisibleUnit]
+    pub selected_memory: list[ConsoleAtom]
+
+
+@derive(Clone, json)
+pub model CompleteProfileEvaluation:
+    """Terminal evaluation plus internal artifacts projected as canonical JSON."""
+
+    pub manifest: list[ManifestTarget]
+    pub findings: list[DerivedFinding]
+    pub spectrum: SpectrumResult
+    pub admitted_visible_units: list[VisibleUnit]
+    pub selected_memory: list[ConsoleAtom]
+    pub content_dna_json: Option[str]
+    pub receipt_json: Option[str]
+
+
+@derive(Clone)
+model StructuralAdmission:
+    """Private projection of the generic kernel's structural admission result."""
+
+    admitted: bool
+    reason: str
+    evidence_ids: list[str]
+
+
+@derive(Clone, json)
+model AtomArtifactProjection:
+    """Atom fields covered by the fixed package artifact digest."""
+
+    memory_id: str
+    evidence_id: str
+    source_id: str
+    source_ref: str
+    source_kind: str
+    source_fingerprint: str
+    source_span: SourceSpan
+    claim: str
+    guidance: str
+    language: str
+    review_state: str
+    review_revision: str
+    rights_state: str
+    authority_class: str
+    evidence_kind: str
+
+
+@derive(Clone, json)
+model PackageArtifactProjection:
+    """Package body covered by the fixed artifact identity."""
+
+    contract_version: str
+    profile_id: str
+    package_id: str
+    domain_id: str
+    package_revision: str
+    mission: str
+    sources: list[ConsoleSource]
+    actions: list[ConsoleAction]
+    requirements: list[ConsoleRequirement]
+    atoms: list[AtomArtifactProjection]
+    policy: ConsolePolicy
+
+
+@derive(Clone, json)
+model PackageIdentity:
+    """Package identity bound into each atom provenance digest."""
+
+    package_id: str
+    domain_id: str
+    package_revision: str
+    artifact_digest: str
+
+
+@derive(Clone, json)
+model ProvenanceEntry:
+    """Atom metadata bound alongside its fixed package identity."""
+
+    memory_id: str
+    source_ref: str
+    source_kind: str
+    source_fingerprint: str
+    review_state: str
+    review_revision: str
+    rights_state: str
+    authority_class: str
+    evidence_kind: str
+
+
+@derive(Clone, json)
+model ProvenanceProjection:
+    """Canonical package-and-entry body used for atom provenance hashing."""
+
+    package: PackageIdentity
+    entry: ProvenanceEntry
+
+
+@derive(Clone, json)
+model PremiseProjection:
+    """Memory content fields bound into a verifier premise digest."""
+
+    memory_id: str
+    claim: str
+    guidance: str
+    language: str
+    source_ref: str
+    source_kind: str
+    source_fingerprint: str
+    review_state: str
+    review_revision: str
+    rights_state: str
+    authority_class: str
+    evidence_kind: str
+
+
+@derive(Clone, json)
+model VisibleUnitSubject:
+    """Verifier subject for one visible answer unit."""
+
+    subject_kind: str
+    unit: VisibleUnit
+
+
+@derive(Clone, json)
+model SupportClaimSubject:
+    """Verifier subject for one support claim and its visible text."""
+
+    subject_kind: str
+    support_claim_id: str
+    unit_id: str
+    text: str
+
+
+@derive(Clone, json)
+model VisibleResponseSubject:
+    """Verifier subject spanning the complete ordered visible response."""
+
+    subject_kind: str
+    visible_units: list[VisibleUnit]
+
+
+@derive(Clone, json)
+model RequestSynthesisSubject:
+    """Synthesis subject binding visible units to the exact request digest."""
+
+    subject_kind: str
+    visible_units: list[VisibleUnit]
+    request_digest: str
+
+
+@derive(Clone, json)
+model RequirementSynthesisSubject:
+    """Synthesis subject for one package-owned answer requirement."""
+
+    subject_kind: str
+    visible_units: list[VisibleUnit]
+    requirement: ConsoleRequirement
+
+
+@derive(Clone, json)
+model RequestDigestProjection:
+    """Exact request fields covered by the request digest."""
+
+    request_id: str
+    question: str
+
+
+@derive(Clone, json)
+model AnswerProjection:
+    """Ordered visible units covered by the admitted-answer digest."""
+
+    visible_units: list[VisibleUnit]
+
+
+pub def digest_canonical_json(source: str) -> str:
+    """Return a lowercase SHA-256 identity over canonicalized serializable JSON."""
+    match JsonValue.parse(source):
+        Err(_) => return ""
+        Ok(value) =>
+            match value.to_json():
+                Err(_) => return ""
+                Ok(canonical) => return f"sha256:{hexlify(sha256.digest(RustString.from(canonical).into_bytes()))}"
+
+
+def digest_text_bytes(value: str) -> str:
+    """Hash an exact UTF-8 string without JSON canonicalization."""
+
+    return f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}"
+
+
+def validation_ok() -> ProfileValidation:
+    """Construct the shared successful validation value."""
+
+    return ProfileValidation(valid=true, reason="ok", errors=[])
+
+
+def validation_error(reason: str, error: str) -> ProfileValidation:
+    """Construct one closed public reason with a bounded internal diagnostic."""
+
+    return ProfileValidation(valid=false, reason=reason, errors=[error])
+
+
+def identifier_is_safe(value: str) -> bool:
+    """Accept one bounded lowercase profile identifier."""
+
+    if value == "" or len(value) > 128 or value.strip() != value:
+        return false
+    if "_-".contains(value[0:1]):
+        return false
+    for character in value:
+        if not "abcdefghijklmnopqrstuvwxyz0123456789_-".contains(character):
+            return false
+    return true
+
+
+def digest_is_safe(value: str) -> bool:
+    """Check the exact lowercase ``sha256:`` digest spelling."""
+
+    if len(value) != 71 or not value.startswith("sha256:"):
+        return false
+    for character in value[7:]:
+        if not "0123456789abcdef".contains(character):
+            return false
+    return true
+
+
+def revision_is_safe(value: str) -> bool:
+    """Accept one bounded three-component numeric revision."""
+
+    if value == "" or len(value) > 32:
+        return false
+    parts = value.split(".")
+    if len(parts) != 3:
+        return false
+    for part in parts:
+        if part == "":
+            return false
+        for character in part:
+            if not "0123456789".contains(character):
+                return false
+    return true
+
+
+def source_ref_is_safe(value: str) -> bool:
+    """Accept a bounded fictional source reference without traversal syntax."""
+
+    if len(value) == 0 or len(value) > 256 or not value.startswith("fictional/") or value.contains(".."):
+        return false
+    for character in value:
+        if not "abcdefghijklmnopqrstuvwxyz0123456789_./-".contains(character):
+            return false
+    return true
+
+
+def has_duplicate_strings(values: list[str]) -> bool:
+    """Return whether a bounded string list repeats an earlier value."""
+
+    mut seen: list[str] = []
+    for value in values:
+        if seen.contains(value):
+            return true
+        seen.append(value)
+    return false
+
+
+def source_ids(sources: list[ConsoleSource]) -> list[str]:
+    """Project source identifiers while preserving package order."""
+
+    mut result: list[str] = []
+    for source in sources:
+        result.append(source.source_id)
+    return result
+
+
+def action_ids(actions: list[ConsoleAction]) -> list[str]:
+    """Project action identifiers while preserving package order."""
+
+    mut result: list[str] = []
+    for action in actions:
+        result.append(action.action_id)
+    return result
+
+
+def requirement_ids(requirements: list[ConsoleRequirement]) -> list[str]:
+    """Project requirement identifiers while preserving package order."""
+
+    mut result: list[str] = []
+    for requirement in requirements:
+        result.append(requirement.requirement_id)
+    return result
+
+
+def memory_ids(atoms: list[ConsoleAtom]) -> list[str]:
+    """Project memory identifiers while preserving package order."""
+
+    mut result: list[str] = []
+    for atom in atoms:
+        result.append(atom.memory_id)
+    return result
+
+
+def evidence_ids(atoms: list[ConsoleAtom]) -> list[str]:
+    """Project evidence identifiers while preserving package order."""
+
+    mut result: list[str] = []
+    for atom in atoms:
+        result.append(atom.evidence_id)
+    return result
+
+
+def atom_artifact_projection(atom: ConsoleAtom) -> AtomArtifactProjection:
+    """Remove only the derived provenance digest from an artifact atom."""
+
+    return AtomArtifactProjection(
+        memory_id=atom.memory_id,
+        evidence_id=atom.evidence_id,
+        source_id=atom.source_id,
+        source_ref=atom.source_ref,
+        source_kind=atom.source_kind,
+        source_fingerprint=atom.source_fingerprint,
+        source_span=atom.source_span,
+        claim=atom.claim,
+        guidance=atom.guidance,
+        language=atom.language,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+        authority_class=atom.authority_class,
+        evidence_kind=atom.evidence_kind,
+    )
+
+
+pub def digest_package_artifact(package: ConsolePackage) -> str:
+    """Recompute the fixed package digest over its canonical artifact projection."""
+
+    mut atoms: list[AtomArtifactProjection] = []
+    for atom in package.atoms:
+        atoms.append(atom_artifact_projection(atom))
+    projection = PackageArtifactProjection(
+        contract_version=package.contract_version,
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        mission=package.mission,
+        sources=package.sources,
+        actions=package.actions,
+        requirements=package.requirements,
+        atoms=atoms,
+        policy=package.policy,
+    )
+    return digest_canonical_json(projection.to_json())
+
+
+pub def digest_atom_provenance(package: ConsolePackage, atom: ConsoleAtom) -> str:
+    """Bind one atom's review and source metadata to the exact package identity."""
+
+    projection = ProvenanceProjection(
+        package=PackageIdentity(
+            package_id=package.package_id,
+            domain_id=package.domain_id,
+            package_revision=package.package_revision,
+            artifact_digest=package.artifact_digest,
+        ),
+        entry=ProvenanceEntry(
+            memory_id=atom.memory_id,
+            source_ref=atom.source_ref,
+            source_kind=atom.source_kind,
+            source_fingerprint=atom.source_fingerprint,
+            review_state=atom.review_state,
+            review_revision=atom.review_revision,
+            rights_state=atom.rights_state,
+            authority_class=atom.authority_class,
+            evidence_kind=atom.evidence_kind,
+        ),
+    )
+    return digest_canonical_json(projection.to_json())
+
+
+def find_source(sources: list[ConsoleSource], source_id: str) -> Option[ConsoleSource]:
+    """Find one package source by exact identifier."""
+
+    for source in sources:
+        if source.source_id == source_id:
+            return Some(source)
+    return None
+
+
+pub def atom_is_admitted(atom: ConsoleAtom) -> bool:
+    """Return whether review and rights state admit an atom for runtime use."""
+
+    return atom.review_state == "approved" and atom.rights_state == "allowed"
+
+
+pub def admitted_atoms(package: ConsolePackage) -> list[ConsoleAtom]:
+    """Select admitted atoms without changing their package order."""
+
+    mut result: list[ConsoleAtom] = []
+    for atom in package.atoms:
+        if atom_is_admitted(atom.clone()):
+            result.append(atom)
+    return result
+
+
+pub def validate_console_package(package: ConsolePackage) -> ProfileValidation:
+    """Validate the closed fixed-profile package and all derived identities."""
+    if package.contract_version != PACKAGE_CONTRACT or package.profile_id != CONSOLE_PROFILE_ID:
+        return validation_error("invalid_package", "unsupported_package_contract")
+    if not identifier_is_safe(package.package_id) or not identifier_is_safe(package.domain_id):
+        return validation_error("invalid_package", "invalid_package_identity")
+    if not revision_is_safe(package.package_revision):
+        return validation_error("invalid_package", "invalid_package_revision")
+    if package.mission.strip() == "" or len(package.mission) > 512:
+        return validation_error("invalid_package", "invalid_package_mission")
+    if len(package.sources) != 3 or has_duplicate_strings(source_ids(package.sources.clone())):
+        return validation_error("invalid_package", "invalid_package_sources")
+    if len(package.actions) != 3 or has_duplicate_strings(action_ids(package.actions.clone())):
+        return validation_error("invalid_package", "invalid_package_actions")
+    if len(package.requirements) < 1 or len(package.requirements) > 4:
+        return validation_error("invalid_package", "invalid_package_requirements")
+    if has_duplicate_strings(requirement_ids(package.requirements.clone())):
+        return validation_error("invalid_package", "duplicate_requirement_id")
+    if len(package.atoms) != 4:
+        return validation_error("invalid_package", "invalid_package_atoms")
+    if has_duplicate_strings(memory_ids(package.atoms.clone())) or has_duplicate_strings(
+        evidence_ids(package.atoms.clone()),
+    ):
+        return validation_error("invalid_package", "duplicate_atom_identity")
+    if package.policy.min_support_bps != 6500 or package.policy.max_contradiction_bps != 3500:
+        return validation_error("invalid_package", "invalid_relation_policy")
+    if package.policy.max_relation_unresolved_bps != 2500 or package.policy.min_coverage_bps != 6500:
+        return validation_error("invalid_package", "invalid_coverage_policy")
+    if package.policy.max_gap_bps != 3500 or package.policy.max_synthesis_unresolved_bps != 2500:
+        return validation_error("invalid_package", "invalid_synthesis_policy")
+    if not identifier_is_safe(package.policy.constraint_plan_id) or not revision_is_safe(
+        package.policy.constraint_plan_revision,
+    ):
+        return validation_error("invalid_package", "invalid_constraint_plan")
+    if not identifier_is_safe(package.policy.response_contract_id) or not revision_is_safe(
+        package.policy.response_contract_revision,
+    ):
+        return validation_error("invalid_package", "invalid_response_contract")
+
+    for source in package.sources.clone():
+        if not identifier_is_safe(source.source_id) or not source_ref_is_safe(source.source_ref):
+            return validation_error("invalid_package", "invalid_source_identity")
+        if source.source_kind != "fictional_lesson_note" or source.language != "en":
+            return validation_error("invalid_package", "unsupported_source_contract")
+        if source.rights_state != "fictional_use_allowed" or len(source.text) == 0 or len(source.text) > 4096:
+            return validation_error("invalid_package", "invalid_source_content")
+        if not digest_is_safe(source.source_fingerprint) or digest_text_bytes(source.text) != source.source_fingerprint:
+            return validation_error("invalid_package", "source_fingerprint_mismatch")
+    for action in package.actions.clone():
+        if not identifier_is_safe(action.action_id):
+            return validation_error("invalid_package", "invalid_action_id")
+    for requirement in package.requirements.clone():
+        if not identifier_is_safe(requirement.requirement_id):
+            return validation_error("invalid_package", "invalid_requirement_id")
+        if requirement.description.strip() == "" or len(requirement.description) > 256:
+            return validation_error("invalid_package", "invalid_requirement_description")
+    for atom in package.atoms.clone():
+        if not identifier_is_safe(atom.memory_id) or not identifier_is_safe(atom.evidence_id):
+            return validation_error("invalid_package", "invalid_atom_identity")
+        if not identifier_is_safe(atom.source_id) or not source_ref_is_safe(atom.source_ref):
+            return validation_error("invalid_package", "invalid_atom_source")
+        if atom.source_kind != "fictional_lesson_note" or atom.language != "en":
+            return validation_error("invalid_package", "unsupported_atom_contract")
+        if not ["approved", "pending", "rejected"].contains(f"{atom.review_state}"):
+            return validation_error("invalid_package", "invalid_atom_review_state")
+        if not ["allowed", "denied"].contains(f"{atom.rights_state}"):
+            return validation_error("invalid_package", "invalid_atom_rights_state")
+        if atom.authority_class != "reviewed_fixture":
+            return validation_error("invalid_package", "invalid_atom_authority")
+        if not ["lesson_fact", "lesson_guidance", "discarded_draft"].contains(f"{atom.evidence_kind}"):
+            return validation_error("invalid_package", "invalid_atom_evidence_kind")
+        if not revision_is_safe(atom.review_revision):
+            return validation_error("invalid_package", "invalid_atom_review_revision")
+        if atom.claim.strip() == "" or len(atom.claim) > 512 or atom.guidance.strip() == "" or len(atom.guidance) > 512:
+            return validation_error("invalid_package", "invalid_atom_content")
+        match find_source(package.sources.clone(), atom.source_id):
+            None => return validation_error("invalid_package", "unknown_atom_source")
+            Some(source) =>
+                if atom.source_ref != source.source_ref or atom.source_kind != source.source_kind:
+                    return validation_error("invalid_package", "atom_source_identity_mismatch")
+                if atom.source_fingerprint != source.source_fingerprint or atom.language != source.language:
+                    return validation_error("invalid_package", "atom_source_identity_mismatch")
+                source_text = RustString.from(source.text)
+                if atom.source_span.start_utf8_byte < 0 or atom.source_span.start_utf8_byte >= atom.source_span.end_utf8_byte:
+                    return validation_error("invalid_package", "invalid_atom_source_span")
+                maybe_start_boundary: Option[usize] = atom.source_span.start_utf8_byte.try_resize()
+                maybe_end_boundary: Option[usize] = atom.source_span.end_utf8_byte.try_resize()
+                match maybe_start_boundary:
+                    None => return validation_error("invalid_package", "invalid_atom_source_span")
+                    Some(start_boundary) =>
+                        match maybe_end_boundary:
+                            None => return validation_error("invalid_package", "invalid_atom_source_span")
+                            Some(end_boundary) =>
+                                if not source_text.is_char_boundary(start_boundary) or not source_text.is_char_boundary(
+                                    end_boundary,
+                                ):
+                                    return validation_error("invalid_package", "invalid_atom_source_span")
+                bytes = source_text.into_bytes()
+                if atom.source_span.end_utf8_byte > len(bytes):
+                    return validation_error("invalid_package", "invalid_atom_source_span")
+        if not digest_is_safe(atom.provenance_digest):
+            return validation_error("invalid_package", "invalid_atom_provenance_digest")
+        if digest_atom_provenance(package.clone(), atom.clone()) != atom.provenance_digest:
+            return validation_error("invalid_package", "atom_provenance_digest_mismatch")
+    if not digest_is_safe(package.artifact_digest) or digest_package_artifact(package.clone()) != package.artifact_digest:
+        return validation_error("invalid_package", "artifact_digest_mismatch")
+    if len(admitted_atoms(package.clone())) == 0:
+        return validation_error("memory_context_invalid", "no_admitted_memory")
+    if package.package_id != FIXED_PACKAGE_ID:
+        return validation_error("package_id_mismatch", "fixed_package_id_mismatch")
+    if package.domain_id != FIXED_DOMAIN_ID:
+        return validation_error("domain_id_mismatch", "fixed_domain_id_mismatch")
+    if package.package_revision != FIXED_PACKAGE_REVISION:
+        return validation_error("package_revision_mismatch", "fixed_package_revision_mismatch")
+    if package.artifact_digest != FIXED_ARTIFACT_DIGEST:
+        return validation_error("artifact_digest_mismatch", "fixed_artifact_digest_mismatch")
+    return validation_ok()
+
+
+pub def digest_request_binding(request: ConsoleRequestBinding) -> str:
+    """Bind the exact request identifier and question without normalization."""
+    projection = RequestDigestProjection(request_id=request.request_id, question=request.question)
+    return digest_canonical_json(projection.to_json())
+
+
+pub def classify_relation(policy: ConsolePolicy, support_bps: int, contradiction_bps: int, unresolved_bps: int) -> str:
+    """Classify a relation score triple in the profile's fail-closed precedence."""
+    if contradiction_bps > policy.max_contradiction_bps:
+        return "contradicted"
+    if unresolved_bps > policy.max_relation_unresolved_bps:
+        return "uncertain"
+    if support_bps >= policy.min_support_bps:
+        return "supported"
+    return "unsupported"
+
+
+pub def classify_synthesis(policy: ConsolePolicy, covered_bps: int, gap_bps: int, unresolved_bps: int) -> str:
+    """Classify a synthesis score triple in the profile's fail-closed precedence."""
+    if gap_bps > policy.max_gap_bps:
+        return "not_covered"
+    if unresolved_bps > policy.max_synthesis_unresolved_bps:
+        return "uncertain"
+    if covered_bps >= policy.min_coverage_bps:
+        return "covered"
+    return "not_covered"
+
+
+pub def validate_request_binding(request: ConsoleRequestBinding) -> ProfileValidation:
+    """Validate an exact, non-normalized request binding."""
+    if not identifier_is_safe(request.request_id):
+        return validation_error("request_id_invalid", "invalid_request_id")
+    if request.question.strip() == "" or len(request.question) > 512:
+        return validation_error("invalid_request_schema", "invalid_question")
+    if not digest_is_safe(request.request_digest) or digest_request_binding(request.clone()) != request.request_digest:
+        return validation_error("request_digest_mismatch", "request_digest_mismatch")
+    return validation_ok()
+
+
+pub def digest_proposal(proposal: ConsoleProposal) -> str:
+    """Bind the complete normalized proposal, including exact visible units and request digest."""
+    return digest_canonical_json(proposal.to_json())
+
+
+def find_atom_by_memory(atoms: list[ConsoleAtom], memory_id: str) -> Option[ConsoleAtom]:
+    """Find one package atom by exact memory identifier."""
+
+    for atom in atoms:
+        if atom.memory_id == memory_id:
+            return Some(atom)
+    return None
+
+
+def find_atom_by_evidence(atoms: list[ConsoleAtom], evidence_id: str) -> Option[ConsoleAtom]:
+    """Find one package atom by exact evidence identifier."""
+
+    for atom in atoms:
+        if atom.evidence_id == evidence_id:
+            return Some(atom)
+    return None
+
+
+def find_unit(units: list[VisibleUnit], unit_id: str) -> Option[VisibleUnit]:
+    """Find one visible unit by exact identifier."""
+
+    for unit in units:
+        if unit.unit_id == unit_id:
+            return Some(unit)
+    return None
+
+
+def action_requirement(actions: list[ConsoleAction], action_id: str) -> Option[bool]:
+    """Return the evidence requirement for one declared action."""
+
+    for action in actions:
+        if action.action_id == action_id:
+            return Some(action.evidence_required)
+    return None
+
+
+def visible_unit_ids(units: list[VisibleUnit]) -> list[str]:
+    """Project visible-unit identifiers while preserving answer order."""
+
+    mut result: list[str] = []
+    for unit in units:
+        result.append(unit.unit_id)
+    return result
+
+
+def support_claim_ids(mappings: list[SupportMapping]) -> list[str]:
+    """Project support-claim identifiers while preserving declaration order."""
+
+    mut result: list[str] = []
+    for mapping in mappings:
+        result.append(mapping.support_claim_id)
+    return result
+
+
+def validate_console_proposal_identity(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> ProfileValidation:
+    """Establish only the package, request, contract, and proposal identity safe for a receipt."""
+    if proposal.contract_version != PROPOSAL_CONTRACT or proposal.profile_id != CONSOLE_PROFILE_ID:
+        return validation_error("unsupported_proposal_contract", "unsupported_proposal_contract")
+    if len(proposal.to_json()) > 131072:
+        return validation_error("proposal_too_large", "proposal_too_large")
+    if proposal.package_id != package.package_id:
+        return validation_error("package_id_mismatch", "proposal_package_id_mismatch")
+    if proposal.domain_id != package.domain_id:
+        return validation_error("domain_id_mismatch", "proposal_domain_id_mismatch")
+    if proposal.package_revision != package.package_revision:
+        return validation_error("package_revision_mismatch", "proposal_package_revision_mismatch")
+    if proposal.artifact_digest != package.artifact_digest:
+        return validation_error("artifact_digest_mismatch", "proposal_artifact_digest_mismatch")
+    if proposal.request_id != request.request_id or proposal.request_digest != request.request_digest:
+        return validation_error("proposal_request_mismatch", "proposal_request_mismatch")
+    if not identifier_is_safe(proposal.proposal_id):
+        return validation_error("invalid_proposal_schema", "invalid_proposal_id")
+    if len(proposal.evidence_ids) > 8:
+        return validation_error("invalid_proposal_schema", "too_many_evidence_references")
+    for evidence_id in proposal.evidence_ids.clone():
+        if not identifier_is_safe(evidence_id):
+            return validation_error("invalid_proposal_schema", "invalid_evidence_reference")
+    return validation_ok()
+
+
+pub def validate_console_proposal(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> ProfileValidation:
+    """Validate proposal identity, visible-answer singularity, support, and admitted-memory references."""
+    identity = validate_console_proposal_identity(package.clone(), request.clone(), proposal.clone())
+    if not identity.valid:
+        return identity
+    if len(proposal.visible_units) == 0:
+        return validation_error("missing_visible_output", "missing_visible_units")
+    if len(proposal.visible_units) > 8 or has_duplicate_strings(visible_unit_ids(proposal.visible_units.clone())):
+        return validation_error("invalid_visible_unit", "invalid_visible_units")
+    for unit in proposal.visible_units.clone():
+        if not identifier_is_safe(unit.unit_id) or unit.text.strip() == "" or len(unit.text) > 1024:
+            return validation_error("invalid_visible_unit", "invalid_visible_unit")
+        if len(unit.requirement_ids) == 0 or len(unit.requirement_ids) > 4 or has_duplicate_strings(
+            unit.requirement_ids.clone(),
+        ):
+            return validation_error("invalid_visible_unit", "invalid_unit_requirements")
+        for requirement_id in unit.requirement_ids:
+            if not requirement_ids(package.requirements.clone()).contains(requirement_id):
+                return validation_error("invalid_visible_unit", "unknown_unit_requirement")
+    match action_requirement(package.actions.clone(), proposal.action_id):
+        None => return validation_error("unknown_action", "unknown_action")
+        Some(evidence_required) =>
+            if has_duplicate_strings(proposal.evidence_ids.clone()):
+                return validation_error("duplicate_evidence_reference", "duplicate_evidence_reference")
+            for mapping in proposal.support_mappings.clone():
+                match mapping.evidence_ids:
+                    None => pass
+                    Some(mapping_evidence_ids) =>
+                        if has_duplicate_strings(mapping_evidence_ids):
+                            return validation_error("duplicate_evidence_reference", "duplicate_support_evidence")
+            if evidence_required and len(proposal.evidence_ids) == 0:
+                return validation_error("evidence_required", "evidence_required")
+    for evidence_id in proposal.evidence_ids.clone():
+        match find_atom_by_evidence(package.atoms.clone(), evidence_id):
+            None => return validation_error("unknown_evidence", "unknown_evidence")
+            Some(_) => pass
+    if len(proposal.support_mappings) != len(proposal.visible_units):
+        return validation_error("support_mapping_invalid", "support_coverage_invalid")
+    if len(proposal.support_mappings) > 8 or has_duplicate_strings(support_claim_ids(proposal.support_mappings.clone())):
+        return validation_error("support_mapping_invalid", "duplicate_support_claim")
+    for index in range(len(proposal.support_mappings)):
+        mapping = proposal.support_mappings[index]
+        unit = proposal.visible_units[index]
+        if not identifier_is_safe(mapping.support_claim_id) or mapping.unit_id != unit.unit_id:
+            return validation_error("support_mapping_invalid", "support_unit_order_invalid")
+        if not identifier_is_safe(mapping.memory_id):
+            return validation_error("support_mapping_invalid", "invalid_memory_reference")
+        match mapping.evidence_ids.clone():
+            None => pass
+            Some(mapping_evidence_ids) =>
+                if len(mapping_evidence_ids) == 0 or len(mapping_evidence_ids) > 4:
+                    return validation_error("support_mapping_invalid", "support_evidence_invalid")
+                for evidence_id in mapping_evidence_ids:
+                    if not proposal.evidence_ids.contains(evidence_id):
+                        return validation_error("support_mapping_invalid", "support_evidence_not_declared")
+        match find_atom_by_memory(package.atoms.clone(), mapping.memory_id):
+            None => pass
+            Some(atom) =>
+                match mapping.evidence_ids:
+                    None =>
+                        if not proposal.evidence_ids.contains(atom.evidence_id):
+                            return validation_error("support_mapping_invalid", "support_memory_evidence_mismatch")
+                    Some(mapping_evidence_ids) =>
+                        if not mapping_evidence_ids.contains(atom.evidence_id):
+                            return validation_error("support_mapping_invalid", "support_memory_evidence_mismatch")
+    for mapping in proposal.support_mappings.clone():
+        match find_atom_by_memory(package.atoms.clone(), mapping.memory_id):
+            None => return validation_error("unknown_memory", "unknown_memory")
+            Some(_) => pass
+    for evidence_id in proposal.evidence_ids.clone():
+        match find_atom_by_evidence(package.atoms.clone(), evidence_id):
+            None => pass
+            Some(atom) =>
+                if not atom_is_admitted(atom):
+                    return validation_error("memory_not_admitted", "evidence_memory_not_admitted")
+    for mapping in proposal.support_mappings:
+        match find_atom_by_memory(package.atoms.clone(), mapping.memory_id):
+            None => pass
+            Some(atom) =>
+                if not atom_is_admitted(atom):
+                    return validation_error("memory_not_admitted", "memory_not_admitted")
+    return validation_ok()
+
+
+def premise_identity(atom: ConsoleAtom) -> PremiseIdentity:
+    """Project one governed atom into a source-free verifier premise identity."""
+
+    projection = PremiseProjection(
+        memory_id=atom.memory_id,
+        claim=atom.claim,
+        guidance=atom.guidance,
+        language=atom.language,
+        source_ref=atom.source_ref,
+        source_kind=atom.source_kind,
+        source_fingerprint=atom.source_fingerprint,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+        authority_class=atom.authority_class,
+        evidence_kind=atom.evidence_kind,
+    )
+    return PremiseIdentity(memory_id=projection.memory_id, content_digest=digest_canonical_json(projection.to_json()))
+
+
+def admitted_premises(package: ConsolePackage) -> list[PremiseIdentity]:
+    """Project all admitted package atoms into ordered verifier premises."""
+
+    mut result: list[PremiseIdentity] = []
+    for atom in admitted_atoms(package):
+        result.append(premise_identity(atom))
+    return result
+
+
+def target(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    candidate_digest: str,
+    target_id: str,
+    evaluator_role: str,
+    target_role: str,
+    subject_digest: str,
+    premises: list[PremiseIdentity],
+) -> ManifestTarget:
+    """Seal one canonical verifier target under its target digest."""
+
+    body = ManifestTargetBody(
+        profile_id=CONSOLE_PROFILE_ID,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        request_digest=request.request_digest,
+        candidate_digest=candidate_digest,
+        target_id=target_id,
+        evaluator_role=evaluator_role,
+        target_role=target_role,
+        subject_digest=subject_digest,
+        premises=premises,
+    )
+    return ManifestTarget(body=body.clone(), target_digest=digest_canonical_json(body.to_json()))
+
+
+def suffix_after(value: str, prefix: str) -> str:
+    """Remove a known identifier prefix without changing unmatched values."""
+
+    if value.startswith(prefix):
+        return value[len(prefix):]
+    return value
+
+
+pub def build_verifier_manifest(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> list[ManifestTarget]:
+    """Derive the complete ordered evaluator manifest from authoritative profile state."""
+    candidate_digest = digest_proposal(proposal.clone())
+    all_premises = admitted_premises(package.clone())
+    mut targets: list[ManifestTarget] = []
+    for unit in proposal.visible_units.clone():
+        subject = VisibleUnitSubject(subject_kind="visible_unit", unit=unit.clone())
+        targets.append(
+            target(
+                package.clone(),
+                request.clone(),
+                candidate_digest,
+                f"target_visible_unit_{suffix_after(unit.unit_id, "unit_")}",
+                "evidence_relation",
+                "visible_unit_union",
+                digest_canonical_json(subject.to_json()),
+                all_premises.clone(),
+            ),
+        )
+    for mapping in proposal.support_mappings.clone():
+        match find_unit(proposal.visible_units.clone(), mapping.unit_id):
+            None => return []
+            Some(unit) =>
+                match find_atom_by_memory(package.atoms.clone(), mapping.memory_id):
+                    None => return []
+                    Some(atom) =>
+                        subject = SupportClaimSubject(
+                            subject_kind="support_claim",
+                            support_claim_id=mapping.support_claim_id,
+                            unit_id=mapping.unit_id,
+                            text=unit.text,
+                        )
+                        targets.append(
+                            target(
+                                package.clone(),
+                                request.clone(),
+                                candidate_digest,
+                                f"target_support_claim_{suffix_after(subject.support_claim_id, "support_")}",
+                                "evidence_relation",
+                                "support_claim_memory",
+                                digest_canonical_json(subject.to_json()),
+                                [premise_identity(atom)],
+                            ),
+                        )
+    response_subject = VisibleResponseSubject(
+        subject_kind="visible_response",
+        visible_units=proposal.visible_units.clone(),
+    )
+    targets.append(
+        target(
+            package.clone(),
+            request.clone(),
+            candidate_digest,
+            "target_proposal_contradiction",
+            "contradiction_cross_check",
+            "proposal_union",
+            digest_canonical_json(response_subject.to_json()),
+            all_premises,
+        ),
+    )
+    request_subject = RequestSynthesisSubject(
+        subject_kind="request_synthesis",
+        visible_units=proposal.visible_units.clone(),
+        request_digest=request.request_digest,
+    )
+    targets.append(
+        target(
+            package.clone(),
+            request.clone(),
+            candidate_digest,
+            "target_request_coverage",
+            "synthesis_coverage",
+            "request_coverage",
+            digest_canonical_json(request_subject.to_json()),
+            [],
+        ),
+    )
+    for requirement in package.requirements.clone():
+        requirement_subject = RequirementSynthesisSubject(
+            subject_kind="requirement_synthesis",
+            visible_units=proposal.visible_units.clone(),
+            requirement=requirement.clone(),
+        )
+        targets.append(
+            target(
+                package.clone(),
+                request.clone(),
+                candidate_digest,
+                f"target_requirement_{requirement.requirement_id}",
+                "synthesis_coverage",
+                "requirement_coverage",
+                digest_canonical_json(requirement_subject.to_json()),
+                [],
+            ),
+        )
+    return targets
+
+
+pub def plan_console_manifest_json(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> str:
+    """Return Hees-authored evaluator targets without exposing internal target types as public authority."""
+
+    if not validate_console_package(package.clone()).valid:
+        return ConsoleManifestPlan(
+            contract_version=MANIFEST_PLAN_CONTRACT,
+            profile_id=CONSOLE_PROFILE_ID,
+            plannable=false,
+            targets=[],
+        ).to_json()
+    if not validate_request_binding(request.clone()).valid:
+        return ConsoleManifestPlan(
+            contract_version=MANIFEST_PLAN_CONTRACT,
+            profile_id=CONSOLE_PROFILE_ID,
+            plannable=false,
+            targets=[],
+        ).to_json()
+    if not validate_console_proposal(package.clone(), request.clone(), proposal.clone()).valid:
+        return ConsoleManifestPlan(
+            contract_version=MANIFEST_PLAN_CONTRACT,
+            profile_id=CONSOLE_PROFILE_ID,
+            plannable=false,
+            targets=[],
+        ).to_json()
+    targets = build_verifier_manifest(package, request, proposal)
+    return ConsoleManifestPlan(
+        contract_version=MANIFEST_PLAN_CONTRACT,
+        profile_id=CONSOLE_PROFILE_ID,
+        plannable=len(targets) > 0,
+        targets=targets,
+    ).to_json()
+
+
+def provider_memory(atom: ConsoleAtom) -> ConsoleProviderMemory:
+    """Project one Hees-admitted atom without exposing source text or terminal authority."""
+
+    return ConsoleProviderMemory(
+        evidence_id=atom.evidence_id,
+        memory_id=atom.memory_id,
+        claim=atom.claim,
+        guidance=atom.guidance,
+        language=atom.language,
+        source_ref=atom.source_ref,
+        source_kind=atom.source_kind,
+        source_fingerprint=atom.source_fingerprint,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+        authority_class=atom.authority_class,
+        evidence_kind=atom.evidence_kind,
+    )
+
+
+pub def bind_console_request_json(request_id: str, question: str) -> str:
+    """Bind one bounded Console question without exposing raw digest construction as a root operation."""
+
+    if not identifier_is_safe(request_id) or question.strip() == "" or len(question) > 512:
+        return ConsoleRequestPlan(
+            contract_version=REQUEST_PLAN_CONTRACT,
+            profile_id=CONSOLE_PROFILE_ID,
+            plannable=false,
+            request=None,
+        ).to_json()
+    mut request = ConsoleRequestBinding(request_id=request_id, question=question, request_digest="")
+    request.request_digest = digest_request_binding(request.clone())
+    return ConsoleRequestPlan(
+        contract_version=REQUEST_PLAN_CONTRACT,
+        profile_id=CONSOLE_PROFILE_ID,
+        plannable=true,
+        request=Some(request),
+    ).to_json()
+
+
+pub def identify_console_proposal_json(proposal: ConsoleProposal) -> str:
+    """Project the Hees-canonical proposal digest without exposing the raw digest helper as a root operation."""
+
+    return ConsoleProposalIdentity(
+        contract_version=PROPOSAL_IDENTITY_CONTRACT,
+        profile_id=CONSOLE_PROFILE_ID,
+        proposal_id=proposal.proposal_id,
+        candidate_digest=digest_proposal(proposal),
+    ).to_json()
+
+
+pub def plan_console_provider_context_json(package: ConsolePackage, request: ConsoleRequestBinding) -> str:
+    """Return only the validated package surface and Hees-admitted memory needed by an untrusted proposal call."""
+
+    if not validate_console_package(package.clone()).valid or not validate_request_binding(request.clone()).valid:
+        return ConsoleProviderContextPlan(
+            contract_version=PROVIDER_CONTEXT_PLAN_CONTRACT,
+            profile_id=CONSOLE_PROFILE_ID,
+            plannable=false,
+            context=None,
+        ).to_json()
+    mut memory: list[ConsoleProviderMemory] = []
+    for atom in admitted_atoms(package.clone()):
+        memory.append(provider_memory(atom))
+    if len(memory) == 0:
+        return ConsoleProviderContextPlan(
+            contract_version=PROVIDER_CONTEXT_PLAN_CONTRACT,
+            profile_id=CONSOLE_PROFILE_ID,
+            plannable=false,
+            context=None,
+        ).to_json()
+    return ConsoleProviderContextPlan(
+        contract_version=PROVIDER_CONTEXT_PLAN_CONTRACT,
+        profile_id=CONSOLE_PROFILE_ID,
+        plannable=true,
+        context=Some(
+            ConsoleProviderContext(
+                profile_id=CONSOLE_PROFILE_ID,
+                package_id=package.package_id,
+                domain_id=package.domain_id,
+                package_revision=package.package_revision,
+                artifact_digest=package.artifact_digest,
+                mission=package.mission,
+                request=request,
+                declared_actions=package.actions,
+                requirements=package.requirements,
+                admitted_memory=memory,
+            ),
+        ),
+    ).to_json()
+
+
+def relation_observation_ids(observations: list[RelationObservation]) -> list[str]:
+    """Project relation observation identifiers in manifest order."""
+
+    mut result: list[str] = []
+    for observation in observations:
+        result.append(observation.observation_id)
+    return result
+
+
+def synthesis_observation_ids(observations: list[SynthesisObservation]) -> list[str]:
+    """Project synthesis observation identifiers in manifest order."""
+
+    mut result: list[str] = []
+    for observation in observations:
+        result.append(observation.observation_id)
+    return result
+
+
+def relation_score_is_valid(observation: RelationObservation) -> bool:
+    """Require one bounded relation score triple that totals 10,000 basis points."""
+
+    if observation.support_bps < 0 or observation.support_bps > 10000:
+        return false
+    if observation.contradiction_bps < 0 or observation.contradiction_bps > 10000:
+        return false
+    if observation.unresolved_bps < 0 or observation.unresolved_bps > 10000:
+        return false
+    return observation.support_bps + observation.contradiction_bps + observation.unresolved_bps == 10000
+
+
+def synthesis_score_is_valid(observation: SynthesisObservation) -> bool:
+    """Require one bounded synthesis score triple that totals 10,000 basis points."""
+
+    if observation.covered_bps < 0 or observation.covered_bps > 10000:
+        return false
+    if observation.gap_bps < 0 or observation.gap_bps > 10000:
+        return false
+    if observation.unresolved_bps < 0 or observation.unresolved_bps > 10000:
+        return false
+    return observation.covered_bps + observation.gap_bps + observation.unresolved_bps == 10000
+
+
+def fingerprints_are_valid(model_fingerprint: str, prompt: str, configuration: str) -> bool:
+    """Require exact lowercase digests for all evaluator fingerprints."""
+
+    return digest_is_safe(model_fingerprint) and digest_is_safe(prompt) and digest_is_safe(configuration)
+
+
+def relation_identity_matches(
+    observation: RelationObservation,
+    target: ManifestTarget,
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    candidate_digest: str,
+) -> bool:
+    """Bind a relation observation to its exact package, request, proposal, and target."""
+
+    return (
+        observation.profile_id == CONSOLE_PROFILE_ID
+        and observation.package_id == package.package_id
+        and observation.domain_id == package.domain_id
+        and observation.package_revision == package.package_revision
+        and observation.artifact_digest == package.artifact_digest
+        and observation.request_id == request.request_id
+        and observation.request_digest == request.request_digest
+        and observation.candidate_digest == candidate_digest
+        and observation.target_id == target.body.target_id
+        and observation.target_digest == target.target_digest
+        and observation.evaluator_role == target.body.evaluator_role
+        and observation.target_role == target.body.target_role
+    )
+
+
+def synthesis_identity_matches(
+    observation: SynthesisObservation,
+    target: ManifestTarget,
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    candidate_digest: str,
+) -> bool:
+    """Bind a synthesis observation to its exact package, request, proposal, and target."""
+
+    return (
+        observation.profile_id == CONSOLE_PROFILE_ID
+        and observation.package_id == package.package_id
+        and observation.domain_id == package.domain_id
+        and observation.package_revision == package.package_revision
+        and observation.artifact_digest == package.artifact_digest
+        and observation.request_id == request.request_id
+        and observation.request_digest == request.request_digest
+        and observation.candidate_digest == candidate_digest
+        and observation.target_id == target.body.target_id
+        and observation.target_digest == target.target_digest
+        and observation.evaluator_role == target.body.evaluator_role
+        and observation.target_role == target.body.target_role
+    )
+
+
+pub def validate_observation_coverage(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    manifest: list[ManifestTarget],
+    relations: list[RelationObservation],
+    syntheses: list[SynthesisObservation],
+) -> ProfileValidation:
+    """Require closed contracts and exact set-and-order coverage of the Hees manifest."""
+    relation_count = len(proposal.visible_units) + len(proposal.support_mappings) + 1
+    synthesis_count = 1 + len(package.requirements)
+    if len(manifest) != relation_count + synthesis_count:
+        return validation_error("manifest_construction_failed", "manifest_target_count_invalid")
+    for observation in relations.clone():
+        if observation.contract_version != RELATION_OBSERVATION_CONTRACT or observation.profile_id != CONSOLE_PROFILE_ID:
+            return validation_error("unsupported_observation_contract", "unsupported_relation_observation_contract")
+    for observation in syntheses.clone():
+        if observation.contract_version != SYNTHESIS_OBSERVATION_CONTRACT or observation.profile_id != CONSOLE_PROFILE_ID:
+            return validation_error("unsupported_observation_contract", "unsupported_synthesis_observation_contract")
+    candidate_digest = digest_proposal(proposal)
+    for relation_index in range(len(relations)):
+        if relation_index >= relation_count:
+            return validation_error("observation_coverage_invalid", "observation_count_invalid")
+        relation_observation = relations[relation_index]
+        relation_target = manifest[relation_index]
+        if not relation_identity_matches(
+            relation_observation.clone(),
+            relation_target,
+            package.clone(),
+            request.clone(),
+            candidate_digest,
+        ):
+            return validation_error("observation_identity_mismatch", "relation_observation_identity_mismatch")
+    for synthesis_index in range(len(syntheses)):
+        if synthesis_index >= synthesis_count:
+            return validation_error("observation_coverage_invalid", "observation_count_invalid")
+        synthesis_observation = syntheses[synthesis_index]
+        synthesis_target = manifest[relation_count + synthesis_index]
+        if not synthesis_identity_matches(
+            synthesis_observation.clone(),
+            synthesis_target,
+            package.clone(),
+            request.clone(),
+            candidate_digest,
+        ):
+            return validation_error("observation_identity_mismatch", "synthesis_observation_identity_mismatch")
+    observations_unavailable = len(relations) == 0 and len(syntheses) == 0
+    if not observations_unavailable and (len(relations) != relation_count or len(syntheses) != synthesis_count):
+        return validation_error("observation_coverage_invalid", "observation_count_invalid")
+    if has_duplicate_strings(relation_observation_ids(relations.clone())):
+        return validation_error("observation_coverage_invalid", "duplicate_relation_observation")
+    if has_duplicate_strings(synthesis_observation_ids(syntheses.clone())):
+        return validation_error("observation_coverage_invalid", "duplicate_synthesis_observation")
+    for relation_observation in relations.clone():
+        if not identifier_is_safe(relation_observation.observation_id):
+            return validation_error("observation_malformed", "invalid_relation_observation_id")
+        if not ["evidence_relation", "contradiction_cross_check"].contains(f"{relation_observation.evaluator_role}"):
+            return validation_error("observation_malformed", "invalid_relation_evaluator_role")
+        if not ["visible_unit_union", "support_claim_memory", "proposal_union"].contains(
+            f"{relation_observation.target_role}",
+        ):
+            return validation_error("observation_malformed", "invalid_relation_target_role")
+        if not relation_score_is_valid(relation_observation.clone()):
+            return validation_error("observation_malformed", "invalid_relation_scores")
+        if not fingerprints_are_valid(
+            relation_observation.model_fingerprint,
+            relation_observation.prompt_fingerprint,
+            relation_observation.configuration_fingerprint,
+        ):
+            return validation_error("observation_malformed", "invalid_relation_fingerprint")
+    for synthesis_observation in syntheses.clone():
+        if not identifier_is_safe(synthesis_observation.observation_id):
+            return validation_error("observation_malformed", "invalid_synthesis_observation_id")
+        if synthesis_observation.evaluator_role != "synthesis_coverage":
+            return validation_error("observation_malformed", "invalid_synthesis_evaluator_role")
+        if not ["request_coverage", "requirement_coverage"].contains(f"{synthesis_observation.target_role}"):
+            return validation_error("observation_malformed", "invalid_synthesis_target_role")
+        if not synthesis_score_is_valid(synthesis_observation.clone()):
+            return validation_error("observation_malformed", "invalid_synthesis_scores")
+        if not fingerprints_are_valid(
+            synthesis_observation.model_fingerprint,
+            synthesis_observation.prompt_fingerprint,
+            synthesis_observation.configuration_fingerprint,
+        ):
+            return validation_error("observation_malformed", "invalid_synthesis_fingerprint")
+    if observations_unavailable:
+        return validation_error("observation_unavailable", "observation_unavailable")
+    return validation_ok()
+
+
+def finding_id(observation_id: str) -> str:
+    """Derive the closed finding identifier for one observation."""
+
+    return f"finding_{suffix_after(observation_id, "observation_")}"
+
+
+def relation_finding(package: ConsolePackage, observation: RelationObservation) -> DerivedFinding:
+    """Classify one validated relation observation under package policy."""
+
+    return DerivedFinding(
+        contract_version=FINDING_CONTRACT,
+        profile_id=CONSOLE_PROFILE_ID,
+        finding_id=finding_id(observation.observation_id),
+        observation_id=observation.observation_id,
+        package_id=observation.package_id,
+        domain_id=observation.domain_id,
+        package_revision=observation.package_revision,
+        artifact_digest=observation.artifact_digest,
+        request_id=observation.request_id,
+        request_digest=observation.request_digest,
+        candidate_digest=observation.candidate_digest,
+        target_id=observation.target_id,
+        target_digest=observation.target_digest,
+        evaluator_role=observation.evaluator_role,
+        target_role=observation.target_role,
+        classification=classify_relation(
+            package.policy.clone(),
+            observation.support_bps,
+            observation.contradiction_bps,
+            observation.unresolved_bps,
+        ),
+        constraint_plan_id=package.policy.constraint_plan_id,
+        constraint_plan_revision=package.policy.constraint_plan_revision,
+    )
+
+
+def synthesis_finding(package: ConsolePackage, observation: SynthesisObservation) -> DerivedFinding:
+    """Classify one validated synthesis observation under package policy."""
+
+    return DerivedFinding(
+        contract_version=FINDING_CONTRACT,
+        profile_id=CONSOLE_PROFILE_ID,
+        finding_id=finding_id(observation.observation_id),
+        observation_id=observation.observation_id,
+        package_id=observation.package_id,
+        domain_id=observation.domain_id,
+        package_revision=observation.package_revision,
+        artifact_digest=observation.artifact_digest,
+        request_id=observation.request_id,
+        request_digest=observation.request_digest,
+        candidate_digest=observation.candidate_digest,
+        target_id=observation.target_id,
+        target_digest=observation.target_digest,
+        evaluator_role=observation.evaluator_role,
+        target_role=observation.target_role,
+        classification=classify_synthesis(
+            package.policy.clone(),
+            observation.covered_bps,
+            observation.gap_bps,
+            observation.unresolved_bps,
+        ),
+        constraint_plan_id=package.policy.constraint_plan_id,
+        constraint_plan_revision=package.policy.constraint_plan_revision,
+    )
+
+
+pub def derive_findings(
+    package: ConsolePackage,
+    relations: list[RelationObservation],
+    syntheses: list[SynthesisObservation],
+) -> list[DerivedFinding]:
+    """Classify the complete observation set under package-owned policy."""
+    mut result: list[DerivedFinding] = []
+    for observation in relations:
+        result.append(relation_finding(package.clone(), observation))
+    for observation in syntheses:
+        result.append(synthesis_finding(package.clone(), observation))
+    return result
+
+
+pub def finding_policy_reason(findings: list[DerivedFinding]) -> str:
+    """Map findings to the public reason table without provider- or order-dependent authority."""
+    for finding in findings.clone():
+        if finding.evaluator_role == "evidence_relation" and finding.classification != "supported":
+            if finding.classification != "uncertain":
+                return "support_not_established"
+    for finding in findings.clone():
+        if finding.evaluator_role == "contradiction_cross_check" and finding.classification == "contradicted":
+            return "contradiction_detected"
+    for finding in findings.clone():
+        if finding.evaluator_role == "synthesis_coverage" and finding.classification == "not_covered":
+            return "synthesis_incomplete"
+    for finding in findings:
+        if finding.classification == "uncertain":
+            return "finding_uncertain"
+        if finding.evaluator_role == "contradiction_cross_check" and finding.classification != "supported":
+            return "finding_uncertain"
+    return "ok"
+
+
+def decision_id(proposal_id: str) -> str:
+    """Derive a safe terminal decision identity without echoing unsafe proposal data."""
+
+    if identifier_is_safe(proposal_id):
+        return f"decision_{suffix_after(proposal_id, "proposal_")}"
+    return "decision_unestablished"
+
+
+def rejected_spectrum(proposal_id: str, reason: str, structural_reason: Option[str]) -> SpectrumResult:
+    """Construct one fail-closed Spectrum rejection without admitted identifiers."""
+
+    return SpectrumResult(
+        decision_id=decision_id(proposal_id),
+        admitted=false,
+        decision="reject",
+        reason_namespace=REASON_NAMESPACE,
+        reason=reason,
+        structural_reason=structural_reason,
+        admitted_evidence_ids=[],
+        selected_memory_ids=[],
+    )
+
+
+def rejected_evaluation(
+    proposal_id: str,
+    reason: str,
+    structural_reason: Option[str],
+    manifest: list[ManifestTarget],
+    findings: list[DerivedFinding],
+) -> ProfileEvaluation:
+    """Construct a rejected profile evaluation with no trusted visible output or memory."""
+
+    return ProfileEvaluation(
+        manifest=manifest,
+        findings=findings,
+        spectrum=rejected_spectrum(proposal_id, reason, structural_reason),
+        admitted_visible_units=[],
+        selected_memory=[],
+    )
+
+
+def structural_admission(package: ConsolePackage, proposal: ConsoleProposal) -> StructuralAdmission:
+    """Delegate mandatory structural checks to the generic Hees kernel."""
+
+    mut actions = []
+    for action in package.actions:
+        actions.append(action_contract(action.action_id, action.evidence_required))
+    mut evidence = []
+    for atom in package.atoms:
+        if atom_is_admitted(atom.clone()):
+            evidence.append(approved_evidence_record(atom.evidence_id, atom.claim, atom.guidance, atom.source_ref))
+    kernel_package = governed_package("0.1", package.package_id, package.domain_id, package.mission, actions, evidence)
+    mut visible_texts: list[str] = []
+    for unit in proposal.visible_units:
+        visible_texts.append(unit.text)
+    kernel_proposal = model_proposal(
+        proposal.package_id,
+        proposal.domain_id,
+        proposal.action_id,
+        "\n".join(visible_texts),
+        proposal.evidence_ids,
+    )
+    raw = admit_model_proposal(kernel_package, kernel_proposal)
+    return StructuralAdmission(
+        admitted=admission_is_admitted(raw.clone()),
+        reason=admission_reason(raw.clone()),
+        evidence_ids=admission_evidence_ids(raw),
+    )
+
+
+def freeze_selected_memory(package: ConsolePackage, proposal: ConsoleProposal) -> list[ConsoleAtom]:
+    """Freeze the ordered duplicate-free admitted memory used by support mappings."""
+
+    mut selected_ids: list[str] = []
+    mut result: list[ConsoleAtom] = []
+    for mapping in proposal.support_mappings:
+        if not selected_ids.contains(f"{mapping.memory_id}"):
+            match find_atom_by_memory(package.atoms.clone(), mapping.memory_id):
+                None => return []
+                Some(atom) =>
+                    if not atom_is_admitted(atom.clone()):
+                        return []
+                    selected_ids.append(atom.memory_id)
+                    result.append(atom)
+    return result
+
+
+def selected_ids(atoms: list[ConsoleAtom]) -> list[str]:
+    """Project selected-memory identifiers without changing terminal order."""
+
+    mut result: list[str] = []
+    for atom in atoms:
+        result.append(atom.memory_id)
+    return result
+
+
+pub def evaluate_console_profile(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    relations: list[RelationObservation],
+    syntheses: list[SynthesisObservation],
+) -> ProfileEvaluation:
+    """Run all pre-Content-DNA authority stages in the exact public reason precedence."""
+    package_validation = validate_console_package(package.clone())
+    if not package_validation.valid:
+        return rejected_evaluation(proposal.proposal_id, package_validation.reason, None, [], [])
+    request_validation = validate_request_binding(request.clone())
+    if not request_validation.valid:
+        return rejected_evaluation(proposal.proposal_id, request_validation.reason, None, [], [])
+    proposal_validation = validate_console_proposal(package.clone(), request.clone(), proposal.clone())
+    if not proposal_validation.valid:
+        return rejected_evaluation(proposal.proposal_id, proposal_validation.reason, None, [], [])
+    manifest = build_verifier_manifest(package.clone(), request.clone(), proposal.clone())
+    expected_targets = len(proposal.visible_units) + len(proposal.support_mappings) + 2 + len(package.requirements)
+    if len(manifest) != expected_targets:
+        return rejected_evaluation(proposal.proposal_id, "manifest_construction_failed", None, [], [])
+    observation_validation = validate_observation_coverage(
+        package.clone(),
+        request,
+        proposal.clone(),
+        manifest.clone(),
+        relations.clone(),
+        syntheses.clone(),
+    )
+    if not observation_validation.valid:
+        return rejected_evaluation(proposal.proposal_id, observation_validation.reason, None, manifest, [])
+    findings = derive_findings(package.clone(), relations, syntheses)
+    policy_reason = finding_policy_reason(findings.clone())
+    if policy_reason != "ok":
+        return rejected_evaluation(proposal.proposal_id, policy_reason, None, manifest, findings)
+    structural = structural_admission(package.clone(), proposal.clone())
+    if not structural.admitted:
+        return rejected_evaluation(
+            proposal.proposal_id,
+            "structural_admission_rejected",
+            Some(structural.reason),
+            manifest,
+            findings,
+        )
+    selected = freeze_selected_memory(package, proposal.clone())
+    if len(selected) == 0 or len(selected) > 8 or has_duplicate_strings(selected_ids(selected.clone())):
+        return rejected_evaluation(
+            proposal.proposal_id,
+            "selected_memory_invalid",
+            Some(structural.reason),
+            manifest,
+            findings,
+        )
+    spectrum = SpectrumResult(
+        decision_id=decision_id(proposal.proposal_id),
+        admitted=true,
+        decision="admit",
+        reason_namespace=REASON_NAMESPACE,
+        reason="admitted",
+        structural_reason=Some(structural.reason),
+        admitted_evidence_ids=structural.evidence_ids,
+        selected_memory_ids=selected_ids(selected.clone()),
+    )
+    return ProfileEvaluation(
+        manifest=manifest,
+        findings=findings,
+        spectrum=spectrum,
+        admitted_visible_units=proposal.visible_units,
+        selected_memory=selected,
+    )
+
+
+def complete_evaluation(
+    evaluation: ProfileEvaluation,
+    content_dna: Option[ContentDna],
+    receipt: Option[ProfileReceipt],
+) -> CompleteProfileEvaluation:
+    """Project internal terminal artifacts as canonical JSON across the public ABI."""
+
+    content_dna_json = match content_dna:
+        None => None
+        Some(value) => Some(value.to_json())
+
+    receipt_json = match receipt:
+        None => None
+        Some(value) => Some(value.to_json())
+
+    return CompleteProfileEvaluation(
+        manifest=evaluation.manifest,
+        findings=evaluation.findings,
+        spectrum=evaluation.spectrum,
+        admitted_visible_units=evaluation.admitted_visible_units,
+        selected_memory=evaluation.selected_memory,
+        content_dna_json=content_dna_json,
+        receipt_json=receipt_json,
+    )
+
+
+def content_dna_entries(atoms: list[ConsoleAtom]) -> list[ContentDnaEntry]:
+    """Project selected memory into ordered source-safe Content DNA entries."""
+
+    mut result: list[ContentDnaEntry] = []
+    for atom in atoms:
+        result.append(
+            ContentDnaEntry(
+                memory_id=atom.memory_id,
+                source_ref=atom.source_ref,
+                source_kind=atom.source_kind,
+                source_fingerprint=atom.source_fingerprint,
+                provenance_digest=atom.provenance_digest,
+                review_state=atom.review_state,
+                review_revision=atom.review_revision,
+                rights_state=atom.rights_state,
+                authority_class=atom.authority_class,
+                evidence_kind=atom.evidence_kind,
+            ),
+        )
+    return result
+
+
+def selected_source_digests(atoms: list[ConsoleAtom]) -> list[str]:
+    """Collect source fingerprints once in terminal first-use order."""
+
+    mut result: list[str] = []
+    for atom in atoms:
+        if not result.contains(f"{atom.source_fingerprint}"):
+            result.append(atom.source_fingerprint)
+    return result
+
+
+def admitted_content_dna_body(
+    package: ConsolePackage,
+    proposal: ConsoleProposal,
+    evaluation: ProfileEvaluation,
+) -> ContentDnaBody:
+    """Build the admitted-answer provenance body from terminal selected memory."""
+
+    return ContentDnaBody(
+        contract_version="console_content_dna_0_1",
+        state="admitted_answer",
+        package=ContentDnaPackage(
+            package_id=package.package_id,
+            domain_id=package.domain_id,
+            package_revision=package.package_revision,
+            artifact_digest=package.artifact_digest,
+        ),
+        proposal_id=proposal.proposal_id,
+        spectrum_decision_id=evaluation.spectrum.decision_id,
+        terminal=ContentDnaTerminal(
+            decision=evaluation.spectrum.decision,
+            reason_namespace=evaluation.spectrum.reason_namespace,
+            reason=evaluation.spectrum.reason,
+        ),
+        policy=ContentDnaPolicy(
+            constraint_plan_id=package.policy.constraint_plan_id,
+            constraint_plan_revision=package.policy.constraint_plan_revision,
+            response_contract_id=package.policy.response_contract_id,
+            response_contract_revision=package.policy.response_contract_revision,
+        ),
+        entries=content_dna_entries(evaluation.selected_memory.clone()),
+        source_digests=selected_source_digests(evaluation.selected_memory.clone()),
+        answer_digest=digest_canonical_json(
+            AnswerProjection(visible_units=evaluation.admitted_visible_units.clone()).to_json(),
+        ),
+    )
+
+
+def admitted_receipt_body(
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    evaluation: ProfileEvaluation,
+    content_dna_id: str,
+) -> AdmittedReceiptBody:
+    """Project the admitted terminal result into a redacted receipt body."""
+
+    return AdmittedReceiptBody(
+        contract_version="console_profile_receipt_0_1",
+        profile_id=CONSOLE_PROFILE_ID,
+        package_id=FIXED_PACKAGE_ID,
+        domain_id=FIXED_DOMAIN_ID,
+        package_revision=FIXED_PACKAGE_REVISION,
+        artifact_digest=FIXED_ARTIFACT_DIGEST,
+        request_id=request.request_id,
+        request_digest=request.request_digest,
+        proposal_id=proposal.proposal_id,
+        candidate_digest=digest_proposal(proposal),
+        decision=evaluation.spectrum.decision,
+        reason_namespace=evaluation.spectrum.reason_namespace,
+        reason=evaluation.spectrum.reason,
+        structural_reason=evaluation.spectrum.structural_reason,
+        admitted_evidence_ids=evaluation.spectrum.admitted_evidence_ids,
+        selected_memory_ids=evaluation.spectrum.selected_memory_ids,
+        content_dna_id=content_dna_id,
+    )
+
+
+def rejected_receipt_body(
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    evaluation: ProfileEvaluation,
+) -> RejectedReceiptBody:
+    """Project a rejection only after every identity retained in the body is trusted."""
+    return RejectedReceiptBody(
+        contract_version="console_profile_receipt_0_1",
+        profile_id=CONSOLE_PROFILE_ID,
+        package_id=FIXED_PACKAGE_ID,
+        domain_id=FIXED_DOMAIN_ID,
+        package_revision=FIXED_PACKAGE_REVISION,
+        artifact_digest=FIXED_ARTIFACT_DIGEST,
+        request_id=request.request_id,
+        request_digest=request.request_digest,
+        proposal_id=proposal.proposal_id,
+        candidate_digest=digest_proposal(proposal),
+        decision="reject",
+        reason_namespace=REASON_NAMESPACE,
+        reason=evaluation.spectrum.reason,
+        structural_reason=evaluation.spectrum.structural_reason,
+    )
+
+
+def receipt_identity_is_established(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> bool:
+    """Return whether the fixed package, request, and proposal identity are safe to export."""
+    if not validate_console_package(package.clone()).valid:
+        return false
+    if not validate_request_binding(request.clone()).valid:
+        return false
+    return validate_console_proposal_identity(package, request, proposal).valid
+
+
+pub def evaluate_console_profile_with_artifacts(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    relations: list[RelationObservation],
+    syntheses: list[SynthesisObservation],
+) -> CompleteProfileEvaluation:
+    """Add Content DNA on admission and a receipt whenever its complete identity is established."""
+    evaluation = evaluate_console_profile(package.clone(), request.clone(), proposal.clone(), relations, syntheses)
+    if not evaluation.spectrum.admitted:
+        if not receipt_identity_is_established(package.clone(), request.clone(), proposal.clone()):
+            return complete_evaluation(evaluation, None, None)
+        match construct_rejected_receipt(rejected_receipt_body(request, proposal.clone(), evaluation.clone())):
+            Some(receipt) => return complete_evaluation(evaluation, None, Some(receipt))
+            None =>
+                failed = rejected_evaluation(
+                    proposal.proposal_id,
+                    "receipt_projection_failed",
+                    evaluation.spectrum.structural_reason,
+                    evaluation.manifest,
+                    evaluation.findings,
+                )
+                return complete_evaluation(failed, None, None)
+    content_dna = construct_content_dna(admitted_content_dna_body(package.clone(), proposal.clone(), evaluation.clone()))
+    match construct_admitted_receipt(
+        admitted_receipt_body(request, proposal.clone(), evaluation.clone(), content_dna_identity(content_dna.clone())),
+    ):
+        Some(receipt) => return complete_evaluation(evaluation, Some(content_dna), Some(receipt))
+        None =>
+            failed = rejected_evaluation(
+                proposal.proposal_id,
+                "receipt_projection_failed",
+                evaluation.spectrum.structural_reason,
+                evaluation.manifest,
+                evaluation.findings,
+            )
+            return complete_evaluation(failed, None, None)
+
+
+pub def evaluate_console_profile_json(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    relations: list[RelationObservation],
+    syntheses: list[SynthesisObservation],
+) -> str:
+    """Return one complete terminal evaluation as canonical JSON across the public ABI."""
+
+    return evaluate_console_profile_with_artifacts(package, request, proposal, relations, syntheses).to_json()

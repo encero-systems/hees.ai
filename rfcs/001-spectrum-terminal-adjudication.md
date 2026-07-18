@@ -73,7 +73,7 @@ If Spectrum admits a visible answer, it freezes the exact selected-memory order 
 
 ### Authority boundary
 
-Spectrum is an in-process Hees operation, not a package evaluator, provider protocol, serialized orchestration format, or Workbench function. Its caller may coordinate provider execution, but every value entering Spectrum must already be bound to the exact governed operation by the owning Hees contract.
+Spectrum is an in-process Hees operation, not a package evaluator, provider protocol, serialized orchestration format, or package-authoring function. Its caller may coordinate provider execution, but every value entering Spectrum must already be bound to the exact governed operation by the owning Hees contract.
 
 Spectrum must not accept a public trace, receipt, Content DNA document, package tuple, list of memory identifiers, terminal variant, or collection of findings as a substitute for the direct trusted capabilities that establish those values. Public scalar identities may be repeated for mismatch detection, but trusted identity must come from the opaque source value rather than the caller's copy.
 
@@ -175,7 +175,7 @@ Spectrum must construct RFC 002 Content DNA only after terminal response selecti
 
 For an admitted answer, RFC 002 validation must prove exact set equality and order consistency between Spectrum selected memory and the Content DNA entries. A missing entry, additional entry, duplicate, reordered identity where order is meaningful, source-provenance mismatch, review or rights failure, package mismatch, policy mismatch, proposal mismatch, answer-digest mismatch, or decision-digest mismatch changes the outcome from admission to the owning fail-closed terminal result.
 
-Spectrum must never accept Content DNA supplied by the model, provider, caller, Workbench, or package. The package supplies reviewed provenance facts; Spectrum supplies the final selection; Hees constructs the answer-specific projection.
+Spectrum must never accept Content DNA supplied by the model, provider, caller, package-authoring tooling, or package. The package supplies reviewed provenance facts; Spectrum supplies the final selection; Hees constructs the answer-specific projection.
 
 ### Trace contract
 
@@ -258,9 +258,9 @@ Rejected because constraint actions do not own visible response structure, repai
 
 Rejected because response validation alone does not own the final selected-memory set, all package policy, contradiction handling, or the general single-authority invariant. Spectrum composes the specialized response result rather than replacing it.
 
-### Let an orchestrator or Workbench compose the final result
+### Let an orchestrator or package-authoring system compose the final result
 
-Rejected because external composition could vary by deployment and would let a control plane construct authority from serializable parts. Workbench owns package authoring; Hees owns runtime finality.
+Rejected because external composition could vary by deployment and would let a control plane construct authority from serializable parts. Build-time tooling owns package authoring; Hees owns runtime finality.
 
 ### Treat the public trace as the decision capability
 
@@ -282,7 +282,7 @@ Those costs are deliberate. Without one terminal composition contract, authority
 - **Runtime:** Single terminal composition point and opaque capability flow across package, memory, constraints, behavior, response, and Content DNA.
 - **Packages:** Exact policy and contradiction declarations needed by Spectrum, without package-authored terminal results.
 - **Receipts:** Private atomic projection from the Spectrum terminal source record through RFC 006.
-- **Workbench:** Package compilation and acceptance fixtures only; no precomputed Spectrum result.
+- **Package-authoring system:** Package compilation and acceptance fixtures only; no precomputed Spectrum result.
 - **Testing:** Cross-contract deterministic, authority-negative, privacy, interoperability, and constrained-device evidence.
 
 ## Design Decisions

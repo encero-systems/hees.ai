@@ -1,0 +1,62 @@
+"""
+Native Incan composition for one optional live Hees Console interaction.
+
+The module transports canonical JSON between the typed Hees and provider modules so their authorities remain separate.
+Provider failure codes stay stable and redacted. No provider output can create a finding, Spectrum decision, Content
+DNA, or receipt.
+"""
+
+from evaluation import (
+    ConsoleRun,
+    evaluate_live_sources,
+    live_context_plan_json,
+    plan_live_manifest_from_json,
+    plan_live_question_json,
+)
+from provider import (
+    LiveCanaryGate,
+    ProviderFailure,
+    evaluate_committee_json_with_transport,
+    live_committee_json,
+    live_proposal_json,
+    propose_json_with_transport,
+)
+
+
+def provider_code(error: ProviderFailure) -> str:
+    """Expose only the provider's stable redacted failure category."""
+
+    return error.value()
+
+
+pub def evaluate_live_with_transports(
+    question: str,
+    proposal_transport: (str) -> Result[str, ProviderFailure],
+    committee_transport: (str) -> Result[str, ProviderFailure],
+) -> Result[ConsoleRun, str]:
+    """Exercise the complete live composition through deterministic injected transports."""
+
+    live_plan_json = plan_live_question_json(question)?
+    context_plan_json = live_context_plan_json(f"{live_plan_json}")?
+    proposal_json = propose_json_with_transport(f"{context_plan_json}", proposal_transport).map_err(provider_code)?
+    manifest_json = plan_live_manifest_from_json(f"{live_plan_json}", f"{proposal_json}")?
+    committee_json = evaluate_committee_json_with_transport(
+        context_plan_json,
+        f"{proposal_json}",
+        manifest_json,
+        committee_transport,
+    ).map_err(provider_code)?
+    return evaluate_live_sources(live_plan_json, proposal_json, committee_json)
+
+
+pub def evaluate_live_question(question: str) -> Result[ConsoleRun, str]:
+    """Run the explicitly selected live GPT-5.6 path without any replay fallback."""
+
+    live_plan_json = plan_live_question_json(question)?
+    context_plan_json = live_context_plan_json(f"{live_plan_json}")?
+    proposal_json = live_proposal_json(LiveCanaryGate.Explicit, f"{context_plan_json}").map_err(provider_code)?
+    manifest_json = plan_live_manifest_from_json(f"{live_plan_json}", f"{proposal_json}")?
+    committee_json = live_committee_json(LiveCanaryGate.Explicit, context_plan_json, f"{proposal_json}", manifest_json).map_err(
+        provider_code,
+    )?
+    return evaluate_live_sources(live_plan_json, proposal_json, committee_json)

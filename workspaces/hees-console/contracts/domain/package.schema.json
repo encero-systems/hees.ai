@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/console_package_0_1.schema.json",
+  "title": "Hees Console Build Week initial-profile fictional package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "mission", "sources", "actions", "requirements", "atoms", "policy"],
+  "properties": {
+    "contract_version": {"const": "console_package_0_1"},
+    "profile_id": {"const": "console_profile_0_1"},
+    "package_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "domain_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "package_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32},
+    "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "mission": {"type": "string", "minLength": 1, "maxLength": 512},
+    "sources": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_id", "source_ref", "source_kind", "source_fingerprint", "language", "rights_state", "text"],
+        "properties": {
+          "source_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "source_ref": {"type": "string", "pattern": "^fictional/(?!.*\\.\\.)[a-z0-9_./-]+$", "maxLength": 256},
+          "source_kind": {"const": "fictional_lesson_note"},
+          "source_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "language": {"const": "en"},
+          "rights_state": {"const": "fictional_use_allowed"},
+          "text": {"type": "string", "minLength": 1, "maxLength": 4096}
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action_id", "evidence_required"],
+        "properties": {
+          "action_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "evidence_required": {"type": "boolean"}
+        }
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requirement_id", "description"],
+        "properties": {
+          "requirement_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "description": {"type": "string", "minLength": 1, "maxLength": 256}
+        }
+      }
+    },
+    "atoms": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["memory_id", "evidence_id", "source_id", "source_ref", "source_kind", "source_fingerprint", "source_span", "claim", "guidance", "language", "review_state", "review_revision", "rights_state", "authority_class", "evidence_kind", "provenance_digest"],
+        "properties": {
+          "memory_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "evidence_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "source_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "source_ref": {"type": "string", "pattern": "^fictional/(?!.*\\.\\.)[a-z0-9_./-]+$", "maxLength": 256},
+          "source_kind": {"const": "fictional_lesson_note"},
+          "source_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "source_span": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["start_utf8_byte", "end_utf8_byte"],
+            "properties": {
+              "start_utf8_byte": {"type": "integer", "minimum": 0, "maximum": 4095},
+              "end_utf8_byte": {"type": "integer", "minimum": 1, "maximum": 4096}
+            }
+          },
+          "claim": {"type": "string", "minLength": 1, "maxLength": 512},
+          "guidance": {"type": "string", "minLength": 1, "maxLength": 512},
+          "language": {"const": "en"},
+          "review_state": {"enum": ["approved", "pending", "rejected"]},
+          "review_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32},
+          "rights_state": {"enum": ["allowed", "denied"]},
+          "authority_class": {"const": "reviewed_fixture"},
+          "evidence_kind": {"enum": ["lesson_fact", "lesson_guidance", "discarded_draft"]},
+          "provenance_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["constraint_plan_id", "constraint_plan_revision", "response_contract_id", "response_contract_revision", "min_support_bps", "max_contradiction_bps", "max_relation_unresolved_bps", "min_coverage_bps", "max_gap_bps", "max_synthesis_unresolved_bps"],
+      "properties": {
+        "constraint_plan_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+        "constraint_plan_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32},
+        "response_contract_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+        "response_contract_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32},
+        "min_support_bps": {"const": 6500},
+        "max_contradiction_bps": {"const": 3500},
+        "max_relation_unresolved_bps": {"const": 2500},
+        "min_coverage_bps": {"const": 6500},
+        "max_gap_bps": {"const": 3500},
+        "max_synthesis_unresolved_bps": {"const": 2500}
+      }
+    }
+  }
+}

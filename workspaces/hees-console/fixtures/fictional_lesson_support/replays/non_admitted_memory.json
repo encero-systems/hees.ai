@@ -1,0 +1,63 @@
+{
+  "body": {
+    "contract_version": "console_replay_0_1",
+    "profile_id": "console_profile_0_1",
+    "scenario_id": "scenario_non_admitted_memory",
+    "request": {
+      "request_id": "request_non_admitted_memory",
+      "question": "Should I publish the learner ranking?",
+      "request_digest": "sha256:2a6bc48b271d432da2ca0e52bc22b8ea0edc246c6b65f0f85c99fda54b453c01"
+    },
+    "proposal": {
+      "contract_version": "console_proposal_0_1",
+      "profile_id": "console_profile_0_1",
+      "package_id": "lantern_labs",
+      "domain_id": "fictional_lesson_support",
+      "package_revision": "1.0.0",
+      "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+      "request_id": "request_non_admitted_memory",
+      "request_digest": "sha256:2a6bc48b271d432da2ca0e52bc22b8ea0edc246c6b65f0f85c99fda54b453c01",
+      "proposal_id": "proposal_non_admitted_memory",
+      "action_id": "propose_practice_step",
+      "evidence_ids": [
+        "evidence_public_ranking_draft"
+      ],
+      "visible_units": [
+        {
+          "unit_id": "unit_ranking",
+          "text": "Publish a learner ranking.",
+          "requirement_ids": [
+            "ground_in_lesson"
+          ]
+        }
+      ],
+      "support_mappings": [
+        {
+          "support_claim_id": "support_ranking",
+          "unit_id": "unit_ranking",
+          "memory_id": "memory_public_ranking_draft",
+          "evidence_ids": [
+            "evidence_public_ranking_draft"
+          ]
+        }
+      ]
+    },
+    "relation_observations": [],
+    "synthesis_observations": [],
+    "schema_digests": [
+      {
+        "contract_version": "console_proposal_0_1",
+        "schema_digest": "sha256:f042eeab88670c8431b3cb6cb79d36d09cc618d9a03fadf4baaa82b2fd4e9d41"
+      },
+      {
+        "contract_version": "console_relation_observation_0_1",
+        "schema_digest": "sha256:85cd5aaa0684430f6414d138d961af13a4806d3705b7d151fed16c80b5bb2b65"
+      },
+      {
+        "contract_version": "console_synthesis_observation_0_1",
+        "schema_digest": "sha256:6558a7e0df960b7493e6b7f17606dd9110c208e28205a658779867d9823a0316"
+      }
+    ]
+  },
+  "replay_id": "sha256:4d77d6539d848e96899f63787e26fe21980cf4c665cfa3cbce3c93672382b618"
+}

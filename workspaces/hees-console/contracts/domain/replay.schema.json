@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/console_replay_0_1.schema.json",
+  "title": "Hees Console Build Week initial-profile neutral replay envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["body", "replay_id"],
+  "properties": {
+    "body": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_version", "profile_id", "scenario_id", "request", "proposal", "relation_observations", "synthesis_observations", "schema_digests"],
+      "properties": {
+        "contract_version": {"const": "console_replay_0_1"},
+        "profile_id": {"const": "console_profile_0_1"},
+        "scenario_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+        "request": {"$ref": "https://hees.ai/contracts/console/request_binding_0_1.schema.json"},
+        "proposal": {"$ref": "https://hees.ai/contracts/console/console_proposal_0_1.schema.json"},
+        "relation_observations": {"type": "array", "minItems": 0, "maxItems": 16, "uniqueItems": true, "items": {"$ref": "https://hees.ai/contracts/console/console_relation_observation_0_1.schema.json"}},
+        "synthesis_observations": {"type": "array", "minItems": 0, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "https://hees.ai/contracts/console/console_synthesis_observation_0_1.schema.json"}},
+        "schema_digests": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["contract_version", "schema_digest"],
+            "properties": {
+              "contract_version": {"enum": ["console_proposal_0_1", "console_relation_observation_0_1", "console_synthesis_observation_0_1"]},
+              "schema_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+            }
+          }
+        }
+      }
+    },
+    "replay_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

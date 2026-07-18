@@ -11,8 +11,6 @@ site/
 .idea/
 .vscode/
 *.swp
-__pycache__/
-*.py[cod]
 node_modules/
 
 # Environment and credentials

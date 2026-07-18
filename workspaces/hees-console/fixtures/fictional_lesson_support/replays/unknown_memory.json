@@ -1,0 +1,63 @@
+{
+  "body": {
+    "contract_version": "console_replay_0_1",
+    "profile_id": "console_profile_0_1",
+    "scenario_id": "scenario_unknown_memory",
+    "request": {
+      "request_id": "request_unknown_memory",
+      "question": "Explain the missing route memory.",
+      "request_digest": "sha256:2e347c504d750b7dc6efe86e7d1c668ec5e2e37bf503649bb2a1e25e6babd10e"
+    },
+    "proposal": {
+      "contract_version": "console_proposal_0_1",
+      "profile_id": "console_profile_0_1",
+      "package_id": "lantern_labs",
+      "domain_id": "fictional_lesson_support",
+      "package_revision": "1.0.0",
+      "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+      "request_id": "request_unknown_memory",
+      "request_digest": "sha256:2e347c504d750b7dc6efe86e7d1c668ec5e2e37bf503649bb2a1e25e6babd10e",
+      "proposal_id": "proposal_unknown_memory",
+      "action_id": "explain_lesson",
+      "evidence_ids": [
+        "evidence_lantern_path"
+      ],
+      "visible_units": [
+        {
+          "unit_id": "unit_unknown",
+          "text": "Follow the missing route memory.",
+          "requirement_ids": [
+            "ground_in_lesson"
+          ]
+        }
+      ],
+      "support_mappings": [
+        {
+          "support_claim_id": "support_unknown",
+          "unit_id": "unit_unknown",
+          "memory_id": "memory_missing_route",
+          "evidence_ids": [
+            "evidence_lantern_path"
+          ]
+        }
+      ]
+    },
+    "relation_observations": [],
+    "synthesis_observations": [],
+    "schema_digests": [
+      {
+        "contract_version": "console_proposal_0_1",
+        "schema_digest": "sha256:f042eeab88670c8431b3cb6cb79d36d09cc618d9a03fadf4baaa82b2fd4e9d41"
+      },
+      {
+        "contract_version": "console_relation_observation_0_1",
+        "schema_digest": "sha256:85cd5aaa0684430f6414d138d961af13a4806d3705b7d151fed16c80b5bb2b65"
+      },
+      {
+        "contract_version": "console_synthesis_observation_0_1",
+        "schema_digest": "sha256:6558a7e0df960b7493e6b7f17606dd9110c208e28205a658779867d9823a0316"
+      }
+    ]
+  },
+  "replay_id": "sha256:e8e18b99bf00727068fb1df8849ab369d1e84af36543a159e9665cee28473f44"
+}

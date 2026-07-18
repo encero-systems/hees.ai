@@ -1,0 +1,1358 @@
+"""
+Native Incan provider boundary for optional live Hees Console interactions.
+
+This module constructs bounded OpenAI Responses API calls and decodes their untrusted structured outputs. It never
+admits a proposal, classifies an observation, selects memory, constructs Content DNA, or creates a receipt. It consumes
+closed context and manifest envelopes authored by Hees. An empty manifest is valid: it means the proposal must continue
+to Hees with no committee observations so the terminal boundary can return the exact earlier structural rejection.
+
+Live committee calls are intentionally sequential under released Incan 0.4.0. The direct `ureq` edge has a 15-second
+timeout and the frozen profile permits at most 22 targets, so the committee has a deterministic 330-second upper bound.
+The module does not claim cancellable concurrency for a blocking HTTP primitive that the released toolchain has not
+demonstrated safely.
+"""
+
+from rust::std::string import String as RustString
+from rust::std::env import var as env_var
+from rust::std::io import Read
+from rust::std::time import Duration
+from rust::ureq import post
+from std.encoding.hex import hexlify
+from std.hash import sha256
+from std.json import JsonValue
+from std.serde import json
+from std.serde.json import Deserialize
+from pub::hees import (
+    ConsoleAction,
+    ConsoleProposal,
+    ConsoleRequestBinding,
+    ConsoleRequirement,
+    RelationObservation,
+    SupportMapping,
+    SynthesisObservation,
+    VisibleUnit,
+    identify_console_proposal_json,
+)
+
+pub const GPT56_MODEL: str = "gpt-5.6-sol"
+pub const PROVIDER_TIMEOUT_SECONDS: int = 15
+pub const MAX_RELATION_CALLS: int = 17
+pub const MAX_SYNTHESIS_CALLS: int = 5
+pub const MAX_COMMITTEE_CALLS: int = 22
+const RESPONSES_ENDPOINT: str = "https://api.openai.com/v1/responses"
+const API_KEY_ENVIRONMENT: str = "OPENAI_API_KEY"
+const REASONING_EFFORT: str = "low"
+const MAX_PROVIDER_INPUT_BYTES: int = 262_144
+const MAX_PROVIDER_ENVELOPE_BYTES: int = 131_072
+const PROPOSAL_OUTPUT_BYTES: int = 32_768
+const OBSERVATION_OUTPUT_BYTES: int = 8_192
+const PROPOSAL_OUTPUT_TOKENS: int = 2_048
+const OBSERVATION_OUTPUT_TOKENS: int = 512
+const PROPOSAL_RESULT_CONTRACT: str = "console_provider_proposal_result_0_1"
+const COMMITTEE_RESULT_CONTRACT: str = "console_provider_committee_result_0_1"
+const CONSOLE_PROFILE: str = "console_profile_0_1"
+const PROPOSAL_INSTRUCTIONS: str = "Return exactly one untrusted proposal grounded only in the supplied request, declared actions, requirements, and admitted-memory projections. Visible-unit text is the only answer channel. Use only supplied evidence and memory identifiers. Return no rationale, hidden reasoning, authority, finding, classification, decision, selected memory, Content DNA, or receipt."
+const EVIDENCE_INSTRUCTIONS: str = "Evaluate only the exact bound subject represented by the supplied Hees target against the supplied admitted-memory projections. Return support, contradiction, and unresolved basis-point integers that sum to 10000. Return no rationale, hidden reasoning, authority, classification, finding, answer rewrite, decision, or receipt."
+const CONTRADICTION_INSTRUCTIONS: str = "Independently cross-check only the exact bound proposal target against the supplied admitted-memory projections for contradiction. Return support, contradiction, and unresolved basis-point integers that sum to 10000. Return no rationale, hidden reasoning, authority, classification, finding, answer rewrite, decision, or receipt."
+const SYNTHESIS_INSTRUCTIONS: str = "Evaluate only coverage of the exact bound request or requirement target by the supplied visible units. Return covered, gap, and unresolved basis-point integers that sum to 10000. Return no rationale, hidden reasoning, authority, classification, finding, answer rewrite, decision, or receipt."
+
+
+pub enum ProviderFailure(str):
+    """Stable redacted failure categories for the native provider boundary."""
+
+    MissingApiKey = "provider_missing_api_key"
+    InvalidInput = "provider_invalid_input"
+    InputTooLarge = "provider_input_too_large"
+    Unavailable = "provider_unavailable"
+    ResponseTooLarge = "provider_response_too_large"
+    MalformedOutput = "provider_malformed_output"
+    Refused = "provider_refused"
+    Incomplete = "provider_incomplete"
+    UnexpectedModel = "provider_unexpected_model"
+    CommitteeTooLarge = "provider_committee_too_large"
+    LiveCanaryDisabled = "live_canary_disabled"
+
+
+pub enum LiveCanaryGate:
+    """Explicit capability gate separating deterministic operation from live network access."""
+
+    Disabled
+    Explicit
+
+
+@derive(Clone)
+pub model PreparedProviderCall:
+    """
+    One bounded provider call ready for an injected or live transport.
+
+    The request body contains untrusted provider context but never the API key. Fingerprints are retained separately so
+    observation normalization can add non-authoritative trace identity without exposing instructions or raw responses.
+    """
+
+    pub operation: str
+    pub request_body: str
+    pub max_output_bytes: int
+    pub prompt_fingerprint: str
+    pub configuration_fingerprint: str
+
+
+@derive(Clone, json)
+pub model ProviderCommitteeResult:
+    """Ordered non-authoritative observations returned by a complete provider committee."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub relations: list[RelationObservation]
+    pub syntheses: list[SynthesisObservation]
+
+
+@derive(Clone, json)
+model ProviderProposalResult:
+    """Untrusted proposal envelope used only across native Console module boundaries."""
+
+    contract_version: str
+    profile_id: str
+    proposal: ConsoleProposal
+
+
+@derive(Clone, json)
+model AdmittedMemoryProjection:
+    """Caller-selected memory fields safe and sufficient for untrusted provider comparison."""
+
+    evidence_id: str
+    memory_id: str
+    claim: str
+    guidance: str
+    language: str
+    source_ref: str
+    source_kind: str
+    source_fingerprint: str
+    review_state: str
+    review_revision: str
+    rights_state: str
+    authority_class: str
+    evidence_kind: str
+
+
+@derive(Clone, json)
+model ProviderContext:
+    """Bounded Hees-authored context from which the model may propose but never decide."""
+
+    profile_id: str
+    package_id: str
+    domain_id: str
+    package_revision: str
+    artifact_digest: str
+    mission: str
+    request: ConsoleRequestBinding
+    declared_actions: list[ConsoleAction]
+    requirements: list[ConsoleRequirement]
+    admitted_memory: list[AdmittedMemoryProjection]
+
+
+@derive(Clone, json)
+model ProviderContextPlan:
+    """Closed Hees planning envelope that distinguishes usable context from unavailable planning."""
+
+    contract_version: str
+    profile_id: str
+    plannable: bool
+    context: Option[ProviderContext]
+
+
+@derive(Clone, json)
+model ProviderPremiseIdentity:
+    """Read-only digest identity from one Hees-authored target premise."""
+
+    memory_id: str
+    content_digest: str
+
+
+@derive(Clone, json)
+model ProviderTargetBody:
+    """Read-only target body produced canonically by the Hees planning operation."""
+
+    profile_id: str
+    package_id: str
+    domain_id: str
+    package_revision: str
+    artifact_digest: str
+    request_digest: str
+    candidate_digest: str
+    target_id: str
+    evaluator_role: str
+    target_role: str
+    subject_digest: str
+    premises: list[ProviderPremiseIdentity]
+
+
+@derive(Clone, json)
+model ProviderManifestTarget:
+    """Read-only target envelope consumed by the provider without terminal authority."""
+
+    body: ProviderTargetBody
+    target_digest: str
+
+
+@derive(Clone, json)
+model ProviderManifestPlan:
+    """Closed Hees planning envelope for a canonical target sequence."""
+
+    contract_version: str
+    profile_id: str
+    plannable: bool
+    targets: list[ProviderManifestTarget]
+
+
+@derive(Clone, json)
+model CommitteeProviderInput:
+    """Exact proposal, request, target, and memory context for one evaluator call."""
+
+    profile_id: str
+    package_id: str
+    domain_id: str
+    package_revision: str
+    artifact_digest: str
+    request: ConsoleRequestBinding
+    proposal: ConsoleProposal
+    observation_id: str
+    target: ProviderManifestTarget
+    admitted_memory: list[AdmittedMemoryProjection]
+
+
+@derive(Clone, json)
+model ResponseInputContent:
+    """One Responses API user content item."""
+
+    type_ as "type": str
+    text: str
+
+
+@derive(Clone, json)
+model ResponseInputMessage:
+    """One Responses API user message carrying canonical JSON input."""
+
+    role: str
+    content: list[ResponseInputContent]
+
+
+@derive(Clone, json)
+model ResponseTextFormat:
+    """Strict structured-output format bound to one closed JSON schema."""
+
+    type_ as "type": str
+    name: str
+    schema: JsonValue
+    strict: bool
+
+
+@derive(Clone, json)
+model ResponseText:
+    """Responses API text configuration."""
+
+    format: ResponseTextFormat
+
+
+@derive(Clone, json)
+model ResponseReasoning:
+    """Bounded reasoning-effort request without a reasoning output channel."""
+
+    effort: str
+
+
+@derive(Clone, json)
+model ResponseRequest:
+    """Exact no-tool, no-storage Responses API request body."""
+
+    model_name as "model": str
+    instructions: str
+    input: list[ResponseInputMessage]
+    text: ResponseText
+    reasoning: ResponseReasoning
+    max_output_tokens: int
+    tools: list[JsonValue]
+    tool_choice: str
+    store: bool
+    stream: bool
+    truncation: str
+
+
+@derive(Clone, json)
+model ProviderConfiguration:
+    """Safe deterministic fields covered by an observation configuration fingerprint."""
+
+    model_name as "model": str
+    schema_name: str
+    response_schema: JsonValue
+    reasoning_effort: str
+    max_output_tokens: int
+    max_output_bytes: int
+    tools_enabled: bool
+    store: bool
+    stream: bool
+    truncation: str
+    timeout_seconds: int
+
+
+pub def provider_endpoint() -> str:
+    """Return the fixed OpenAI Responses endpoint used by the live transport."""
+
+    return RESPONSES_ENDPOINT
+
+
+pub def provider_api_key_environment() -> str:
+    """Return the only environment variable consulted by the live provider boundary."""
+
+    return API_KEY_ENVIRONMENT
+
+
+def utf8_length(value: str) -> int:
+    """Return the exact UTF-8 byte length used by provider size bounds."""
+
+    return len(RustString.from(value).into_bytes())
+
+
+def fingerprint(value: str) -> str:
+    """Return a lowercase SHA-256 identity without retaining the source value."""
+
+    return f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}"
+
+
+def json_strings(values: list[str]) -> JsonValue:
+    """Convert strings into a JSON array without dynamic type coercion."""
+
+    return JsonValue.array([JsonValue.str(value) for value in values])
+
+
+def closed_object_schema(properties: Dict[str, JsonValue]) -> JsonValue:
+    """Construct an OpenAI-strict object schema requiring every declared property."""
+
+    mut required: list[str] = []
+    for property_name in properties.keys():
+        required.append(f"{property_name}")
+    return JsonValue.object(
+        {"type": JsonValue.str("object"), "additionalProperties": JsonValue.bool(false), "required": json_strings(
+            required,
+        ), "properties": JsonValue.object(properties)},
+    )
+
+
+def string_schema(pattern: str = "", max_length: int = 0) -> JsonValue:
+    """Construct a bounded JSON string schema with optional pattern and length constraints."""
+
+    mut fields = {"type": JsonValue.str("string")}
+    if pattern != "":
+        fields["pattern"] = JsonValue.str(pattern)
+    if max_length > 0:
+        fields["maxLength"] = JsonValue.int(max_length)
+    return JsonValue.object(fields)
+
+
+def const_string_schema(value: str) -> JsonValue:
+    """Construct a JSON schema requiring one exact string value."""
+
+    return JsonValue.object({"type": JsonValue.str("string"), "const": JsonValue.str(value)})
+
+
+def enum_string_schema(values: list[str]) -> JsonValue:
+    """Construct a JSON string schema restricted to a closed value set."""
+
+    return JsonValue.object({"type": JsonValue.str("string"), "enum": json_strings(values)})
+
+
+def integer_schema(minimum: int, maximum: int) -> JsonValue:
+    """Construct a bounded JSON integer schema."""
+
+    return JsonValue.object(
+        {"type": JsonValue.str("integer"), "minimum": JsonValue.int(minimum), "maximum": JsonValue.int(maximum)},
+    )
+
+
+def array_schema(items: JsonValue, minimum: int, maximum: int, unique: bool) -> JsonValue:
+    """Construct a bounded JSON array schema."""
+
+    return JsonValue.object(
+        {"type": JsonValue.str("array"), "minItems": JsonValue.int(minimum), "maxItems": JsonValue.int(maximum), "uniqueItems": JsonValue.bool(
+            unique,
+        ), "items": items},
+    )
+
+
+def identifier_schema() -> JsonValue:
+    """Construct the shared bounded lowercase identifier schema."""
+
+    return string_schema("^[a-z0-9][a-z0-9_-]{0,127}$", 128)
+
+
+def digest_schema() -> JsonValue:
+    """Construct the exact lowercase SHA-256 digest schema."""
+
+    return string_schema("^sha256:[0-9a-f]{64}$", 71)
+
+
+def revision_schema() -> JsonValue:
+    """Construct the bounded three-component revision schema."""
+
+    return string_schema("^[0-9]+\\.[0-9]+\\.[0-9]+$", 32)
+
+
+def proposal_output_schema() -> JsonValue:
+    """Construct the strict provider-facing proposal schema without authority fields."""
+
+    visible_unit = closed_object_schema(
+        {"unit_id": identifier_schema(), "text": string_schema(".*\\S.*", 1_024), "requirement_ids": array_schema(
+            identifier_schema(),
+            1,
+            4,
+            true,
+        )},
+    )
+    support_mapping = closed_object_schema(
+        {"support_claim_id": identifier_schema(), "unit_id": identifier_schema(), "memory_id": identifier_schema(), "evidence_ids": array_schema(
+            identifier_schema(),
+            1,
+            4,
+            true,
+        )},
+    )
+    return closed_object_schema(
+        {"contract_version": const_string_schema("console_proposal_0_1"), "profile_id": const_string_schema(
+            "console_profile_0_1",
+        ), "package_id": identifier_schema(), "domain_id": identifier_schema(), "package_revision": revision_schema(), "artifact_digest": digest_schema(), "request_id": identifier_schema(), "request_digest": digest_schema(), "proposal_id": identifier_schema(), "action_id": identifier_schema(), "evidence_ids": array_schema(
+            identifier_schema(),
+            1,
+            8,
+            true,
+        ), "visible_units": array_schema(visible_unit, 1, 8, true), "support_mappings": array_schema(
+            support_mapping,
+            1,
+            8,
+            true,
+        )},
+    )
+
+
+def observation_identity_schema(
+    contract_version: str,
+    evaluator_roles: list[str],
+    target_roles: list[str],
+) -> Dict[str, JsonValue]:
+    """Construct the shared strict identity fields for one raw evaluator observation."""
+
+    return {"contract_version": const_string_schema(contract_version), "profile_id": const_string_schema(
+        "console_profile_0_1",
+    ), "observation_id": identifier_schema(), "package_id": identifier_schema(), "domain_id": identifier_schema(), "package_revision": revision_schema(), "artifact_digest": digest_schema(), "request_id": identifier_schema(), "request_digest": digest_schema(), "candidate_digest": digest_schema(), "target_id": identifier_schema(), "target_digest": digest_schema(), "evaluator_role": enum_string_schema(
+        evaluator_roles,
+    ), "target_role": enum_string_schema(target_roles)}
+
+
+def relation_output_schema() -> JsonValue:
+    """Construct the strict raw relation schema whose fingerprints are host-added."""
+
+    fields = observation_identity_schema(
+        "console_relation_observation_0_1",
+        ["evidence_relation", "contradiction_cross_check"],
+        ["visible_unit_union", "support_claim_memory", "proposal_union"],
+    )
+    fields["support_bps"] = integer_schema(0, 10_000)
+    fields["contradiction_bps"] = integer_schema(0, 10_000)
+    fields["unresolved_bps"] = integer_schema(0, 10_000)
+    return closed_object_schema(fields)
+
+
+def synthesis_output_schema() -> JsonValue:
+    """Construct the strict raw synthesis schema whose fingerprints are host-added."""
+
+    fields = observation_identity_schema(
+        "console_synthesis_observation_0_1",
+        ["synthesis_coverage"],
+        ["request_coverage", "requirement_coverage"],
+    )
+    fields["covered_bps"] = integer_schema(0, 10_000)
+    fields["gap_bps"] = integer_schema(0, 10_000)
+    fields["unresolved_bps"] = integer_schema(0, 10_000)
+    return closed_object_schema(fields)
+
+
+def provider_context_shape_is_closed(value: JsonValue) -> bool:
+    """Require every Hees context field and reject host-added or authority-bearing data."""
+
+    if not json_keys_are_exact(
+        value.clone(),
+        ["profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "mission", "request", "declared_actions", "requirements", "admitted_memory"],
+    ):
+        return false
+    match value.get("request"):
+        None => return false
+        Some(request) =>
+            if not json_keys_are_exact(request, ["request_id", "question", "request_digest"]):
+                return false
+    match value.get("declared_actions"):
+        None => return false
+        Some(actions) =>
+            match actions.as_array():
+                None => return false
+                Some(items) =>
+                    for item in items:
+                        if not json_keys_are_exact(item, ["action_id", "evidence_required"]):
+                            return false
+    match value.get("requirements"):
+        None => return false
+        Some(requirements) =>
+            match requirements.as_array():
+                None => return false
+                Some(items) =>
+                    for item in items:
+                        if not json_keys_are_exact(item, ["requirement_id", "description"]):
+                            return false
+    match value.get("admitted_memory"):
+        None => return false
+        Some(memory) =>
+            match memory.as_array():
+                None => return false
+                Some(items) =>
+                    if len(items) < 1 or len(items) > 8:
+                        return false
+                    for item in items:
+                        if not json_keys_are_exact(
+                            item,
+                            ["evidence_id", "memory_id", "claim", "guidance", "language", "source_ref", "source_kind", "source_fingerprint", "review_state", "review_revision", "rights_state", "authority_class", "evidence_kind"],
+                        ):
+                            return false
+                    return true
+
+
+def parse_provider_context(source: str) -> Result[ProviderContext, ProviderFailure]:
+    """Consume only a plannable closed context envelope authored by Hees."""
+
+    if utf8_length(source) > MAX_PROVIDER_INPUT_BYTES:
+        return Err(ProviderFailure.InputTooLarge)
+    match JsonValue.parse(source):
+        Err(_) => return Err(ProviderFailure.InvalidInput)
+        Ok(value) =>
+            if not json_keys_are_exact(value.clone(), ["contract_version", "profile_id", "plannable", "context"]):
+                return Err(ProviderFailure.InvalidInput)
+            match value.get("context"):
+                None => return Err(ProviderFailure.InvalidInput)
+                Some(context) =>
+                    if context.is_null() or not provider_context_shape_is_closed(context):
+                        return Err(ProviderFailure.InvalidInput)
+            match value.to_json():
+                Err(_) => return Err(ProviderFailure.InvalidInput)
+                Ok(source) =>
+                    match ProviderContextPlan.from_json(source):
+                        Err(_) => return Err(ProviderFailure.InvalidInput)
+                        Ok(plan) =>
+                            if (
+                                plan.contract_version != "console_provider_context_plan_0_1"
+                                or plan.profile_id != "console_profile_0_1"
+                                or not plan.plannable
+                            ):
+                                return Err(ProviderFailure.InvalidInput)
+                            match plan.context:
+                                None => return Err(ProviderFailure.InvalidInput)
+                                Some(context) => return Ok(context)
+
+
+def prepare_call(
+    operation: str,
+    schema_name: str,
+    schema: JsonValue,
+    instructions: str,
+    payload_json: str,
+    max_output_tokens: int,
+    max_output_bytes: int,
+) -> Result[PreparedProviderCall, ProviderFailure]:
+    """Construct one exact Responses request and its safe fingerprints."""
+
+    if utf8_length(payload_json) > MAX_PROVIDER_INPUT_BYTES:
+        return Err(ProviderFailure.InputTooLarge)
+    request = ResponseRequest(
+        model_name=GPT56_MODEL,
+        instructions=instructions,
+        input=[ResponseInputMessage(role="user", content=[ResponseInputContent(type_="input_text", text=payload_json)])],
+        text=ResponseText(
+            format=ResponseTextFormat(type_="json_schema", name=schema_name, schema=schema.clone(), strict=true),
+        ),
+        reasoning=ResponseReasoning(effort=REASONING_EFFORT),
+        max_output_tokens=max_output_tokens,
+        tools=[],
+        tool_choice="none",
+        store=false,
+        stream=false,
+        truncation="disabled",
+    )
+    request_body = request.to_json()
+    if utf8_length(request_body) > MAX_PROVIDER_INPUT_BYTES:
+        return Err(ProviderFailure.InputTooLarge)
+    configuration = ProviderConfiguration(
+        model_name=GPT56_MODEL,
+        schema_name=schema_name,
+        response_schema=schema,
+        reasoning_effort=REASONING_EFFORT,
+        max_output_tokens=max_output_tokens,
+        max_output_bytes=max_output_bytes,
+        tools_enabled=false,
+        store=false,
+        stream=false,
+        truncation="disabled",
+        timeout_seconds=PROVIDER_TIMEOUT_SECONDS,
+    )
+    return Ok(
+        PreparedProviderCall(
+            operation=operation,
+            request_body=request_body,
+            max_output_bytes=max_output_bytes,
+            prompt_fingerprint=fingerprint(instructions),
+            configuration_fingerprint=fingerprint(configuration.to_json()),
+        ),
+    )
+
+
+pub def build_proposal_call(context_plan_json: str) -> Result[PreparedProviderCall, ProviderFailure]:
+    """Build the single strict proposal call from a Hees-authored context plan."""
+
+    payload = parse_provider_context(context_plan_json)?
+    return prepare_call(
+        "proposal",
+        "console_proposal_provider_0_1",
+        proposal_output_schema(),
+        PROPOSAL_INSTRUCTIONS,
+        payload.to_json(),
+        PROPOSAL_OUTPUT_TOKENS,
+        PROPOSAL_OUTPUT_BYTES,
+    )
+
+
+def json_keys_are_exact(value: JsonValue, expected: list[str]) -> bool:
+    """Require a JSON object to contain exactly the named fields."""
+
+    match value.as_object():
+        None => return false
+        Some(fields) =>
+            if len(fields.keys()) != len(expected):
+                return false
+            for field in expected:
+                match fields.get(field):
+                    None => return false
+                    Some(_) => pass
+            return true
+
+
+def target_shape_is_closed(value: JsonValue) -> bool:
+    """Reject injected manifest fields before they can enter a provider prompt."""
+
+    if not json_keys_are_exact(value.clone(), ["body", "target_digest"]):
+        return false
+    match value.get("body"):
+        None => return false
+        Some(body) =>
+            if not json_keys_are_exact(
+                body.clone(),
+                ["profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_digest", "candidate_digest", "target_id", "evaluator_role", "target_role", "subject_digest", "premises"],
+            ):
+                return false
+            match body.get("premises"):
+                None => return false
+                Some(premises) =>
+                    match premises.as_array():
+                        None => return false
+                        Some(items) =>
+                            if len(items) > 8:
+                                return false
+                            for item in items:
+                                if not json_keys_are_exact(item, ["memory_id", "content_digest"]):
+                                    return false
+                            return true
+
+
+def parse_manifest(source: str) -> Result[list[ProviderManifestTarget], ProviderFailure]:
+    """Decode only the closed manifest-plan envelope authored by Hees."""
+
+    if utf8_length(source) > MAX_PROVIDER_INPUT_BYTES:
+        return Err(ProviderFailure.InputTooLarge)
+    match JsonValue.parse(source):
+        Err(_) => return Err(ProviderFailure.InvalidInput)
+        Ok(value) =>
+            if not json_keys_are_exact(value.clone(), ["contract_version", "profile_id", "plannable", "targets"]):
+                return Err(ProviderFailure.InvalidInput)
+            match value.get("targets"):
+                None => return Err(ProviderFailure.InvalidInput)
+                Some(targets_value) =>
+                    match targets_value.as_array():
+                        None => return Err(ProviderFailure.InvalidInput)
+                        Some(items) =>
+                            if len(items) > MAX_COMMITTEE_CALLS:
+                                return Err(ProviderFailure.CommitteeTooLarge)
+                            for item in items:
+                                if not target_shape_is_closed(item):
+                                    return Err(ProviderFailure.InvalidInput)
+            match value.to_json():
+                Err(_) => return Err(ProviderFailure.InvalidInput)
+                Ok(source) =>
+                    match ProviderManifestPlan.from_json(source):
+                        Err(_) => return Err(ProviderFailure.InvalidInput)
+                        Ok(plan) =>
+                            if (
+                                plan.contract_version != "console_manifest_plan_0_1"
+                                or plan.profile_id != "console_profile_0_1"
+                            ):
+                                return Err(ProviderFailure.InvalidInput)
+                            if not plan.plannable:
+                                if len(plan.targets) != 0:
+                                    return Err(ProviderFailure.InvalidInput)
+                                return Ok([])
+                            if len(plan.targets) == 0:
+                                return Err(ProviderFailure.InvalidInput)
+                            return Ok(plan.targets)
+
+
+def observation_id(index: int) -> str:
+    """Construct one deterministic live observation identifier in manifest order."""
+
+    if index < 10:
+        return f"observation_live_0{index}"
+    return f"observation_live_{index}"
+
+
+def committee_operation(target: ProviderManifestTarget) -> Result[str, ProviderFailure]:
+    """Map a Hees evaluator role to one provider operation without classifying it."""
+
+    if target.body.evaluator_role == "evidence_relation":
+        return Ok("relation")
+    if target.body.evaluator_role == "contradiction_cross_check":
+        return Ok("contradiction")
+    if target.body.evaluator_role == "synthesis_coverage":
+        return Ok("synthesis")
+    return Err(ProviderFailure.InvalidInput)
+
+
+def committee_instructions(operation: str) -> str:
+    """Return the closed instruction text for one evaluator operation."""
+
+    if operation == "relation":
+        return EVIDENCE_INSTRUCTIONS
+    if operation == "contradiction":
+        return CONTRADICTION_INSTRUCTIONS
+    return SYNTHESIS_INSTRUCTIONS
+
+
+def committee_schema(operation: str) -> JsonValue:
+    """Return the strict raw observation schema for one evaluator operation."""
+
+    if operation == "synthesis":
+        return synthesis_output_schema()
+    return relation_output_schema()
+
+
+def proposal_matches_context(proposal: ConsoleProposal, context: ProviderContext) -> bool:
+    """Bind an untrusted proposal to the exact context used to request it."""
+
+    return (
+        proposal.contract_version == "console_proposal_0_1"
+        and proposal.profile_id == context.profile_id
+        and proposal.package_id == context.package_id
+        and proposal.domain_id == context.domain_id
+        and proposal.package_revision == context.package_revision
+        and proposal.artifact_digest == context.artifact_digest
+        and proposal.request_id == context.request.request_id
+        and proposal.request_digest == context.request.request_digest
+    )
+
+
+def target_matches_interaction(target: ProviderManifestTarget, context: ProviderContext, candidate_digest: str) -> bool:
+    """Reject targets crossed between packages, requests, or proposal candidates."""
+
+    return (
+        target.body.profile_id == context.profile_id
+        and target.body.package_id == context.package_id
+        and target.body.domain_id == context.domain_id
+        and target.body.package_revision == context.package_revision
+        and target.body.artifact_digest == context.artifact_digest
+        and target.body.request_digest == context.request.request_digest
+        and target.body.candidate_digest == candidate_digest
+    )
+
+
+def identify_candidate(proposal: ConsoleProposal) -> Result[str, ProviderFailure]:
+    """Consume the narrow Hees proposal-identity projection without reopening digest internals."""
+
+    match JsonValue.parse(identify_console_proposal_json(proposal.clone())):
+        Err(_) => return Err(ProviderFailure.InvalidInput)
+        Ok(identity) =>
+            if not json_keys_are_exact(
+                identity.clone(),
+                ["contract_version", "profile_id", "proposal_id", "candidate_digest"],
+            ):
+                return Err(ProviderFailure.InvalidInput)
+            if (json_string_field(identity.clone(), "contract_version")? != "console_proposal_identity_0_1" or json_string_field(
+                identity.clone(),
+                "profile_id",
+            )? != proposal.profile_id or json_string_field(identity.clone(), "proposal_id")? != proposal.proposal_id):
+                return Err(ProviderFailure.InvalidInput)
+            candidate_digest = json_string_field(identity, "candidate_digest")?
+            if not candidate_digest.starts_with("sha256:") or len(candidate_digest) != 71:
+                return Err(ProviderFailure.InvalidInput)
+            return Ok(candidate_digest)
+
+
+pub def build_committee_calls(
+    context_plan_json: str,
+    proposal: ConsoleProposal,
+    manifest_json: str,
+) -> Result[list[PreparedProviderCall], ProviderFailure]:
+    """
+    Build ordered non-authoritative evaluator calls from Hees-produced target JSON.
+
+    An empty manifest returns an empty call list. This is the required pass-through path for schema-valid proposals that
+    Hees cannot plan because they contain unknown or disallowed references.
+    """
+
+    targets = parse_manifest(manifest_json)?
+    if len(targets) == 0:
+        return Ok([])
+    context = parse_provider_context(context_plan_json)?
+    if not proposal_matches_context(proposal.clone(), context.clone()):
+        return Err(ProviderFailure.InvalidInput)
+    candidate_digest = identify_candidate(proposal.clone())?
+    mut calls: list[PreparedProviderCall] = []
+    mut relation_count = 0
+    mut synthesis_count = 0
+    mut target_ids: list[str] = []
+    for index in range(len(targets)):
+        target = targets[index]
+        if not target_matches_interaction(target.clone(), context.clone(), candidate_digest):
+            return Err(ProviderFailure.InvalidInput)
+        if target_ids.contains(f"{target.body.target_id}"):
+            return Err(ProviderFailure.InvalidInput)
+        target_ids.append(f"{target.body.target_id}")
+        operation = committee_operation(target.clone())?
+        if operation == "synthesis":
+            synthesis_count = synthesis_count + 1
+        else:
+            relation_count = relation_count + 1
+        if relation_count > MAX_RELATION_CALLS or synthesis_count > MAX_SYNTHESIS_CALLS:
+            return Err(ProviderFailure.CommitteeTooLarge)
+        payload = CommitteeProviderInput(
+            profile_id=f"{context.profile_id}",
+            package_id=f"{context.package_id}",
+            domain_id=f"{context.domain_id}",
+            package_revision=f"{context.package_revision}",
+            artifact_digest=f"{context.artifact_digest}",
+            request=context.request.clone(),
+            proposal=proposal.clone(),
+            observation_id=observation_id(index + 1),
+            target=target,
+            admitted_memory=context.admitted_memory.clone(),
+        )
+        calls.append(
+            prepare_call(
+                f"{operation}",
+                f"console_{operation}_provider_0_1",
+                committee_schema(f"{operation}"),
+                committee_instructions(operation),
+                payload.to_json(),
+                OBSERVATION_OUTPUT_TOKENS,
+                OBSERVATION_OUTPUT_BYTES,
+            )?,
+        )
+    return Ok(calls)
+
+
+def json_string_field(value: JsonValue, field: str) -> Result[str, ProviderFailure]:
+    """Extract one required JSON string while discarding parser detail."""
+
+    match value.get(field):
+        None => return Err(ProviderFailure.MalformedOutput)
+        Some(item) =>
+            match item.as_str():
+                None => return Err(ProviderFailure.MalformedOutput)
+                Some(text) => return Ok(text)
+
+
+def json_array_field(value: JsonValue, field: str) -> Result[list[JsonValue], ProviderFailure]:
+    """Extract one required JSON array while discarding parser detail."""
+
+    match value.get(field):
+        None => return Err(ProviderFailure.MalformedOutput)
+        Some(item) =>
+            match item.as_array():
+                None => return Err(ProviderFailure.MalformedOutput)
+                Some(items) => return Ok(items)
+
+
+def json_int_field(value: JsonValue, field: str) -> Result[int, ProviderFailure]:
+    """Extract one required JSON integer while discarding parser detail."""
+
+    match value.get(field):
+        None => return Err(ProviderFailure.MalformedOutput)
+        Some(item) =>
+            match item.as_int():
+                None => return Err(ProviderFailure.MalformedOutput)
+                Some(number) => return Ok(number)
+
+
+def json_string_values(value: JsonValue) -> Result[list[str], ProviderFailure]:
+    """Decode one JSON array containing only strings."""
+
+    match value.as_array():
+        None => return Err(ProviderFailure.MalformedOutput)
+        Some(items) =>
+            mut values: list[str] = []
+            for item in items:
+                match item.as_str():
+                    None => return Err(ProviderFailure.MalformedOutput)
+                    Some(text) => values.append(text)
+            return Ok(values)
+
+
+def json_string_array_field(value: JsonValue, field: str) -> Result[list[str], ProviderFailure]:
+    """Extract one required JSON string array."""
+
+    match value.get(field):
+        None => return Err(ProviderFailure.MalformedOutput)
+        Some(item) => return json_string_values(item)
+
+
+def extract_output_text(call: PreparedProviderCall, response_source: str) -> Result[str, ProviderFailure]:
+    """Extract exactly one completed structured output without retaining raw envelope data."""
+
+    if utf8_length(response_source) > MAX_PROVIDER_ENVELOPE_BYTES:
+        return Err(ProviderFailure.ResponseTooLarge)
+    match JsonValue.parse(response_source):
+        Err(_) => return Err(ProviderFailure.MalformedOutput)
+        Ok(response) =>
+            status = json_string_field(response.clone(), "status")?
+            if status == "incomplete":
+                return Err(ProviderFailure.Incomplete)
+            if status != "completed":
+                return Err(ProviderFailure.Unavailable)
+            if json_string_field(response.clone(), "model")? != GPT56_MODEL:
+                return Err(ProviderFailure.UnexpectedModel)
+            mut output_texts: list[str] = []
+            for output in json_array_field(response, "output")?:
+                match output.get("content"):
+                    None => pass
+                    Some(content) =>
+                        match content.as_array():
+                            None => return Err(ProviderFailure.MalformedOutput)
+                            Some(parts) =>
+                                for part in parts:
+                                    part_type = json_string_field(part.clone(), "type")?
+                                    if part_type == "refusal":
+                                        return Err(ProviderFailure.Refused)
+                                    if part_type == "output_text":
+                                        output_texts.append(json_string_field(part, "text")?)
+            if len(output_texts) != 1:
+                return Err(ProviderFailure.MalformedOutput)
+            output_text = output_texts[0]
+            if utf8_length(output_text) > call.max_output_bytes:
+                return Err(ProviderFailure.ResponseTooLarge)
+            return Ok(output_text)
+
+
+def proposal_shape_is_closed(value: JsonValue) -> bool:
+    """Require the exact proposal field graph before typed decoding."""
+
+    if not json_keys_are_exact(
+        value.clone(),
+        ["contract_version", "profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "proposal_id", "action_id", "evidence_ids", "visible_units", "support_mappings"],
+    ):
+        return false
+    match value.get("visible_units"):
+        None => return false
+        Some(units) =>
+            match units.as_array():
+                None => return false
+                Some(items) =>
+                    for item in items:
+                        if not json_keys_are_exact(item, ["unit_id", "text", "requirement_ids"]):
+                            return false
+    match value.get("support_mappings"):
+        None => return false
+        Some(mappings) =>
+            match mappings.as_array():
+                None => return false
+                Some(items) =>
+                    for item in items:
+                        if not json_keys_are_exact(item, ["support_claim_id", "unit_id", "memory_id", "evidence_ids"]):
+                            return false
+    return true
+
+
+def proposal_from_value(value: JsonValue) -> Result[ConsoleProposal, ProviderFailure]:
+    """Construct the public Hees proposal model after the strict shape check succeeds."""
+
+    mut visible_units: list[VisibleUnit] = []
+    for item in json_array_field(value.clone(), "visible_units")?:
+        visible_units.append(
+            VisibleUnit(
+                unit_id=json_string_field(item.clone(), "unit_id")?,
+                text=json_string_field(item.clone(), "text")?,
+                requirement_ids=json_string_array_field(item, "requirement_ids")?,
+            ),
+        )
+    mut support_mappings: list[SupportMapping] = []
+    for item in json_array_field(value.clone(), "support_mappings")?:
+        match item.get("evidence_ids"):
+            None => return Err(ProviderFailure.MalformedOutput)
+            Some(raw_evidence_ids) =>
+                mut evidence_ids: Option[list[str]] = None
+                if not raw_evidence_ids.is_null():
+                    evidence_ids = Some(json_string_values(raw_evidence_ids)?)
+                support_mappings.append(
+                    SupportMapping(
+                        support_claim_id=json_string_field(item.clone(), "support_claim_id")?,
+                        unit_id=json_string_field(item.clone(), "unit_id")?,
+                        memory_id=json_string_field(item, "memory_id")?,
+                        evidence_ids=evidence_ids,
+                    ),
+                )
+    return Ok(
+        ConsoleProposal(
+            contract_version=json_string_field(value.clone(), "contract_version")?,
+            profile_id=json_string_field(value.clone(), "profile_id")?,
+            package_id=json_string_field(value.clone(), "package_id")?,
+            domain_id=json_string_field(value.clone(), "domain_id")?,
+            package_revision=json_string_field(value.clone(), "package_revision")?,
+            artifact_digest=json_string_field(value.clone(), "artifact_digest")?,
+            request_id=json_string_field(value.clone(), "request_id")?,
+            request_digest=json_string_field(value.clone(), "request_digest")?,
+            proposal_id=json_string_field(value.clone(), "proposal_id")?,
+            action_id=json_string_field(value.clone(), "action_id")?,
+            evidence_ids=json_string_array_field(value, "evidence_ids")?,
+            visible_units=visible_units,
+            support_mappings=support_mappings,
+        ),
+    )
+
+
+pub def decode_proposal_response(
+    call: PreparedProviderCall,
+    response_source: str,
+) -> Result[ConsoleProposal, ProviderFailure]:
+    """Decode one schema-shaped proposal without performing authority validation."""
+
+    if call.operation != "proposal":
+        return Err(ProviderFailure.InvalidInput)
+    output_text = extract_output_text(call, response_source)?
+    match JsonValue.parse(output_text):
+        Err(_) => return Err(ProviderFailure.MalformedOutput)
+        Ok(value) =>
+            if not proposal_shape_is_closed(value.clone()):
+                return Err(ProviderFailure.MalformedOutput)
+            return proposal_from_value(value)
+
+
+def relation_shape_is_closed(value: JsonValue) -> bool:
+    """Require the exact raw relation field set before host fingerprints are attached."""
+
+    return json_keys_are_exact(
+        value,
+        ["contract_version", "profile_id", "observation_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "candidate_digest", "target_id", "target_digest", "evaluator_role", "target_role", "support_bps", "contradiction_bps", "unresolved_bps"],
+    )
+
+
+def synthesis_shape_is_closed(value: JsonValue) -> bool:
+    """Require the exact raw synthesis field set before host fingerprints are attached."""
+
+    return json_keys_are_exact(
+        value,
+        ["contract_version", "profile_id", "observation_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "candidate_digest", "target_id", "target_digest", "evaluator_role", "target_role", "covered_bps", "gap_bps", "unresolved_bps"],
+    )
+
+
+def attach_fingerprints(call: PreparedProviderCall, output_text: str, relation: bool) -> Result[str, ProviderFailure]:
+    """Attach only safe non-authoritative trace fingerprints to a raw observation object."""
+
+    match JsonValue.parse(output_text):
+        Err(_) => return Err(ProviderFailure.MalformedOutput)
+        Ok(parsed) =>
+            mut value = parsed
+            if relation and not relation_shape_is_closed(value.clone()):
+                return Err(ProviderFailure.MalformedOutput)
+            if not relation and not synthesis_shape_is_closed(value.clone()):
+                return Err(ProviderFailure.MalformedOutput)
+            match value.set("model_fingerprint", JsonValue.str(fingerprint(GPT56_MODEL))):
+                Err(_) => return Err(ProviderFailure.MalformedOutput)
+                Ok(_) => pass
+            match value.set("prompt_fingerprint", JsonValue.str(call.prompt_fingerprint)):
+                Err(_) => return Err(ProviderFailure.MalformedOutput)
+                Ok(_) => pass
+            match value.set("configuration_fingerprint", JsonValue.str(call.configuration_fingerprint)):
+                Err(_) => return Err(ProviderFailure.MalformedOutput)
+                Ok(_) => pass
+            match value.to_json():
+                Err(_) => return Err(ProviderFailure.MalformedOutput)
+                Ok(source) => return Ok(source)
+
+
+def relation_from_value(value: JsonValue) -> Result[RelationObservation, ProviderFailure]:
+    """Construct a public Hees relation observation from the closed provider projection."""
+
+    return Ok(
+        RelationObservation(
+            contract_version=json_string_field(value.clone(), "contract_version")?,
+            profile_id=json_string_field(value.clone(), "profile_id")?,
+            observation_id=json_string_field(value.clone(), "observation_id")?,
+            package_id=json_string_field(value.clone(), "package_id")?,
+            domain_id=json_string_field(value.clone(), "domain_id")?,
+            package_revision=json_string_field(value.clone(), "package_revision")?,
+            artifact_digest=json_string_field(value.clone(), "artifact_digest")?,
+            request_id=json_string_field(value.clone(), "request_id")?,
+            request_digest=json_string_field(value.clone(), "request_digest")?,
+            candidate_digest=json_string_field(value.clone(), "candidate_digest")?,
+            target_id=json_string_field(value.clone(), "target_id")?,
+            target_digest=json_string_field(value.clone(), "target_digest")?,
+            evaluator_role=json_string_field(value.clone(), "evaluator_role")?,
+            target_role=json_string_field(value.clone(), "target_role")?,
+            support_bps=json_int_field(value.clone(), "support_bps")?,
+            contradiction_bps=json_int_field(value.clone(), "contradiction_bps")?,
+            unresolved_bps=json_int_field(value.clone(), "unresolved_bps")?,
+            model_fingerprint=json_string_field(value.clone(), "model_fingerprint")?,
+            prompt_fingerprint=json_string_field(value.clone(), "prompt_fingerprint")?,
+            configuration_fingerprint=json_string_field(value, "configuration_fingerprint")?,
+        ),
+    )
+
+
+def synthesis_from_value(value: JsonValue) -> Result[SynthesisObservation, ProviderFailure]:
+    """Construct a public Hees synthesis observation from the closed provider projection."""
+
+    return Ok(
+        SynthesisObservation(
+            contract_version=json_string_field(value.clone(), "contract_version")?,
+            profile_id=json_string_field(value.clone(), "profile_id")?,
+            observation_id=json_string_field(value.clone(), "observation_id")?,
+            package_id=json_string_field(value.clone(), "package_id")?,
+            domain_id=json_string_field(value.clone(), "domain_id")?,
+            package_revision=json_string_field(value.clone(), "package_revision")?,
+            artifact_digest=json_string_field(value.clone(), "artifact_digest")?,
+            request_id=json_string_field(value.clone(), "request_id")?,
+            request_digest=json_string_field(value.clone(), "request_digest")?,
+            candidate_digest=json_string_field(value.clone(), "candidate_digest")?,
+            target_id=json_string_field(value.clone(), "target_id")?,
+            target_digest=json_string_field(value.clone(), "target_digest")?,
+            evaluator_role=json_string_field(value.clone(), "evaluator_role")?,
+            target_role=json_string_field(value.clone(), "target_role")?,
+            covered_bps=json_int_field(value.clone(), "covered_bps")?,
+            gap_bps=json_int_field(value.clone(), "gap_bps")?,
+            unresolved_bps=json_int_field(value.clone(), "unresolved_bps")?,
+            model_fingerprint=json_string_field(value.clone(), "model_fingerprint")?,
+            prompt_fingerprint=json_string_field(value.clone(), "prompt_fingerprint")?,
+            configuration_fingerprint=json_string_field(value, "configuration_fingerprint")?,
+        ),
+    )
+
+
+pub def decode_relation_response(
+    call: PreparedProviderCall,
+    response_source: str,
+) -> Result[RelationObservation, ProviderFailure]:
+    """Decode one raw relation or contradiction observation and attach safe fingerprints."""
+
+    if call.operation != "relation" and call.operation != "contradiction":
+        return Err(ProviderFailure.InvalidInput)
+    output_text = extract_output_text(call.clone(), response_source)?
+    source = attach_fingerprints(call, output_text, true)?
+    match JsonValue.parse(source):
+        Err(_) => return Err(ProviderFailure.MalformedOutput)
+        Ok(value) => return relation_from_value(value)
+
+
+pub def decode_synthesis_response(
+    call: PreparedProviderCall,
+    response_source: str,
+) -> Result[SynthesisObservation, ProviderFailure]:
+    """Decode one raw synthesis observation and attach safe fingerprints."""
+
+    if call.operation != "synthesis":
+        return Err(ProviderFailure.InvalidInput)
+    output_text = extract_output_text(call.clone(), response_source)?
+    source = attach_fingerprints(call, output_text, false)?
+    match JsonValue.parse(source):
+        Err(_) => return Err(ProviderFailure.MalformedOutput)
+        Ok(value) => return synthesis_from_value(value)
+
+
+pub def propose_with_transport(
+    context_plan_json: str,
+    transport: (str) -> Result[str, ProviderFailure],
+) -> Result[ConsoleProposal, ProviderFailure]:
+    """Run a proposal call through an injected deterministic or platform transport."""
+
+    call = build_proposal_call(context_plan_json)?
+    response = transport(call.request_body)?
+    return decode_proposal_response(call, response)
+
+
+pub def propose_json_with_transport(
+    context_plan_json: str,
+    transport: (str) -> Result[str, ProviderFailure],
+) -> Result[str, ProviderFailure]:
+    """Return one injected-transport proposal as untrusted canonical JSON for host composition."""
+
+    proposal = propose_with_transport(context_plan_json, transport)?
+    return Ok(
+        ProviderProposalResult(contract_version=PROPOSAL_RESULT_CONTRACT, profile_id=CONSOLE_PROFILE, proposal=proposal).to_json(),
+    )
+
+
+def decode_proposal_result(source: str) -> Result[ProviderProposalResult, ProviderFailure]:
+    """Decode one exact private proposal envelope and reject version or profile drift."""
+
+    result = ProviderProposalResult.from_json(source).map_err((_error) => ProviderFailure.InvalidInput)?
+    if result.contract_version != PROPOSAL_RESULT_CONTRACT or result.profile_id != CONSOLE_PROFILE:
+        return Err(ProviderFailure.InvalidInput)
+    return Ok(result)
+
+
+pub def evaluate_committee_with_transport(
+    context_plan_json: str,
+    proposal: ConsoleProposal,
+    manifest_json: str,
+    transport: (str) -> Result[str, ProviderFailure],
+) -> Result[ProviderCommitteeResult, ProviderFailure]:
+    """Evaluate every Hees target sequentially through an injected transport."""
+
+    calls = build_committee_calls(context_plan_json, proposal, manifest_json)?
+    mut relations: list[RelationObservation] = []
+    mut syntheses: list[SynthesisObservation] = []
+    for call in calls:
+        response = transport(call.request_body)?
+        if call.operation == "synthesis":
+            syntheses.append(decode_synthesis_response(call, response)?)
+        else:
+            relations.append(decode_relation_response(call, response)?)
+    return Ok(
+        ProviderCommitteeResult(
+            contract_version=COMMITTEE_RESULT_CONTRACT,
+            profile_id=CONSOLE_PROFILE,
+            relations=relations,
+            syntheses=syntheses,
+        ),
+    )
+
+
+pub def evaluate_committee_json_with_transport(
+    context_plan_json: str,
+    proposal_json: str,
+    manifest_json: str,
+    transport: (str) -> Result[str, ProviderFailure],
+) -> Result[str, ProviderFailure]:
+    """Return injected-transport committee observations as non-authoritative canonical JSON."""
+
+    proposal_result = decode_proposal_result(proposal_json)?
+    committee = evaluate_committee_with_transport(context_plan_json, proposal_result.proposal, manifest_json, transport)?
+    return Ok(committee.to_json())
+
+
+def load_api_key() -> Result[str, ProviderFailure]:
+    """Read only `OPENAI_API_KEY` and reject blank, oversized, or header-breaking values."""
+
+    environment_name = f"{API_KEY_ENVIRONMENT}"
+    match env_var(environment_name):
+        Err(_) => return Err(ProviderFailure.MissingApiKey)
+        Ok(raw_key) =>
+            key = f"{raw_key}"
+            if key == "" or key.strip() != key or len(key) > 512 or key.contains("\n") or key.contains("\r"):
+                return Err(ProviderFailure.MissingApiKey)
+            return Ok(key)
+
+
+def send_https(api_key: str, request_body: str) -> Result[str, ProviderFailure]:
+    """Send one bounded request to the fixed endpoint and redact every transport failure."""
+
+    result = post(RESPONSES_ENDPOINT)
+        .set("Authorization", f"Bearer {api_key}")
+        .set("Content-Type", "application/json")
+        .set("Accept", "application/json")
+        .timeout(Duration.from_secs(15))
+        .send_string(request_body)
+    match result:
+        Err(_) => return Err(ProviderFailure.Unavailable)
+        Ok(response) =>
+            mut body: bytes = b""
+            reader = response.into_reader()
+            match reader.take(MAX_PROVIDER_ENVELOPE_BYTES + 1).read_to_end(body):
+                Err(_) => return Err(ProviderFailure.Unavailable)
+                Ok(_) =>
+                    if len(body) > MAX_PROVIDER_ENVELOPE_BYTES:
+                        return Err(ProviderFailure.ResponseTooLarge)
+                    match RustString.from_utf8(body):
+                        Err(_) => return Err(ProviderFailure.MalformedOutput)
+                        Ok(source) => return Ok(source)
+
+
+pub def live_proposal(gate: LiveCanaryGate, context_plan_json: str) -> Result[ConsoleProposal, ProviderFailure]:
+    """Run the optional live proposal canary only after explicit activation."""
+
+    match gate:
+        LiveCanaryGate.Disabled => return Err(ProviderFailure.LiveCanaryDisabled)
+        LiveCanaryGate.Explicit => pass
+    api_key = load_api_key()?
+    call = build_proposal_call(context_plan_json)?
+    response = send_https(api_key, call.request_body)?
+    return decode_proposal_response(call, response)
+
+
+pub def live_proposal_json(gate: LiveCanaryGate, context_plan_json: str) -> Result[str, ProviderFailure]:
+    """Return the explicitly activated live proposal as untrusted canonical JSON."""
+
+    proposal = live_proposal(gate, context_plan_json)?
+    return Ok(
+        ProviderProposalResult(contract_version=PROPOSAL_RESULT_CONTRACT, profile_id=CONSOLE_PROFILE, proposal=proposal).to_json(),
+    )
+
+
+pub def live_committee(
+    gate: LiveCanaryGate,
+    context_plan_json: str,
+    proposal: ConsoleProposal,
+    manifest_json: str,
+) -> Result[ProviderCommitteeResult, ProviderFailure]:
+    """Run the optional live sequential committee only after explicit activation."""
+
+    match gate:
+        LiveCanaryGate.Disabled => return Err(ProviderFailure.LiveCanaryDisabled)
+        LiveCanaryGate.Explicit => pass
+    calls = build_committee_calls(context_plan_json, proposal, manifest_json)?
+    if len(calls) == 0:
+        return Ok(
+            ProviderCommitteeResult(
+                contract_version=COMMITTEE_RESULT_CONTRACT,
+                profile_id=CONSOLE_PROFILE,
+                relations=[],
+                syntheses=[],
+            ),
+        )
+    api_key = load_api_key()?
+    mut relations: list[RelationObservation] = []
+    mut syntheses: list[SynthesisObservation] = []
+    for call in calls:
+        response = send_https(f"{api_key}", call.request_body)?
+        if call.operation == "synthesis":
+            syntheses.append(decode_synthesis_response(call, response)?)
+        else:
+            relations.append(decode_relation_response(call, response)?)
+    return Ok(
+        ProviderCommitteeResult(
+            contract_version=COMMITTEE_RESULT_CONTRACT,
+            profile_id=CONSOLE_PROFILE,
+            relations=relations,
+            syntheses=syntheses,
+        ),
+    )
+
+
+pub def live_committee_json(
+    gate: LiveCanaryGate,
+    context_plan_json: str,
+    proposal_json: str,
+    manifest_json: str,
+) -> Result[str, ProviderFailure]:
+    """Return the explicitly activated live committee as non-authoritative canonical JSON."""
+
+    proposal_result = decode_proposal_result(proposal_json)?
+    committee = live_committee(gate, context_plan_json, proposal_result.proposal, manifest_json)?
+    return Ok(committee.to_json())
