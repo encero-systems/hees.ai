@@ -31,7 +31,7 @@ The test project under `workspaces/external-consumer/` compiles and tests this e
 
 ## Verify the initial console profile
 
-The console workspace uses only fictional acceptance data. Its current deterministic proof builds the native Incan Console and reruns all four replay inputs through Hees:
+The Console workspace uses only original fictional acceptance data. Its current proof runs thirteen native application tests and fourteen provider-boundary tests, builds the native Incan executable, and reruns all four replay inputs through Hees:
 
 ```bash
 make console-test console-native-smoke \
@@ -39,6 +39,17 @@ make console-test console-native-smoke \
 ```
 
 This proves the closed `console_profile_0_1` path. It does not download or invoke a language model, perform retrieval, or grant the provider-facing Console module admission authority.
+
+## Run the native Console
+
+Build the executable with released Incan `0.4.0`, then start the zero-credential offline experience:
+
+```bash
+make console-build INCAN=/path/to/incan-0.4.0/bin/incan
+workspaces/hees-console/target/incan/.cargo-target/release/hees_console
+```
+
+The release-candidate archive renames the installed executable to `hees-console` and needs no compiler, package manager, source checkout, network connection, or API key at runtime. Use `--headless` for privacy-redacted automation output. See [Hees Console](console.md) for interaction keys and live-mode syntax, and consult the [profile bounds and evidence](console-profile-0-1.md) before making platform or resource claims.
 
 ## Run the fictional runtime example
 

@@ -598,6 +598,12 @@ def digest_text_bytes(value: str) -> str:
     return f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}"
 
 
+def utf8_length(value: str) -> int:
+    """Return the exact UTF-8 byte length used by raw profile size bounds."""
+
+    return len(RustString.from(value).into_bytes())
+
+
 def validation_ok() -> ProfileValidation:
     """Construct the shared successful validation value."""
 
@@ -1037,7 +1043,7 @@ def validate_console_proposal_identity(
     """Establish only the package, request, contract, and proposal identity safe for a receipt."""
     if proposal.contract_version != PROPOSAL_CONTRACT or proposal.profile_id != CONSOLE_PROFILE_ID:
         return validation_error("unsupported_proposal_contract", "unsupported_proposal_contract")
-    if len(proposal.to_json()) > 131072:
+    if utf8_length(proposal.to_json()) > 131072:
         return validation_error("proposal_too_large", "proposal_too_large")
     if proposal.package_id != package.package_id:
         return validation_error("package_id_mismatch", "proposal_package_id_mismatch")

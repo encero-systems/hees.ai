@@ -6,7 +6,7 @@ Run the complete local gate with released Incan `0.4.0`:
 make ci INCAN=/path/to/incan
 ```
 
-The default uses locked dependency resolution and permits a clean machine to populate Cargo's cache. Once dependencies are present, `INCAN_FLAGS="--locked --offline"` provides an additional offline replay check.
+The default uses locked dependency resolution and permits a clean machine to populate Cargo's cache. Once dependencies are present, `INCAN_FLAGS="--locked --offline"` provides an additional dependency-resolution check; the packaged replay executable itself is already network-independent.
 
 The gate includes:
 
@@ -43,12 +43,12 @@ For a fixed source tree, the gate:
 
 1. reruns the package and release-contract tests;
 2. audits the native bundle after remapping build paths, including checks for active credential values in the bundle;
-3. embeds exactly the native Console binary, project license, repository notice, and release manifest, while keeping the build-side smoke oracle out of the artifact;
-4. writes `RELEASE-MANIFEST.json` with the source commit, clean-tree evidence, candidate platform, Incan release identity, Console lock digest, notice digest, and binary hash;
+3. embeds exactly the native Console binary, project license, repository notice, third-party license report, and release manifest, while keeping the build-side smoke oracle out of the artifact;
+4. writes `RELEASE-MANIFEST.json` with the source commit, clean-tree evidence, candidate platform, Incan release identity, Console lock digest, notice digests, and binary hash;
 5. creates a normalized `hees-console-<version>-<platform>.tar.gz` plus adjacent `.sha256`; and
 6. extracts and executes that archive from a clean temporary working directory with a minimal environment, temporary home, and no API key.
 
-The smoke proves that the candidate does not need a separately installed Incan compiler, package manager, source checkout, provider credential, or network service. It does not prove that the process is physically network-sandboxed, that a different operating-system build works, or that native compiler output is bit-reproducible.
+The smoke proves that the candidate does not need a separately installed Incan compiler, package manager, source checkout, provider credential, or network service. It does not prove that the process is physically network-sandboxed, that a different operating-system build works, that native compiler output is bit-reproducible, or that an unsigned macOS artifact carries publisher identity.
 
 The matching GitHub Actions workflow derives its matrix from the same registry and uses immutable action revisions with read-only repository permission. It uploads short-lived candidate evidence and never creates a release or deployment. A platform remains a candidate until its extracted hosted artifact has run successfully. macOS outputs are ad-hoc signed where the toolchain requires it, but they are not publisher-signed or notarized.
 

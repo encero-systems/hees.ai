@@ -28,6 +28,7 @@ from crate.provider import (
     decode_relation_response,
     decode_synthesis_response,
     evaluate_committee_json_with_transport,
+    json_nesting_is_within_limit,
     live_proposal,
     propose_json_with_transport,
     propose_with_transport,
@@ -449,6 +450,23 @@ def test_malformed_extra_output_fields_fail_closed() -> None:
     assert_is_ok(proposal.set("rationale", JsonValue.str("forbidden hidden explanation")))
     error = assert_is_err(decode_proposal_response(call, response_with_output(assert_is_ok(proposal.to_json()))))
     assert_eq(error.value(), "provider_malformed_output")
+
+
+def test_json_nesting_limit_ignores_strings_and_rejects_before_provider_parsing() -> None:
+    """Bound provider input and output parsing without counting brackets inside JSON strings."""
+
+    assert_eq(json_nesting_is_within_limit("{\"value\":\"[[[[[[[[[[[[[[[[[\"}"), true)
+    assert_eq(json_nesting_is_within_limit("[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]"), true)
+    assert_eq(json_nesting_is_within_limit("[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]"), false)
+    call = assert_is_ok(build_proposal_call(context_plan()))
+    error = assert_is_err(decode_proposal_response(call, "[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]"))
+    assert_eq(error.value(), "provider_malformed_output")
+    context_error = assert_is_err(build_proposal_call("[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]"))
+    assert_eq(context_error.value(), "provider_invalid_input")
+    manifest_error = assert_is_err(
+        build_committee_calls(context_plan(), load_proposal(), "[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]"),
+    )
+    assert_eq(manifest_error.value(), "provider_invalid_input")
 
 
 def test_maximum_committee_shape_is_exact_and_sequentially_bounded() -> None:

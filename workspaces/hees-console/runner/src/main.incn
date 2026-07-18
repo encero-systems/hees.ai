@@ -21,6 +21,7 @@ from std.serde import json
 
 const MAX_REQUEST_BYTES: int = 262144
 const MAX_RESPONSE_BYTES: int = 65536
+const MAX_JSON_NESTING: int = 16
 const REQUEST_CONTRACT: str = "console_runner_request_0_1"
 const RESPONSE_CONTRACT: str = "console_runner_response_0_1"
 const PROFILE_ID: str = "console_profile_0_1"
@@ -310,6 +311,32 @@ def canonical_json(value: JsonValue) -> Result[str, str]:
     return value.to_json().map_err((_error) => f"json_serialization")
 
 
+def json_nesting_is_within_limit(source: str) -> bool:
+    """Reject excessive JSON container nesting before the runner invokes a parser."""
+
+    mut depth = 0
+    mut in_string = false
+    mut escaped = false
+    for character in source:
+        if in_string:
+            if escaped:
+                escaped = false
+            elif character == "\\":
+                escaped = true
+            elif character == "\"":
+                in_string = false
+        else:
+            if character == "\"":
+                in_string = true
+            elif character == "{" or character == "[":
+                depth += 1
+                if depth > MAX_JSON_NESTING:
+                    return false
+            elif character == "}" or character == "]":
+                depth -= 1
+    return true
+
+
 def digest_canonical_json(source: str) -> str:
     """Hash canonical JSON for non-authoritative replay and trace bindings."""
 
@@ -344,6 +371,8 @@ def digest_proposal(proposal: ConsoleProposal) -> str:
 
 def parse_closed_request(line: str) -> Result[RunnerRequest, str]:
     """Reject duplicate/unknown fields through canonical typed round-trip equality."""
+    if not json_nesting_is_within_limit(line):
+        return Err("invalid_json")
     value = JsonValue.parse(line).map_err((_error) => f"invalid_json")?
     canonical = canonical_json(value)?
     if canonical != line:

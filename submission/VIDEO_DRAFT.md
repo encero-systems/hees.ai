@@ -16,7 +16,7 @@ The target runtime is **2:50 or shorter**, leaving ten seconds of safety under t
 
 ### 0:15–0:45 — Fictional package and bounded committee
 
-**On screen:** Open the atom/package view. Show the original fictional lesson-support package, declared action, canonical reviewed memory, evidence identifiers, and policy. Then show the proposal-pressure-test roles without presenting a vote.
+**On screen:** Open the separate `PACKAGE` and `SOURCES` inspectors. Show the original fictional lesson-support package, declared action, canonical reviewed memory, evidence identifiers, and policy. Briefly show that `ATOM COMPARISON` is `not_configured`, then show the proposal-pressure-test roles without presenting a vote.
 
 **Spoken script:**
 

@@ -170,6 +170,15 @@ pub def scenario_slugs() -> list[str]:
     return ["valid", "undeclared-action", "unknown-memory", "non-admitted-memory"]
 
 
+pub def profile_schema_digests() -> list[SchemaDigest]:
+    """Return the frozen proposal and observation schema identities for live trace projection."""
+
+    return [SchemaDigest(contract_version="console_proposal_0_1", schema_digest=PROPOSAL_SCHEMA_DIGEST), SchemaDigest(
+        contract_version="console_relation_observation_0_1",
+        schema_digest=RELATION_SCHEMA_DIGEST,
+    ), SchemaDigest(contract_version="console_synthesis_observation_0_1", schema_digest=SYNTHESIS_SCHEMA_DIGEST)]
+
+
 pub def scenario_title(slug: str) -> str:
     """Return the concise operator-facing title for one stable scenario slug."""
 

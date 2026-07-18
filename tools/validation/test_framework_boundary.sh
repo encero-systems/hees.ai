@@ -18,6 +18,7 @@ if [[ -z "$blob" ]]; then
 fi
 
 GIT_INDEX_FILE="$index_copy" git update-index --add --cacheinfo "100644,$blob,workspaces/hees-console/target/forced.txt"
+GIT_INDEX_FILE="$index_copy" git update-index --add --cacheinfo "100644,$blob,.agents/state/forced.md"
 GIT_INDEX_FILE="$index_copy" git update-index --add --cacheinfo "100644,$blob,outputs/forced.txt"
 GIT_INDEX_FILE="$index_copy" git update-index --add --cacheinfo "100644,$blob,fixtures/forced.gguf"
 GIT_INDEX_FILE="$index_copy" git update-index --add --cacheinfo "100644,$blob,tools/forced.bin"
@@ -35,6 +36,7 @@ if [[ "$status" -eq 0 ]]; then
 fi
 
 grep -Fq 'tracked private or generated path is present: workspaces/hees-console/target/forced.txt' "$scratch/output"
+grep -Fq 'tracked private or generated path is present: .agents/state/forced.md' "$scratch/output"
 grep -Fq 'tracked private or generated path is present: outputs/forced.txt' "$scratch/output"
 grep -Fq 'tracked disallowed artifact type is present: fixtures/forced.gguf' "$scratch/output"
 grep -Fq 'tracked disallowed artifact type is present: tools/forced.bin' "$scratch/output"

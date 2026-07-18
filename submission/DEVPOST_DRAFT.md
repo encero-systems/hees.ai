@@ -16,7 +16,7 @@
 
 ## Short description
 
-Hees Console is a local-first developer tool for inspecting the authority boundary around AI output. Under the bounded live contract, GPT-5.6 may propose structured content and observations; Hees validates the exact inputs, classifies findings under package-owned policy, and makes the terminal decision. The Build Week profile applies that separation to a fictional scenario, with a zero-credential offline replay release target and an optional live-adapter target.
+Hees Console is a local-first developer tool for inspecting the authority boundary around AI output. Under the bounded live contract, GPT-5.6 may propose structured content and observations; Hees validates the exact inputs, classifies findings under package-owned policy, and makes the terminal decision. The Build Week profile applies that separation to a fictional scenario, with implemented zero-credential offline replay and an optional live adapter whose successful public canary remains unverified.
 
 ## The problem
 
@@ -28,7 +28,7 @@ Hees Console addresses that developer problem by making the boundary explicit: m
 
 The permanent Hees Console north star is a terminal-first, local-first, provider-neutral and domain-neutral developer product for building, validating, running, replaying, and inspecting governed AI interactions. That broader workflow remains Draft design work; it must not be inferred from this event profile.
 
-For Build Week, the deliberately bounded `console_profile_0_1` profile uses one original fictional lesson-support package to demonstrate one governed interaction end to end. The frozen candidate will provide these judge-visible surfaces only after they are confirmed by release evidence:
+For Build Week, the deliberately bounded `console_profile_0_1` profile uses one original fictional lesson-support package to demonstrate one governed interaction end to end. The checked release candidate provides these judge-visible surfaces; public release evidence remains a separate finalization gate:
 
 - a visibly labelled, zero-credential offline replay path using neutral, integrity-checked proposal and observation fixtures;
 - an optional `gpt-5.6-sol` Responses API path that supplies strict structured, untrusted proposals and bounded observations to the same runner;
@@ -54,7 +54,7 @@ The profile uses strict JSON Schema contracts and SHA-256 bindings across the pa
 
 ## Design
 
-The Console is designed around inspection rather than chat. The release candidate must keep the following distinctions legible in full-width, narrow, monochrome, and non-interactive captures before this section is finalized:
+The Console is designed around inspection rather than chat. The checked implementation keeps the following distinctions explicit; the frozen artifact still needs full-width, narrow, monochrome, and non-interactive capture evidence before this section is finalized:
 
 - every mode remains labelled `REPLAY` or `LIVE`;
 - trusted and untrusted states use text and stable symbols, not colour alone;
@@ -63,7 +63,7 @@ The Console is designed around inspection rather than chat. The release candidat
 - the terminal action, reason namespace, and reason are visible without opening raw protocol data; and
 - selected memory, experimental Content DNA, and the profile receipt appear only on an admitted path.
 
-The target interaction is keyboard-first and deterministic for judges: keys `1`, `2`, and `3` run the valid and adversarial scenarios, while dedicated inspection views expose proposal, findings, evidence, provenance, and receipt surfaces.
+The interaction is keyboard-first and deterministic for judges: keys `1` through `4` run one valid and three adversarial scenarios, while thirteen dedicated inspectors expose the package, sources, optional atom-comparison state, proposal, support mappings, manifest, observations, findings, Spectrum result, selected memory, Content DNA, receipt, and trace.
 
 **Design evidence:** **[FINALIZE BEFORE RELEASE: FROZEN SCREENSHOTS, NARROW AND MONOCHROME CHECKS, TERMINAL-ESCAPING TESTS, AND VIDEO TIMECODES]**.
 
@@ -119,7 +119,7 @@ Complete instructions, platform support, expected values, and safe troubleshooti
 
 - This is one fictional, bounded implementation profile, not the complete permanent Hees Console and not a general evidence-ingestion, retrieval, RAG, vector-search, or package-authoring system.
 - The profile has only `admit` and `reject`; it does not implement repair, clarification, escalation, or the complete Draft response lifecycle.
-- Model-generated atom candidates are display-only exact-match or mismatch comparison material and cannot alter the canonical package or affect admission.
+- The current executable's optional atom-comparison inspector reports `not_configured` and `package_effect=none`; it does not create a model-generated atom candidate during the demonstrated interaction.
 - The bounded Training by Committee slice pressure-tests proposals; it is not model-weight training, fine-tuning, semantic truth, or provider voting.
 - Experimental `console_content_dna_0_1` does not establish full RFC 002 conformance, and `console_profile_receipt_0_1` is not RFC 006-compatible.
 - Admission does not prove factual correctness, universal claim support, source ownership, legal rights outside declared package state, provider correctness, producer authenticity, or remote attestation.

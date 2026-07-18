@@ -19,7 +19,7 @@ scan_repository() {
 
     while IFS= read -r path; do
         case "$path" in
-            ./.git | ./.git/* | ./target/* | */target/* | */site/* | ./tools/validation/check_framework_boundary.sh)
+            ./.git | ./.git/* | ./.agents/* | ./target/* | */target/* | */site/* | ./tools/validation/check_framework_boundary.sh)
                 continue
                 ;;
         esac
@@ -125,6 +125,8 @@ allowed_docs=(
     workspaces/docs-site/docs/SUMMARY.md
     workspaces/docs-site/docs/architecture.md
     workspaces/docs-site/docs/contracts.md
+    workspaces/docs-site/docs/console-profile-0-1.md
+    workspaces/docs-site/docs/console.md
     workspaces/docs-site/docs/development.md
     workspaces/docs-site/docs/getting-started.md
     workspaces/docs-site/docs/index.md
@@ -146,7 +148,7 @@ done < <(find workspaces/docs-site/docs -type f -print | sort)
 
 while IFS= read -r path; do
     case "$path" in
-        ./.git | ./.git/* | ./target/* | */target/* | */site/*) continue ;;
+        ./.git | ./.git/* | ./.agents/* | ./target/* | */target/* | */site/*) continue ;;
         */.agents/* | */outputs/* | */reference/* | */research/* | */corpora/* | */models/*)
             fail "private or generated path is present: ${path#./}"
             ;;
@@ -163,7 +165,7 @@ done < <(find . -type f -print | sort)
 
 while IFS= read -r path; do
     case "$path" in
-        ./.git | ./.git/* | ./target/* | */target/* | */site/*) continue ;;
+        ./.git | ./.git/* | ./.agents/* | ./target/* | */target/* | */site/*) continue ;;
         *) fail "symbolic links are not allowed in the publication candidate: ${path#./}" ;;
     esac
 done < <(find . -type l -print | sort)

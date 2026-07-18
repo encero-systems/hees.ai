@@ -7,19 +7,36 @@ All provider- or package-derived strings pass through one finite sanitizer befor
 from evaluation import ConsoleRun, FindingProjection
 from replays import ProposalProjection, RelationObservationProjection, SynthesisObservationProjection
 from state import ConsoleState, inspector_names, selected_inspector_name
+from rust::std::string import String as RustString
 from std.regex import Regex
 
 const MAX_TEXT_CHARACTERS: int = 240
 const MAX_JSON_CHARACTERS: int = 1200
 const MAX_INSPECTOR_ITEMS: int = 8
+const PROFILE_LABEL: str = "BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1"
+
+
+def is_c1_terminal_control(value: str) -> bool:
+    """Recognize one C1 control from its two UTF-8 bytes."""
+
+    bytes = RustString.from(value).into_bytes()
+    return len(bytes) == 2 and bytes[0] == 194 and bytes[1] >= 128 and bytes[1] <= 159
 
 
 def replace_terminal_controls(value: str) -> str:
-    """Replace every C0 and delete control through the safe standard regex engine."""
+    """Replace every C0, delete, and C1 control without disturbing adjacent text."""
 
-    match Regex("[\\x00-\\x1F\\x7F]"):
+    clean = match Regex("[\\x00-\\x1F\\x7F]"):
         Err(_) => return ""
-        Ok(pattern) => return pattern.replace_all(value, " ")
+        Ok(pattern) => pattern.replace_all(value, " ")
+
+    mut sanitized: list[str] = []
+    for character in f"{clean}":
+        if is_c1_terminal_control(character):
+            sanitized.append(" ")
+        else:
+            sanitized.append(character)
+    return "".join(sanitized)
 
 
 pub def bounded_text(value: str, limit: int) -> str:
@@ -70,6 +87,60 @@ def bounded_identifiers(values: list[str]) -> str:
     return ", ".join(result)
 
 
+def optional_identifiers(values: Option[list[str]]) -> str:
+    """Render an optional identifier list without merging evidence and memory namespaces."""
+
+    match values:
+        Some(items) => return bounded_identifiers(items)
+        None => return "none"
+
+
+def package_lines(run: ConsoleRun) -> list[str]:
+    """Render the fixed profile package without presenting it as a permanent Console limit."""
+
+    package = run.scenario.package
+    return ["FIXED PROFILE PACKAGE", f"package={bounded_text(package.package_id, 128)} domain={bounded_text(
+        package.domain_id,
+        128,
+    )} revision={bounded_text(package.package_revision, 64)}", f"contract={bounded_text(package.contract_version, 64)} artifact={bounded_text(
+        package.artifact_digest,
+        96,
+    )}", f"sources={len(package.sources)} actions={package.action_count} requirements={package.requirement_count} atoms={package.atom_count}", f"mission={bounded_text(
+        package.mission,
+        MAX_TEXT_CHARACTERS,
+    )}", "This fixed fictional package is an implementation-profile input, not the permanent product boundary."]
+
+
+def source_lines(run: ConsoleRun, include_text: bool) -> list[str]:
+    """Render source identity, including text only in the direct interactive inspector."""
+
+    sources = run.scenario.package.sources
+    mut lines = [f"FIXED PROFILE SOURCES count={len(sources)}"]
+    mut count = 0
+    for source in sources:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional sources omitted")
+            break
+        lines.append(
+            f"  {bounded_text(source.source_id, 128)} ref={bounded_text(source.source_ref, 128)} language={bounded_text(
+                source.language,
+                32,
+            )} rights={bounded_text(source.rights_state, 64)}",
+        )
+        if include_text:
+            lines.append(f"    {bounded_text(source.text, MAX_TEXT_CHARACTERS)}")
+        else:
+            lines.append("    text=[redacted from headless output]")
+        count += 1
+    return lines
+
+
+def atom_comparison_lines() -> list[str]:
+    """Disclose the optional display-only atom-comparison capability as absent."""
+
+    return ["OPTIONAL ATOM COMPARISON", "state=not_configured package_effect=none", "No atom candidate enters this interaction or its terminal runner request.", "Candidate-memory creation and comparison remain an optional display-only profile surface."]
+
+
 def proposal_lines(proposal: ProposalProjection) -> list[str]:
     """Render the normalized untrusted proposal without assigning authority."""
 
@@ -86,6 +157,60 @@ def proposal_lines(proposal: ProposalProjection) -> list[str]:
             break
         lines.append(f"  {bounded_text(unit.unit_id, 128)}: {bounded_text(unit.text, MAX_TEXT_CHARACTERS)}")
         count += 1
+    return lines
+
+
+def support_lines(proposal: ProposalProjection) -> list[str]:
+    """Render evidence and governed-memory support as separate typed namespaces."""
+
+    mut lines = ["DECLARED SUPPORT", f"proposal_evidence_ids=[{bounded_identifiers(proposal.evidence_ids)}]", f"support_mappings={len(
+        proposal.support_mappings,
+    )}"]
+    mut count = 0
+    for mapping in proposal.support_mappings:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional mappings omitted")
+            break
+        lines.append(
+            f"  {bounded_text(mapping.support_claim_id, 128)} unit={bounded_text(mapping.unit_id, 128)} memory_id={bounded_text(
+                mapping.memory_id,
+                128,
+            )}",
+        )
+        lines.append(f"    evidence_ids=[{optional_identifiers(mapping.evidence_ids)}]")
+        count += 1
+    lines.append("Evidence identifiers and memory identifiers are distinct and cannot substitute for one another.")
+    return lines
+
+
+def premise_ids(run: ConsoleRun, target_index: int) -> str:
+    """Project one manifest target's ordered memory identifiers for display."""
+
+    mut identifiers: list[str] = []
+    target = run.result.manifest[target_index]
+    for premise in target.body.premises:
+        identifiers.append(premise.memory_id)
+    return bounded_identifiers(identifiers)
+
+
+def manifest_lines(run: ConsoleRun) -> list[str]:
+    """Render the exact Hees-derived verifier targets and their digest identities."""
+
+    manifest = run.result.manifest
+    mut lines = [f"HEES-DERIVED VERIFIER MANIFEST count={len(manifest)}"]
+    mut index = 0
+    for target in manifest:
+        if index >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional targets omitted")
+            break
+        lines.append(
+            f"  {bounded_text(target.body.target_id, 128)} evaluator={bounded_text(target.body.evaluator_role, 64)} target={bounded_text(
+                target.body.target_role,
+                64,
+            )}",
+        )
+        lines.append(f"    premises=[{premise_ids(run.clone(), index)}] digest={bounded_text(target.target_digest, 96)}")
+        index += 1
     return lines
 
 
@@ -200,6 +325,44 @@ def receipt_lines(run: ConsoleRun, include_json: bool) -> list[str]:
     return lines
 
 
+def replay_integrity_line(run: ConsoleRun) -> str:
+    """Describe whether replay integrity was verified before Hees evaluation."""
+
+    if run.scenario.mode == "OFFLINE":
+        return f"replay_integrity=verified replay_id={bounded_text(run.scenario.input_id, 96)}"
+    return "replay_integrity=not_applicable_live"
+
+
+def trace_lines(run: ConsoleRun) -> list[str]:
+    """Render the bounded non-authoritative trace separately from the Hees result."""
+
+    trace = run.trace
+    mut lines = ["NON-AUTHORITATIVE EXECUTION TRACE", f"contract={bounded_text(trace.contract_version, 64)} profile={bounded_text(
+        trace.profile_id,
+        64,
+    )} mode={bounded_text(trace.mode, 32)}", f"build={bounded_text(trace.build_identity, 64)} toolchain={bounded_text(
+        trace.toolchain_identity,
+        64,
+    )} runner={bounded_text(trace.runner_identity, 96)}", f"provider={bounded_text(trace.provider_id, 64)} proposal={bounded_text(
+        trace.proposal_id,
+        128,
+    )}", replay_integrity_line(run), f"relation_observations={len(trace.relation_observation_ids)} synthesis_observations={len(
+        trace.synthesis_observation_ids,
+    )} findings={len(trace.finding_ids)}", f"model_fingerprints=[{bounded_identifiers(trace.model_fingerprints)}]", f"prompt_fingerprints=[{bounded_identifiers(
+        trace.prompt_fingerprints,
+    )}]", f"configuration_fingerprints=[{bounded_identifiers(trace.configuration_fingerprints)}]", "Trace construction and display cannot change the terminal Hees result."]
+    mut count = 0
+    for schema in trace.schema_digests:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional schema identities omitted")
+            break
+        lines.append(
+            f"  schema={bounded_text(schema.contract_version, 64)} digest={bounded_text(schema.schema_digest, 96)}",
+        )
+        count += 1
+    return lines
+
+
 def append_section(lines: list[str], section: list[str]) -> list[str]:
     """Append one separated inspector section to a headless output buffer."""
 
@@ -211,19 +374,22 @@ def append_section(lines: list[str], section: list[str]) -> list[str]:
 
 
 pub def render_headless(run: ConsoleRun) -> str:
-    """Render stable control-free output for automation and judge replay."""
+    """Render stable control-free output with direct question text redacted by default."""
 
-    mut lines = ["HEES CONSOLE 0.1.0", f"MODE {run.scenario.mode}", f"SCENARIO {run.scenario.slug}", f"QUESTION {bounded_text(
-        run.scenario.body.request.question,
-        MAX_TEXT_CHARACTERS,
-    )}"]
+    mut lines = ["HEES CONSOLE 0.1.0", PROFILE_LABEL, f"MODE {run.scenario.mode}", f"SCENARIO {run.scenario.slug}", "QUESTION [redacted from headless output]"]
+    lines = append_section(lines, package_lines(run.clone()))
+    lines = append_section(lines, source_lines(run.clone(), false))
+    lines = append_section(lines, atom_comparison_lines())
     lines = append_section(lines, proposal_lines(run.scenario.body.proposal.clone()))
+    lines = append_section(lines, support_lines(run.scenario.body.proposal.clone()))
+    lines = append_section(lines, manifest_lines(run.clone()))
     lines = append_section(lines, observation_lines(run.clone()))
     lines = append_section(lines, finding_lines(run.clone()))
     lines = append_section(lines, spectrum_lines(run.clone()))
     lines = append_section(lines, memory_lines(run.clone()))
     lines = append_section(lines, content_dna_lines(run.clone(), false))
-    lines = append_section(lines, receipt_lines(run, false))
+    lines = append_section(lines, receipt_lines(run.clone(), false))
+    lines = append_section(lines, trace_lines(run))
     return "\n".join(lines)
 
 
@@ -231,36 +397,47 @@ def inspector_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
     """Select one full-screen inspector without changing evaluated data."""
 
     if state.inspector_index == 0:
-        return proposal_lines(run.scenario.body.proposal)
+        return package_lines(run)
     if state.inspector_index == 1:
-        return observation_lines(run)
+        return source_lines(run, true)
     if state.inspector_index == 2:
-        return finding_lines(run)
+        return atom_comparison_lines()
     if state.inspector_index == 3:
-        return spectrum_lines(run)
+        return proposal_lines(run.scenario.body.proposal)
     if state.inspector_index == 4:
-        return memory_lines(run)
+        return support_lines(run.scenario.body.proposal)
     if state.inspector_index == 5:
+        return manifest_lines(run)
+    if state.inspector_index == 6:
+        return observation_lines(run)
+    if state.inspector_index == 7:
+        return finding_lines(run)
+    if state.inspector_index == 8:
+        return spectrum_lines(run)
+    if state.inspector_index == 9:
+        return memory_lines(run)
+    if state.inspector_index == 10:
         return content_dna_lines(run, true)
-    return receipt_lines(run, true)
+    if state.inspector_index == 11:
+        return receipt_lines(run, true)
+    return trace_lines(run)
 
 
 pub def render_screen(state: ConsoleState, run: ConsoleRun) -> str:
     """Render one bounded full-screen frame without terminal control sequences."""
 
-    tabs = " · ".join(inspector_names())
     mut mode_line = "OFFLINE REPLAY  ·  1 valid  2 undeclared action  3 unknown memory  4 non-admitted memory"
     if run.scenario.mode == "LIVE":
         mode_line = f"LIVE GPT-5.6  ·  provider output remains untrusted"
-    mut lines = ["HEES CONSOLE 0.1.0  ·  GPT-5.6 proposes. Hees decides.", mode_line, f"SCENARIO  {bounded_text(
+    mut lines = ["HEES CONSOLE 0.1.0  ·  GPT-5.6 proposes. Hees decides.", PROFILE_LABEL, mode_line, f"SCENARIO  {bounded_text(
         run.scenario.slug,
         64,
-    )}  ·  {bounded_text(run.scenario.title, 96)}", f"STATE  {status_label(run)}  ·  reason={bounded_text(
-        run.result.spectrum.reason,
-        128,
-    )}", "────────────────────────────────────────────────────────────────────────────────", f"INSPECTOR  {selected_inspector_name(
-        state,
-    )}", bounded_text(tabs, 300), "────────────────────────────────────────────────────────────────────────────────"]
+    )}  ·  {bounded_text(run.scenario.title, 96)}", f"QUESTION  {bounded_text(
+        run.scenario.body.request.question,
+        MAX_TEXT_CHARACTERS,
+    )}", f"STATE  {status_label(run)}  ·  reason={bounded_text(run.result.spectrum.reason, 128)}", "────────────────────────────────────────────────────────────────────────────────", f"INSPECTOR  {state.inspector_index + 1}/{len(
+        inspector_names(),
+    )}  {selected_inspector_name(state)}", "VIEWS  PACKAGE · SOURCES · ATOM · PROPOSAL · SUPPORT · MANIFEST · OBSERVATIONS", "       FINDINGS · SPECTRUM · MEMORY · CONTENT DNA · RECEIPT · TRACE", "────────────────────────────────────────────────────────────────────────────────"]
     lines.extend(inspector_lines(state, run))
     lines.append("")
     if run.scenario.mode == "LIVE":

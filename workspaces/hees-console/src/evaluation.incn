@@ -29,6 +29,7 @@ from replays import (
     VisibleUnitProjection,
     embedded_inputs_are_non_terminal,
     load_offline_scenario,
+    profile_schema_digests,
 )
 
 const LIVE_PLAN_CONTRACT: str = "console_live_question_plan_0_1"
@@ -130,6 +131,7 @@ pub model ConsoleInteraction:
     pub slug: str
     pub title: str
     pub input_id: str
+    pub package: PackageInspectionProjection
     pub body: ReplayBody
 
 
@@ -139,6 +141,29 @@ pub model ConsoleRun:
 
     pub scenario: ConsoleInteraction
     pub result: CompleteProfileProjection
+    pub trace: ConsoleTraceProjection
+
+
+@derive(Clone, json)
+pub model ConsoleTraceProjection:
+    """Bounded non-authoritative execution identities kept outside the Hees result."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub build_identity: str
+    pub toolchain_identity: str
+    pub runner_identity: str
+    pub mode: str
+    pub input_id: str
+    pub provider_id: str
+    pub proposal_id: str
+    pub schema_digests: list[SchemaDigest]
+    pub relation_observation_ids: list[str]
+    pub synthesis_observation_ids: list[str]
+    pub finding_ids: list[str]
+    pub model_fingerprints: list[str]
+    pub prompt_fingerprints: list[str]
+    pub configuration_fingerprints: list[str]
 
 
 @derive(Clone, json)
@@ -147,6 +172,36 @@ pub model SourceSpanProjection:
 
     pub start_utf8_byte: int
     pub end_utf8_byte: int
+
+
+@derive(Clone, json)
+pub model SourceInspectionProjection:
+    """Original fictional source fields projected locally for the Console inspector."""
+
+    pub source_id: str
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: str
+    pub language: str
+    pub rights_state: str
+    pub text: str
+
+
+@derive(Clone)
+pub model PackageInspectionProjection:
+    """Non-authoritative package display projection kept beside the typed Hees input."""
+
+    pub contract_version: str
+    pub profile_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub artifact_digest: str
+    pub mission: str
+    pub sources: list[SourceInspectionProjection]
+    pub action_count: int
+    pub requirement_count: int
+    pub atom_count: int
 
 
 @derive(Clone, json)
@@ -253,6 +308,27 @@ model TypedPackageProjection:
 
 
 @derive(Clone, json)
+model PartialPackageInspectionProjection:
+    """Serde projection of only the package fields needed by the presentation layer."""
+
+    contract_version: str
+    profile_id: str
+    package_id: str
+    domain_id: str
+    package_revision: str
+    artifact_digest: str
+    mission: str
+    sources: list[SourceInspectionProjection]
+
+
+@derive(Clone, json)
+model PackageInspectionEnvelope:
+    """Local wrapper used to project an external public package type safely."""
+
+    package: PartialPackageInspectionProjection
+
+
+@derive(Clone, json)
 model ProviderProposalProjection:
     """Untrusted proposal envelope returned by the native provider module."""
 
@@ -284,6 +360,29 @@ def decode_embedded_package() -> Result[ConsolePackage, str]:
     return Ok(projection.package)
 
 
+def package_inspection(package: ConsolePackage) -> Result[PackageInspectionProjection, str]:
+    """Create the local package inspector projection without reconstructing package authority."""
+
+    source = TypedPackageProjection(package=package.clone()).to_json()
+    envelope = PackageInspectionEnvelope.from_json(source).map_err((_error) => f"package_inspection_failed")?
+    package_view = envelope.package
+    return Ok(
+        PackageInspectionProjection(
+            contract_version=package_view.contract_version,
+            profile_id=package_view.profile_id,
+            package_id=package_view.package_id,
+            domain_id=package_view.domain_id,
+            package_revision=package_view.package_revision,
+            artifact_digest=package_view.artifact_digest,
+            mission=package_view.mission,
+            sources=package_view.sources,
+            action_count=len(package.actions),
+            requirement_count=len(package.requirements),
+            atom_count=len(package.atoms),
+        ),
+    )
+
+
 def decode_live_plan(source: str) -> Result[LiveQuestionPlan, str]:
     """Decode one private live plan and reject contract or profile drift."""
 
@@ -311,6 +410,64 @@ def decode_provider_committee(source: str) -> Result[ProviderCommitteeProjection
     return Ok(projection)
 
 
+def unique_append(values: list[str], value: str) -> list[str]:
+    """Append one trace identity only when it is not already present."""
+
+    mut result = values
+    if not result.contains(f"{value}"):
+        result.append(value)
+    return result
+
+
+def trace_provider_id(mode: str) -> str:
+    """Return the disclosed provider identity for the selected execution mode."""
+
+    if mode == "LIVE":
+        return "openai"
+    return "fixture"
+
+
+def trace_projection(interaction: ConsoleInteraction, result: CompleteProfileProjection) -> ConsoleTraceProjection:
+    """Project bounded operator identities without creating or altering authority."""
+
+    mut relation_ids: list[str] = []
+    mut synthesis_ids: list[str] = []
+    mut finding_ids: list[str] = []
+    mut model_fingerprints: list[str] = []
+    mut prompt_fingerprints: list[str] = []
+    mut configuration_fingerprints: list[str] = []
+    for observation in interaction.body.relation_observations:
+        relation_ids.append(observation.observation_id)
+        model_fingerprints = unique_append(model_fingerprints, observation.model_fingerprint)
+        prompt_fingerprints = unique_append(prompt_fingerprints, observation.prompt_fingerprint)
+        configuration_fingerprints = unique_append(configuration_fingerprints, observation.configuration_fingerprint)
+    for observation in interaction.body.synthesis_observations:
+        synthesis_ids.append(observation.observation_id)
+        model_fingerprints = unique_append(model_fingerprints, observation.model_fingerprint)
+        prompt_fingerprints = unique_append(prompt_fingerprints, observation.prompt_fingerprint)
+        configuration_fingerprints = unique_append(configuration_fingerprints, observation.configuration_fingerprint)
+    for finding in result.findings:
+        finding_ids.append(finding.finding_id)
+    return ConsoleTraceProjection(
+        contract_version="console_trace_0_1",
+        profile_id="console_profile_0_1",
+        build_identity="hees_console_0_1_0",
+        toolchain_identity="incan_0_4_0",
+        runner_identity="hees_0_0_1_console_profile_0_1",
+        mode=interaction.mode,
+        input_id=interaction.input_id,
+        provider_id=trace_provider_id(f"{interaction.mode}"),
+        proposal_id=interaction.body.proposal.proposal_id,
+        schema_digests=interaction.body.schema_digests,
+        relation_observation_ids=relation_ids,
+        synthesis_observation_ids=synthesis_ids,
+        finding_ids=finding_ids,
+        model_fingerprints=model_fingerprints,
+        prompt_fingerprints=prompt_fingerprints,
+        configuration_fingerprints=configuration_fingerprints,
+    )
+
+
 def evaluate_inputs(interaction: ConsoleInteraction, inputs: HeesAuthorityInput) -> Result[ConsoleRun, str]:
     """Call the terminal Hees profile once and decode only its complete public projection."""
 
@@ -322,7 +479,8 @@ def evaluate_inputs(interaction: ConsoleInteraction, inputs: HeesAuthorityInput)
         inputs.synthesis_observations,
     )
     result = CompleteProfileProjection.from_json(source).map_err((_error) => f"evaluation_projection_failed")?
-    return Ok(ConsoleRun(scenario=interaction, result=result))
+    trace = trace_projection(interaction.clone(), result.clone())
+    return Ok(ConsoleRun(scenario=interaction, result=result, trace=trace))
 
 
 pub def evaluate_offline_scenario(slug: str) -> Result[ConsoleRun, str]:
@@ -332,14 +490,16 @@ pub def evaluate_offline_scenario(slug: str) -> Result[ConsoleRun, str]:
         return Err("embedded_terminal_result")
     scenario = load_offline_scenario(slug)?
     inputs = decode_authority_input(scenario.clone())?
-    interaction = ConsoleInteraction(
+    inspection = package_inspection(inputs.package.clone())?
+    replay_interaction = ConsoleInteraction(
         mode="OFFLINE",
         slug=scenario.slug,
         title=scenario.title,
         input_id=scenario.replay_id,
+        package=inspection,
         body=scenario.body,
     )
-    return evaluate_inputs(interaction, inputs)
+    return evaluate_inputs(replay_interaction, inputs)
 
 
 pub def evaluate_live_interaction(
@@ -359,14 +519,16 @@ pub def evaluate_live_interaction(
         proposal=proposal.clone(),
         relation_observations=relation_observations.clone(),
         synthesis_observations=synthesis_observations.clone(),
-        schema_digests=[],
+        schema_digests=profile_schema_digests(),
     )
     body = ReplayBody.from_json(projection.to_json()).map_err((_error) => f"live_projection_failed")?
-    interaction = ConsoleInteraction(
+    inspection = package_inspection(package.clone())?
+    live_interaction = ConsoleInteraction(
         mode="LIVE",
         slug="live",
         title="Live GPT-5.6 proposal",
         input_id=proposal.proposal_id,
+        package=inspection,
         body=body,
     )
     inputs = HeesAuthorityInput(
@@ -376,7 +538,7 @@ pub def evaluate_live_interaction(
         relation_observations=relation_observations,
         synthesis_observations=synthesis_observations,
     )
-    return evaluate_inputs(interaction, inputs)
+    return evaluate_inputs(live_interaction, inputs)
 
 
 pub def plan_live_question_json(question: str) -> Result[str, str]:

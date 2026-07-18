@@ -15,11 +15,11 @@ pub model ConsoleState:
 pub def inspector_names() -> list[str]:
     """Return inspector names in stable keyboard-navigation order."""
 
-    return ["PROPOSAL", "OBSERVATIONS", "FINDINGS", "SPECTRUM", "SELECTED MEMORY", "CONTENT DNA", "RECEIPT"]
+    return ["PACKAGE", "SOURCES", "ATOM COMPARISON", "PROPOSAL", "SUPPORT", "MANIFEST", "OBSERVATIONS", "FINDINGS", "SPECTRUM", "SELECTED MEMORY", "CONTENT DNA", "RECEIPT", "TRACE"]
 
 
 pub def initial_state() -> ConsoleState:
-    """Start on the admitted replay and untrusted proposal inspector."""
+    """Start on the admitted replay and fixed package inspector."""
 
     return ConsoleState(scenario_index=0, inspector_index=0, running=true)
 

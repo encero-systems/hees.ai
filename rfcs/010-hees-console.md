@@ -213,7 +213,7 @@ This section specifies one subordinate release profile, not permanent Hees Conso
 
 The first public implementation is labelled `BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1`. It demonstrates one original response candidate, relation and synthesis observations, Hees-owned classification, a bounded Spectrum decision, terminal selected memory, experimental Content DNA, and a profile-specific receipt.
 
-That profile does not provide the permanent evidence-workspace or general package-authoring experience. It loads a fixed package so the first end-to-end authority path can be packaged, tested, hosted, and judged under the event schedule. With no credential, it runs the three shipped replay scenarios through the compiled Incan-authored runner. With explicit live configuration, its GPT-5.6 adapter supplies the same strict proposal and observation contracts. The UI labels mode and profile at all times. Provider refusal, timeout, malformed output, target mismatch, or incomplete coverage fails closed and never silently becomes replay while still labelled live.
+That profile does not provide the permanent evidence-workspace or general package-authoring experience. It loads a fixed package so the first end-to-end authority path can be packaged, tested, hosted, and judged under the event schedule. With no credential, it runs four shipped replay scenarios through the compiled Incan-authored Hees profile: one admitted interaction plus undeclared-action, unknown-memory, and non-admitted-memory rejections. With explicit live configuration, its GPT-5.6 adapter supplies the same strict proposal and observation contracts. The UI labels mode and profile at all times. Provider refusal, timeout, malformed output, target mismatch, or incomplete coverage fails closed and never silently becomes replay while still labelled live.
 
 ### Profile identity and scope
 
@@ -366,7 +366,7 @@ Including the request binding makes replay self-contained and lets Hees rederive
 
 Replay values are neutral deterministic fixtures and use profile-reserved fixture fingerprints. They are described as recorded provider output only if a separate live canary cryptographically binds the exact envelope to retained execution evidence. An optional atom-comparison fixture remains a separate display-only UI input and cannot affect replay admission.
 
-The initial live adapter uses the OpenAI Responses API with explicit `gpt-5.6-sol`, strict JSON Schema structured output, bounded reasoning effort, bounded output tokens, timeouts, and no tools. Separate operations produce an optional display-only atom candidate, a proposal, relation observations, and synthesis observations. The only credential surface is `OPENAI_API_KEY` or equivalent hosted secret injection. Provider failure never silently substitutes replay while the mode remains live.
+The initial live adapter uses the OpenAI Responses API with explicit `gpt-5.6-sol`, strict JSON Schema structured output, bounded reasoning effort, bounded output tokens, timeouts, and no tools. Its current operations produce a proposal plus relation and synthesis observations; the profile reserves a separate optional display-only atom-candidate operation without requiring or invoking it for a governed interaction. The only credential surface is `OPENAI_API_KEY` or equivalent hosted secret injection. Provider failure never silently substitutes replay while the mode remains live.
 
 GPT-5.6 is the initial adapter, not a permanent Console dependency or authority. A later adapter that produces the same normalized profile values receives the same Hees processing and terminal result.
 
@@ -374,7 +374,7 @@ GPT-5.6 is the initial adapter, not a permanent Console dependency or authority.
 
 The initial UI must show the fixed package and sources, optional atom comparison, untrusted proposal, distinct evidence and memory support, manifest target identities, provider observations, Hees findings, `BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1`, terminal reason, selected memory, experimental Content DNA, profile receipt, trace, and replay integrity.
 
-Keyboard actions select the valid, undeclared-action, and unknown-evidence-or-memory scenarios; open atom, proposal, finding, evidence, Content DNA, and receipt views; execute; and quit. Colour cannot carry meaning alone. All source, question, model, provider, fixture, and error text is escaped before terminal rendering. Rejected prose appears only inside an untrusted inspection view.
+Keyboard actions select the valid, undeclared-action, unknown-memory, and non-admitted-memory scenarios; move through the package, source, optional atom-comparison, proposal, support, manifest, observation, finding, Spectrum, selected-memory, Content DNA, receipt, and trace inspectors; execute; and quit. Colour cannot carry meaning alone. All source, question, model, provider, fixture, and error text is escaped before terminal rendering. Rejected prose appears only inside an untrusted inspection view.
 
 The release publishes a self-contained prebuilt executable that defaults to offline replay and requires no Incan compiler, external language runtime, package manager, source checkout, network, or API key. At least one Linux artifact must be built and smoke-tested; a macOS artifact is claimed only when verified under the same frozen profile. A hosted terminal invokes the same executable without exposing a shell, unrelated files, persistent cross-session data, or credentials.
 
@@ -386,7 +386,7 @@ The profile inherits the permanent Console's privacy and security rules. Its pro
 
 ### Profile bounds and resource behavior
 
-This profile cannot advance to Planned until clean supported-platform measurements establish its exact ceiling table for maximum fictional fixtures, request and target bindings, canonicalization, subprocess exchange, terminal rendering, and resident state. The implementation must enforce the permanent profile-bound rules and publish the measured ceilings with the release.
+This profile cannot advance to Planned without enforced ceilings and clean supported-platform measurements for maximum fictional fixtures, request and target bindings, canonicalization, subprocess exchange, terminal rendering, and resident state. The checked release candidate now enforces and documents its initial ceilings, while public release evidence and every other Draft-to-Planned requirement remain outstanding.
 
 ### Profile acceptance evidence
 
@@ -468,11 +468,11 @@ The permanent Console preserves RFC 009's singular visible-answer channel, ident
 
 ### Product status
 
-This RFC is Draft. Its permanent product contract and exact profile mechanism remain design work; the checked Hees 0.0.1 API does not implement the Console. Future evidence intake, package editing, provider adapters, committee workflows, and complete RFC adoption require explicit supported profiles and implementation evidence rather than silent expansion.
+This RFC is Draft. Its permanent product contract, general profile mechanism, evidence intake, package editing, and complete RFC adoption remain design work. The checked branch contains a bounded Incan-authored `console_profile_0_1` release candidate with offline replay, an optional provider adapter, proposal-pressure-testing observations, terminal inspection, and packaging; that candidate does not implement the permanent Console north star or constitute a public release.
 
 ### Public repository boundary
 
-The public Hees repository may contain the reusable kernel, public RFCs, fictional fixtures, tests, and Hees Console because the Console is the reference terminal-first, local-first developer product for the public contracts. This is a deliberate future expansion from the checked repository's current small-kernel state, not a claim that Console functionality already ships.
+The public Hees repository may contain the reusable kernel, public RFCs, fictional fixtures, tests, and Hees Console because the Console is the reference terminal-first, local-first developer product for the public contracts. The checked repository now contains the first bounded Console candidate, but only released profile manifests and artifacts may establish what ships.
 
 Private packages, customer material, proprietary operations workflows, managed deployment systems, research corpora, model artifacts, and unrelated control planes remain outside the repository. The current README and checked public API remain the source of truth until the applicable Console implementation is merged and released.
 

@@ -1,6 +1,6 @@
 # Testing Hees Console
 
-This is the judge and reviewer test plan for the Build Week 2026 `console_profile_0_1` release targeted for Hees Console `0.1.0`. It tests one bounded, fictional-domain implementation profile, not the permanent provider-neutral and domain-neutral Console north star or its future evidence-intake and package-authoring workflow. The release is still in development, so every field labelled `FINALIZE BEFORE RELEASE` must be replaced with verified release-candidate evidence before these instructions are presented as runnable.
+This is the judge and reviewer test plan for the Build Week 2026 `console_profile_0_1` release targeted for Hees Console `0.1.0`. It tests one bounded, fictional-domain implementation profile, not the permanent provider-neutral and domain-neutral Console north star or its future evidence-intake and package-authoring workflow. The release is still in development, so every field labelled `FINALIZE BEFORE RELEASE` must be replaced with verified public evidence before these instructions are presented as the final judge path.
 
 ## Fastest path: hosted offline replay
 
@@ -16,7 +16,7 @@ This is the judge and reviewer test plan for the Build Week 2026 `console_profil
 
 ## Local offline replay
 
-The Build Week profile release artifact is intended to run without an Incan compiler, package manager, source checkout, network connection, or API key.
+The locally verified Build Week profile archive runs without an Incan compiler, package manager, source checkout, network connection, or API key. The following download fields remain blocked until an exact archive is published.
 
 ### 1. Download and verify
 
@@ -44,7 +44,7 @@ Do not run an artifact whose digest differs from the published value.
 [FINALIZE BEFORE RELEASE: EXACT PLATFORM-SPECIFIC COMMAND THAT STARTS `hees-console` IN DEFAULT REPLAY MODE]
 ```
 
-The initial view must identify Console `0.1.0`, profile `console_profile_0_1`, mode `REPLAY`, the fictional package and scenario, the runner and schema identities, and replay-integrity status. It must not ask for an API key or silently access the network.
+The initial view must identify Console `0.1.0`, profile `console_profile_0_1`, mode `REPLAY`, the fictional package, and the active scenario. The dedicated manifest and trace inspectors expose runner, schema, and replay-integrity identities. Offline startup must not ask for an API key or silently access the network.
 
 ### 3. Run the required scenarios
 
@@ -111,7 +111,7 @@ make console-release-candidate \
 
 - `console_profile_0_1` has only `admit` and `reject`; it does not implement repair, clarification, escalation, or all Draft response lifecycle states.
 - The fictional package demonstrates one bounded original lesson-support domain. It is not a general ingestion, retrieval, vector-search, RAG, or package-authoring system.
-- Model-generated atom candidates are display-only comparison values. Their non-authoritative `console_atom_comparison_0_1` result reports only exact match or mismatch and has no package effect. Candidates cannot become canonical memory, receive review or rights state, or affect admission.
+- The current executable does not create a model-generated atom candidate. Its optional comparison inspector reports `not_configured` and `package_effect=none`; frozen candidate and comparison contracts exist for later profile use but cannot affect the current admission path.
 - This profile exercises only a bounded proposal-pressure-testing slice of the permanent Training by Committee workflow. It is not model-weight training or fine-tuning. Role-bound live-provider observations remain non-authoritative; Hees classifies findings and decides, and no provider majority or vote can select the terminal result. Replay uses neutral observation fixtures rather than a provider recording.
 - Experimental `console_content_dna_0_1` does not establish full RFC 002 conformance, and `console_profile_receipt_0_1` is not RFC 006-compatible.
 - Offline replay proves deterministic operation over integrity-checked fixture inputs. It does not prove live GPT provenance, provider availability, or live language quality.

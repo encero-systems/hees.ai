@@ -44,6 +44,7 @@ const API_KEY_ENVIRONMENT: str = "OPENAI_API_KEY"
 const REASONING_EFFORT: str = "low"
 const MAX_PROVIDER_INPUT_BYTES: int = 262_144
 const MAX_PROVIDER_ENVELOPE_BYTES: int = 131_072
+pub const MAX_JSON_NESTING: int = 16
 const PROPOSAL_OUTPUT_BYTES: int = 32_768
 const OBSERVATION_OUTPUT_BYTES: int = 8_192
 const PROPOSAL_OUTPUT_TOKENS: int = 2_048
@@ -312,6 +313,34 @@ def utf8_length(value: str) -> int:
     return len(RustString.from(value).into_bytes())
 
 
+pub def json_nesting_is_within_limit(source: str, maximum: int = MAX_JSON_NESTING) -> bool:
+    """Reject excessive JSON container nesting before parsing while ignoring brackets inside strings."""
+
+    if maximum < 1:
+        return false
+    mut depth = 0
+    mut in_string = false
+    mut escaped = false
+    for character in source:
+        if in_string:
+            if escaped:
+                escaped = false
+            elif character == "\\":
+                escaped = true
+            elif character == "\"":
+                in_string = false
+        else:
+            if character == "\"":
+                in_string = true
+            elif character == "{" or character == "[":
+                depth += 1
+                if depth > maximum:
+                    return false
+            elif character == "}" or character == "]":
+                depth -= 1
+    return true
+
+
 def fingerprint(value: str) -> str:
     """Return a lowercase SHA-256 identity without retaining the source value."""
 
@@ -527,6 +556,8 @@ def parse_provider_context(source: str) -> Result[ProviderContext, ProviderFailu
 
     if utf8_length(source) > MAX_PROVIDER_INPUT_BYTES:
         return Err(ProviderFailure.InputTooLarge)
+    if not json_nesting_is_within_limit(source):
+        return Err(ProviderFailure.InvalidInput)
     match JsonValue.parse(source):
         Err(_) => return Err(ProviderFailure.InvalidInput)
         Ok(value) =>
@@ -671,6 +702,8 @@ def parse_manifest(source: str) -> Result[list[ProviderManifestTarget], Provider
 
     if utf8_length(source) > MAX_PROVIDER_INPUT_BYTES:
         return Err(ProviderFailure.InputTooLarge)
+    if not json_nesting_is_within_limit(source):
+        return Err(ProviderFailure.InvalidInput)
     match JsonValue.parse(source):
         Err(_) => return Err(ProviderFailure.InvalidInput)
         Ok(value) =>
@@ -919,6 +952,8 @@ def extract_output_text(call: PreparedProviderCall, response_source: str) -> Res
 
     if utf8_length(response_source) > MAX_PROVIDER_ENVELOPE_BYTES:
         return Err(ProviderFailure.ResponseTooLarge)
+    if not json_nesting_is_within_limit(response_source):
+        return Err(ProviderFailure.MalformedOutput)
     match JsonValue.parse(response_source):
         Err(_) => return Err(ProviderFailure.MalformedOutput)
         Ok(response) =>
@@ -1036,6 +1071,8 @@ pub def decode_proposal_response(
     if call.operation != "proposal":
         return Err(ProviderFailure.InvalidInput)
     output_text = extract_output_text(call, response_source)?
+    if not json_nesting_is_within_limit(output_text):
+        return Err(ProviderFailure.MalformedOutput)
     match JsonValue.parse(output_text):
         Err(_) => return Err(ProviderFailure.MalformedOutput)
         Ok(value) =>
@@ -1065,6 +1102,8 @@ def synthesis_shape_is_closed(value: JsonValue) -> bool:
 def attach_fingerprints(call: PreparedProviderCall, output_text: str, relation: bool) -> Result[str, ProviderFailure]:
     """Attach only safe non-authoritative trace fingerprints to a raw observation object."""
 
+    if not json_nesting_is_within_limit(output_text):
+        return Err(ProviderFailure.MalformedOutput)
     match JsonValue.parse(output_text):
         Err(_) => return Err(ProviderFailure.MalformedOutput)
         Ok(parsed) =>

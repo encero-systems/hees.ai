@@ -236,11 +236,21 @@ def test_headless_output_exposes_stable_sections_and_reasons() -> None:
     """Keep judge-facing automation output stable across every replay outcome."""
 
     valid = render_headless(assert_decision("valid", true, "admitted"))
+    assert_eq(valid.contains("BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1"), true)
+    assert_eq(valid.contains("FIXED PROFILE PACKAGE"), true)
+    assert_eq(valid.contains("FIXED PROFILE SOURCES"), true)
+    assert_eq(valid.contains("OPTIONAL ATOM COMPARISON"), true)
     assert_eq(valid.contains("UNTRUSTED PROPOSAL"), true)
+    assert_eq(valid.contains("DECLARED SUPPORT"), true)
+    assert_eq(valid.contains("HEES-DERIVED VERIFIER MANIFEST"), true)
     assert_eq(valid.contains("HEES FINDINGS"), true)
     assert_eq(valid.contains("SPECTRUM ADMITTED"), true)
     assert_eq(valid.contains("CONTENT DNA present"), true)
     assert_eq(valid.contains("RECEIPT present"), true)
+    assert_eq(valid.contains("NON-AUTHORITATIVE EXECUTION TRACE"), true)
+    assert_eq(valid.contains("replay_integrity=verified"), true)
+    assert_eq(valid.contains("What order should I use"), false)
+    assert_eq(valid.contains("Lantern Path is a fictional"), false)
     for slug, reason in [("undeclared-action", "unknown_action"), ("unknown-memory", "unknown_memory"), ("non-admitted-memory", "memory_not_admitted")]:
         output = render_headless(assert_decision(slug, false, reason))
         assert_eq(output.contains("SPECTRUM REJECTED"), true)
@@ -252,7 +262,7 @@ def test_state_transitions_wrap_and_select_scenarios_and_inspectors() -> None:
 
     mut state = initial_state()
     assert_eq(selected_scenario_slug(state.clone()), "valid")
-    assert_eq(selected_inspector_name(state.clone()), "PROPOSAL")
+    assert_eq(selected_inspector_name(state.clone()), "PACKAGE")
     state = apply_command(state, "previous-scenario")
     assert_eq(selected_scenario_slug(state.clone()), "non-admitted-memory")
     state = apply_command(state, "next-scenario")
@@ -260,18 +270,20 @@ def test_state_transitions_wrap_and_select_scenarios_and_inspectors() -> None:
     state = apply_command(state, "scenario-3")
     assert_eq(selected_scenario_slug(state.clone()), "unknown-memory")
     state = apply_command(state, "previous-inspector")
-    assert_eq(selected_inspector_name(state.clone()), "RECEIPT")
+    assert_eq(selected_inspector_name(state.clone()), "TRACE")
     state = apply_command(state, "next-inspector")
-    assert_eq(selected_inspector_name(state.clone()), "PROPOSAL")
+    assert_eq(selected_inspector_name(state.clone()), "PACKAGE")
     state = apply_command(state, "quit")
     assert_eq(state.running, false)
 
 
 def test_terminal_sanitizer_removes_controls_and_preserves_unicode_bounds() -> None:
-    """Remove actual terminal controls while bounding text by Unicode characters."""
+    """Remove C0 and C1 terminal controls while bounding text by Unicode characters."""
 
     payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b[31mred\\u001b[0m\"}"))
     assert_eq(bounded_text(payload.value, 100), " [31mred [0m")
+    c1_payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"before\\u009b;31mafter\"}"))
+    assert_eq(bounded_text(c1_payload.value, 100), "before ;31mafter")
     assert_eq(bounded_text("line one\nline two\tend", 100), "line one line two end")
     assert_eq(bounded_text("isiZulu", 4), "isiZ…")
 
@@ -299,7 +311,21 @@ def test_full_screen_carries_the_exact_build_week_product_line() -> None:
     run = assert_is_ok(evaluate_offline_scenario("valid"))
     screen = render_screen(state, run)
     assert_eq(screen.contains("GPT-5.6 proposes. Hees decides."), true)
-    assert_eq(screen.contains("UNTRUSTED PROPOSAL"), true)
+    assert_eq(screen.contains("BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1"), true)
+    assert_eq(screen.contains("FIXED PROFILE PACKAGE"), true)
+    assert_eq(screen.contains("What order should I use for the Lantern Path cards?"), true)
+
+
+def test_trace_is_separate_non_authoritative_and_redacts_interaction_content() -> None:
+    """Keep trace identities useful without copying question, source, or terminal artifacts."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    trace = run.trace.to_json()
+    assert_eq(trace.contains("console_trace_0_1"), true)
+    assert_eq(trace.contains("sha256:5319b88152ffb04bd8b9e3298333fd370ff33e359d2d8f91ca5ab453fd7a928a"), true)
+    assert_eq(trace.contains("What order should I use"), false)
+    assert_eq(trace.contains("Lantern Path is a fictional"), false)
+    assert_eq(trace.contains("admitted"), false)
 
 
 def test_injected_live_composition_returns_only_the_real_hees_admission() -> None:

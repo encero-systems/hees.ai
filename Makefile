@@ -13,6 +13,9 @@ CONSOLE_BUILD_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/build-
 CONSOLE_RELEASE_TOOL := $(abspath $(CONSOLE_ROOT)/packaging/release_candidate.sh)
 CONSOLE_RELEASE_TEST := $(abspath $(CONSOLE_ROOT)/packaging/test_release_candidate.sh)
 CONSOLE_GENERATED_ROOT := $(abspath $(CONSOLE_ROOT)/target/incan/hees_console)
+CONSOLE_RUNNER_ROOT := $(abspath $(CONSOLE_ROOT)/runner)
+CONSOLE_RUNNER_BINARY := $(CONSOLE_RUNNER_ROOT)/target/incan/.cargo-target/release/hees_runner
+CONSOLE_COMPATIBILITY_ROOT := $(abspath $(CONSOLE_ROOT)/contracts/domain/kernel_compatibility)
 CONSOLE_LICENSE_REPORT := $(abspath $(CONSOLE_ROOT)/packaging/THIRD_PARTY_LICENSES.md)
 CONSOLE_GENERATED_LICENSE_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/THIRD_PARTY_LICENSES.md)
 LICENSE_CONFIG_ROOT := $(abspath tools/licenses)
@@ -24,7 +27,7 @@ RELEASE_PLATFORM ?=
 SOURCE_COMMIT ?= $(shell git rev-parse HEAD)
 SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct HEAD)
 
-.PHONY: fmt lib test consumer example boundary boundary-self-test docs ci console-build console-test console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-lint
+.PHONY: fmt lib test consumer example boundary boundary-self-test docs ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-lint
 
 fmt:
 	$(INCAN) fmt --check .
@@ -62,6 +65,15 @@ console-test:
 	cd $(CONSOLE_ROOT) && $(INCAN) test $(CONSOLE_NATIVE_TEST) $(INCAN_FLAGS) --fail-on-empty
 	cd $(CONSOLE_ROOT) && $(INCAN) test $(CONSOLE_PROVIDER_TEST) $(INCAN_FLAGS) --fail-on-empty
 
+console-runner-build:
+	@test "$$($(INCAN) --version)" = "incan 0.4.0" || { echo "Hees Console requires released Incan 0.4.0" >&2; exit 1; }
+	cd $(CONSOLE_RUNNER_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build src/main.incn $(INCAN_FLAGS) --release
+	@test -x "$(CONSOLE_RUNNER_BINARY)" || { echo "released Incan did not emit $(CONSOLE_RUNNER_BINARY)" >&2; exit 1; }
+
+console-kernel-compatibility:
+	@test "$$($(INCAN) --version)" = "incan 0.4.0" || { echo "Hees Console requires released Incan 0.4.0" >&2; exit 1; }
+	cd $(CONSOLE_COMPATIBILITY_ROOT) && $(INCAN) run src/main.incn $(INCAN_FLAGS)
+
 console-native-smoke: console-build
 	$(CONSOLE_RELEASE_TOOL) smoke-binary --binary $(CONSOLE_BINARY)
 
@@ -86,4 +98,4 @@ console-release-candidate: console-release-contract-test console-test console-na
 	$(CONSOLE_RELEASE_TOOL) package --binary "$(CONSOLE_BINARY)" --platform "$(RELEASE_PLATFORM)" --output-directory "$(RELEASE_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --source-date-epoch "$(SOURCE_DATE_EPOCH)" --incan-root "$(INCAN_RELEASE_ROOT)" --incan-lock "$(CONSOLE_LOCK)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
 	$(CONSOLE_RELEASE_TOOL) smoke-archive --archive "$(RELEASE_OUTPUT)/hees-console-0.1.0-$(RELEASE_PLATFORM).tar.gz" --platform "$(RELEASE_PLATFORM)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
 
-ci: fmt lib test consumer example boundary boundary-self-test docs console-test console-release-contract-test
+ci: fmt lib test consumer example boundary boundary-self-test docs console-test console-runner-build console-kernel-compatibility console-release-contract-test
