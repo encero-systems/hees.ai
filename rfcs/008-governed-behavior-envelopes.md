@@ -1,50 +1,52 @@
-# RFC 006: Governed Behavior Envelopes
+# RFC 008: Governed Behavior Envelopes
 
 - **Status:** Draft
 - **Created:** 2026-07-17
 - **Author(s):** Encero Systems
 - **Related:**
-    - RFC 002 (Composable governance constraints)
-    - RFC 003 (Canonical package artifact admission)
-    - RFC 004 (Export-safe governance receipts)
-    - RFC 005 (Evidence-Grounded Claim Verification Findings)
-    - RFC 007 (Governed visible response lifecycle)
-- **Issue:** https://github.com/encero-systems/hees.ai/issues/4
+    - RFC 000 (Foundational Governance Authority)
+    - RFC 001 (Spectrum Terminal Adjudication)
+    - RFC 004 (Composable governance constraints)
+    - RFC 005 (Canonical package artifact admission)
+    - RFC 006 (Export-safe governance receipts)
+    - RFC 007 (Evidence-Grounded Claim Verification Findings)
+    - RFC 009 (Governed visible response lifecycle)
+- **Issue:** https://github.com/encero-systems/hees.ai/issues/9
 - **RFC PR:** —
 - **Written against:** Hees 0.0.1 / Incan 0.4.0
 - **Shipped in:** —
 
 ## Summary
 
-Hees should admit a package-committed behavior envelope, evaluate a bounded set of untrusted behavior candidates against that envelope and a trusted runtime frame, and select one uniquely best eligible candidate through package-declared, iteration-order-independent rules. The selection result carries behavioral authority only: it contains no answer text, support, verifier conclusion, repair decision, clarification, or terminal response action, and only its direct opaque return may enter the governed visible-response lifecycle defined by RFC 007.
+Hees should admit a package-committed behavior envelope, evaluate a bounded set of untrusted behavior candidates against that envelope and a trusted runtime frame, and select one uniquely best eligible candidate through package-declared, iteration-order-independent rules. The selection result carries behavioral authority only: it contains no answer text, support, verifier conclusion, repair decision, clarification, or terminal response action, and only its direct opaque return may enter the governed visible-response lifecycle defined by RFC 009.
 
 ## Core model
 
-1. **The admitted package owns the envelope.** A behavior envelope is a canonical member committed by the RFC 003 package artifact identity, not a mutable runtime policy or provider option.
+1. **The admitted package owns the envelope.** A behavior envelope is a canonical member committed by the RFC 005 package artifact identity, not a mutable runtime policy or provider option.
 2. **Candidates remain untrusted.** Providers may propose bounded behavior slots, but they cannot declare package authority, selection priority, terminal action, or score.
 3. **Eligibility never repairs or truncates.** Hees checks each candidate exactly as supplied and marks an over-bound, unknown, or incompatible value ineligible; it does not cap an action list, reinterpret a slot, or silently ignore excess candidates.
 4. **Selection is deterministic.** Hees computes a package-declared comparison key only for eligible candidates, requires one unique best key, and produces the same result for every permutation of the same candidate set.
-5. **Selection is not response admission.** RFC 006 decides which behavioral frame, if any, may continue. RFC 007 separately decides whether the selected candidate's visible response may be shown, repaired, clarified, or rejected.
+5. **Selection is not response admission.** RFC 008 decides which behavioral frame, if any, may continue. RFC 009 separately decides whether the selected candidate's visible response may be shown, repaired, clarified, or rejected.
 6. **Authority is direct and narrow.** A caller may inspect a serializable trace, but only the direct opaque selected-candidate capability returned by Hees may authorize the next governed operation.
 
 ## Motivation
 
 Hees 0.0.1 validates a small in-memory package and one proposal, but it does not establish a canonical package artifact identity for behavior rules, model state transitions, multiple-candidate selection, or a reusable selected-candidate capability. A provider can supply package, domain, action, visible-output, and evidence claims, while the runtime performs only structural membership checks. That surface is useful as a minimal boundary proof but is insufficient for portable behavior governance.
 
-Package implementations often need richer behavior structure: declared intent and risk classes, state transitions, response strategies, and action combinations. Those declarations must not become provider-owned prompt conventions or application-specific branching. Conversely, moving answer prose, support claims, verifier scores, or repair policy into behavior selection would make the envelope an alternate response authority and would collapse the separation required by RFC 005 and RFC 007.
+Package implementations often need richer behavior structure: declared intent and risk classes, state transitions, response strategies, and action combinations. Those declarations must not become provider-owned prompt conventions or application-specific branching. Conversely, moving answer prose, support claims, verifier scores, or repair policy into behavior selection would make the envelope an alternate response authority and would collapse the separation required by RFC 007 and RFC 009.
 
 Naive multi-candidate selectors introduce additional hazards. Evaluating only the first configured number of candidates makes the result depend on input order. Preserving the first candidate on a score tie does the same. Adding caller-supplied model or rubric scores lets an untrusted provider influence authority. Capping an overlong action list and continuing can admit behavior that was never proposed as a valid whole. This RFC defines a bounded selector that rejects those shortcuts.
 
 ## Goals
 
-- Define a closed package-owned behavior-envelope payload committed by RFC 003 artifact identity.
+- Define a closed package-owned behavior-envelope payload committed by RFC 005 artifact identity.
 - Define the trusted runtime frame and the bounded untrusted behavior-candidate shape.
 - Validate intent classes, risk classes, authority classes, outcome classes, states, transitions, strategies, and actions without inspecting response prose.
 - Define whole-set bounds and fail-closed behavior without prefix truncation or partial candidate repair.
 - Define package-declared comparison criteria whose outcome is independent of candidate iteration order.
 - Require one uniquely best eligible candidate and fail closed on a remaining tie.
 - Define stable selection states, reasons, candidate-violation codes, and precedence.
-- Return an opaque selected-candidate capability for RFC 007 while keeping the public trace non-authoritative.
+- Return an opaque selected-candidate capability for RFC 009 while keeping the public trace non-authoritative.
 - Preserve exact admitted package and envelope identity through selection.
 
 ## Non-Goals
@@ -57,25 +59,25 @@ Naive multi-candidate selectors introduce additional hazards. Evaluating only th
 - Ranking business preferences inside Hees; packages declare the permitted comparison order and Hees applies it mechanically.
 - Selecting external resources, performing retrieval, or interpreting raw evidence.
 - Defining signatures, attestations, durable sessions, or external producer authenticity.
-- Defining an export receipt for behavior selection. RFC 004 remains the sole receipt contract and does not reserve a behavior-selection receipt kind.
+- Defining an export receipt for behavior selection. RFC 006 remains the sole receipt contract and does not reserve a behavior-selection receipt kind.
 
 ## Guide-level explanation
 
 A package author declares the behavior values that a runtime may admit: the classes used to describe a request, the states and transitions available to the interaction, the strategies that may operate in those states, and the package actions each strategy may use. The declaration also supplies a positive candidate limit, a positive action limit, and an ordered list of supported comparison criteria.
 
-RFC 003 admission commits that declaration to the package artifact digest. At runtime, Hees derives a frame from the accepted package and other trusted governed results. A provider may then supply zero or more behavior candidates. Each candidate names only declared behavior slots. It cannot attach a score, terminal action, answer, support record, or verifier result.
+RFC 005 admission commits that declaration to the package artifact digest. At runtime, Hees derives a frame from the accepted package and other trusted governed results. A provider may then supply zero or more behavior candidates. Each candidate names only declared behavior slots. It cannot attach a score, terminal action, answer, support record, or verifier result.
 
 Hees first validates the complete candidate set against the contract ceilings. It then evaluates every candidate independently. Ineligible candidates remain visible in the bounded trace with stable violation codes but cannot win. If no candidate is eligible, selection returns no selected capability. If eligible candidates remain, Hees compares their package-derived keys. One unique best candidate yields an opaque selected-candidate capability. An unresolved tie yields no selection rather than using list order, candidate identity, answer bytes, or provider score as an undeclared tiebreaker.
 
-The caller may pass the opaque capability to RFC 007 together with the selected candidate's response values and RFC 005 finding batch. A copied trace or caller-constructed candidate cannot substitute for that direct capability.
+The caller may pass the opaque capability to RFC 009 together with the selected candidate's response values and RFC 007 finding batch. A copied trace or caller-constructed candidate cannot substitute for that direct capability.
 
 ## Reference-level explanation
 
 ### Contract ownership and package binding
 
-The behavior envelope must be a closed canonical `behavior_envelope` member admitted as part of an RFC 003 package artifact. Its descriptor and bytes must participate in the package artifact digest exactly like every other admitted member. A runtime-supplied envelope, a separately mutable sidecar, a provider configuration, or a value reconstructed from a public trace must not carry package authority.
+The behavior envelope must be a closed canonical `behavior_envelope` member admitted as part of an RFC 005 package artifact. Its descriptor and bytes must participate in the package artifact digest exactly like every other admitted member. A runtime-supplied envelope, a separately mutable sidecar, a provider configuration, or a value reconstructed from a public trace must not carry package authority.
 
-The member must inherit the complete trusted package identity only after atomic RFC 003 completion:
+The member must inherit the complete trusted package identity only after atomic RFC 005 completion:
 
 - `package_id`;
 - `domain_id`;
@@ -84,11 +86,11 @@ The member must inherit the complete trusted package identity only after atomic 
 
 The envelope payload must not repeat that containing package identity. Hees must bind the admitted member to the exact containing identity without mutating or re-hashing its bytes.
 
-RFC 003 artifact contract `0.1` incorporates the behavior-envelope member while the coupled RFCs remain Draft. An implementation must not reinterpret an accepted artifact contract or accept an uncommitted behavior declaration; another member or wrapper change after acceptance requires a new exact artifact-contract version.
+RFC 005 artifact contract `0.1` incorporates the behavior-envelope member while the coupled RFCs remain Draft. An implementation must not reinterpret an accepted artifact contract or accept an uncommitted behavior declaration; another member or wrapper change after acceptance requires a new exact artifact-contract version.
 
 ### Closed behavior-envelope payload
 
-The `behavior_envelope` member must use member contract `0.1` and the RFC 003 common member fields. Its payload must contain exactly:
+The `behavior_envelope` member must use member contract `0.1` and the RFC 005 common member fields. Its payload must contain exactly:
 
 - `envelope_id`, one canonical package-scoped identifier;
 - `envelope_revision`, one canonical revision;
@@ -102,7 +104,7 @@ The `behavior_envelope` member must use member contract `0.1` and the RFC 003 co
 - `strategies`, one bounded non-empty ordered strategy array; and
 - `selection_policy`, one closed policy object.
 
-Every identifier must use the RFC 003 canonical package-identifier grammar and its final field-specific UTF-8 byte ceiling. Every declaration array must be duplicate-free. Array order is identity-bearing and must not be normalized or inferred from object iteration order.
+Every identifier must use the RFC 005 canonical package-identifier grammar and its final field-specific UTF-8 byte ceiling. Every declaration array must be duplicate-free. Array order is identity-bearing and must not be normalized or inferred from object iteration order.
 
 Each state must contain exactly:
 
@@ -123,7 +125,7 @@ Each strategy must contain exactly:
 - `allowed_authority_class_ids`; and
 - `allowed_outcome_class_ids`.
 
-Strategy identifiers must be unique. Every referenced state and class identifier must resolve inside the same envelope, and every action identifier must resolve in the containing package's RFC 003 `actions` member. Each allowed array must be non-empty and duplicate-free. A strategy must not contain answer text, evidence identifiers, memory identifiers, source references, provider data, scores, fallback wording, or arbitrary metadata.
+Strategy identifiers must be unique. Every referenced state and class identifier must resolve inside the same envelope, and every action identifier must resolve in the containing package's RFC 005 `actions` member. Each allowed array must be non-empty and duplicate-free. A strategy must not contain answer text, evidence identifiers, memory identifiers, source references, provider data, scores, fallback wording, or arbitrary metadata.
 
 The selection policy must contain exactly:
 
@@ -147,7 +149,7 @@ Selection must receive a trusted runtime frame created by Hees from the same adm
 
 The current state must resolve in the admitted envelope. Every effective action must resolve in the admitted package action catalog. A caller-provided package tuple, state declaration, action definition, or constraint result must not be upgraded into a trusted frame merely because its fields are well formed.
 
-RFC 002 may narrow the effective action set before selection, but RFC 006 must not reinterpret RFC 002 findings or choose a constraint action. The direct trusted result of the governing operation supplies the effective set.
+RFC 004 may narrow the effective action set before selection, but RFC 008 must not reinterpret RFC 004 findings or choose a constraint action. The direct trusted result of the governing operation supplies the effective set.
 
 ### Untrusted behavior candidate
 
@@ -250,22 +252,30 @@ Selection reasons belong to namespace `behavior_selection_0_1`. The selection re
 
 When multiple global conditions apply, Hees must choose one public reason in this exact precedence: `invalid_behavior_envelope`, `package_identity_mismatch`, `invalid_candidate_set`, `candidate_limit_exceeded`, `duplicate_candidate_id`, `no_candidates`, `no_eligible_candidate`, `selection_ambiguous`, then `candidate_selected`. Candidate and collection iteration order must not alter that choice.
 
-The public result and trace are explainable data but do not themselves grant behavioral authority to a later Hees operation. Only the direct opaque selected-candidate capability returned beside a `selected` result may enter RFC 007. Hees must expose no public constructor or deserializer that upgrades a caller-created result, trace, package tuple, or candidate into that capability.
+The public result and trace are explainable data but do not themselves grant behavioral authority to a later Hees operation. Only the direct opaque selected-candidate capability returned beside a `selected` result may enter RFC 009. Hees must expose no public constructor or deserializer that upgrades a caller-created result, trace, package tuple, or candidate into that capability.
 
 ### Bounds and allocation
 
 Contract `0.1` must define exact global ceilings for behavior-member bytes, parser nesting and tokens, every identifier and revision, each declaration array, states, transitions per state, strategies, allowlist entries per strategy, selection criteria, candidates per set, actions per candidate, complete candidate-set bytes, public trace entries, and retained opaque-capability state.
 
-The package's `max_candidates` and `max_actions_per_candidate` may narrow the global ceilings but must not raise them. Hees must enforce the raw candidate-set byte ceiling before parsing and every collection ceiling before proportional allocation. All count arithmetic must use the RFC 003 exact-integer domain and checked arithmetic.
+The package's `max_candidates` and `max_actions_per_candidate` may narrow the global ceilings but must not raise them. Hees must enforce the raw candidate-set byte ceiling before parsing and every collection ceiling before proportional allocation. All count arithmetic must use the RFC 005 exact-integer domain and checked arithmetic.
 
 This Draft does not assign unmeasured numeric ceilings. It cannot advance to Planned until common JavaScript, Rust, and Incan goldens plus representative civic-shaped fixtures establish fixed values and prove the mechanically derived maximum member, candidate-set, trace, and retained-state sizes. Deployment RSS, model coexistence, and device-specific latency remain measurements rather than public selection reasons.
 
 ## Design details
 
+### Relationship to RFC 000
+
+RFC 000 reserves terminal authority for Spectrum and one governed visible-response channel. This RFC selects only a package-admitted behavioral frame and cannot carry answer prose, provenance, or a terminal response decision.
+
+### Relationship to RFC 001
+
+Spectrum consumes only the direct opaque selected-candidate capability returned by this RFC. The public selection trace is explanatory and cannot be upgraded into behavioral or terminal authority.
+
 ### Settled contract decisions
 
 - Behavior selection and visible-response admission are separate public contracts.
-- The behavior envelope is committed by RFC 003 package identity and cannot be supplied as a mutable runtime sidecar.
+- The behavior envelope is committed by RFC 005 package identity and cannot be supplied as a mutable runtime sidecar.
 - Candidate behavior contains no answer, support, finding, score, terminal action, repair state, or clarification text.
 - Complete candidate sets are validated before eligibility; over-bound sets are rejected rather than truncated.
 - Overlong action lists are ineligible as wholes and are never capped into a different candidate.
@@ -273,27 +283,27 @@ This Draft does not assign unmeasured numeric ceilings. It cannot advance to Pla
 - Candidate input order and candidate identifiers never decide the winner.
 - Remaining ties fail closed with `selection_ambiguous`.
 - No selected capability exists when the envelope, package binding, or candidate set is invalid or when no unique eligible winner exists.
-- Only the direct opaque selected-candidate capability carries authority into RFC 007; the public trace does not.
-- RFC 006 defines no receipt kind and does not export behavior selection through RFC 004.
-- The behavior and response members join RFC 003 artifact contract `0.1` before that coupled Draft contract is frozen.
-
-### Relationship to RFC 003
-
-RFC 003 owns canonical bytes, descriptor order, member digest and length commitments, package topology, package identity, sequencing, and atomic package completion. RFC 006 owns only the `behavior_envelope` payload schema, its local and package-action references, its semantic bounds, and behavior selection after package admission.
-
-A package may omit the behavior member only when it does not use RFC 006 selection. RFC 007 response governance requires both an admitted behavior envelope and an admitted response contract. A response contract without a behavior envelope must fail RFC 003 cross-member validation.
+- Only the direct opaque selected-candidate capability carries authority into RFC 009; the public trace does not.
+- RFC 008 defines no receipt kind and does not export behavior selection through RFC 006.
+- The behavior and response members join RFC 005 artifact contract `0.1` before that coupled Draft contract is frozen.
 
 ### Relationship to RFC 005
 
-RFC 006 does not consume verifier findings. Findings evaluate selected visible response content after behavior selection and remain non-authoritative under RFC 005. A package must not smuggle verifier thresholds, finding status, confidence, or provider identity into a behavior selection criterion.
+RFC 005 owns canonical bytes, descriptor order, member digest and length commitments, package topology, package identity, sequencing, and atomic package completion. RFC 008 owns only the `behavior_envelope` payload schema, its local and package-action references, its semantic bounds, and behavior selection after package admission.
+
+A package may omit the behavior member only when it does not use RFC 008 selection. RFC 009 response governance requires both an admitted behavior envelope and an admitted response contract. A response contract without a behavior envelope must fail RFC 005 cross-member validation.
 
 ### Relationship to RFC 007
 
-RFC 007 owns proposal and package claims at the untrusted response boundary, visible answer units, typed support, synthesis requirements, finding composition, repair state, clarification, and terminal response admission. RFC 006 supplies only the direct opaque selected-candidate capability and its bounded trace. RFC 007 must not reconstruct selection authority from the trace or rerank the candidates.
+RFC 008 does not consume verifier findings. Findings evaluate selected visible response content after behavior selection and remain non-authoritative under RFC 007. A package must not smuggle verifier thresholds, finding status, confidence, or provider identity into a behavior selection criterion.
 
-### Relationship to RFC 004
+### Relationship to RFC 009
 
-RFC 004 does not define a behavior-selection receipt. A later proposal-admission receipt may project the final RFC 007 outcome, but it must not export the complete behavior trace, rejected candidates, behavior classes, strategies, state graph, or comparison tuple. Selection explainability remains a bounded runtime result or separately governed operator trace.
+RFC 009 owns proposal and package claims at the untrusted response boundary, visible answer units, typed support, synthesis requirements, finding composition, repair state, clarification, and terminal response admission. RFC 008 supplies only the direct opaque selected-candidate capability and its bounded trace. RFC 009 must not reconstruct selection authority from the trace or rerank the candidates.
+
+### Relationship to RFC 006
+
+RFC 006 does not define a behavior-selection receipt. A later proposal-admission receipt may project the final RFC 009 outcome, but it must not export the complete behavior trace, rejected candidates, behavior classes, strategies, state graph, or comparison tuple. Selection explainability remains a bounded runtime result or separately governed operator trace.
 
 ### Stable evolution
 
@@ -327,15 +337,15 @@ Rejected because the capped subset is not the candidate that was proposed. The c
 
 ### Include answer text in the behavior candidate
 
-Rejected because it would couple structural behavior selection to visible-response admission and could let text or hidden support influence selection before RFC 005 and RFC 007 checks.
+Rejected because it would couple structural behavior selection to visible-response admission and could let text or hidden support influence selection before RFC 007 and RFC 009 checks.
 
 ### Generate a fallback candidate when none passes
 
-Rejected because fallback behavior would be newly authored output rather than selection. RFC 007 may return a package-authored clarification or closed rejection, but RFC 006 does not invent a candidate.
+Rejected because fallback behavior would be newly authored output rather than selection. RFC 009 may return a package-authored clarification or closed rejection, but RFC 008 does not invent a candidate.
 
 ## Drawbacks
 
-Packages must declare and validate more structure than the current action-only runtime contract. Strict whole-set validation can reject a batch even when an early candidate would otherwise pass. Requiring a unique comparison key means two behaviorally equivalent candidates cannot be distinguished by prose quality in this contract. The opaque authority boundary requires callers to preserve a direct Hees value rather than reconstructing state from JSON. Exact numeric ceilings and the RFC 003 artifact-version change remain lifecycle gates.
+Packages must declare and validate more structure than the current action-only runtime contract. Strict whole-set validation can reject a batch even when an early candidate would otherwise pass. Requiring a unique comparison key means two behaviorally equivalent candidates cannot be distinguished by prose quality in this contract. The opaque authority boundary requires callers to preserve a direct Hees value rather than reconstructing state from JSON. Exact numeric ceilings and the RFC 005 artifact-version change remain lifecycle gates.
 
 ## Layers affected
 

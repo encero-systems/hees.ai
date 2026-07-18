@@ -1,32 +1,36 @@
-# RFC 007: Governed Visible Response Lifecycle
+# RFC 009: Governed Visible Response Lifecycle
 
 - **Status:** Draft
 - **Created:** 2026-07-17
 - **Author(s):** Encero Systems
 - **Related:**
-    - RFC 001 (Governed memory and retrieval results)
-    - RFC 002 (Composable governance constraints)
-    - RFC 003 (Canonical package artifact admission)
-    - RFC 004 (Export-safe governance receipts)
-    - RFC 005 (Evidence-Grounded Claim Verification Findings)
-    - RFC 006 (Governed behavior envelopes)
-- **Issue:** https://github.com/encero-systems/hees.ai/issues/9
+    - RFC 000 (Foundational Governance Authority)
+    - RFC 001 (Spectrum Terminal Adjudication)
+    - RFC 002 (Content DNA Answer-Time Provenance)
+    - RFC 003 (Governed memory and retrieval results)
+    - RFC 004 (Composable governance constraints)
+    - RFC 005 (Canonical package artifact admission)
+    - RFC 006 (Export-safe governance receipts)
+    - RFC 007 (Evidence-Grounded Claim Verification Findings)
+    - RFC 008 (Governed behavior envelopes)
+- **Issue:** https://github.com/encero-systems/hees.ai/issues/11
 - **RFC PR:** —
 - **Written against:** Hees 0.0.1 / Incan 0.4.0
 - **Shipped in:** —
 
 ## Summary
 
-Hees should govern one logical proposal lifecycle in which ordered visible answer units are the sole model-generated user-visible channel, support contains identifiers only, claim-verification and synthesis-coverage findings remain non-authoritative inputs, clarification text comes only from the admitted package, and an original candidate may receive at most one bounded repair before a closed terminal outcome. The trusted result must preserve exact proposal and package identity wherever each has been safely established, carry one of seven terminal variants and one globally unique public reason, and supply the exact admitted support projection required by RFC 004.
+Hees should govern one logical proposal lifecycle in which ordered visible answer units are the sole model-generated user-visible channel, support contains identifiers only, claim-verification and synthesis-coverage findings remain non-authoritative inputs, clarification text comes only from the admitted package, and an original candidate may receive at most one bounded repair before a closed terminal outcome. The trusted result must preserve exact proposal and package identity wherever each has been safely established, carry one of seven terminal variants and one globally unique public reason, and supply the exact admitted support and RFC 002 Content DNA presence required by RFC 001 and RFC 006.
 
 ## Core model
 
 1. **One visible model channel.** A model may contribute only the ordered text of visible answer units. Support mappings, traces, findings, repair requests, and receipts must not contain substitute answer prose.
 2. **Runtime-owned response mode.** A trusted response context determines whether the operation may answer, must clarify, or must reject. A candidate cannot declare itself answerable or turn an evidence gap into advice.
 3. **Package-authored clarification.** Clarification selects one reviewed prompt committed by the admitted response contract. A model cannot generate clarification or uncertainty text.
-4. **Non-authoritative verification.** RFC 005 findings and RFC 007 synthesis-coverage findings are bound to exact candidate values, but Hees and RFC 002 policy retain all terminal authority.
+4. **Non-authoritative verification.** RFC 007 findings and RFC 009 synthesis-coverage findings are bound to exact candidate values, RFC 004 retains finding-composition authority, and RFC 001 Spectrum retains terminal authority.
 5. **One repair branch.** The original operation may return one opaque pending-repair capability. A repair operation can terminate but can never issue another repair capability.
-6. **Exact terminal projection.** Seven terminal variants, terminal-specific reasons, trusted package identity, logical proposal identity, and typed admitted support give RFC 004 one unambiguous source contract.
+6. **Exact terminal projection.** Seven terminal variants, terminal-specific reasons, trusted package identity, logical proposal identity, and typed admitted support give Spectrum and RFC 006 one unambiguous response source contract.
+7. **Atomic provenance.** An admitted answer carries RFC 002 admitted-answer Content DNA, a package-authored clarification carries its zero-entry no-answer form, and repair-requested or rejected outcomes carry none.
 
 ## Motivation
 
@@ -38,17 +42,18 @@ Constrained generation and one repair attempt are useful provider techniques, bu
 
 ## Goals
 
-- Define a canonical package-owned response contract committed by RFC 003 artifact identity.
+- Define a canonical package-owned response contract committed by RFC 005 artifact identity.
 - Define the logical proposal identity and exact untrusted package-reference check.
 - Define ordered visible answer units as the sole model-generated user-visible response content.
 - Define identifier-only support mappings whose claim text is derived from visible units rather than supplied separately.
 - Define runtime-selected synthesis requirements and deterministic structural completeness checks.
-- Compose RFC 005 claim-verification findings without exposing provider scores as authority.
+- Compose RFC 007 claim-verification findings without exposing provider scores as authority.
 - Define non-authoritative synthesis-coverage findings owned by this response contract.
 - Define package-authored clarification that cannot carry model text or support.
 - Define an opaque one-repair capability, bounded repair request, and fail-closed second-attempt behavior.
 - Define exactly seven terminal variants, terminal-specific reason families, and fixed precedence.
-- Define exact package/proposal identity presence and admitted support mapping for RFC 004 proposal receipts.
+- Define exact package/proposal identity presence and admitted support mapping for RFC 006 proposal receipts.
+- Define exact Content DNA presence for admitted, clarification, repair-requested, and rejected terminal variants.
 - Preserve deterministic outcomes across providers that submit the same governed values.
 
 ## Non-Goals
@@ -61,16 +66,16 @@ Constrained generation and one repair attempt are useful provider techniques, bu
 - Defining application layout, speech synthesis, text-to-speech markup, or source-panel behavior.
 - Authoring clarification prompts or synthesis requirements inside Hees; the admitted package owns those declarations.
 - Defining durable repair sessions, global replay prevention, receipt chains, signatures, or external authenticity.
-- Exporting visible answers, clarification prompts, verifier data, repair state, or candidate digests in RFC 004 receipts.
-- Replacing RFC 006 behavior selection or RFC 005 claim verification.
+- Exporting visible answers, clarification prompts, verifier data, repair state, or candidate digests in RFC 006 receipts.
+- Replacing RFC 008 behavior selection or RFC 007 claim verification.
 
 ## Guide-level explanation
 
-An admitted package may contain a response contract beside its behavior envelope. The response contract declares bounded synthesis requirements, reviewed clarification prompts, lower response limits, and a closed failure-policy mapping. RFC 003 commits those declarations to the package artifact digest.
+An admitted package may contain a response contract beside its behavior envelope. The response contract declares bounded synthesis requirements, reviewed clarification prompts, lower response limits, and a closed failure-policy mapping. RFC 005 commits those declarations to the package artifact digest.
 
-Before visible-answer generation, Hees derives a trusted request frame from the accepted package, governed memory, applicable constraints, and the caller's governed request state. In `answer` mode, RFC 006 first selects among bounded behavior candidates without reading answer text. Hees then binds the selected behavior and its active synthesis requirements into the trusted response context. The provider supplies exactly one bounded response candidate linked to that selected behavior. The response candidate contains ordered visible answer units and identifier-only support mappings. Every unit is displayed in its declared order and no support text exists for an application to substitute.
+Before visible-answer generation, Hees derives a trusted request frame from the accepted package, governed memory, applicable constraints, and the caller's governed request state. In `answer` mode, RFC 008 first selects among bounded behavior candidates without reading answer text. Hees then binds the selected behavior and its active synthesis requirements into the trusted response context. The provider supplies exactly one bounded response candidate linked to that selected behavior. The response candidate contains ordered visible answer units and identifier-only support mappings. Every unit is displayed in its declared order and no support text exists for an application to substitute.
 
-Hees normalizes each support mapping into a claim whose text is exactly the referenced visible unit text. RFC 005 binds its checks to the exact normalized candidate digest, checks visible units against the complete ordered selected-memory union, and checks each derived support claim against exactly its one cited governed-memory atom. The provider returns scores only for expected check identifiers; Hees classifies them under admitted policy and RFC 002 retains terminal authority.
+Hees normalizes each support mapping into a claim whose text is exactly the referenced visible unit text. RFC 007 binds its checks to the exact normalized candidate digest, checks visible units against the complete ordered admitted-memory context union, and checks each derived support claim against exactly its one cited governed-memory atom. The provider returns scores only for expected check identifiers; Hees classifies them under admitted policy, RFC 004 retains finding-composition authority, and Spectrum retains terminal authority.
 
 The response contract also selects the synthesis dimensions required for the chosen behavior. Candidate metadata maps those requirement identifiers to visible units, and a bounded non-authoritative synthesis-coverage finding evaluates whether the mapped visible text actually covers each required dimension. The mapping cannot pass merely because an identifier was asserted.
 
@@ -82,20 +87,20 @@ In `clarify` mode, Hees does not admit model-generated answer or uncertainty tex
 
 ### Contract ownership and package binding
 
-The response contract must be a closed canonical `response_contract` member admitted as part of the same RFC 003 package artifact as the RFC 006 behavior envelope it references. A response contract without a behavior envelope must fail cross-member package admission. A runtime-supplied response contract, mutable sidecar, provider template, or caller-created copy must not carry authority.
+The response contract must be a closed canonical `response_contract` member admitted as part of the same RFC 005 package artifact as the RFC 008 behavior envelope it references. A response contract without a behavior envelope must fail cross-member package admission. A runtime-supplied response contract, mutable sidecar, provider template, or caller-created copy must not carry authority.
 
-The response member must inherit the complete trusted package identity after atomic RFC 003 completion:
+The response member must inherit the complete trusted package identity after atomic RFC 005 completion:
 
 - `package_id`;
 - `domain_id`;
 - `package_revision`; and
 - `artifact_digest`.
 
-The payload must not repeat that identity. RFC 003 artifact contract `0.1` commits the response member and its order to the artifact digest while the coupled RFCs remain Draft; another member or wrapper change after acceptance requires a new exact artifact-contract version.
+The payload must not repeat that identity. RFC 005 artifact contract `0.1` commits the response member and its order to the artifact digest while the coupled RFCs remain Draft; another member or wrapper change after acceptance requires a new exact artifact-contract version.
 
 ### Closed response-contract payload
 
-The `response_contract` member must use member contract `0.1` and the RFC 003 common member fields. Its payload must contain exactly:
+The `response_contract` member must use member contract `0.1` and the RFC 005 common member fields. Its payload must contain exactly:
 
 - `response_contract_id`, one canonical package-scoped identifier;
 - `response_revision`, one canonical revision;
@@ -113,7 +118,7 @@ Each synthesis requirement must contain exactly:
 - `strategy_ids`; and
 - `action_ids`.
 
-Requirement identifiers must be unique and canonical. The description must be bounded, nonempty reviewed package text used only to form a synthesis-coverage target; it must never be displayed, copied into an answer, exported in a receipt, or treated as pre-rendered answer wording. Every strategy identifier must resolve in the same package's RFC 006 behavior envelope, and every action identifier must resolve in the RFC 003 actions member. Both applicability arrays must be non-empty and duplicate-free.
+Requirement identifiers must be unique and canonical. The description must be bounded, nonempty reviewed package text used only to form a synthesis-coverage target; it must never be displayed, copied into an answer, exported in a receipt, or treated as pre-rendered answer wording. Every strategy identifier must resolve in the same package's RFC 008 behavior envelope, and every action identifier must resolve in the RFC 005 actions member. Both applicability arrays must be non-empty and duplicate-free.
 
 A requirement is active for a selected behavior candidate only when its strategy array contains the selected strategy and its action array contains at least one selected action. The active requirement order is declaration order. The direct Hees operation that computes this list must return a trusted response expectation; a candidate-supplied requirement list cannot replace it.
 
@@ -134,21 +139,21 @@ The package-configurable violation classes are exactly `visible_structure`, `sup
 
 - `visible_structure`, `support`, `findings`, and `synthesis` may map to `repair` or `reject`;
 - `context_gap` and `evidence_gap` may map to `clarify` or `reject`;
-- a non-selected RFC 006 result, identity failure, contract failure, bounds failure, malformed or unavailable provider result, and invalid repair state are fixed Hees rejections and are not package-configurable; and
+- a non-selected RFC 008 result, identity failure, contract failure, bounds failure, malformed or unavailable provider result, and invalid repair state are fixed Hees rejections and are not package-configurable; and
 - a repair attempt must reinterpret an original `repair` mapping as `reject`, because no second repair is permitted.
 
 The response-contract `record_count` must equal the sum of synthesis requirements, clarification definitions, and failure-policy rules. Requirement applicability arrays and clarification gap-reason arrays must have independent final collection ceilings.
 
 ### Trusted response context
 
-The governing operation must receive a direct RFC 006 selection result and a trusted response context bound to the same accepted package identity. In `answer` mode, the selection result must be `selected` and the operation must hold its direct opaque selected-candidate capability. A non-selected result can produce only the fixed original behavior rejection and must not enter response-candidate evaluation. The context must contain:
+The governing operation must receive a direct RFC 008 selection result and a trusted response context bound to the same accepted package identity. In `answer` mode, the selection result must be `selected` and the operation must hold its direct opaque selected-candidate capability. A non-selected result can produce only the fixed original behavior rejection and must not enter response-candidate evaluation. The context must contain:
 
 - response mode, exactly `answer`, `clarify`, or `reject`;
 - the ordered active synthesis requirement identifiers;
-- the ordered selected RFC 001 governed-memory identifiers;
+- the ordered selected RFC 003 governed-memory identifiers;
 - the ordered selected evidence identifiers, if any;
 - the applicable stable gap-reason identifiers; and
-- the direct applicable RFC 002 adjudication result or equivalent trusted action narrowing.
+- the direct applicable RFC 004 adjudication result or equivalent trusted action narrowing.
 
 A caller must not construct a trusted response context from strings, package files, traces, parsed receipts, provider output, or verifier findings. Response mode, active requirements, selected support unions, and gap reasons are runtime-owned values. A model-supplied `answerable`, `uncertainty`, refusal, or clarification field must not override them.
 
@@ -156,7 +161,7 @@ In `clarify` mode, Hees must select the first clarification in package declarati
 
 ### Logical proposal and package-reference identity
 
-Every original proposal input must contain one logical `proposal_id`, `attempt_index` exactly `0`, and one claimed package reference. `proposal_id` must use the RFC 003 canonical package-identifier grammar and its final response field byte ceiling. It identifies one logical response lifecycle only; it does not prove global uniqueness, external origin, or session authenticity.
+Every original proposal input must contain one logical `proposal_id`, `attempt_index` exactly `0`, and one claimed package reference. `proposal_id` must use the RFC 005 canonical package-identifier grammar and its final response field byte ceiling. It identifies one logical response lifecycle only; it does not prove global uniqueness, external origin, or session authenticity.
 
 The proposal identifier must be supplied independently from candidate output. It must never be computed from visible text, support, findings, hidden reasoning, provider payload, the complete request, or a candidate digest. A valid identifier becomes trusted only after Hees validates its exact syntax and binds it to the current governing operation.
 
@@ -173,13 +178,13 @@ The attempt index is a bounded lifecycle discriminator, not proposal identity or
 
 ### Selected response candidate and visible answer units
 
-After proposal identity and package-reference validation, an original answer-mode proposal with a selected RFC 006 result must carry exactly one bounded response candidate corresponding to that selection. RFC 006 has already evaluated the separate behavior-candidate value and has not inspected this response content. The response candidate must contain exactly:
+After proposal identity and package-reference validation, an original answer-mode proposal with a selected RFC 008 result must carry exactly one bounded response candidate corresponding to that selection. RFC 008 has already evaluated the separate behavior-candidate value and has not inspected this response content. The response candidate must contain exactly:
 
 - `candidate_id`;
 - `visible_answer_units`; and
 - `support_mappings`.
 
-The candidate identifier must exactly equal the selected candidate identifier bound into the direct RFC 006 capability. It is linkage to the selected behavior value, not an answer score or a tiebreaker. An absent response candidate, an additional response candidate, or a mismatched identifier is a closed-schema or behavior-linkage failure; Hees must not choose response content independently from RFC 006.
+The candidate identifier must exactly equal the selected candidate identifier bound into the direct RFC 008 capability. It is linkage to the selected behavior value, not an answer score or a tiebreaker. An absent response candidate, an additional response candidate, or a mismatched identifier is a closed-schema or behavior-linkage failure; Hees must not choose response content independently from RFC 008.
 
 The visible-answer-unit array must be non-empty and must not exceed either the final contract ceiling or the package's lower `max_answer_units` limit.
 
@@ -204,25 +209,25 @@ Each support mapping must contain exactly:
 - `evidence_ids`; and
 - `memory_ids`.
 
-Support-claim identifiers must be canonical and unique within the candidate. Each `unit_id` must resolve exactly once in the visible answer. Evidence arrays must be ordered, duplicate-free, and contain only identifiers from the trusted selected evidence union. `memory_ids` must contain exactly one identifier from the trusted selected memory union; the typed array shape is retained for receipt-projection consistency, but contract `0.1` does not admit zero or multiple memory identifiers in one support mapping. The combined number of evidence and memory identifiers in one mapping must not exceed either the final contract ceiling or the package's lower `max_support_ids_per_claim` limit. Evidence identifiers may accompany the memory support but cannot replace it.
+Support-claim identifiers must be canonical and unique within the candidate. Each `unit_id` must resolve exactly once in the visible answer. Evidence arrays must be ordered, duplicate-free, and contain only identifiers from the trusted available evidence union. `memory_ids` must contain exactly one identifier from the trusted admitted-memory context; the typed array shape is retained for receipt-projection consistency, but contract `0.1` does not admit zero or multiple memory identifiers in one support mapping. The combined number of evidence and memory identifiers in one mapping must not exceed either the final contract ceiling or the package's lower `max_support_ids_per_claim` limit. Evidence identifiers may accompany the memory support but cannot replace it.
 
-Support mappings contain no text. For RFC 005 normalization, Hees must derive one atomic support claim whose identifier is `support_claim_id`, whose claim text is exactly the referenced visible unit text, and whose typed references are exactly the mapping's admitted identifiers. The derived text must not be independently editable, summarized, expanded, translated, or supplied by the provider. This preserves RFC 005's atomic support-claim input without creating an alternate answer channel.
+Support mappings contain no text. For RFC 007 normalization, Hees must derive one atomic support claim whose identifier is `support_claim_id`, whose claim text is exactly the referenced visible unit text, and whose typed references are exactly the mapping's admitted identifiers. The derived text must not be independently editable, summarized, expanded, translated, or supplied by the provider. This preserves RFC 007's atomic support-claim input without creating an alternate answer channel.
 
 Every visible answer unit must have at least one support mapping. Multiple mappings may reference one unit only when their support-claim identifiers and typed reference sets are distinct. The same evidence or memory identifier may support multiple visible units; duplicate prohibition is local to one mapping, not global across the answer.
 
-### Candidate digest and RFC 005 findings
+### Candidate digest and RFC 007 findings
 
-Hees must normalize the selected response candidate under this exact contract, including its RFC 006 candidate linkage, the admitted proposal identifier, and the exact attempt index, and supply that normalized value to RFC 005. RFC 005 owns the canonical candidate digest used to bind verifier checks and provider results. The candidate digest is content identity for verification only; it is not `proposal_id`, package identity, receipt identity, producer authenticity, or terminal authority.
+Hees must normalize the selected response candidate under this exact contract, including its RFC 008 candidate linkage, the admitted proposal identifier, and the exact attempt index, and supply that normalized value to RFC 007. RFC 007 owns the canonical candidate digest used to bind verifier checks and provider results. The candidate digest is content identity for verification only; it is not `proposal_id`, package identity, receipt identity, producer authenticity, or terminal authority.
 
-RFC 005 must check visible-answer units first, in visible unit order, against the complete ordered selected RFC 001 memory union. It must then check derived support claims in support-mapping order against exactly their one cited governed-memory atom. Provider output may contain only expected check identifiers and bounded support, contradiction, and unresolved basis-point scores. It must not return text, action, rationale, references, proposal identity, or a receipt.
+RFC 007 must check visible-answer units first, in visible unit order, against the complete ordered selected RFC 003 memory union. It must then check derived support claims in support-mapping order against exactly their one cited governed-memory atom. Provider output may contain only expected check identifiers and bounded support, contradiction, and unresolved basis-point scores. It must not return text, action, rationale, references, proposal identity, or a receipt.
 
-RFC 007 must consume only the direct RFC 005 normalized finding result and its ordinary non-authoritative RFC 002 constraint finding. It must not consume raw provider scores as terminal authority. Complete expected check coverage is required. A malformed provider result yields no verifier constraint finding and must follow RFC 002 fail-closed substitution. An unavailable provider returns zero findings and must take the fixed rejection path unless an independently established trusted context or evidence gap already requires package-authored clarification; it must never pretend verification succeeded.
+The RFC 009 response-validation stage must consume only the direct RFC 007 normalized finding result and its ordinary non-authoritative RFC 004 constraint finding. It must not consume raw provider scores as terminal authority. Complete expected check coverage is required. A malformed provider result yields no verifier constraint finding and must follow RFC 004 fail-closed substitution. An unavailable provider returns zero findings and must take the fixed rejection path unless an independently established trusted context or evidence gap already requires package-authored clarification; it must never pretend verification succeeded.
 
-Every visible unit and derived support claim must classify as `supported` under the admitted RFC 005 policy before answer admission. `contradicted`, `unsupported`, `uncertain`, missing, duplicated, unexpected, malformed, or unavailable checks are findings violations. The response policy may request one repair for candidate-correctable finding violations on the original attempt; malformed or unavailable provider execution is not candidate-correctable and must reject or use an independently established governed clarification gap.
+Every visible unit and derived support claim must classify as `supported` under the admitted RFC 007 policy before answer admission. `contradicted`, `unsupported`, `uncertain`, missing, duplicated, unexpected, malformed, or unavailable checks are findings violations. The response policy may request one repair for candidate-correctable finding violations on the original attempt; malformed or unavailable provider execution is not candidate-correctable and must reject or use an independently established governed clarification gap.
 
 ### Synthesis completeness and coverage findings
 
-Structural presence of requirement identifiers is necessary but not sufficient. For each active synthesis requirement, RFC 007 must construct one coverage target containing the requirement identifier, its admitted package description, and the exact ordered visible-unit identifiers that claim coverage. A coverage provider may evaluate that target, but its result remains non-authoritative.
+Structural presence of requirement identifiers is necessary but not sufficient. For each active synthesis requirement, RFC 009 must construct one coverage target containing the requirement identifier, its admitted package description, and the exact ordered visible-unit identifiers that claim coverage. A coverage provider may evaluate that target, but its result remains non-authoritative.
 
 Each synthesis-coverage result must contain only:
 
@@ -230,9 +235,9 @@ Each synthesis-coverage result must contain only:
 - status, exactly `covered`, `not_covered`, `uncertain`, or `unavailable`; and
 - bounded provider and configuration fingerprints.
 
-It must not contain answer text, replacement wording, rationale, terminal action, confidence presented as authority, support references, or receipt data. Hees must require exactly one result for every active requirement, reject missing, duplicate, or unexpected targets, and apply the admitted failure policy. Only `covered` satisfies synthesis completeness. The terminal decision remains Hees-owned and must compose this result through the same RFC 002 non-authoritative finding boundary as RFC 005.
+It must not contain answer text, replacement wording, rationale, terminal action, confidence presented as authority, support references, or receipt data. Hees must require exactly one result for every active requirement, reject missing, duplicate, or unexpected targets, and apply the admitted failure policy. Only `covered` satisfies synthesis completeness. The terminal decision remains Spectrum-owned and must compose this result through the same RFC 004 non-authoritative finding boundary as RFC 007.
 
-Coverage targets and results must bind to the same package identity, proposal identity, candidate identity, candidate digest, and visible unit identities as the RFC 005 batch. A result for another attempt, package, candidate, digest, requirement, or unit set must fail closed.
+Coverage targets and results must bind to the same package identity, proposal identity, candidate identity, candidate digest, and visible unit identities as the RFC 007 batch. A result for another attempt, package, candidate, digest, requirement, or unit set must fail closed.
 
 ### One bounded repair capability
 
@@ -246,7 +251,7 @@ The repair request may contain only ordered stable violation codes and their can
 
 The opaque capability must be privately constructed and bound to the trusted package identity, admitted proposal identifier, expected attempt index `1`, original selected-candidate identity, original candidate digest, response-contract identity, and ordered repair-target codes. It must retain no raw model output, source text, evidence text, memory text, provider payload, or hidden reasoning. There must be no public constructor or deserializer that upgrades caller data into this capability.
 
-The repair operation must accept the direct capability, repair input attempt index `1`, exactly one replacement response candidate, and its exact finding inputs. The replacement candidate identifier must equal the RFC 006 candidate identifier bound into the capability. Proposal identity, package identity, and selected behavior come from the capability; a caller must not replace them, and the repair operation must not rerun RFC 006 or select another behavior candidate. The operation may return `admitted_repaired`, `clarification_required_after_repair`, or `rejected_after_repair`. It must never return another pending-repair capability.
+The repair operation must accept the direct capability, repair input attempt index `1`, exactly one replacement response candidate, and its exact finding inputs. The replacement candidate identifier must equal the RFC 008 candidate identifier bound into the capability. Proposal identity, package identity, and selected behavior come from the capability; a caller must not replace them, and the repair operation must not rerun RFC 008 or select another behavior candidate. The operation may return `admitted_repaired`, `clarification_required_after_repair`, or `rejected_after_repair`. It must never return another pending-repair capability.
 
 If opaque capabilities can be cloned as ordinary process values, each clone is an independent bounded branch from the same trusted original state. Every branch permits one repair transition and no branch can request a further repair. This contract does not claim global one-time consumption, durable replay prevention, or cross-process uniqueness; those properties require a separately designed session, linear-capability, or authenticated-state contract.
 
@@ -268,7 +273,9 @@ Every completed proposal operation must contain exactly one terminal object with
 - `clarification_required_after_repair`; or
 - `rejected_after_repair`.
 
-An admitted terminal must carry the exact ordered visible answer units and normalized support mappings. A repair-requested terminal must carry only the bounded repair request and direct opaque capability beside the public result. A clarification terminal must carry only the selected package clarification. A rejected terminal must carry none of those response values.
+An admitted terminal must carry the exact ordered visible answer units, normalized support mappings, and direct RFC 002 admitted-answer Content DNA returned atomically by Spectrum. A repair-requested terminal must carry only the bounded repair request and direct opaque capability beside the public result. A clarification terminal must carry only the selected package clarification and the direct RFC 002 zero-entry no-answer Content DNA. A rejected terminal must carry none of those response values or Content DNA.
+
+Content DNA is not a response channel. It contains no answer text, clarification text, support prose, verifier rationale, repair guidance, or provider data. The response operation must fail closed before exposing visible output if Content DNA construction or exact selected-memory coverage fails.
 
 ### Public reasons and precedence
 
@@ -295,21 +302,21 @@ Hees must collect applicable internal violation codes under their owning contrac
 5. remaining semantic bounds;
 6. repair-capability validity;
 7. trusted response mode and governed gap;
-8. RFC 006 behavior selection;
+8. RFC 008 behavior selection;
 9. visible-answer structure;
 10. support mapping;
-11. RFC 005 finding integrity and coverage;
+11. RFC 007 finding integrity and coverage;
 12. claim support classification;
 13. synthesis-target integrity and coverage;
 14. admission.
 
-Within a stage, the exact owning-contract order must apply. RFC 006 behavior selection occurs only on the original path; a valid repair capability fixes that selected behavior, so a repair cannot produce a new behavior-selection failure. Candidate iteration, object property order, hash-map order, parser wording, provider order, score magnitude, wall-clock time, and free-form text must not affect the selected public reason.
+Within a stage, the exact owning-contract order must apply. RFC 008 behavior selection occurs only on the original path; a valid repair capability fixes that selected behavior, so a repair cannot produce a new behavior-selection failure. Candidate iteration, object property order, hash-map order, parser wording, provider order, score magnitude, wall-clock time, and free-form text must not affect the selected public reason.
 
-### Exact RFC 004 proposal-receipt projection
+### Exact RFC 006 proposal-receipt projection
 
-RFC 007 is the governing source contract for RFC 004 `ProposalAdmission`. RFC 004 continues to own canonical receipt bodies, envelopes, identifiers, atomic private emission, verification, integrity semantics, and the distinction between in-process authority and external authenticity.
+RFC 009 is the response source contract for RFC 006 `ProposalAdmission`, while RFC 001 Spectrum is the governing terminal operation. RFC 006 continues to own canonical receipt bodies, envelopes, identifiers, atomic private emission, verification, integrity semantics, and the distinction between in-process authority and external authenticity.
 
-This 31-reason allowlist and the identity rules below replace the Hees 0.0.1 proposal baseline used during RFC 004's initial drafting. RFC 004 imports this table and retains no aliases for the older action-only result.
+This 31-reason allowlist and the identity rules below replace the Hees 0.0.1 proposal baseline used during RFC 006's initial drafting. RFC 006 imports this table and retains no aliases for the older action-only result.
 
 The proposal receipt terminal object must contain exactly `variant` with the same seven-value enum. Its reason namespace must be `proposal_admission_0_1`, and its reason identifier must be copied unchanged from the terminal result.
 
@@ -324,23 +331,37 @@ Package and proposal identity presence is exact:
 | Every later original outcome after safe proposal identity | Required | Required |
 | Every repair outcome from an authentic pending-repair capability | Required | Required |
 
-The complete package object must contain `package_id`, `domain_id`, `package_revision`, and `artifact_digest` from the RFC 003 accepted package. It must never use the candidate's mismatched claim. A failure before safe package identity must use RFC 004's minimal safe form and expose no input-derived identifier or hash.
+The complete package object must contain `package_id`, `domain_id`, `package_revision`, and `artifact_digest` from the RFC 005 accepted package. It must never use the candidate's mismatched claim. A failure before safe package identity must use RFC 006's minimal safe form and expose no input-derived identifier or hash.
 
-Only `admitted_original` and `admitted_repaired` may export support identifiers. For those outcomes, RFC 007 must derive two ordered duplicate-free result arrays by traversing visible answer units in display order, then their support mappings in mapping order, then each mapping's identifier arrays in declared order, appending an identifier only on its first occurrence. The resulting typed evidence array becomes RFC 004 `admitted_evidence_ids`; the resulting typed memory array becomes `admitted_memory_ids`.
+Only `admitted_original` and `admitted_repaired` may export support identifiers. For those outcomes, RFC 009 must derive two ordered duplicate-free result arrays by traversing visible answer units in display order, then their support mappings in mapping order, then each mapping's identifier arrays in declared order, appending an identifier only on its first occurrence. The resulting typed evidence array becomes RFC 006 `admitted_evidence_ids`; the resulting typed memory array becomes `admitted_memory_ids`.
 
-Repair-requested, clarification, and rejected outcomes must export empty admitted-evidence and admitted-memory arrays even when some identifiers were structurally valid during evaluation. Proposal receipts must not contain attempt indexes, visible answer units, support mappings, support-claim identifiers, candidate identifiers, candidate digests, requirements, clarification identifiers or prompts, repair codes or capability data, verifier checks or scores, coverage findings, traces, provider fields, or hidden reasoning. The terminal variant already distinguishes the original and repaired paths.
+Admitted and clarification outcomes must project `content_dna_id` unchanged from the direct RFC 002 envelope returned atomically with the terminal result. An admitted outcome must reference an `admitted_answer` Content DNA body, and a clarification must reference a `no_answer` body. Repair-requested and rejected outcomes must omit `content_dna_id`.
+
+Repair-requested, clarification, and rejected outcomes must export empty admitted-evidence and admitted-memory arrays even when some identifiers were structurally valid during evaluation. Proposal receipts must not contain Content DNA bodies or entries, attempt indexes, visible answer units, support mappings, support-claim identifiers, candidate identifiers, candidate digests, requirements, clarification identifiers or prompts, repair codes or capability data, verifier checks or scores, coverage findings, traces, provider fields, or hidden reasoning. The terminal variant already distinguishes the original and repaired paths.
 
 Proposal receipts must omit `evaluation_time_ms`, `constraint_plan`, `constraint_execution`, and `memory_state`. `diagnostic_codes` must remain empty under receipt contract `0.1`. Any future export of these values requires an exact revised source and receipt contract.
 
 ### Bounds and allocation
 
-Contract `0.1` must define exact global ceilings for response-member bytes, parser nesting and tokens, proposal and response identifiers, clarification text, requirement descriptions, requirement applicability, failure-policy rules, response-candidate bytes per attempt, visible units, bytes per unit, total visible-answer bytes, requirement identifiers per unit, support mappings, evidence identifiers per mapping, the exact one memory identifier per mapping, unique admitted support identifiers, RFC 005 checks, synthesis-coverage targets and results, repair violation codes, opaque retained repair state, terminal result size, and receipt-source projection.
+Contract `0.1` must define exact global ceilings for response-member bytes, parser nesting and tokens, proposal and response identifiers, clarification text, requirement descriptions, requirement applicability, failure-policy rules, response-candidate bytes per attempt, visible units, bytes per unit, total visible-answer bytes, requirement identifiers per unit, support mappings, evidence identifiers per mapping, the exact one memory identifier per mapping, unique admitted support identifiers, RFC 007 checks, synthesis-coverage targets and results, repair violation codes, opaque retained repair state, terminal result size, and receipt-source projection.
 
-The package's three lower response limits may narrow but must not raise the global ceilings. Hees must enforce raw input ceilings before parsing and collection ceilings before proportional allocation. Count and byte arithmetic must use the RFC 003 exact-integer domain with checked operations.
+The package's three lower response limits may narrow but must not raise the global ceilings. Hees must enforce raw input ceilings before parsing and collection ceilings before proportional allocation. Count and byte arithmetic must use the RFC 005 exact-integer domain with checked operations.
 
-This Draft does not promote spike limits into normative production ceilings. It cannot advance to Planned until common JavaScript, Rust, and Incan goldens plus representative civic-shaped fixtures establish the final table, prove exact maximum source-result sizes, and let RFC 004 mechanically derive the largest `ProposalAdmission` body and envelope. Physical RSS, model coexistence, latency, thermal behavior, and battery use remain deployment measurements rather than public admission reasons.
+This Draft does not promote spike limits into normative production ceilings. It cannot advance to Planned until common JavaScript, Rust, and Incan goldens plus representative civic-shaped fixtures establish the final table, prove exact maximum source-result sizes, and let RFC 006 mechanically derive the largest `ProposalAdmission` body and envelope. Physical RSS, model coexistence, latency, thermal behavior, and battery use remain deployment measurements rather than public admission reasons.
 
 ## Design details
+
+### Relationship to RFC 000
+
+RFC 000 requires one model-generated visible channel and makes Spectrum plus Content DNA mandatory parts of terminal answer admission. This RFC defines the response candidate and terminal variants through which those invariants become observable.
+
+### Relationship to RFC 001
+
+Spectrum composes the trusted response-lifecycle result with package, memory, policy, finding, and behavior state. This RFC owns response structure, repair, clarification, terminal variants, and public reasons but cannot independently freeze selected memory or bypass Spectrum finality.
+
+### Relationship to RFC 002
+
+Only admitted_original and admitted_repaired may carry admitted-answer Content DNA. Clarification may carry the exact zero-entry no-answer form; repair-requested and rejected variants emit no Content DNA. The visible answer and Content DNA must be one atomic trusted return.
 
 ### Settled contract decisions
 
@@ -349,46 +370,47 @@ This Draft does not promote spike limits into normative production ceilings. It 
 - Free-form uncertainty, answerability, model clarification, support rationale, and hidden answer fields are forbidden.
 - Response mode and active synthesis requirements come from a trusted Hees context.
 - Clarification text is package-authored, package-committed, and selected by stable governed gap reasons.
-- RFC 005 candidate digests bind findings but never become logical proposal, package, or receipt identity.
-- Claim-verification and synthesis-coverage results remain non-authoritative RFC 002 finding inputs.
+- RFC 007 candidate digests bind findings but never become logical proposal, package, or receipt identity.
+- Claim-verification and synthesis-coverage results remain non-authoritative RFC 004 finding inputs.
 - An original lifecycle may issue one opaque repair capability; a repair lifecycle can never issue another.
 - The contract makes no unsupported claim of global one-time repair consumption across cloned values or process boundaries.
 - Branch-local one-repair enforcement is sufficient for contract `0.1`; durable single-use or cross-process replay prevention remains a separate future contract rather than a hidden prerequisite.
 - Proposal identity is a separately validated logical identifier and is never derived from response content; attempt index is exactly `0` for the original and `1` for the repair.
-- Untrusted proposal package references use the complete package, domain, revision, and artifact-digest tuple and are compared with trusted RFC 003 identity.
+- Untrusted proposal package references use the complete package, domain, revision, and artifact-digest tuple and are compared with trusted RFC 005 identity.
 - The seven terminal variants are closed and their reason identifiers are unique across paths.
+- Admitted and clarification outcomes carry the exact atomic RFC 002 Content DNA identifier; repair-requested and rejected outcomes carry none.
 - Only admitted original or repaired outcomes export evidence and memory identifiers, in first-visible-use order.
 - Repair, clarification, and rejection receipts always carry empty admitted support arrays.
 - Receipts contain no answer, clarification, support mapping, candidate digest, finding, repair, trace, provider, or hidden-reasoning data.
-- The response member joins RFC 003 artifact contract `0.1` before the coupled Draft contract is frozen.
-
-### Relationship to RFC 001
-
-RFC 001 owns selected governed-memory identity, provider state, partial or unavailable semantics, and memory admission. RFC 007 receives only the trusted selected-memory union and typed materialized identifiers. It does not perform retrieval or upgrade a provider nomination into admitted support.
-
-### Relationship to RFC 002
-
-RFC 002 owns constraint evaluation, conflict policy, fail-closed substitution, and terminal governance actions. RFC 005 claim classifications and RFC 007 synthesis-coverage classifications enter as ordinary non-authoritative findings. RFC 007 applies only a trusted direct adjudication result and does not let a finding choose the terminal response.
+- The response member joins RFC 005 artifact contract `0.1` before the coupled Draft contract is frozen.
 
 ### Relationship to RFC 003
 
-RFC 003 owns canonical response-member bytes, digest commitment, member order, inherited package identity, and cross-member validation. RFC 007 owns the response payload and its references to RFC 006 strategy identifiers and RFC 003 action identifiers. It does not reference constraint, evidence, or memory identifiers from the package member; those are selected dynamically in the trusted runtime context.
+RFC 003 owns admitted governed-memory identity, provider state, partial or unavailable semantics, and memory admission. RFC 009 receives only the trusted admitted-memory context and typed materialized identifiers. It does not perform retrieval, freeze the terminal selected-memory set, or upgrade a provider nomination into admitted support.
 
 ### Relationship to RFC 004
 
-RFC 004 owns the redacted receipt representation and private atomic emission. RFC 007 supplies the exact proposal source result, seven terminal variants, terminal-specific reasons, identity-presence rules, and admitted support order. Neither contract may define a competing receipt encoder or public authoritative receipt constructor.
+RFC 004 owns constraint evaluation, conflict policy, fail-closed substitution, and authoritative constraint-adjudication actions. RFC 007 claim classifications and RFC 009 synthesis-coverage classifications enter as ordinary non-authoritative findings. RFC 009 applies only a trusted direct adjudication result and does not let a finding choose the terminal response; RFC 001 Spectrum retains finality.
 
 ### Relationship to RFC 005
 
-RFC 005 owns candidate canonicalization for verification, candidate digest, visible-unit and support-claim checks, provider result shape, score classification, availability, completeness, and its non-authoritative RFC 002 finding. RFC 007 owns the visible units, stable unit identifiers, identifier-only support mapping, derived support-claim text, proposal/attempt lifecycle, and terminal use of the trusted finding result. The candidate digest must never replace logical proposal identity.
+RFC 005 owns canonical response-member bytes, digest commitment, member order, inherited package identity, and cross-member validation. RFC 009 owns the response payload and its references to RFC 008 strategy identifiers and RFC 005 action identifiers. It does not reference constraint, evidence, or memory identifiers from the package member; those are selected dynamically in the trusted runtime context.
 
 ### Relationship to RFC 006
 
-RFC 006 selects behavior without inspecting answer text and returns the opaque selected-candidate capability. RFC 007 must require that direct capability and must not reconstruct selection from a trace, rerank candidates using findings, or let response content alter the behavior winner. RFC 007 alone owns repair and terminal response action.
+RFC 006 owns the redacted receipt representation and private atomic emission. RFC 009 supplies the exact proposal source result, seven terminal variants, terminal-specific reasons, identity-presence rules, and admitted support order. Neither contract may define a competing receipt encoder or public authoritative receipt constructor.
+
+### Relationship to RFC 007
+
+RFC 007 owns candidate canonicalization for verification, candidate digest, visible-unit and support-claim checks, provider result shape, score classification, availability, completeness, and its non-authoritative RFC 004 finding. RFC 009 owns the visible units, stable unit identifiers, identifier-only support mapping, derived support-claim text, proposal/attempt lifecycle, and terminal use of the trusted finding result. The candidate digest must never replace logical proposal identity.
+
+### Relationship to RFC 008
+
+RFC 008 selects behavior without inspecting answer text and returns the opaque selected-candidate capability. RFC 009 must require that direct capability and must not reconstruct selection from a trace, rerank candidates using findings, or let response content alter the behavior winner. RFC 009 owns repair and the terminal response variant schema, while RFC 001 Spectrum owns the final action.
 
 ### Provider neutrality
 
-Two provider adapters that produce the same normalized proposal, selected response candidate, verifier results, and synthesis-coverage results must receive the same Hees terminal variant, public reason, admitted support arrays, and receipt body. Provider name, model identity, sampling configuration, raw JSON formatting, and prompt wording must not affect authority except where a separately admitted provider or verifier fingerprint is required to bind a finding.
+Two provider adapters that produce the same normalized proposal, selected response candidate, verifier results, and synthesis-coverage results must receive the same Spectrum terminal variant, public reason, admitted support arrays, Content DNA identity, and receipt body. Provider name, model identity, sampling configuration, raw JSON formatting, and prompt wording must not affect authority except where a separately admitted provider or verifier fingerprint is required to bind a finding.
 
 ### Stable evolution
 
@@ -410,7 +432,7 @@ Rejected because answerability is a runtime governance decision derived from adm
 
 ### Let a verifier decide admission directly
 
-Rejected because score calibration and provider availability do not confer authority. Findings remain inputs to RFC 002 and the Hees-owned terminal decision.
+Rejected because score calibration and provider availability do not confer authority. Findings remain inputs to RFC 004 and the Spectrum-owned terminal decision.
 
 ### Treat requirement identifiers as sufficient synthesis proof
 
@@ -430,7 +452,7 @@ Rejected because callers could forge or reset the count. The repair transition r
 
 ### Hash visible output to create `proposal_id`
 
-Rejected because logical proposal identity must remain independent from answer content, support, hidden data, and malformed input. RFC 005 may derive a separate candidate digest for finding binding only.
+Rejected because logical proposal identity must remain independent from answer content, support, hidden data, and malformed input. RFC 007 may derive a separate candidate digest for finding binding only.
 
 ### Export answer or clarification text in the receipt
 
@@ -444,6 +466,7 @@ The provider schema becomes more structured and may require adapters to produce 
 
 - **Package contract:** A canonical response member, synthesis requirements, clarification definitions, failure policy, behavior/action references, and inherited package identity.
 - **Runtime authority:** Trusted response contexts, proposal/package identity, selected-candidate composition, visible and support normalization, finding application, clarification selection, repair transition, and terminal result.
+- **Spectrum integration:** Atomic terminal composition, selected-memory freeze, and Content DNA presence without moving final authority into the response validator.
 - **Provider boundary:** Bounded candidate, claim-verification, synthesis-coverage, and one-repair input/output shapes without terminal authority.
 - **Receipt source contract:** Seven proposal terminal variants, terminal-specific reasons, exact identity presence, admitted support order, and empty non-admitted support projections.
 - **Compatibility:** Closed versions, field schemas, reason precedence, bounds, canonical candidate binding, and common cross-runtime goldens.
@@ -452,9 +475,9 @@ The provider schema becomes more structured and may require adapters to produce 
 ## Unresolved questions
 
 - What exact numeric ceiling table is supported by shared cross-runtime goldens and representative civic-shaped fixtures for response members, candidates, findings, repair state, results, and proposal receipts?
-- What exact canonical construction and provider contract should synthesis-coverage checks use while preserving RFC 005's distinct ownership of claim verification?
+- What exact canonical construction and provider contract should synthesis-coverage checks use while preserving RFC 007's distinct ownership of claim verification?
 - What exact multilingual-safe acceptance rule or bounded provider check must establish that each visible unit is a sufficiently claim-focused verification granule before this RFC may claim sentence- or proposition-level coverage?
-- Which RFC 001, RFC 002, and response-context gap reasons are safe and sufficient for the first closed package-authored clarification allowlist?
+- Which RFC 003, RFC 004, and response-context gap reasons are safe and sufficient for the first closed package-authored clarification allowlist?
 
 <!-- Rename this section to "Design Decisions" once all questions have been resolved.
      An RFC cannot move from Draft to Planned until no unresolved questions remain. -->

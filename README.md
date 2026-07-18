@@ -1,8 +1,6 @@
 # Hees
 
-Hees is a small Incan-first kernel for structurally admitting governed AI proposals. Its boundary is deliberately
-narrow: an external implementation owns its package and untrusted model output; Hees decides whether the proposal's
-declared action, visible output, and evidence references fit that package.
+Hees is a small Incan-first kernel for structurally admitting governed AI proposals. Its boundary is deliberately narrow: an external implementation owns its package and untrusted model output; Hees decides whether the proposal's declared action, visible output, and evidence references fit that package.
 
 ## Status
 
@@ -27,20 +25,17 @@ Not implemented here:
 - package authoring, review queues, client configuration, dashboards, or other Workbench behavior; and
 - a stable CLI or production runtime.
 
-`PackageLoaderValidation` validates descriptor metadata only. It never opens `package_path` and must not be presented as
-package admission.
+`PackageLoaderValidation` validates descriptor metadata only. It never opens `package_path` and must not be presented as package admission.
 
 ## Toolchain
 
-The candidate is locked and verified with the released Incan `0.4.0` toolchain. Install that release and make `incan`
-available on `PATH`, or pass an explicit binary to Make:
+The candidate is locked and verified with the released Incan `0.4.0` toolchain. Install that release and make `incan` available on `PATH`, or pass an explicit binary to Make:
 
 ```bash
 make ci INCAN=/path/to/incan
 ```
 
-Use `INCAN_FLAGS="--locked --offline"` only after the Cargo dependencies have been cached locally. The default clean
-build is locked but network-capable.
+Use `INCAN_FLAGS="--locked --offline"` only after the Cargo dependencies have been cached locally. The default clean build is locked but network-capable.
 
 ## Build and test
 
@@ -48,8 +43,7 @@ build is locked but network-capable.
 make ci
 ```
 
-The gate formats and builds the public library, runs the package/runtime tests, compiles an actual external dependency,
-runs the fictional example, applies the repository boundary audit, and builds the documentation strictly.
+The gate formats and builds the public library, runs the package/runtime tests, compiles an actual external dependency, runs the fictional example, applies the repository boundary audit, and builds the documentation strictly.
 
 ## External package descriptor
 
@@ -73,22 +67,14 @@ descriptor = package_loader_descriptor(
 validation = validate_package_loader_descriptor(descriptor)
 ```
 
-The canonical descriptor path is repository-relative and ends in `package/domain.json`. The validator rejects absolute,
-traversal, dot-segment, Windows-drive, backslash, and embedded newline, carriage-return, or tab path forms. No descriptor
-value is passed to a filesystem API by this library.
+The canonical descriptor path is repository-relative and ends in `package/domain.json`. The validator rejects absolute, traversal, dot-segment, Windows-drive, backslash, and embedded newline, carriage-return, or tab path forms. No descriptor value is passed to a filesystem API by this library.
 
 ## Runtime admission
 
-The fictional [minimal governed agent](examples/minimal_governed_agent/README.md) demonstrates the separate runtime
-contract. A caller constructs a `GovernedPackage` and an untrusted `ModelProposal`; `admit_model_proposal` checks only
-the structural authority it can prove. The caller remains responsible for retrieval, model execution, semantic
-verification, digest integrity, and source-rights due diligence.
+The fictional [minimal governed agent](examples/minimal_governed_agent/README.md) demonstrates the separate runtime contract. A caller constructs a `GovernedPackage` and an untrusted `ModelProposal`; `admit_model_proposal` checks only the structural authority it can prove. The caller remains responsible for retrieval, model execution, semantic verification, digest integrity, and source-rights due diligence.
 
 ## Repository boundary
 
-This repository contains only the reusable kernel, public documentation, fictional examples, tests, and repository
-guardrails. Research, corpora, model files, generated artifacts, concrete implementation packages, and product control
-surfaces do not belong here.
+This repository contains only the reusable kernel, public documentation, fictional examples, tests, and repository guardrails. Research, corpora, model files, generated artifacts, concrete implementation packages, and product control surfaces do not belong here.
 
-See [the documentation](workspaces/docs-site/docs/index.md), [contribution guidance](CONTRIBUTING.md), and
-[RFC process](rfcs/README.md), and [security policy](SECURITY.md).
+See [the documentation](workspaces/docs-site/docs/index.md), [contribution guidance](CONTRIBUTING.md), [RFC process](rfcs/README.md), and [security policy](SECURITY.md).

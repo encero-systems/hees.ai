@@ -83,6 +83,7 @@ allowed_docs=(
     workspaces/docs-site/docs/getting-started.md
     workspaces/docs-site/docs/index.md
     workspaces/docs-site/docs/rfcs.md
+    workspaces/docs-site/docs/whitepapers/spectrum-and-content-dna.md
 )
 
 while IFS= read -r path; do

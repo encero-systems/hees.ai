@@ -28,4 +28,6 @@ nav:
   - Contracts: contracts.md
   - RFC proposals: rfcs.md
   - Architecture: architecture.md
+  - Whitepapers:
+      - Spectrum and Content DNA: whitepapers/spectrum-and-content-dna.md
   - Development: development.md

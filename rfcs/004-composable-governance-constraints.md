@@ -1,13 +1,16 @@
-# RFC 002: Composable Governance Constraints
+# RFC 004: Composable Governance Constraints
 
 - **Status:** Draft
 - **Created:** 2026-07-17
 - **Author(s):** Encero Systems
 - **Related:**
-    - RFC 001 (Governed Memory and Retrieval Results)
-    - RFC 003 (Canonical Package Artifact Admission)
-    - RFC 004 (Export-Safe Governance Receipts)
-- **Issue:** https://github.com/encero-systems/hees.ai/issues/2
+    - RFC 000 (Foundational Governance Authority)
+    - RFC 001 (Spectrum Terminal Adjudication)
+    - RFC 002 (Content DNA Answer-Time Provenance)
+    - RFC 003 (Governed Memory and Retrieval Results)
+    - RFC 005 (Canonical Package Artifact Admission)
+    - RFC 006 (Export-Safe Governance Receipts)
+- **Issue:** https://github.com/encero-systems/hees.ai/issues/5
 - **RFC PR:** —
 - **Written against:** Hees 0.0.1 / Incan 0.4.0
 - **Shipped in:** —
@@ -33,7 +36,7 @@ Those semantics are part of the governance boundary, not a provider detail. A pa
 ## Goals
 
 - Define a small generic protocol through which concrete constraint evaluators return typed non-authoritative findings.
-- Freeze the exact package-relative constraint-plan JSON payload imported by RFC 003, including closed nested shapes, action spellings, ordering, and absence rules.
+- Freeze the exact package-relative constraint-plan JSON payload imported by RFC 005, including closed nested shapes, action spellings, ordering, and absence rules.
 - Define an admitted package-owned constraint plan with exact version, identity, order, dependency, authority, and failure semantics.
 - Define one concrete Hees adjudication context that binds contract, package, plan, evaluation time, and ordered available support identity independently from package evaluator context.
 - Define deterministic evaluation transcript validation without relying on heterogeneous trait-typed collections.
@@ -48,9 +51,9 @@ Those semantics are part of the governance boundary, not a provider detail. A pa
 - Authoring domain policies, organizational intent, content rules, taxonomies, or package-specific constraint kinds.
 - Inferring semantic contradictions between arbitrary policies or deciding whether a package's policy is desirable.
 - Defining model inference, retrieval algorithms, storage, transport, operator approval workflows, or package authoring interfaces.
-- Re-verifying package artifact bytes or accepting a second independently supplied package digest. RFC 003 establishes the admitted artifact identity; this RFC uses its exact package-fingerprint view.
-- Defining RFC 003 member wrappers, canonical JCS bytes, descriptor commitments, sequencing, or package-artifact identity.
-- Defining receipt canonicalization, redaction, envelope bytes, identifier construction, verification, or external authenticity. RFC 004 owns that export boundary; this RFC owns the complete in-memory source result from which Hees privately projects a receipt.
+- Re-verifying package artifact bytes or accepting a second independently supplied package digest. RFC 005 establishes the admitted artifact identity; this RFC uses its exact package-fingerprint view.
+- Defining RFC 005 member wrappers, canonical JCS bytes, descriptor commitments, sequencing, or package-artifact identity.
+- Defining receipt canonicalization, redaction, envelope bytes, identifier construction, verification, or external authenticity. RFC 006 owns that export boundary; this RFC owns the complete in-memory source result from which Hees privately projects a receipt.
 - Making evaluator findings authoritative or allowing an evaluator to select the final runtime action.
 - Persisting hidden reasoning, chain-of-thought, free-form evaluator diagnostics, or provider-specific extension maps.
 - Dynamically loading evaluator code, choosing an evaluator implementation, or standardizing an evaluator registry transport.
@@ -183,11 +186,11 @@ Hees must be the sole authority for plan validation, transcript validation, fail
 
 ### Package identity and serialized constraint declarations
 
-The complete trusted package identity used by constraint adjudication must contain exactly `package_id`, `domain_id`, `package_revision`, and `package_fingerprint`. `package_fingerprint` must be the exact 64-lowercase-hexadecimal suffix of the RFC 003 admitted `artifact_digest`, so `artifact_digest == "sha256:" + package_fingerprint`. The two forms are not independently supplied hashes. This RFC carries only `package_fingerprint`; RFC 004 adds the fixed prefix when projecting its all-or-absent receipt package object.
+The complete trusted package identity used by constraint adjudication must contain exactly `package_id`, `domain_id`, `package_revision`, and `package_fingerprint`. `package_fingerprint` must be the exact 64-lowercase-hexadecimal suffix of the RFC 005 admitted `artifact_digest`, so `artifact_digest == "sha256:" + package_fingerprint`. The two forms are not independently supplied hashes. This RFC carries only `package_fingerprint`; RFC 006 adds the fixed prefix when projecting its all-or-absent receipt package object.
 
-A package-relative serialized constraint declaration is carried by the sole optional RFC 003 `constraints` member. RFC 003 owns the common `member_id`, `member_kind`, `member_contract`, and `record_count` fields; RFC 8785 JCS bytes; descriptor position; digest and length commitments; sequential admission; and inherited package identity. `member_contract` must be the exact string `0.1` and is the sole serialized constraint-contract version. The payload must not add `contract_version`, a nested payload envelope, another wrapper field, `artifact_contract`, `package_id`, `domain_id`, `package_revision`, `package_fingerprint`, `artifact_digest`, or an equivalent containing-package identity field.
+A package-relative serialized constraint declaration is carried by the sole optional RFC 005 `constraints` member. RFC 005 owns the common `member_id`, `member_kind`, `member_contract`, and `record_count` fields; RFC 8785 JCS bytes; descriptor position; digest and length commitments; sequential admission; and inherited package identity. `member_contract` must be the exact string `0.1` and is the sole serialized constraint-contract version. The payload must not add `contract_version`, a nested payload envelope, another wrapper field, `artifact_contract`, `package_id`, `domain_id`, `package_revision`, `package_fingerprint`, `artifact_digest`, or an equivalent containing-package identity field.
 
-This RFC owns the payload fields below. They are top-level siblings of the four RFC 003 wrapper fields and are disjoint from them. Every payload and nested object is closed. Every listed field is required; contract `0.1` has no optional constraint-payload field. An absent field, JSON `null`, unknown field, alias, case variation, generic metadata, or admission-invented default is invalid. Arrays preserve submitted order, including empty `depends_on` arrays; Hees must not sort or deduplicate them. RFC 003 owns duplicate-aware parsing, canonical object-key order, byte equality, schema failure classification, and the final package-admission result.
+This RFC owns the payload fields below. They are top-level siblings of the four RFC 005 wrapper fields and are disjoint from them. Every payload and nested object is closed. Every listed field is required; contract `0.1` has no optional constraint-payload field. An absent field, JSON `null`, unknown field, alias, case variation, generic metadata, or admission-invented default is invalid. Arrays preserve submitted order, including empty `depends_on` arrays; Hees must not sort or deduplicate them. RFC 005 owns duplicate-aware parsing, canonical object-key order, byte equality, schema failure classification, and the final package-admission result.
 
 #### Constraints member payload
 
@@ -201,7 +204,7 @@ After the common wrapper, a `constraints` member must contain exactly:
 | `evaluator_capabilities` | array of capability objects | Required, non-empty, ordered, and bounded to 64 entries. |
 | `definitions` | array of definition objects | Required, non-empty, ordered, and bounded to 64 entries. |
 
-`plan_id` must match `[a-z0-9][a-z0-9_-]*` and its identifier bound. `plan_revision` must match `[0-9]+(\.[0-9]+){1,2}` and its version bound. `evaluation_budget` must be an exact JSON integer; zero, a negative value, a fraction, an exponent, `null`, or a value above 64 is invalid. The RFC 003 descriptor `record_count` must equal `len(evaluator_capabilities) + len(definitions)`.
+`plan_id` must match `[a-z0-9][a-z0-9_-]*` and its identifier bound. `plan_revision` must match `[0-9]+(\.[0-9]+){1,2}` and its version bound. `evaluation_budget` must be an exact JSON integer; zero, a negative value, a fraction, an exponent, `null`, or a value above 64 is invalid. The RFC 005 descriptor `record_count` must equal `len(evaluator_capabilities) + len(definitions)`.
 
 #### Evaluator-capability object
 
@@ -245,13 +248,13 @@ Every `allowed_findings` entry must contain exactly two required string fields:
 
 The only serialized action strings in contract `0.1` are `continue`, `revise`, `clarify`, `reject`, and `escalate`. `maximum_action` uses the same complete set. `failure_action` permits only `reject` or `escalate`. PascalCase runtime variants such as `Continue` and `Escalate` are typed API values, not alternate package spellings. Uppercase, mixed case, hyphenated spellings, aliases, numeric encodings, and `null` are invalid. Every `reason_id` must match the identifier grammar and bound.
 
-After successful RFC 003 package admission, Hees must materialize the admitted runtime plan by binding the package-relative declaration to the inherited top-level `package_id`, `domain_id`, `artifact_contract` as package schema version, `package_revision`, and the unprefixed `package_fingerprint` derived from the verified external artifact digest. This binding must not modify, migrate, reserialize, or re-hash the serialized declaration or containing artifact. The admitted runtime plan exposes the declaration fields plus that derived binding. It must not accept a caller-supplied `artifact_digest` beside `package_fingerprint`, and adjudication-context claims must not overwrite its identity.
+After successful RFC 005 package admission, Hees must materialize the admitted runtime plan by binding the package-relative declaration to the inherited top-level `package_id`, `domain_id`, `artifact_contract` as package schema version, `package_revision`, and the unprefixed `package_fingerprint` derived from the verified external artifact digest. This binding must not modify, migrate, reserialize, or re-hash the serialized declaration or containing artifact. The admitted runtime plan exposes the declaration fields plus that derived binding. It must not accept a caller-supplied `artifact_digest` beside `package_fingerprint`, and adjudication-context claims must not overwrite its identity.
 
 ### Constraint plan
 
-The admitted package must own exactly the admitted runtime plan supplied to adjudication. Its package identity becomes trusted only through RFC 003 admission. Canonical-looking caller fields, a separately supplied plan with matching identifiers, or a plan declaration that was not admitted with that package must never supply trusted plan or package identity.
+The admitted package must own exactly the admitted runtime plan supplied to adjudication. Its package identity becomes trusted only through RFC 005 admission. Canonical-looking caller fields, a separately supplied plan with matching identifiers, or a plan declaration that was not admitted with that package must never supply trusted plan or package identity.
 
-The package-relative declaration's `evaluator_capabilities` array identifies the evaluators available to the plan. Every capability must have one unique `(evaluator_kind, evaluator_version)` tuple. Each definition's exact tuple must resolve to exactly one declared capability; unknown and duplicate capabilities must invalidate RFC 003 package admission. This is a structural identity claim only: matching kind and version values do not prove which executable bytes ran or that an evaluator behaved correctly. This declaration binds the normalized contract without requiring Hees to define dynamic code loading, executable attestation, or registry transport.
+The package-relative declaration's `evaluator_capabilities` array identifies the evaluators available to the plan. Every capability must have one unique `(evaluator_kind, evaluator_version)` tuple. Each definition's exact tuple must resolve to exactly one declared capability; unknown and duplicate capabilities must invalidate RFC 005 package admission. This is a structural identity claim only: matching kind and version values do not prove which executable bytes ran or that an evaluator behaved correctly. This declaration binds the normalized contract without requiring Hees to define dynamic code loading, executable attestation, or registry transport.
 
 Each constraint definition must contain:
 
@@ -287,7 +290,7 @@ Evaluators must use immutable package context derived for the same caller-suppli
 
 ### Constraint adjudication context
 
-Hees must accept one concrete `ConstraintAdjudicationContext` independently from package evaluator context. It must contain exact contract version, package identifier, domain identifier, package revision, package fingerprint, plan identifier, plan revision, caller-supplied evaluation time, and an ordered bounded list of available package-owned support identifiers. It must not contain `artifact_digest`; the unprefixed fingerprint is the sole context syntax for that same RFC 003 identity.
+Hees must accept one concrete `ConstraintAdjudicationContext` independently from package evaluator context. It must contain exact contract version, package identifier, domain identifier, package revision, package fingerprint, plan identifier, plan revision, caller-supplied evaluation time, and an ordered bounded list of available package-owned support identifiers. It must not contain `artifact_digest`; the unprefixed fingerprint is the sole context syntax for that same RFC 005 identity.
 
 The package, domain, package revision, fingerprint, plan identifier, plan revision, and contract values are untrusted claims and must exactly match the separately trusted admitted package and plan. Canonical syntax alone must not promote them into result or receipt identity. The evaluation time must be a non-negative Unix epoch millisecond value and must exactly match every submitted finding. Available support identifiers must be unique, must satisfy the identifier grammar, and must resolve to artifacts admitted for this evaluation. Their list order is authoritative for deterministic subset validation.
 
@@ -308,7 +311,7 @@ A finding must contain exactly:
 
 A finding must not contain free-form reasoning, arbitrary metadata, policy text, source text, hidden model reasoning, a final-decision flag, or a replacement order.
 
-The action and reason identifier must exactly match one allowed pair in the definition, and the action must not be stronger than the definition's `maximum_action`. A finding must not invent a reason identifier merely because it satisfies the package identifier grammar. Dependency identifiers must exactly equal the definition's `depends_on` list. Support identifiers must be unique, must form an order-preserving subset of `ConstraintAdjudicationContext.available_support_ids`, and must resolve to artifacts available in the admitted evaluation. An accepted memory context from RFC 001 may provide such identifiers, but retrieval acceptance and relevance do not make the finding authoritative.
+The action and reason identifier must exactly match one allowed pair in the definition, and the action must not be stronger than the definition's `maximum_action`. A finding must not invent a reason identifier merely because it satisfies the package identifier grammar. Dependency identifiers must exactly equal the definition's `depends_on` list. Support identifiers must be unique, must form an order-preserving subset of `ConstraintAdjudicationContext.available_support_ids`, and must resolve to artifacts available in the admitted evaluation. An accepted memory context from RFC 003 may provide such identifiers, but retrieval acceptance and relevance do not make the finding authoritative.
 
 Echoed evaluator kind and version values must exactly match the definition, but that match is structural provenance only and must not be presented as proof that particular executable bytes ran.
 
@@ -372,13 +375,13 @@ The `0.1` contract must enforce these UTF-8 byte and collection ceilings:
 | Support identifiers per finding | 32 identifiers |
 | Evaluation budget | 64 evaluations |
 
-Package, domain, plan, constraint, kind, reason, and support identifiers must match the lowercase ASCII grammar `[a-z0-9][a-z0-9_-]*`. Contract, evaluator-version, package-revision, and plan-revision values must match the ASCII grammar `[0-9]+(\.[0-9]+){1,2}` and must compare exactly. Package fingerprints must be encoded as exactly 64 lowercase hexadecimal characters and must equal the suffix of the RFC 003 admitted artifact digest. Zero, negative, overflowing, duplicate, malformed, or above-contract values must fail validation rather than being normalized or clamped.
+Package, domain, plan, constraint, kind, reason, and support identifiers must match the lowercase ASCII grammar `[a-z0-9][a-z0-9_-]*`. Contract, evaluator-version, package-revision, and plan-revision values must match the ASCII grammar `[0-9]+(\.[0-9]+){1,2}` and must compare exactly. Package fingerprints must be encoded as exactly 64 lowercase hexadecimal characters and must equal the suffix of the RFC 005 admitted artifact digest. Zero, negative, overflowing, duplicate, malformed, or above-contract values must fail validation rather than being normalized or clamped.
 
 ### Adjudication result
 
 Every submission must produce one deterministic `AdjudicationResult` variant and one reason from the closed table below.
 
-A `Valid` result must contain the exact constraint contract version from the admitted plan; `evaluated_package`, containing the complete trusted `package_id`, `domain_id`, `package_revision`, and `package_fingerprint` snapshot from RFC 003 admission; `evaluated_plan`, containing the admitted plan identifier and revision; the admitted caller-supplied evaluation time; final action; optional primary constraint identifier; ordered effective findings; ordered `evaluated_ids`, `substituted_ids`, and `skipped_ids`; whether an action conflict occurred; ordered conflicting constraint identifiers; whether valid processing short-circuited; and the terminal result reason. Package and plan identity must come only from the admitted snapshots, never from the adjudication-context echoes. `package_fingerprint` is the sole unprefixed view of the RFC 003 artifact digest and is not independently hashed.
+A `Valid` result must contain the exact constraint contract version from the admitted plan; `evaluated_package`, containing the complete trusted `package_id`, `domain_id`, `package_revision`, and `package_fingerprint` snapshot from RFC 005 admission; `evaluated_plan`, containing the admitted plan identifier and revision; the admitted caller-supplied evaluation time; final action; optional primary constraint identifier; ordered effective findings; ordered `evaluated_ids`, `substituted_ids`, and `skipped_ids`; whether an action conflict occurred; ordered conflicting constraint identifiers; whether valid processing short-circuited; and the terminal result reason. Package and plan identity must come only from the admitted snapshots, never from the adjudication-context echoes. `package_fingerprint` is the sole unprefixed view of the RFC 005 artifact digest and is not independently hashed.
 
 A valid result may contain validated and substituted effective findings and applies the strongest-action rules. Its three execution identifier lists must partition the plan definitions: evaluated and substituted definitions precede any skipped definitions, and skipped definitions occur only after effective escalation. `evaluated_ids` records definitions with structurally accepted submitted findings; it is not executable attestation. Definition-local substitution, including substitution caused by a missing or malformed finding, remains `AdjudicationValidity.Valid` and contributes its package-declared failure action to the ordinary strongest-action decision.
 
@@ -386,11 +389,11 @@ An `Invalid` result must contain only validity `Invalid`, action `Reject`, and o
 
 The result must not contain chain-of-thought, hidden evaluator reasoning, free-form provider errors, or an assertion that cited support semantically proves the outcome.
 
-Given the same RFC 003-admitted package and plan plus byte-identical typed `ConstraintAdjudicationContext` and submitted findings, conforming implementations must produce the same result variant, trusted identity presence, effective findings, evaluated/substituted/skipped identifiers, conflict representation, primary constraint, final action, short-circuit state, and stable reason identifier.
+Given the same RFC 005-admitted package and plan plus byte-identical typed `ConstraintAdjudicationContext` and submitted findings, conforming implementations must produce the same result variant, trusted identity presence, effective findings, evaluated/substituted/skipped identifiers, conflict representation, primary constraint, final action, short-circuit state, and stable reason identifier.
 
 ### Public result reasons
 
-Every result reason must come from this closed table. Rows are the strict global validation precedence, and reason order within a row is strict reason precedence. Every reason is globally unique within RFC 004's `constraint_adjudication_0_1` namespace, so the reason alone identifies its stage and terminal mapping; a receipt does not export a separate stage field.
+Every result reason must come from this closed table. Rows are the strict global validation precedence, and reason order within a row is strict reason precedence. Every reason is globally unique within RFC 006's `constraint_adjudication_0_1` namespace, so the reason alone identifies its stage and terminal mapping; a receipt does not export a separate stage field.
 
 | Stage | Reasons in precedence order | Result variant and terminal action |
 | --- | --- | --- |
@@ -402,9 +405,9 @@ Every result reason must come from this closed table. Rows are the strict global
 | `transcript` | `invalid_submitted_identifier`, `unknown_submitted_constraint`, `duplicate_submitted_constraint`, `submitted_order_mismatch`, `post_escalation_submission` | `Invalid` / `Reject` |
 | `valid` | `valid_continue`, `valid_revise`, `valid_clarify`, `valid_reject`, `valid_escalate` | `Valid` / `Continue`, `Revise`, `Clarify`, `Reject`, or `Escalate`, respectively |
 
-These seven stages contain exactly 27 globally unique adjudication reasons. Serialized package-schema failures remain RFC 003 package-admission reasons and must not add, remove, or shadow a reason in this table.
+These seven stages contain exactly 27 globally unique adjudication reasons. Serialized package-schema failures remain RFC 005 package-admission reasons and must not add, remove, or shadow a reason in this table.
 
-The package reason means no successful RFC 003 admission identity exists. The plan reason means the admitted package has no admitted constraint declaration or the supplied runtime plan is not the identity-bound plan materialized from that package. Structurally invalid declarations fail RFC 003 package admission and therefore reach `package_not_admitted`, not a second runtime schema-validation result.
+The package reason means no successful RFC 005 admission identity exists. The plan reason means the admitted package has no admitted constraint declaration or the supplied runtime plan is not the identity-bound plan materialized from that package. Structurally invalid declarations fail RFC 005 package admission and therefore reach `package_not_admitted`, not a second runtime schema-validation result.
 
 At the contract stage, `invalid_constraint_contract` means the context contract field violates its canonical grammar or byte bound. A syntactically valid value other than `0.1` reaches `unsupported_constraint_contract`. A finding-level contract mismatch belongs to definition-local validation and therefore produces a substitute during an otherwise valid adjudication rather than a global result reason.
 
@@ -420,15 +423,15 @@ Hees must stop at the first failing stage. Within a stage it must determine the 
 
 ### Receipt projection ownership
 
-This RFC owns the complete in-memory `AdjudicationResult` and the trusted-versus-untrusted field distinction. RFC 004 exclusively owns the redacted JCS body, envelope, receipt identifier, private atomic projection, and public integrity verification. There is no second constraint-specific canonical encoding or public result-to-receipt authoring API.
+This RFC owns the complete in-memory `AdjudicationResult` and the trusted-versus-untrusted field distinction. RFC 006 exclusively owns the redacted JCS body, envelope, receipt identifier, private atomic projection, and public integrity verification. There is no second constraint-specific canonical encoding or public result-to-receipt authoring API.
 
-For `Valid`, RFC 004 must take package identity only from `evaluated_package`, construct `artifact_digest` by prefixing its sole package fingerprint with `sha256:`, copy evaluation time and admitted plan identity, and project only evaluated, substituted, skipped, conflicting, and optional primary constraint identifiers from the validated execution. Complete findings and generic support identifiers remain private. `Invalid` maps to RFC 004's minimal body with no package, evaluation time, plan, execution, context echo, or support identifier.
+For `Valid`, RFC 006 must take package identity only from `evaluated_package`, construct `artifact_digest` by prefixing its sole package fingerprint with `sha256:`, copy evaluation time and admitted plan identity, and project only evaluated, substituted, skipped, conflicting, and optional primary constraint identifiers from the validated execution. Complete findings and generic support identifiers remain private. `Invalid` maps to RFC 006's minimal body with no package, evaluation time, plan, execution, context echo, or support identifier.
 
 ### Validation order
 
 Hees must validate and adjudicate in this order:
 
-1. Establish successful RFC 003 package admission. Failure returns `package_not_admitted` with the minimal `Invalid` result.
+1. Establish successful RFC 005 package admission. Failure returns `package_not_admitted` with the minimal `Invalid` result.
 2. Establish that the package carries an admitted package-relative constraint declaration and that the supplied runtime plan is the identity-bound admitted form of that declaration. Failure returns `constraint_plan_not_admitted` with no trusted identity in the result.
 3. Validate the top-level context contract grammar and exact supported version.
 4. Normalize the complete standard adjudication context, then compare its package and plan claims with the trusted admitted snapshots.
@@ -442,6 +445,18 @@ Hees must validate and adjudicate in this order:
 This validation order and the public table determine the single result reason when multiple errors exist. Local diagnostics may record additional bounded reasons but must not change the public outcome.
 
 ## Design details
+
+### Relationship to RFC 000
+
+RFC 000 requires deterministic package-owned policy while keeping evaluator findings non-authoritative. This RFC defines the shared finding and constraint-adjudication machinery that preserves that separation.
+
+### Relationship to RFC 001
+
+RFC 001 imports the direct valid adjudication result into Spectrum. This RFC owns finding validation, substitution, conflict representation, primary constraint, and effective action; Spectrum composes that governed result with memory, behavior, and response state to choose the terminal outcome.
+
+### Relationship to RFC 002
+
+Content DNA records the exact policy identity that governed an admitted answer but does not contain complete findings or constraint definitions. This RFC supplies the admitted plan identity and deterministic execution result; RFC 002 owns the redacted answer-time projection.
 
 ### Relationship to current proposal admission
 
@@ -457,15 +472,15 @@ This keeps runtime behavior small and reproducible while still allowing richer a
 
 ### Acceptance obligations
 
-Conformance evidence must include independent synthetic constraints for at least policy-like, knowledge-like, resource-like, and temporal-like checks using the same generic protocol. The evidence must demonstrate evaluator-context/adjudication-context separation; exact standard context validation; deterministic complete evaluation; every action and tie; allowed and invented finding reason identifiers; structural conflicts; earlier-only dependency visibility; evaluated/substituted/skipped identity; valid escalation short-circuiting; fail-closed evaluator unavailability using the exact package-declared failure pair; action-ceiling violations; known gaps; unknown, duplicate, descending, and post-escalation findings as distinct cases; cycles and missing precedence rejected at RFC 003 package admission; exact version and package binding; support-reference validation; invocation-count bounds and exhaustion; invalid/reject separation from package-authorized escalation; and repeatable results from byte-identical inputs.
+Conformance evidence must include independent synthetic constraints for at least policy-like, knowledge-like, resource-like, and temporal-like checks using the same generic protocol. The evidence must demonstrate evaluator-context/adjudication-context separation; exact standard context validation; deterministic complete evaluation; every action and tie; allowed and invented finding reason identifiers; structural conflicts; earlier-only dependency visibility; evaluated/substituted/skipped identity; valid escalation short-circuiting; fail-closed evaluator unavailability using the exact package-declared failure pair; action-ceiling violations; known gaps; unknown, duplicate, descending, and post-escalation findings as distinct cases; cycles and missing precedence rejected at RFC 005 package admission; exact version and package binding; support-reference validation; invocation-count bounds and exhaustion; invalid/reject separation from package-authorized escalation; and repeatable results from byte-identical inputs.
 
-Shared package goldens must include complete formatted values plus exact RFC 8785 JCS bytes, member digest, descriptor record count, and inherited package identity for a minimal one-capability/one-definition plan; multiple capabilities whose array order differs from definition order; empty and ordered non-empty dependencies; multiple allowed findings; every lowercase serialized action; both permitted failure actions; and evaluation budgets below, equal to, and above the definition count while remaining within the contract. JavaScript, Rust, and Incan consumers must agree on every payload key, array order, canonical byte sequence, and RFC 003 package-admission outcome.
+Shared package goldens must include complete formatted values plus exact RFC 8785 JCS bytes, member digest, descriptor record count, and inherited package identity for a minimal one-capability/one-definition plan; multiple capabilities whose array order differs from definition order; empty and ordered non-empty dependencies; multiple allowed findings; every lowercase serialized action; both permitted failure actions; and evaluation budgets below, equal to, and above the definition count while remaining within the contract. JavaScript, Rust, and Incan consumers must agree on every payload key, array order, canonical byte sequence, and RFC 005 package-admission outcome.
 
-Negative package fixtures must independently cover every missing or unknown field; aliases such as `contract_version`, `kind`, `version`, `allowed_pairs`, `allowed_actions`, or `failure_reason`; key and action case changes; `null` in every field; empty capability, definition, or allowed-finding arrays; omitted empty `depends_on`; malformed and out-of-range integers; duplicate capability tuples, constraint identifiers, orders, dependencies, and allowed pairs; non-dense or array-mismatched order; self, forward, and unknown dependencies; a definition with no exact capability; malformed identifiers and versions; an allowed action above `maximum_action`; an unknown action; `continue`, `revise`, or `clarify` as `failure_action`; wrapper fields nested in payload; a generic `payload`; repeated package identity or digest; and record-count mismatch. Every schema failure must remain an RFC 003 result rather than entering the 27-reason runtime adjudication table.
+Negative package fixtures must independently cover every missing or unknown field; aliases such as `contract_version`, `kind`, `version`, `allowed_pairs`, `allowed_actions`, or `failure_reason`; key and action case changes; `null` in every field; empty capability, definition, or allowed-finding arrays; omitted empty `depends_on`; malformed and out-of-range integers; duplicate capability tuples, constraint identifiers, orders, dependencies, and allowed pairs; non-dense or array-mismatched order; self, forward, and unknown dependencies; a definition with no exact capability; malformed identifiers and versions; an allowed action above `maximum_action`; an unknown action; `continue`, `revise`, or `clarify` as `failure_action`; wrapper fields nested in payload; a generic `payload`; repeated package identity or digest; and record-count mismatch. Every schema failure must remain an RFC 005 result rather than entering the 27-reason runtime adjudication table.
 
-The fixture set must make every reason in the closed public result table reachable in isolation and must include multi-failure cases that prove the exact stage and within-stage precedence. Each valid terminal reason must map to exactly one action, including valid rejection and valid escalation produced by definition-local substitution. Package fixtures must cover an RFC 003-admitted package-relative constraint declaration, inherited identity binding without mutation or re-hashing, exact equality between `"sha256:" + package_fingerprint` and the admitted artifact digest, and rejection of a declaration that repeats its containing package identity or digest.
+The fixture set must make every reason in the closed public result table reachable in isolation and must include multi-failure cases that prove the exact stage and within-stage precedence. Each valid terminal reason must map to exactly one action, including valid rejection and valid escalation produced by definition-local substitution. Package fixtures must cover an RFC 005-admitted package-relative constraint declaration, inherited identity binding without mutation or re-hashing, exact equality between `"sha256:" + package_fingerprint` and the admitted artifact digest, and rejection of a declaration that repeats its containing package identity or digest.
 
-Identity fixtures must prove that every `Valid` result receives package and plan identity only from the admitted snapshots, including `package_revision`, while every `Invalid` result omits package, plan, evaluation, and execution data even when its context echoes canonical matching values. RFC 004 projection fixtures must prove the exact valid execution partition, primary and conflict mappings, omission of complete findings and generic support identifiers, and the minimal invalid receipt. The constraint adjudication fixture must not define a competing receipt encoding, identifier, or redaction path.
+Identity fixtures must prove that every `Valid` result receives package and plan identity only from the admitted snapshots, including `package_revision`, while every `Invalid` result omits package, plan, evaluation, and execution data even when its context echoes canonical matching values. RFC 006 projection fixtures must prove the exact valid execution partition, primary and conflict mappings, omission of complete findings and generic support identifiers, and the minimal invalid receipt. The constraint adjudication fixture must not define a competing receipt encoding, identifier, or redaction path.
 
 At least one fixture must show a high-confidence or otherwise persuasive evaluator finding losing to a stronger package-authorized action, proving that evaluator confidence or wording cannot replace Hees adjudication. Fixtures must use fictional domain-neutral content and must not persist hidden reasoning.
 
@@ -501,15 +516,15 @@ Rejected because confidence is evaluator-specific, may be non-deterministic acro
 
 ## Drawbacks
 
-Packages must precompile their constraints into a total order and declare evaluator action/reason and failure-pair authority up front. Binding inherited package identity only after RFC 003 admission adds a deliberate distinction between package-relative serialized declarations and admitted runtime plans. Evaluating through concrete call sites requires an external dispatch layer when many evaluator kinds exist. Continuing after `Revise`, `Clarify`, or `Reject` performs more work than first-failure evaluation, although the fixed invocation ceiling bounds call count rather than CPU or elapsed time. Structural action conflicts do not discover deeper semantic contradictions. A closed public reason vocabulary and strict precedence require a contract revision when a new global failure distinction is needed, and strict version and transcript checks reject adapter mistakes that a permissive runtime could otherwise ignore.
+Packages must precompile their constraints into a total order and declare evaluator action/reason and failure-pair authority up front. Binding inherited package identity only after RFC 005 admission adds a deliberate distinction between package-relative serialized declarations and admitted runtime plans. Evaluating through concrete call sites requires an external dispatch layer when many evaluator kinds exist. Continuing after `Revise`, `Clarify`, or `Reject` performs more work than first-failure evaluation, although the fixed invocation ceiling bounds call count rather than CPU or elapsed time. Structural action conflicts do not discover deeper semantic contradictions. A closed public reason vocabulary and strict precedence require a contract revision when a new global failure distinction is needed, and strict version and transcript checks reject adapter mistakes that a permissive runtime could otherwise ignore.
 
 ## Layers affected
 
 - **Public contract:** New package-relative plan declaration, identity-bound admitted plan, definition, allowed-finding, standard adjudication-context, action, finding, validity, result, closed result-reason, conflict, and generic evaluator protocol types.
-- **Package validation:** RFC 003-governed dense total-order, earlier-only dependency, evaluator-capability, allowed action/reason, authority-ceiling, failure-pair, version, reference, and bound checks.
+- **Package validation:** RFC 005-governed dense total-order, earlier-only dependency, evaluator-capability, allowed action/reason, authority-ceiling, failure-pair, version, reference, and bound checks.
 - **Runtime adjudication:** Admitted package/plan identity lookup, standard-context normalization and comparison, global budget and transcript validation, definition-local fail-closed substitution, evaluated/substituted/skipped accounting, deterministic strongest-action selection, conflict reporting, and escalation short-circuit semantics.
 - **External integration boundary:** Concrete evaluator selection remains external; integrations submit normalized typed findings in plan order.
-- **Receipt boundary:** RFC 004 privately projects valid package, plan, and execution identity or the minimal invalid result; this RFC defines no competing export format.
+- **Receipt boundary:** RFC 006 privately projects valid package, plan, and execution identity or the minimal invalid result; this RFC defines no competing export format.
 - **Tests and documentation:** Synthetic independent evaluators, complete reason and precedence coverage, identity-provenance cases, malformed transcript fixtures, compatibility cases, and clear current-versus-proposed API documentation.
 
 ## Design Decisions
@@ -527,11 +542,11 @@ Packages must precompile their constraints into a total order and declare evalua
 - Valid results expose evaluated, substituted, and skipped definition identifiers; globally invalid results discard and omit all provisional execution accounting.
 - Evaluation budget measures attempted evaluator invocations only and proves nothing about CPU, elapsed time, memory, energy, or provider work.
 - One caller-supplied evaluation time is part of every finding and result; evaluators and Hees do not substitute a wall clock.
-- RFC 003 owns the common member wrapper, canonical bytes, the sole-member position, descriptor commitments, sequencing, and inherited package identity; this RFC owns only the exact closed constraint payload imported under `member_contract="0.1"`.
+- RFC 005 owns the common member wrapper, canonical bytes, the sole-member position, descriptor commitments, sequencing, and inherited package identity; this RFC owns only the exact closed constraint payload imported under `member_contract="0.1"`.
 - Constraint payload objects have no optional or nullable fields: empty dependencies use required `depends_on=[]`, and every other required array remains non-empty.
 - Package actions serialize only as lowercase `continue`, `revise`, `clarify`, `reject`, and `escalate`; definition-local `failure_action` permits only `reject` or `escalate`.
-- The package-relative serialized constraint declaration is carried only by the sole optional RFC 003 `constraints` member; successful package admission binds inherited identity without changing or re-hashing its bytes.
-- The complete trusted constraint identity is `package_id`, `domain_id`, `package_revision`, and `package_fingerprint`, plus the admitted plan identifier and revision; the fingerprint is exactly the suffix of the RFC 003 artifact digest, not a second hash.
+- The package-relative serialized constraint declaration is carried only by the sole optional RFC 005 `constraints` member; successful package admission binds inherited identity without changing or re-hashing its bytes.
+- The complete trusted constraint identity is `package_id`, `domain_id`, `package_revision`, and `package_fingerprint`, plus the admitted plan identifier and revision; the fingerprint is exactly the suffix of the RFC 005 artifact digest, not a second hash.
 - Context identity fields are untrusted comparison claims. Only `Valid` receives trusted evaluated package and plan identity; `Invalid` is minimal and receives none.
-- The public result-reason vocabulary is closed, globally unique within its RFC 004 namespace, and selected by strict precedence. Valid reasons map one-to-one to final actions, while package-owned finding and substitution reasons remain separate.
-- RFC 004 exclusively owns receipt canonicalization, redaction, identifiers, envelopes, private projection, and public integrity verification.
+- The public result-reason vocabulary is closed, globally unique within its RFC 006 namespace, and selected by strict precedence. Valid reasons map one-to-one to final actions, while package-owned finding and substitution reasons remain separate.
+- RFC 006 exclusively owns receipt canonicalization, redaction, identifiers, envelopes, private projection, and public integrity verification.

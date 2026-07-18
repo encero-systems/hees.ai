@@ -15,7 +15,7 @@ Until an RFC and its implementation are both merged, the repository's README and
 
 ## Numbering and headers
 
-RFC documents use monotonically increasing three-digit numbers and the filename form `NNN-short-title.md`. New documents start at `Draft` and record their creation date, authors, related RFCs, proposal issue, and the Hees and Incan versions they were written against. `RFC PR` means the pull request that implements the accepted RFC, so it remains `—` until implementation exists. `Shipped in` likewise remains `—` until the implementation is released. Draft RFCs describe proposed behavior and do not imply that the checked public API implements it.
+RFC documents use three-digit numbers and the filename form `NNN-short-title.md`. RFC 000 is reserved for the stable foundational authority model; early RFC numbers establish core contracts that later RFCs refine. Each RFC must have its own dedicated proposal issue. An umbrella may relate several proposal issues but cannot replace an RFC's dedicated issue. New documents start at `Draft` and record their creation date, authors, related RFCs, proposal issue, and the Hees and Incan versions they were written against. `RFC PR` means the pull request that implements the accepted RFC, so it remains `—` until implementation exists. `Shipped in` likewise remains `—` until the implementation is released. Draft RFCs describe proposed behavior and do not imply that the checked public API implements it.
 
 ## Document statuses
 
@@ -28,10 +28,13 @@ RFC documents use monotonically increasing three-digit numbers and the filename 
 
 ## Current documents
 
-- [RFC 001: Governed Memory and Retrieval Results](001-governed-memory-and-retrieval-results.md) — Draft
-- [RFC 002: Composable Governance Constraints](002-composable-governance-constraints.md) — Draft
-- [RFC 003: Canonical Package Artifact Admission](003-canonical-package-artifact-admission.md) — Draft
-- [RFC 004: Export-Safe Governance Receipts](004-export-safe-governance-receipts.md) — Draft
-- [RFC 005: Evidence-Grounded Claim Verification Findings](005-evidence-grounded-claim-verification-findings.md) — Draft
-- [RFC 006: Governed Behavior Envelopes](006-governed-behavior-envelopes.md) — Draft
-- [RFC 007: Governed Visible Response Lifecycle](007-governed-visible-response-lifecycle.md) — Draft
+- [RFC 000: Foundational Governance Authority](000-foundational-governance-authority.md) — Draft
+- [RFC 001: Spectrum Terminal Adjudication](001-spectrum-terminal-adjudication.md) — Draft
+- [RFC 002: Content DNA Answer-Time Provenance](002-content-dna-answer-time-provenance.md) — Draft
+- [RFC 003: Governed Memory and Retrieval Results](003-governed-memory-and-retrieval-results.md) — Draft
+- [RFC 004: Composable Governance Constraints](004-composable-governance-constraints.md) — Draft
+- [RFC 005: Canonical Package Artifact Admission](005-canonical-package-artifact-admission.md) — Draft
+- [RFC 006: Export-Safe Governance Receipts](006-export-safe-governance-receipts.md) — Draft
+- [RFC 007: Evidence-Grounded Claim Verification Findings](007-evidence-grounded-claim-verification-findings.md) — Draft
+- [RFC 008: Governed Behavior Envelopes](008-governed-behavior-envelopes.md) — Draft
+- [RFC 009: Governed Visible Response Lifecycle](009-governed-visible-response-lifecycle.md) — Draft

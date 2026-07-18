@@ -1,13 +1,16 @@
-# RFC 001: Governed Memory and Retrieval Results
+# RFC 003: Governed Memory and Retrieval Results
 
 - **Status:** Draft
 - **Created:** 2026-07-17
 - **Author(s):** Encero Systems
 - **Related:**
-    - RFC 002 (Composable Governance Constraints)
-    - RFC 003 (Canonical Package Artifact Admission)
-    - RFC 004 (Export-Safe Governance Receipts)
-- **Issue:** https://github.com/encero-systems/hees.ai/issues/5
+    - RFC 000 (Foundational Governance Authority)
+    - RFC 001 (Spectrum Terminal Adjudication)
+    - RFC 002 (Content DNA Answer-Time Provenance)
+    - RFC 004 (Composable Governance Constraints)
+    - RFC 005 (Canonical Package Artifact Admission)
+    - RFC 006 (Export-Safe Governance Receipts)
+- **Issue:** https://github.com/encero-systems/hees.ai/issues/4
 - **RFC PR:** —
 - **Written against:** Hees 0.0.1 / Incan 0.4.0
 - **Shipped in:** —
@@ -33,7 +36,7 @@ Without a common ingress contract, provider adapters can accidentally turn retri
 ## Goals
 
 - Define the package-owned governed memory atom admitted to runtime context.
-- Freeze the exact package-relative registry and atom JSON payloads imported by RFC 003, including closed nested shapes, enum spellings, ordering, and absence rules.
+- Freeze the exact package-relative registry and atom JSON payloads imported by RFC 005, including closed nested shapes, enum spellings, ordering, and absence rules.
 - Define provider-neutral requests, approved provider bindings, result states, nominations, deterministic admission records, and accepted context.
 - Require exact contract and artifact identity rather than implicit version negotiation.
 - Make item, text, identifier, and aggregate context sizes explicit and bounded.
@@ -50,9 +53,9 @@ Without a common ingress contract, provider adapters can accidentally turn retri
 - Proving that a selected atom semantically supports a model claim or visible answer.
 - Selecting model prompts, context-window layouts, token budgets, or generation behavior.
 - Standardizing a domain taxonomy, policy vocabulary, authority scale meaning, or content corpus.
-- Re-verifying package artifact bytes or accepting a second independently supplied package digest. RFC 003 establishes the admitted artifact identity; this RFC uses its exact package-fingerprint view.
-- Defining RFC 003 member wrappers, sharding, canonical JCS bytes, descriptor commitments, sequencing, or package-artifact identity.
-- Defining receipt canonicalization, redaction, envelope bytes, identifier construction, verification, or external authenticity. RFC 004 owns that export boundary; this RFC owns the complete in-memory source record from which Hees privately projects a receipt.
+- Re-verifying package artifact bytes or accepting a second independently supplied package digest. RFC 005 establishes the admitted artifact identity; this RFC uses its exact package-fingerprint view.
+- Defining RFC 005 member wrappers, sharding, canonical JCS bytes, descriptor commitments, sequencing, or package-artifact identity.
+- Defining receipt canonicalization, redaction, envelope bytes, identifier construction, verification, or external authenticity. RFC 006 owns that export boundary; this RFC owns the complete in-memory source record from which Hees privately projects a receipt.
 
 ## Guide-level explanation
 
@@ -114,11 +117,11 @@ Retrieval relevance must not be interpreted as truth, source authority, semantic
 
 ### Package identity and serialized governed-memory declarations
 
-The complete trusted package identity used by memory admission must contain exactly `package_id`, `domain_id`, `package_revision`, and `package_fingerprint`. `package_fingerprint` must be the exact 64-lowercase-hexadecimal suffix of the RFC 003 admitted `artifact_digest`, so `artifact_digest == "sha256:" + package_fingerprint`. The two forms are not independently supplied hashes. This RFC carries only `package_fingerprint`; RFC 004 adds the fixed prefix when projecting its all-or-absent receipt package object.
+The complete trusted package identity used by memory admission must contain exactly `package_id`, `domain_id`, `package_revision`, and `package_fingerprint`. `package_fingerprint` must be the exact 64-lowercase-hexadecimal suffix of the RFC 005 admitted `artifact_digest`, so `artifact_digest == "sha256:" + package_fingerprint`. The two forms are not independently supplied hashes. This RFC carries only `package_fingerprint`; RFC 006 adds the fixed prefix when projecting its all-or-absent receipt package object.
 
-A package-relative serialized governed-memory declaration is carried by the RFC 003 `governed_memory_registry` member followed by one or more `governed_memory_atoms` members. RFC 003 owns each member's common `member_id`, `member_kind`, `member_contract`, and `record_count` fields; independent RFC 8785 JCS bytes; descriptor order; sharding; digest and length commitments; sequential admission; and inherited package identity. In both memory member kinds, `member_contract` must be the exact string `0.1` and is the sole serialized memory-contract version. The payload must not add `contract_version`, a nested payload envelope, another wrapper field, `artifact_contract`, `package_id`, `domain_id`, `package_revision`, `package_fingerprint`, `artifact_digest`, or an equivalent containing-package identity field.
+A package-relative serialized governed-memory declaration is carried by the RFC 005 `governed_memory_registry` member followed by one or more `governed_memory_atoms` members. RFC 005 owns each member's common `member_id`, `member_kind`, `member_contract`, and `record_count` fields; independent RFC 8785 JCS bytes; descriptor order; sharding; digest and length commitments; sequential admission; and inherited package identity. In both memory member kinds, `member_contract` must be the exact string `0.1` and is the sole serialized memory-contract version. The payload must not add `contract_version`, a nested payload envelope, another wrapper field, `artifact_contract`, `package_id`, `domain_id`, `package_revision`, `package_fingerprint`, `artifact_digest`, or an equivalent containing-package identity field.
 
-This RFC owns the payload fields below. They are top-level siblings of the four RFC 003 wrapper fields and are disjoint from them. Every payload and nested object is closed: a field is required unless its table says optional, every unlisted field and alias is invalid, and a required or optional field present as JSON `null` is invalid. Optional means omitted from the object, never present with `null`, an empty placeholder, or an admission-invented default. Key spelling and lowercase enum spelling are exact. Arrays preserve submitted order; Hees must not sort or deduplicate them. RFC 003 owns duplicate-aware parsing, canonical object-key order, byte equality, schema failure classification, and the final package-admission result.
+This RFC owns the payload fields below. They are top-level siblings of the four RFC 005 wrapper fields and are disjoint from them. Every payload and nested object is closed: a field is required unless its table says optional, every unlisted field and alias is invalid, and a required or optional field present as JSON `null` is invalid. Optional means omitted from the object, never present with `null`, an empty placeholder, or an admission-invented default. Key spelling and lowercase enum spelling are exact. Arrays preserve submitted order; Hees must not sort or deduplicate them. RFC 005 owns duplicate-aware parsing, canonical object-key order, byte equality, schema failure classification, and the final package-admission result.
 
 #### Registry member payload
 
@@ -135,7 +138,7 @@ After the common wrapper, a `governed_memory_registry` member must contain exact
 
 Each classification array must contain values matching `[a-z0-9][a-z0-9_-]*`, with no duplicate inside that typed array. The same spelling may occur in different authority, risk, and sensitivity arrays because atom references are typed by their field. Array order is package identity and must survive admission unchanged.
 
-Absence of `max_items` or `max_context_bytes` means that the package adds no lower limit for that dimension and the absolute contract ceiling remains applicable. Admission must not insert the absolute value into canonical bytes or the identity-bound declaration. Zero, a negative value, a fraction, an exponent, an out-of-range integer, a value above the absolute ceiling, or `null` is invalid. The RFC 003 descriptor `record_count` must equal `len(provider_bindings) + len(authority_class_ids) + len(risk_class_ids) + len(sensitivity_class_ids)`; neither optional limit contributes to that count. The registry member must not contain `items`.
+Absence of `max_items` or `max_context_bytes` means that the package adds no lower limit for that dimension and the absolute contract ceiling remains applicable. Admission must not insert the absolute value into canonical bytes or the identity-bound declaration. Zero, a negative value, a fraction, an exponent, an out-of-range integer, a value above the absolute ceiling, or `null` is invalid. The RFC 005 descriptor `record_count` must equal `len(provider_bindings) + len(authority_class_ids) + len(risk_class_ids) + len(sensitivity_class_ids)`; neither optional limit contributes to that count. The registry member must not contain `items`.
 
 #### Provider-binding object
 
@@ -154,7 +157,7 @@ Every `provider_bindings` entry must contain exactly these six required string f
 
 #### Atom member payload
 
-After the common wrapper, a `governed_memory_atoms` member must contain exactly one required `items` field. `items` must be a non-empty ordered array of atom objects bounded by the artifact contract. It must not contain registry fields or package identity. The descriptor `record_count` must equal `len(items)`, and RFC 003 forms the package's logical atom list by concatenating atom-member arrays in descriptor order.
+After the common wrapper, a `governed_memory_atoms` member must contain exactly one required `items` field. `items` must be a non-empty ordered array of atom objects bounded by the artifact contract. It must not contain registry fields or package identity. The descriptor `record_count` must equal `len(items)`, and RFC 005 forms the package's logical atom list by concatenating atom-member arrays in descriptor order.
 
 Every atom object must contain exactly these required fields:
 
@@ -176,7 +179,7 @@ Every atom object must contain exactly these required fields:
 | `validity` | validity object | Closed temporal-validity shape defined below. |
 | `labels` | array of strings | Ordered package-owned canonical labels. |
 
-`id`, the three classification references, and every label must match the identifier grammar and their field bounds. Atom identifiers are unique across the RFC 003-combined logical atom list. Labels may be empty, must contain at most 32 entries, and must not contain duplicates; their declared order is identity-bearing. `corpus_version` must match the version grammar. `corpus_fingerprint` and `source_fingerprint` must each be exactly 64 lowercase hexadecimal characters without a prefix. The atom's corpus fingerprint must equal at least one registry provider binding's `corpus_fingerprint`, and each typed classification reference must resolve exactly once in its corresponding registry array.
+`id`, the three classification references, and every label must match the identifier grammar and their field bounds. Atom identifiers are unique across the RFC 005-combined logical atom list. Labels may be empty, must contain at most 32 entries, and must not contain duplicates; their declared order is identity-bearing. `corpus_version` must match the version grammar. `corpus_fingerprint` and `source_fingerprint` must each be exactly 64 lowercase hexadecimal characters without a prefix. The atom's corpus fingerprint must equal at least one registry provider binding's `corpus_fingerprint`, and each typed classification reference must resolve exactly once in its corresponding registry array.
 
 `claim`, `guidance`, and `applicability` must be non-empty, remain within their UTF-8 byte ceilings, and each contain at least one code point other than tab `U+0009`, line feed `U+000A`, carriage return `U+000D`, or space `U+0020`. A `source_ref` must be non-empty and within its byte ceiling; must not begin or end with that ASCII whitespace; must contain no C0 control code point `U+0000..U+001F`, delete `U+007F`, backslash, `..` substring, `file://` substring, or `:/` substring; and must not begin with `/`. These are shape checks only and do not dereference the reference or establish legal rights.
 
@@ -189,19 +192,19 @@ The closed `validity` object has exactly two permitted shapes:
 
 `mode` is the exact lowercase JSON string shown in the table. `valid_until_ms: null`, omitting it for `bounded`, supplying it for `indefinite`, numeric sentinels, fractions, exponents, negative values, and unknown fields are invalid package declarations. Successful package admission preserves the declared shape; it does not add an end value to an indefinite atom.
 
-All three recognized review states and all three recognized runtime-rights states are structurally admissible through RFC 003 package admission. RFC 001 runtime nomination eligibility exclusively owns their effect: a nominated atom whose `review_status` is not `approved` reaches `atom_review_not_approved`, and a subsequently eligible atom whose `runtime_rights` is not `allowed` reaches `atom_rights_not_allowed` under the existing atom-stage precedence. Unknown values, aliases, or different casing remain RFC 003 member-schema failures rather than RFC 001 runtime reasons.
+All three recognized review states and all three recognized runtime-rights states are structurally admissible through RFC 005 package admission. RFC 003 runtime nomination eligibility exclusively owns their effect: a nominated atom whose `review_status` is not `approved` reaches `atom_review_not_approved`, and a subsequently eligible atom whose `runtime_rights` is not `allowed` reaches `atom_rights_not_allowed` under the existing atom-stage precedence. Unknown values, aliases, or different casing remain RFC 005 member-schema failures rather than RFC 003 runtime reasons.
 
 The atom declaration must not contain raw source material. `claim`, `guidance`, and `applicability` are reviewed package artifacts, not excerpts supplied by a retrieval provider. Corpus, source, configuration, and index fingerprints plus adapter versions identify separate governed artifacts and therefore remain explicit; none may substitute for or be interpreted as the containing package fingerprint.
 
 ### Identity-bound admitted atom
 
-After successful RFC 003 package admission, Hees must materialize each admitted runtime atom by binding the declaration to the inherited top-level `package_id`, `domain_id`, `artifact_contract` as package schema version, `package_revision`, and the unprefixed `package_fingerprint` derived from the verified external artifact digest. This binding must not modify, migrate, reserialize, or re-hash the serialized declaration or containing artifact.
+After successful RFC 005 package admission, Hees must materialize each admitted runtime atom by binding the declaration to the inherited top-level `package_id`, `domain_id`, `artifact_contract` as package schema version, `package_revision`, and the unprefixed `package_fingerprint` derived from the verified external artifact digest. This binding must not modify, migrate, reserialize, or re-hash the serialized declaration or containing artifact.
 
-The admitted runtime atom must expose the declaration fields plus that derived package binding. It must not accept a caller-supplied `artifact_digest` beside `package_fingerprint`, and a request or provider result must not overwrite its identity. Package identity becomes trusted only through RFC 003 admission; canonical-looking request fields are still untrusted claims.
+The admitted runtime atom must expose the declaration fields plus that derived package binding. It must not accept a caller-supplied `artifact_digest` beside `package_fingerprint`, and a request or provider result must not overwrite its identity. Package identity becomes trusted only through RFC 005 admission; canonical-looking request fields are still untrusted claims.
 
 Identifiers must match the lowercase ASCII grammar `[a-z0-9][a-z0-9_-]*`. An admitted package must not contain duplicate logical memory identifiers. Fingerprints in contract `0.1` must be SHA-256 values encoded as exactly 64 lowercase hexadecimal characters. Separate corpus, source, configuration, and index fingerprints plus adapter versions must match their corresponding admitted declarations exactly.
 
-The serialized validity mode is exactly lowercase `bounded` or `indefinite` in the closed shape above; a typed runtime API may expose corresponding `Bounded` and `Indefinite` variants after package admission. `bounded` is eligible when `valid_from_ms <= evaluation_time_ms < valid_until_ms`. `indefinite` is eligible when `valid_from_ms <= evaluation_time_ms`. Numeric sentinels must not represent indefinite validity, and a mode/end mismatch must make RFC 003 package admission fail.
+The serialized validity mode is exactly lowercase `bounded` or `indefinite` in the closed shape above; a typed runtime API may expose corresponding `Bounded` and `Indefinite` variants after package admission. `bounded` is eligible when `valid_from_ms <= evaluation_time_ms < valid_until_ms`. `indefinite` is eligible when `valid_from_ms <= evaluation_time_ms`. Numeric sentinels must not represent indefinite validity, and a mode/end mismatch must make RFC 005 package admission fail.
 
 The three classification identifiers must match package-declared bounded identifier sets. Hees validates their identity and bounds but must not impose an ordering or infer that one package's classification has the same meaning as another's. Package-owned constraints interpret those classifications.
 
@@ -216,7 +219,7 @@ An admitted package must declare every provider binding it allows. The serialize
 - `index_fingerprint`; and
 - `corpus_fingerprint`.
 
-A serialized provider-binding declaration is package-relative and must not repeat the containing package identity or digest. Successful RFC 003 admission associates it with the inherited trusted package identity without changing its serialized fields. Provider identifier and versions plus configuration, index, and corpus fingerprints remain explicit because they identify the separate retrieval execution and snapshot boundary.
+A serialized provider-binding declaration is package-relative and must not repeat the containing package identity or digest. Successful RFC 005 admission associates it with the inherited trusted package identity without changing its serialized fields. Provider identifier and versions plus configuration, index, and corpus fingerprints remain explicit because they identify the separate retrieval execution and snapshot boundary.
 
 The submitted result binding must exactly equal one admitted binding. Hees must not negotiate versions, accept compatible-looking prefixes, substitute a newer index, or infer equivalence between fingerprints.
 
@@ -224,7 +227,7 @@ A declared binding establishes identity, not integrity. Hees may compare canonic
 
 ### Request contract
 
-A memory request must contain the exact memory contract version, a canonical bounded caller-supplied request identifier, package identifier, domain identifier, package revision, package fingerprint, bounded query text, caller-supplied evaluation time, requested item count, and requested aggregate context-byte limit. It must not contain `artifact_digest`; the unprefixed fingerprint is the sole request syntax for that same RFC 003 identity. The request identifier is not asserted to be globally unique; it is interpreted only as one field of the complete structured admission record.
+A memory request must contain the exact memory contract version, a canonical bounded caller-supplied request identifier, package identifier, domain identifier, package revision, package fingerprint, bounded query text, caller-supplied evaluation time, requested item count, and requested aggregate context-byte limit. It must not contain `artifact_digest`; the unprefixed fingerprint is the sole request syntax for that same RFC 005 identity. The request identifier is not asserted to be globally unique; it is interpreted only as one field of the complete structured admission record.
 
 The evaluation time must be a non-negative integer count of Unix epoch milliseconds. Hees must use this supplied value for every time-dependent check in the admission. It must not read a wall clock, reinterpret local time, or silently replace the value.
 
@@ -276,7 +279,7 @@ The `0.1` contract must enforce these UTF-8 byte and collection ceilings before 
 | Materialized atoms | 64 items |
 | Aggregate materialized context | 131,072 bytes |
 
-Versions and package revisions must match `[0-9]+(\.[0-9]+){1,2}`. The sole package fingerprint must be exactly 64 lowercase hexadecimal characters and must equal the suffix of the RFC 003 artifact digest. The request may choose lower positive `max_items` and `max_context_bytes` values, and the package declaration may impose lower positive ceilings. The effective limit must be the lowest applicable limit. Zero, negative, overflowing, or above-contract limits must fail validation rather than being clamped.
+Versions and package revisions must match `[0-9]+(\.[0-9]+){1,2}`. The sole package fingerprint must be exactly 64 lowercase hexadecimal characters and must equal the suffix of the RFC 005 artifact digest. The request may choose lower positive `max_items` and `max_context_bytes` values, and the package declaration may impose lower positive ceilings. The effective limit must be the lowest applicable limit. Zero, negative, overflowing, or above-contract limits must fail validation rather than being clamped.
 
 Aggregate materialized context bytes must be the sum of the UTF-8 byte lengths of every selected atom's `id`, `claim`, `guidance`, `applicability`, `source_ref`, and labels. Implementations must use this definition exactly and must reject before allocating an above-limit context.
 
@@ -285,7 +288,7 @@ Aggregate materialized context bytes must be the sum of the UTF-8 byte lengths o
 Hees must validate memory input in this order without exposing a partially admitted context or promoting untrusted package claims:
 
 1. Enforce absolute input bounds and validate every field needed for a safe normalized record, including canonical identifiers and versions, fingerprint syntax, exact-integer representation, positive request limits, non-negative evaluation time, and a known compatible provider state/reason pair.
-2. Establish that the package was successfully admitted under RFC 003 and that its governed-memory registry was admitted. Failure before both facts are established produces no trusted package identity.
+2. Establish that the package was successfully admitted under RFC 005 and that its governed-memory registry was admitted. Failure before both facts are established produces no trusted package identity.
 3. Snapshot the complete trusted package identity from the admitted package separately from the normalized request and result. From this point, every rejection is a `Normalized` record carrying that trusted evaluated identity.
 4. Validate the request and result contract linkage, exact request package claims, result request echo, and package-specific request limits.
 5. Validate the approved provider binding and the nomination-count shape required by the already normalized provider state.
@@ -297,7 +300,7 @@ A `Partial` provider state must not weaken any validation requirement. Envelope 
 
 ### Public admission stages and reasons
 
-Every result must contain one stage and one reason from this closed table. Rows are strict stage precedence, and reason order within a row is strict reason precedence. Every reason is globally unique within RFC 004's `memory_admission_0_1` namespace.
+Every result must contain one stage and one reason from this closed table. Rows are strict stage precedence, and reason order within a row is strict reason precedence. Every reason is globally unique within RFC 006's `memory_admission_0_1` namespace.
 
 | Stage | Reasons in precedence order | Record variant and terminal |
 | --- | --- | --- |
@@ -310,11 +313,11 @@ Every result must contain one stage and one reason from this closed table. Rows 
 | `context` | `context_bytes_exceeded` | `Normalized` / `Rejected` |
 | `complete` | `accepted_complete`, `accepted_partial`, `accepted_unavailable` | `Normalized` / `Accepted` |
 
-These eight stages contain exactly 40 globally unique runtime admission reasons. Serialized package-schema failures remain RFC 003 package-admission reasons and must not add, remove, or shadow a reason in this table.
+These eight stages contain exactly 40 globally unique runtime admission reasons. Serialized package-schema failures remain RFC 005 package-admission reasons and must not add, remove, or shadow a reason in this table.
 
-The normalization reasons have exact scopes. `input_collection_bound_exceeded` means an input collection exceeds its absolute item ceiling before entries are retained, while `input_text_bound_exceeded` means a text field exceeds its absolute UTF-8 byte ceiling before content is retained. `invalid_contract_value` means a contract or version field violates its canonical grammar or byte bound, while a syntactically valid version other than memory contract `0.1` reaches `unsupported_memory_contract`. `invalid_request_identifier` and `invalid_result_identifier` apply independently to malformed or over-bound caller identifiers. `invalid_package_claim` covers malformed package, domain, revision, or fingerprint syntax; it does not compare those claims with the admitted package. `invalid_provider_binding` covers malformed or over-bound binding fields, while a well-formed binding absent from the admitted registry reaches `provider_binding_not_admitted`. `invalid_nomination_identifier` covers malformed or over-bound logical identifiers, and `invalid_nomination_number` covers a rank or relevance value that is not an exactly representable integer. `invalid_evaluation_time` means the evaluation time is not a non-negative exact integer, and `invalid_request_limit` means either request limit is not a positive exact integer within the absolute contract ceiling. `unsupported_provider_state` and `unsupported_provider_reason` apply to unknown typed values; `provider_state_reason_mismatch` applies to a known pair that the state table forbids. These checks occur before a `Normalized` record can be formed, ensuring every normalized record has the receipt-safe typed memory state required by RFC 004.
+The normalization reasons have exact scopes. `input_collection_bound_exceeded` means an input collection exceeds its absolute item ceiling before entries are retained, while `input_text_bound_exceeded` means a text field exceeds its absolute UTF-8 byte ceiling before content is retained. `invalid_contract_value` means a contract or version field violates its canonical grammar or byte bound, while a syntactically valid version other than memory contract `0.1` reaches `unsupported_memory_contract`. `invalid_request_identifier` and `invalid_result_identifier` apply independently to malformed or over-bound caller identifiers. `invalid_package_claim` covers malformed package, domain, revision, or fingerprint syntax; it does not compare those claims with the admitted package. `invalid_provider_binding` covers malformed or over-bound binding fields, while a well-formed binding absent from the admitted registry reaches `provider_binding_not_admitted`. `invalid_nomination_identifier` covers malformed or over-bound logical identifiers, and `invalid_nomination_number` covers a rank or relevance value that is not an exactly representable integer. `invalid_evaluation_time` means the evaluation time is not a non-negative exact integer, and `invalid_request_limit` means either request limit is not a positive exact integer within the absolute contract ceiling. `unsupported_provider_state` and `unsupported_provider_reason` apply to unknown typed values; `provider_state_reason_mismatch` applies to a known pair that the state table forbids. These checks occur before a `Normalized` record can be formed, ensuring every normalized record has the receipt-safe typed memory state required by RFC 006.
 
-At the package stage, `package_not_admitted` means no successful RFC 003 admission identity exists. `memory_registry_not_admitted` means the admitted package does not carry an admitted governed-memory declaration. Structurally invalid declarations fail RFC 003 package admission and therefore reach `package_not_admitted`, not a second runtime registry error.
+At the package stage, `package_not_admitted` means no successful RFC 005 admission identity exists. `memory_registry_not_admitted` means the admitted package does not carry an admitted governed-memory declaration. Structurally invalid declarations fail RFC 005 package admission and therefore reach `package_not_admitted`, not a second runtime registry error.
 
 At the request stage, `request_package_id_mismatch`, `request_domain_id_mismatch`, `request_package_revision_mismatch`, and `request_package_fingerprint_mismatch` each compare the named well-formed untrusted request field with the separate trusted package snapshot. `result_contract_mismatch` applies when the well-formed result contract does not exactly equal the request's accepted `0.1` contract, and `result_request_id_mismatch` applies when its request echo differs. `request_limit_exceeds_package` applies only to positive within-contract limits that exceed a lower package-declared limit.
 
@@ -322,7 +325,7 @@ At the provider stage, the state and reason are already a known compatible pair.
 
 At the atom stage, `unknown_memory_id` means a nomination resolves to no admitted atom. `atom_corpus_mismatch` means the atom's corpus fingerprint differs from the selected admitted provider binding. `atom_review_not_approved` and `atom_rights_not_allowed` apply to the named package-owned eligibility state. `atom_not_yet_valid` means evaluation precedes the inclusive validity start, while `atom_expired` means evaluation is at or after a bounded exclusive validity end. Package identity cannot mismatch at this stage because every runtime atom inherited it from the same admitted package; a repeated caller-controlled atom identity is forbidden by the serialized declaration contract.
 
-At the context stage, `context_bytes_exceeded` means the exact aggregate materialized byte sum exceeds the effective context-byte limit. Completion reasons map one-to-one to the valid provider states and terminal `Accepted`: `accepted_complete` for `Complete`, `accepted_partial` for `Partial`, and `accepted_unavailable` for `Unavailable`. Every other reason maps to terminal `Rejected`. Provider-state reasons such as `completed` and `deadline_reached` remain a separate typed dimension in the normalized result and RFC 004 `memory_state`; they must never be reused as Hees admission reasons.
+At the context stage, `context_bytes_exceeded` means the exact aggregate materialized byte sum exceeds the effective context-byte limit. Completion reasons map one-to-one to the valid provider states and terminal `Accepted`: `accepted_complete` for `Complete`, `accepted_partial` for `Partial`, and `accepted_unavailable` for `Unavailable`. Every other reason maps to terminal `Rejected`. Provider-state reasons such as `completed` and `deadline_reached` remain a separate typed dimension in the normalized result and RFC 006 `memory_state`; they must never be reused as Hees admission reasons.
 
 Admission stops at the first failing stage. Within a stage, Hees must determine the set of applicable public reason kinds and choose the first reason in the table. It must not select reasons from provider error text, parser wording, hash-map iteration, or the first malformed nomination or atom encountered. Implementations may retain richer bounded local diagnostics, but those diagnostics must not alter the stage/reason pair or contain provider text, package content, source text, hidden model reasoning, or unsafe input echoes.
 
@@ -330,10 +333,10 @@ Admission stops at the first failing stage. Within a stage, Hees must determine 
 
 Every submission must produce one deterministic in-memory `MemoryAdmissionRecord` variant:
 
-- `Normalized` must contain `evaluated_package`, the complete trusted `package_id`, `domain_id`, `package_revision`, and `package_fingerprint` snapshot from RFC 003 admission; the complete bounded normalized request and provider result as untrusted echoes; valid caller-supplied `evaluation_time_ms`; one valid provider state/reason pair; envelope admission; one stable Hees stage/reason pair; and ordered materialized logical memory identifiers. The nested request retains its untrusted package, domain, revision, and fingerprint claims, query, limits, evaluation time, and request identifier. The nested result retains its caller identifiers, provider binding, state/reason, and ordered nominations. These nested fields never substitute for `evaluated_package`.
+- `Normalized` must contain `evaluated_package`, the complete trusted `package_id`, `domain_id`, `package_revision`, and `package_fingerprint` snapshot from RFC 005 admission; the complete bounded normalized request and provider result as untrusted echoes; valid caller-supplied `evaluation_time_ms`; one valid provider state/reason pair; envelope admission; one stable Hees stage/reason pair; and ordered materialized logical memory identifiers. The nested request retains its untrusted package, domain, revision, and fingerprint claims, query, limits, evaluation time, and request identifier. The nested result retains its caller identifiers, provider binding, state/reason, and ordered nominations. These nested fields never substitute for `evaluated_package`.
 - `PreNormalizationRejected` must contain only envelope admission `Rejected`, one stable Hees stage/reason pair, and optional request and result caller identifiers. Each caller identifier may be copied only when that individual field independently satisfies the canonical grammar and bound. It must contain no package identity, package claim, evaluation time, query, provider binding, provider state or reason, nomination, score, package content, malformed value, or other untrusted input, and it always exposes zero atoms.
 
-A rejected record is `Normalized` exactly when the normalization and package stages both succeeded, so Hees has the complete trusted evaluated package identity and a receipt-safe evaluation time and provider state/reason pair. Request identity mismatch, unapproved binding, malformed nomination semantics, ineligible atoms, and context overflow therefore remain normalized rejections with trusted package identity. Input-normalization failure, absence of RFC 003 package admission, or absence of an admitted memory registry uses `PreNormalizationRejected` and carries no trusted identity even if individual caller fields look canonical.
+A rejected record is `Normalized` exactly when the normalization and package stages both succeeded, so Hees has the complete trusted evaluated package identity and a receipt-safe evaluation time and provider state/reason pair. Request identity mismatch, unapproved binding, malformed nomination semantics, ineligible atoms, and context overflow therefore remain normalized rejections with trusted package identity. Input-normalization failure, absence of RFC 005 package admission, or absence of an admitted memory registry uses `PreNormalizationRejected` and carries no trusted identity even if individual caller fields look canonical.
 
 The complete normative fields of the selected variant form its in-memory identity. A minimal rejection record is deliberately not an injective representation of malformed input: different unsafe envelopes may produce the same safe stage/reason record.
 
@@ -341,15 +344,27 @@ Later governance consumes only an accepted context's typed provider state/reason
 
 ### Receipt projection ownership
 
-This RFC owns the complete in-memory `MemoryAdmissionRecord` and the trusted-versus-untrusted field distinction. RFC 004 exclusively owns the redacted JCS body, envelope, receipt identifier, private atomic projection, and public integrity verification. There is no second memory-specific canonical encoding or public result-to-receipt authoring API.
+This RFC owns the complete in-memory `MemoryAdmissionRecord` and the trusted-versus-untrusted field distinction. RFC 006 exclusively owns the redacted JCS body, envelope, receipt identifier, private atomic projection, and public integrity verification. There is no second memory-specific canonical encoding or public result-to-receipt authoring API.
 
-For `Normalized`, RFC 004 must take package identity only from `evaluated_package`, construct `artifact_digest` by prefixing its sole package fingerprint with `sha256:`, copy the admitted evaluation time and valid provider state/reason pair, and export materialized memory identifiers only for accepted `complete` or `partial`. Accepted `unavailable` and every normalized rejection export an empty admitted-memory array. `PreNormalizationRejected` maps to RFC 004's minimal body with no package, evaluation time, memory state, caller identifiers, or input-derived hash.
+For `Normalized`, RFC 006 must take package identity only from `evaluated_package`, construct `artifact_digest` by prefixing its sole package fingerprint with `sha256:`, copy the admitted evaluation time and valid provider state/reason pair, and export materialized memory identifiers only for accepted `complete` or `partial`. Accepted `unavailable` and every normalized rejection export an empty admitted-memory array. `PreNormalizationRejected` maps to RFC 006's minimal body with no package, evaluation time, memory state, caller identifiers, or input-derived hash.
 
 ### Determinism and errors
 
-Given identical RFC 003-admitted package data and identical typed request/result values, conforming implementations must select the same record variant, stage, globally unique reason, trusted identity presence, normative record fields, and accepted context. This in-memory determinism does not make a record an exported receipt; only RFC 004 defines canonical receipt bytes and identity.
+Given identical RFC 005-admitted package data and identical typed request/result values, conforming implementations must select the same record variant, stage, globally unique reason, trusted identity presence, normative record fields, and accepted context. This in-memory determinism does not make a record an exported receipt; only RFC 006 defines canonical receipt bytes and identity.
 
 ## Design details
+
+### Relationship to RFC 000
+
+RFC 000 defines retrieval output as non-authoritative nomination and requires package-owned reviewed memory before a value can participate in governance. This RFC realizes that ingress boundary without allowing relevance, provider identity, or returned text to become terminal authority.
+
+### Relationship to RFC 001
+
+This RFC supplies Spectrum with the direct accepted governed-memory context. Spectrum alone freezes the terminal selected and discarded partition; accepting or materializing an atom here does not make it answer-supporting selected memory.
+
+### Relationship to RFC 002
+
+RFC 002 projects exact source-safe provenance from Spectrum-selected atoms into Content DNA. This RFC owns the package-bound memory, source, review, rights, authority, validity, and provenance facts required by that projection; it does not construct answer-specific Content DNA.
 
 ### Relationship to the current evidence contract
 
@@ -363,15 +378,15 @@ Hees receives a normalized result envelope after an external caller has invoked 
 
 ### Acceptance obligations
 
-Conformance evidence must include at least two synthetic provider adapters that use different internal retrieval strategies but produce the same normalized request/result behavior. The evidence must demonstrate accepted and rejected envelope admission independently from complete, empty-complete, partial, and unavailable provider states; deterministic ordering and both admission-record variants; no unsafe-content echo after oversized or malformed pre-normalization input; conditional retention of independently canonical caller identifiers; exact version and provider-binding checks; fixed-point score boundaries; bounded and indefinite validity; stale and future atom rejection; duplicate and unknown identifier rejection; item and byte limits; request-package and atom-corpus mismatches; explicit source-fingerprint and classification-identifier validation during RFC 003 package admission; and deterministic handoff into later structural proposal admission.
+Conformance evidence must include at least two synthetic provider adapters that use different internal retrieval strategies but produce the same normalized request/result behavior. The evidence must demonstrate accepted and rejected envelope admission independently from complete, empty-complete, partial, and unavailable provider states; deterministic ordering and both admission-record variants; no unsafe-content echo after oversized or malformed pre-normalization input; conditional retention of independently canonical caller identifiers; exact version and provider-binding checks; fixed-point score boundaries; bounded and indefinite validity; stale and future atom rejection; duplicate and unknown identifier rejection; item and byte limits; request-package and atom-corpus mismatches; explicit source-fingerprint and classification-identifier validation during RFC 005 package admission; and deterministic handoff into later structural proposal admission.
 
-Shared package goldens must include complete formatted values plus exact RFC 8785 JCS bytes, member digests, descriptor counts, and inherited package identity for a registry with both optional limits absent, a registry with each lower limit present, a bounded atom, an indefinite atom, multiple atom shards, every recognized review/runtime-rights state, ordered labels, and more than one valid provider binding. JavaScript, Rust, and Incan consumers must agree on every payload key, array order, omission, canonical byte sequence, and RFC 003 package-admission outcome.
+Shared package goldens must include complete formatted values plus exact RFC 8785 JCS bytes, member digests, descriptor counts, and inherited package identity for a registry with both optional limits absent, a registry with each lower limit present, a bounded atom, an indefinite atom, multiple atom shards, every recognized review/runtime-rights state, ordered labels, and more than one valid provider binding. JavaScript, Rust, and Incan consumers must agree on every payload key, array order, omission, canonical byte sequence, and RFC 005 package-admission outcome.
 
-Negative package fixtures must independently cover every unknown field; aliases such as `provider_contract`, `contract_version`, `runtime_rights_status`, or a generic `payload`; key and enum case changes; `null` in every required field and each optional limit; zero, negative, fractional, exponent, oversized, and explicitly null limits; missing and extra validity end fields; null validity ends; unknown validity modes; duplicate provider tuples, classifications, atom identifiers, and labels; malformed fingerprints and versions; registry fields in an atom member; atom fields in a registry member; wrapper fields nested in payload; repeated package identity or digest; and record-count mismatch. Recognized `pending`, `rejected`, `restricted`, and `denied` states must have positive package-admission fixtures followed by RFC 001 runtime fixtures that reach the existing eligibility reasons.
+Negative package fixtures must independently cover every unknown field; aliases such as `provider_contract`, `contract_version`, `runtime_rights_status`, or a generic `payload`; key and enum case changes; `null` in every required field and each optional limit; zero, negative, fractional, exponent, oversized, and explicitly null limits; missing and extra validity end fields; null validity ends; unknown validity modes; duplicate provider tuples, classifications, atom identifiers, and labels; malformed fingerprints and versions; registry fields in an atom member; atom fields in a registry member; wrapper fields nested in payload; repeated package identity or digest; and record-count mismatch. Recognized `pending`, `rejected`, `restricted`, and `denied` states must have positive package-admission fixtures followed by RFC 003 runtime fixtures that reach the existing eligibility reasons.
 
-The fixture set must make every reason in the closed admission table reachable in isolation and must include multi-failure cases that prove the exact stage and within-stage precedence. It must prove that `Normalized` is selected if and only if normalization and package admission both succeed, that only `Normalized` carries the complete trusted evaluated package identity, and that canonical-looking request or result fields never supply trusted identity. Package fixtures must cover an RFC 003-admitted package-relative memory declaration, inherited identity binding without mutation or re-hashing, exact equality between `"sha256:" + package_fingerprint` and the admitted artifact digest, and rejection of a declaration that repeats its containing package identity or digest.
+The fixture set must make every reason in the closed admission table reachable in isolation and must include multi-failure cases that prove the exact stage and within-stage precedence. It must prove that `Normalized` is selected if and only if normalization and package admission both succeed, that only `Normalized` carries the complete trusted evaluated package identity, and that canonical-looking request or result fields never supply trusted identity. Package fixtures must cover an RFC 005-admitted package-relative memory declaration, inherited identity binding without mutation or re-hashing, exact equality between `"sha256:" + package_fingerprint` and the admitted artifact digest, and rejection of a declaration that repeats its containing package identity or digest.
 
-RFC 004 projection fixtures must prove that `Normalized` receipts derive their package object only from `evaluated_package`, that every normalized rejection and accepted `unavailable` result exports no admitted-memory identifiers, and that `PreNormalizationRejected` exports the minimal body with no package, evaluation, memory-state, caller-identifier, or input-derived field. The memory admission fixture must not define a competing receipt encoding, identifier, or redaction path.
+RFC 006 projection fixtures must prove that `Normalized` receipts derive their package object only from `evaluated_package`, that every normalized rejection and accepted `unavailable` result exports no admitted-memory identifiers, and that `PreNormalizationRejected` exports the minimal body with no package, evaluation, memory-state, caller-identifier, or input-derived field. The memory admission fixture must not define a competing receipt encoding, identifier, or redaction path.
 
 The acceptance corpus must be fictional and source-safe. It must include a case where the highest relevance score nominates an atom that a later semantic verifier rejects, proving that retrieval relevance alone is not authority.
 
@@ -403,15 +418,15 @@ Rejected because an envelope accepted on one device could fail or allocate dange
 
 ## Drawbacks
 
-Logical identifier retrieval requires package builders to compile and version a governed memory declaration before runtime. Exact provider bindings make index or configuration updates explicit package changes. Binding inherited package identity only after RFC 003 admission adds a deliberate distinction between package-relative serialized values and admitted runtime values. All-or-nothing validation can discard otherwise useful nominations after one malformed item. A closed reason vocabulary and strict precedence require a contract revision when a new public failure distinction is needed, and fixed absolute limits may require a future contract version as deployment needs evolve. The contract also does not solve semantic support; it deliberately leaves that to a later governed verifier and adjudication path.
+Logical identifier retrieval requires package builders to compile and version a governed memory declaration before runtime. Exact provider bindings make index or configuration updates explicit package changes. Binding inherited package identity only after RFC 005 admission adds a deliberate distinction between package-relative serialized values and admitted runtime values. All-or-nothing validation can discard otherwise useful nominations after one malformed item. A closed reason vocabulary and strict precedence require a contract revision when a new public failure distinction is needed, and fixed absolute limits may require a future contract version as deployment needs evolve. The contract also does not solve semantic support; it deliberately leaves that to a later governed verifier and adjudication path.
 
 ## Layers affected
 
 - **Public contract:** New versioned memory declaration, identity-bound admitted atom, validity, classification, provider binding, request, result, nomination, context, admission-record, provider-state, reason, and envelope-admission types.
-- **Runtime validation:** Deterministic normalization, RFC 003 admission lookup, trusted identity binding, envelope validation, package resolution, bounds enforcement, materialization, and typed fail-closed results.
-- **Package compatibility:** Explicit opt-in package-relative memory declaration and approved provider bindings carried through the RFC 003 package boundary, without requiring a monolithic package representation or changing existing 0.0.1 packages implicitly.
+- **Runtime validation:** Deterministic normalization, RFC 005 admission lookup, trusted identity binding, envelope validation, package resolution, bounds enforcement, materialization, and typed fail-closed results.
+- **Package compatibility:** Explicit opt-in package-relative memory declaration and approved provider bindings carried through the RFC 005 package boundary, without requiring a monolithic package representation or changing existing 0.0.1 packages implicitly.
 - **External integration boundary:** Provider invocation remains external and must normalize results to logical identifiers only.
-- **Receipt boundary:** RFC 004 privately projects the admission record into its canonical redacted receipt; this RFC defines no competing export format.
+- **Receipt boundary:** RFC 006 privately projects the admission record into its canonical redacted receipt; this RFC defines no competing export format.
 - **Tests and documentation:** Cross-implementation synthetic fixtures, complete reason and precedence coverage, identity-provenance cases, and clear current-versus-proposed API documentation.
 
 ## Design Decisions
@@ -429,11 +444,11 @@ Logical identifier retrieval requires package builders to compile and version a 
 - Authority, risk, and sensitivity are package-owned classification identifiers rather than universal numeric scales.
 - Memory admission and proposal admission remain separate; neither retrieval acceptance nor relevance proves semantic support.
 - Contract `0.1` uses fixed absolute bounds so independent implementations accept and reject the same envelopes.
-- RFC 003 owns the common member wrapper, canonical bytes, sharding, descriptors, sequencing, and inherited package identity; this RFC owns only the exact closed registry and atom payload schemas imported under `member_contract="0.1"`.
+- RFC 005 owns the common member wrapper, canonical bytes, sharding, descriptors, sequencing, and inherited package identity; this RFC owns only the exact closed registry and atom payload schemas imported under `member_contract="0.1"`.
 - Registry optional limits use absence rather than `null`, and atom validity uses one closed lowercase `bounded`/`indefinite` object whose end field is required only for `bounded`.
-- All recognized atom review and runtime-rights states survive structural package admission; only RFC 001 runtime nomination eligibility turns non-approved or non-allowed states into admission reasons.
-- The package-relative serialized memory declaration is exactly one RFC 003 registry member followed by one or more atom members; successful package admission binds inherited identity without changing or re-hashing any member bytes.
-- The complete trusted memory identity is `package_id`, `domain_id`, `package_revision`, and `package_fingerprint`; the fingerprint is exactly the suffix of the RFC 003 artifact digest, not a second hash.
+- All recognized atom review and runtime-rights states survive structural package admission; only RFC 003 runtime nomination eligibility turns non-approved or non-allowed states into admission reasons.
+- The package-relative serialized memory declaration is exactly one RFC 005 registry member followed by one or more atom members; successful package admission binds inherited identity without changing or re-hashing any member bytes.
+- The complete trusted memory identity is `package_id`, `domain_id`, `package_revision`, and `package_fingerprint`; the fingerprint is exactly the suffix of the RFC 005 artifact digest, not a second hash.
 - Normalized request and result fields remain untrusted echoes. Only the separate admitted-package snapshot supplies trusted evaluated identity, and pre-normalization rejection carries none.
-- The public admission stage and reason vocabulary is closed, globally unique within its RFC 004 namespace, and selected by strict precedence independently of provider-state reasons.
-- RFC 004 exclusively owns receipt canonicalization, redaction, identifiers, envelopes, private projection, and public integrity verification.
+- The public admission stage and reason vocabulary is closed, globally unique within its RFC 006 namespace, and selected by strict precedence independently of provider-state reasons.
+- RFC 006 exclusively owns receipt canonicalization, redaction, identifiers, envelopes, private projection, and public integrity verification.
