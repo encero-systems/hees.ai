@@ -1,7 +1,6 @@
 # Minimal governed agent
 
-This fictional Incan project consumes Hees as an external path dependency. It constructs one runtime package and asks
-Hees to admit a visible proposal whose action and cited evidence are package-owned.
+This fictional Incan project consumes Hees as an external path dependency. It constructs one runtime package and asks Hees to admit a visible proposal whose action and cited evidence are package-owned.
 
 It does not run a language model, perform retrieval, parse an archive, or claim semantic verification.
 

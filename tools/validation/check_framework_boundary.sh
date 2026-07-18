@@ -19,7 +19,7 @@ scan_repository() {
 
     while IFS= read -r path; do
         case "$path" in
-            ./.git/* | ./target/* | */target/* | */site/* | ./tools/validation/check_framework_boundary.sh)
+            ./.git | ./.git/* | ./target/* | */target/* | */site/* | ./tools/validation/check_framework_boundary.sh)
                 continue
                 ;;
         esac
@@ -82,6 +82,8 @@ allowed_docs=(
     workspaces/docs-site/docs/development.md
     workspaces/docs-site/docs/getting-started.md
     workspaces/docs-site/docs/index.md
+    workspaces/docs-site/docs/rfcs.md
+    workspaces/docs-site/docs/whitepapers/spectrum-and-content-dna.md
 )
 
 while IFS= read -r path; do
