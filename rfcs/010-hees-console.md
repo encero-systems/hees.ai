@@ -91,6 +91,7 @@ The first decision profile identifier is exactly `console_profile_0_1`. The firs
 
 | Surface | Contract identifier |
 | --- | --- |
+| Fictional package | `console_package_0_1` |
 | Optional atom comparison candidate | `console_atom_candidate_0_1` |
 | Model proposal | `console_proposal_0_1` |
 | Relation observation | `console_relation_observation_0_1` |
@@ -129,7 +130,15 @@ The runner response is the only source for `ADMITTED` or `REJECTED`. The host ma
 
 The first profile must operate only over a small original fictional lesson-support fixture. Each source declaration must contain a canonical source reference, source kind, SHA-256 source fingerprint, language identifier, explicit fictional-use rights state, and bounded source text. The release must not infer a legal rights claim from availability or model output.
 
-The fictional package must ship canonical reviewed, rights-allowed atoms independently from every provider call. Each canonical atom must have one distinct `memory_id`, one distinct `evidence_id`, `source_ref`, `source_kind`, `source_fingerprint`, `claim`, `guidance`, `language`, `review_state`, `review_revision`, `rights_state`, `authority_class`, `evidence_kind`, and package-bound `provenance_digest`. Package validation is the only way those atoms enter the admitted-memory context. A provider cannot add, remove, rewrite, review, license, or admit package memory.
+The package artifact under `console_package_0_1` must contain exactly `contract_version`, `profile_id`, `package_id`, `domain_id`, `package_revision`, `artifact_digest`, `mission`, `sources`, `actions`, `requirements`, `atoms`, and `policy`. `contract_version` must equal `console_package_0_1`, and `profile_id` must equal `console_profile_0_1`. `artifact_digest` must be `sha256:` followed by the lowercase SHA-256 digest of an RFC 8785 JCS artifact projection that removes the top-level `artifact_digest` and each atom's derived `provenance_digest` while preserving every other field and array order. The mission must be a bounded non-empty package-authored string.
+
+Each source must contain exactly `source_id`, `source_ref`, `source_kind`, `source_fingerprint`, `language`, `rights_state`, and `text`. `source_fingerprint` is the lowercase `sha256:` digest of the exact UTF-8 bytes of `text`, and `rights_state` must equal `fictional_use_allowed`. Each action must contain exactly `action_id` and `evidence_required`. Each requirement must contain exactly `requirement_id` and `description`. Source, action, requirement, memory, and evidence identifiers must be safe, ordered, and unique within their typed namespaces.
+
+Each atom must contain exactly `memory_id`, `evidence_id`, `source_id`, `source_ref`, `source_kind`, `source_fingerprint`, `source_span`, `claim`, `guidance`, `language`, `review_state`, `review_revision`, `rights_state`, `authority_class`, `evidence_kind`, and `provenance_digest`. `source_span` must contain exactly `start_utf8_byte` and `end_utf8_byte`, select a non-empty UTF-8-aligned byte range inside the bound source text, and bind the claim to that source range. `source_id`, source identity, fingerprint, and language must match the containing package source. `review_state` is exactly `approved`, `pending`, or `rejected`; `rights_state` is exactly `allowed` or `denied`. Only an atom with approved review, allowed rights, valid source binding, and valid provenance enters the admitted-memory context. The package carries no provider-supplied or precomputed admitted-memory list.
+
+An atom `provenance_digest` must be the lowercase `sha256:` digest of the RFC 8785 JCS object containing `package`, whose exact members are `package_id`, `domain_id`, `package_revision`, and `artifact_digest`, plus `entry`, whose exact members are `memory_id`, `source_ref`, `source_kind`, `source_fingerprint`, `review_state`, `review_revision`, `rights_state`, `authority_class`, and `evidence_kind`. The artifact digest is computed first from the projection that omits derived provenance; atom provenance is computed second and inserted without changing the artifact identity. This package-bound digest is copied unchanged into terminal Content DNA for a selected atom. It is a profile-specific fixture identity, not an RFC 005 admission capability or proof of source ownership.
+
+The fictional package must ship canonical reviewed, rights-allowed atoms independently from every provider call and at least one package-authored pending, rejected, or rights-denied record for fail-closed tests. Each atom must have one distinct `memory_id` and one distinct `evidence_id` plus the exact source, review, rights, authority, evidence-kind, and provenance fields defined above. Package validation is the only way eligible atoms enter the admitted-memory context; an ineligible package record remains addressable for adversarial testing but never becomes admitted memory. A provider cannot add, remove, rewrite, review, license, or admit package memory.
 
 An optional untrusted comparison candidate under `console_atom_candidate_0_1` must contain exactly:
 
@@ -145,6 +154,8 @@ An optional untrusted comparison candidate under `console_atom_candidate_0_1` mu
 - `candidate_digest`.
 
 The candidate must not contain a trusted memory or evidence identifier, review state, review revision, rights state, authority class, evidence kind, provenance digest, admission state, terminal action, selected-memory state, Content DNA, receipt data, arbitrary metadata, or hidden reasoning. Hees may compare its exact source binding, text fields, language, and digest with a canonical atom and return a non-authoritative match or mismatch record for display. A match does not create memory or strengthen its authority, and a mismatch does not mutate the package or affect terminal selection.
+
+`candidate_digest` must be `sha256:` followed by the lowercase SHA-256 digest of the RFC 8785 JCS candidate object after removing only `candidate_digest`. The digest establishes normalized candidate integrity; it does not establish provider provenance, review, rights, or package membership.
 
 The terminal path therefore never depends on an atom-candidate provider. If an optional candidate is absent, refused, malformed, or mismatched, the Console may show that comparison as unavailable or mismatched, but the canonical package and admitted-memory context remain unchanged.
 
@@ -223,7 +234,7 @@ The three relation scores must be exact integers from zero through ten thousand 
 
 The three synthesis scores must also be exact integers from zero through ten thousand and sum to exactly ten thousand. Neither observation contract has an authoritative status, action, policy, answer, source text, rationale, selected memory, Content DNA, receipt data, raw response metadata, or hidden reasoning.
 
-The fictional package owns a closed profile policy with `constraint_plan_id`, `constraint_plan_revision`, `response_contract_id`, `response_contract_revision`, and exact integer `min_support_bps`, `max_contradiction_bps`, `max_relation_unresolved_bps`, `min_coverage_bps`, `max_gap_bps`, and `max_synthesis_unresolved_bps` thresholds. Those numeric values must be frozen before this RFC advances to Planned. Hees classifies a relation observation in this precedence: `contradicted` when `contradiction_bps` exceeds `max_contradiction_bps`; `uncertain` when `unresolved_bps` exceeds `max_relation_unresolved_bps`; `supported` when `support_bps` meets or exceeds `min_support_bps`; otherwise `unsupported`. Hees classifies a synthesis observation in this precedence: `not_covered` when `gap_bps` exceeds `max_gap_bps`; `uncertain` when `unresolved_bps` exceeds `max_synthesis_unresolved_bps`; `covered` when `covered_bps` meets or exceeds `min_coverage_bps`; otherwise `not_covered`.
+The fictional package owns a closed profile policy with exactly `constraint_plan_id`, `constraint_plan_revision`, `response_contract_id`, `response_contract_revision`, `min_support_bps`, `max_contradiction_bps`, `max_relation_unresolved_bps`, `min_coverage_bps`, `max_gap_bps`, and `max_synthesis_unresolved_bps`. For `console_profile_0_1`, the numeric thresholds are frozen respectively at 6500, 3500, 2500, 6500, 3500, and 2500 basis points. Hees classifies a relation observation in this precedence: `contradicted` when `contradiction_bps` exceeds `max_contradiction_bps`; `uncertain` when `unresolved_bps` exceeds `max_relation_unresolved_bps`; `supported` when `support_bps` meets or exceeds `min_support_bps`; otherwise `unsupported`. Hees classifies a synthesis observation in this precedence: `not_covered` when `gap_bps` exceeds `max_gap_bps`; `uncertain` when `unresolved_bps` exceeds `max_synthesis_unresolved_bps`; `covered` when `covered_bps` meets or exceeds `min_coverage_bps`; otherwise `not_covered`.
 
 Hees emits one non-authoritative `console_finding_0_1` for every classified observation. Each finding must contain exactly `contract_version`, equal to `console_finding_0_1`; `profile_id`; `finding_id`; `observation_id`; `package_id`; `domain_id`; `request_id`; `candidate_digest`; `target_id`; `evaluator_role`; `target_role`; `classification`; `constraint_plan_id`; and `constraint_plan_revision`. A relation classification is exactly `supported`, `contradicted`, `uncertain`, or `unsupported`; a synthesis classification is exactly `covered`, `not_covered`, or `uncertain`. A finding cannot choose the terminal result. The bounded Spectrum operation consumes the complete finding set and package policy after classification; no majority vote, provider wording, call order, host code, or provider-supplied enum may choose the terminal result.
 
@@ -295,19 +306,17 @@ Experimental `console_content_dna_0_1` must be constructed inside the runner aft
 
 The ordered `entries` array contains every and only terminal selected-memory entries. Each entry must contain exactly `memory_id`, `source_ref`, `source_kind`, `source_fingerprint`, `provenance_digest`, `review_state`, `review_revision`, `rights_state`, `authority_class`, and `evidence_kind`. `provenance_digest` is the lowercase `sha256:` digest of the exact RFC 8785 JCS projection containing those fields other than `provenance_digest` plus the exact containing package object. `source_digests` is the ordered duplicate-free first-use projection of selected source fingerprints. `answer_digest` is the lowercase `sha256:` digest over the canonical bytes of a closed answer-binding object containing the exact ordered visible units, including unit identifiers, text, and requirement identifiers, and no support, finding, provider, or presentation fields. The body contains no source text, claim text, guidance text, prompt text, provider output, evaluator rationale, local path, or credential.
 
-The returned envelope contains exactly `body` and `content_dna_id`. `content_dna_id` must be `sha256:` followed by the lowercase SHA-256 digest of the exact canonical body bytes. `terminal` must contain the exact bounded terminal variant and public reason, while `policy` must name the exact package-owned constraint and response identities used by the bounded operation. If entry coverage, ordering, identity, canonicalization, or digest construction fails, the answer must not be admitted or exposed.
+The returned envelope contains exactly `body` and `content_dna_id`. `content_dna_id` must be `sha256:` followed by the lowercase SHA-256 digest of the exact canonical body bytes. `terminal` must contain exactly `decision`, `reason_namespace`, and `reason`, with values equal to the admitted terminal response; `policy` must name the exact package-owned constraint and response identities used by the bounded operation. If entry coverage, ordering, identity, canonicalization, or digest construction fails, the answer must not be admitted or exposed.
 
 The artifact must be labelled `EXPERIMENTAL CONSOLE CONTENT DNA 0.1`. It exercises the complete RFC 002 admitted-answer field shape for this bounded profile, including package, Spectrum decision, policy, selected-memory provenance, source-digest, and answer bindings. It does not establish full RFC 002 conformance: the profile does not implement the complete RFC 001, RFC 005, or RFC 009 source contracts and does not exercise RFC 002's no-answer state because this profile has no clarification outcome. Any conforming adoption requires an explicit profile and artifact transition.
 
 ### Profile-specific receipt
 
-The runner must privately construct one `console_profile_receipt_0_1` after the terminal decision. Its closed body must contain only:
+The runner may privately construct one `console_profile_receipt_0_1` after the terminal decision only when package, domain, package revision, artifact, request, and proposal identity have been safely established. An earlier failure returns no receipt rather than copying untrusted identity into an authority record. The receipt envelope must contain exactly `body` and `receipt_id`.
 
-- contract and profile identifiers;
-- trusted package, domain, request, and proposal identity where safely established;
-- decision, reason namespace, public reason, and checked structural reason;
-- admitted evidence identifiers and selected memory identifiers only for `admit`; and
-- `content_dna_id` only for `admit`.
+Every receipt body must contain exactly `contract_version`, `profile_id`, `package_id`, `domain_id`, `package_revision`, `artifact_digest`, `request_id`, `proposal_id`, `decision`, `reason_namespace`, `reason`, and `structural_reason`, plus the admitted-only members defined below. `contract_version` must equal `console_profile_receipt_0_1`, `profile_id` must equal `console_profile_0_1`, `decision` must equal `admit` or `reject`, and `reason_namespace` must equal `console_admission_0_1`. `reason` is the exact closed public reason. `structural_reason` is the exact checked Hees 0.0.1 reason when that call was reached and is JSON `null` otherwise.
+
+An admitted receipt body must additionally contain exactly `admitted_evidence_ids`, `selected_memory_ids`, and `content_dna_id`. A rejected receipt body must omit all three admitted-only members. The admitted arrays must be ordered and duplicate-free and must equal the terminal evidence and memory projections. The Content DNA identifier must equal the atomically returned admitted artifact.
 
 The receipt identifier must be `sha256:` followed by the lowercase SHA-256 digest of the exact RFC 8785 JCS canonical body bytes. The body must not contain source text, claim or guidance text, visible answer text, prompt content, model or provider identity, build or toolchain identity, replay metadata, observation or finding details, policy-effect diagnostics, raw provider metadata, credential, chain-of-thought, local path, private environment value, wall-clock timestamp, arbitrary diagnostic, or terminal control sequence.
 
@@ -444,7 +453,7 @@ The first profile applies one fixed versioned package policy that classifies com
 
 ### Relationship to RFC 005
 
-The first profile uses a bounded fictional package with fixed package revision and artifact-digest fields so experimental Content DNA can exercise its package binding. It does not claim RFC 005 canonical package-artifact admission, member topology, JCS package identity, sequential capability, or reload integrity. The fixture digest is a Console profile identity and must not be labelled an RFC 005-admitted artifact digest.
+The first profile uses a bounded fictional package with fixed package revision and profile-specific JCS artifact-digest fields so experimental Content DNA can exercise its package binding. It does not claim RFC 005 canonical package-artifact admission, member topology, sequential capability, or reload integrity. The fixture digest is a Console profile identity and must not be labelled an RFC 005-admitted artifact digest.
 
 ### Relationship to RFC 006
 
@@ -547,7 +556,6 @@ The limited profile also makes narrower claims than the product language may ini
 ## Unresolved questions
 
 - What exact raw-byte, item-count, visible-unit, observation, finding, selected-memory, canonical-body, terminal-rendering, and retained-state ceilings do clean supported-platform measurements justify for `console_profile_0_1`?
-- What exact package-owned relation and synthesis thresholds should be frozen after calibration against the complete fictional acceptance fixture?
 - Can a verified macOS self-contained artifact meet the same no-rebuild, provenance, dependency-license, extraction, and runner-integrity gates before the first release, or should `0.1.0` document Linux as its only supported local artifact?
 
 <!-- Rename this section to "Design Decisions" once all questions have been resolved.
