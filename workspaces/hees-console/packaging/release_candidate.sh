@@ -105,6 +105,37 @@ make_temp_directory() {
     mktemp -d "${TMPDIR:-/tmp}/hees-console-release.XXXXXX"
 }
 
+create_deterministic_tar() {
+    destination=$1
+    source_root=$2
+    bundle_name=$3
+    source_date_epoch=$4
+    tar_version=$(tar --version 2>/dev/null) || fail "archive_tool_unavailable"
+    case "$tar_version" in
+        *"GNU tar"*)
+            tar \
+                --sort=name \
+                --owner=0 \
+                --group=0 \
+                --numeric-owner \
+                --mtime="@$source_date_epoch" \
+                -cf "$destination" \
+                -C "$source_root" \
+                "$bundle_name" || fail "archive_create_failed"
+            ;;
+        *)
+            tar \
+                --uid 0 \
+                --gid 0 \
+                --uname root \
+                --gname root \
+                -cf "$destination" \
+                -C "$source_root" \
+                "$bundle_name" || fail "archive_create_failed"
+            ;;
+    esac
+}
+
 assert_safe_source_commit() {
     printf '%s\n' "$1" | grep -Eq '^[0-9a-f]{40}$' || fail "invalid_source_commit"
     head_commit=$(git -C "$REPOSITORY_ROOT" rev-parse HEAD 2>/dev/null) || fail "source_git_unavailable"
@@ -399,7 +430,7 @@ package_release() {
     set_file_mtime "$source_date_epoch" "$sidecar_manifest"
 
     tar_file="$output_directory/$PRODUCT_NAME-$PRODUCT_VERSION-$platform.tar"
-    tar --uid 0 --gid 0 --uname root --gname root -cf "$tar_file" -C "$scratch" "$bundle_name" || fail "archive_create_failed"
+    create_deterministic_tar "$tar_file" "$scratch" "$bundle_name" "$source_date_epoch"
     gzip -n -9 "$tar_file" || fail "archive_compress_failed"
     [ "$tar_file.gz" = "$archive" ] || fail "archive_name_mismatch"
     archive_sha256=$(sha256_file "$archive")
