@@ -1,15 +1,8 @@
 # RFC proposals
 
-Hees uses RFCs to review public contracts before implementation. A Draft
-describes proposed behavior only: it is not part of the checked `0.0.1` API.
-Until an RFC and its implementation are merged, [Contracts](contracts.md) and
-`src/lib.incn` remain the source of truth for supported behavior.
+Hees uses RFCs to review public contracts before implementation. A Draft describes proposed behavior only: it is not part of the checked `0.0.1` API. Until an RFC and its implementation are merged, [Contracts](contracts.md) and `src/lib.incn` remain the source of truth for supported behavior.
 
-The current Draft set is deliberately coupled. Together, the documents define
-package-owned memory, composable constraints, canonical package admission,
-safe receipts, non-authoritative verifier findings, behavior selection, and
-visible-response governance without transferring runtime authority to a model
-or provider.
+The current Draft set is deliberately coupled. Together, the documents define package-owned memory, composable constraints, canonical package admission, safe receipts, non-authoritative verifier findings, behavior selection, and visible-response governance without transferring runtime authority to a model or provider.
 
 | RFC | Proposal | Status |
 | --- | --- | --- |
@@ -21,5 +14,4 @@ or provider.
 | [006: Governed behavior envelopes](https://github.com/encero-systems/hees.ai/blob/main/rfcs/006-governed-behavior-envelopes.md) | [#4](https://github.com/encero-systems/hees.ai/issues/4) | Draft |
 | [007: Governed visible response lifecycle](https://github.com/encero-systems/hees.ai/blob/main/rfcs/007-governed-visible-response-lifecycle.md) | [#9](https://github.com/encero-systems/hees.ai/issues/9) | Draft |
 
-See the [RFC process and lifecycle](https://github.com/encero-systems/hees.ai/blob/main/rfcs/README.md)
-for the status definitions and publication boundary.
+See the [RFC process and lifecycle](https://github.com/encero-systems/hees.ai/blob/main/rfcs/README.md) for the status definitions and publication boundary.

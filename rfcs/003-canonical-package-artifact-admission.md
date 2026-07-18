@@ -11,7 +11,7 @@
     - RFC 006 (Governed Behavior Envelopes)
     - RFC 007 (Governed Visible Response Lifecycle)
 - **Issue:** https://github.com/encero-systems/hees.ai/issues/1
-- **RFC PR:** https://github.com/encero-systems/hees.ai/pull/10
+- **RFC PR:** —
 - **Written against:** Hees 0.0.1 / Incan 0.4.0
 - **Shipped in:** —
 
