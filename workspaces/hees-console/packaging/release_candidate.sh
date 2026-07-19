@@ -355,7 +355,7 @@ prepare_incan() {
         --locked \
         --release \
         --bin incan || fail "incan_source_build_failed"
-    install -m 755 "$destination/source/target/release/incan" "$destination/bin/incan" || fail "incan_install_failed"
+    ln -s ../source/target/release/incan "$destination/bin/incan" || fail "incan_install_failed"
     [ "$("$destination/bin/incan" --version 2>/dev/null)" = "incan $INCAN_VERSION" ] || fail "incan_version_mismatch"
 }
 
