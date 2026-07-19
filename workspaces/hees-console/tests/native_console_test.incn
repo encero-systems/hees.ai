@@ -14,7 +14,7 @@ from embedded_data import (
 )
 from evaluation import ConsoleRun, evaluate_offline_scenario, live_context_plan_json, plan_live_question_json
 from live import evaluate_live_with_transports
-from main import cli_error
+from main import cli_error, usage
 from crate.provider import GPT56_MODEL, ProviderFailure
 from rendering import bounded_text, render_headless, render_screen
 from replays import embedded_inputs_are_non_terminal, load_offline_scenario
@@ -394,6 +394,8 @@ def test_injected_live_undeclared_action_reaches_the_exact_hees_rejection() -> N
 def test_cli_rejects_ambiguous_or_cross_mode_arguments() -> None:
     """Keep live activation explicit and prevent last-flag-wins command ambiguity."""
 
+    assert_eq(usage().contains("hees-console --mode live"), true)
+    assert_eq(usage().contains("hees_console"), false)
     assert_eq(cli_error(["--mode", "live", "--question", "What is the sequence?"]), None)
     assert_eq(
         cli_error(["--mode", "offline", "--question", "What is the sequence?"]),
