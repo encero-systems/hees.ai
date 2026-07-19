@@ -2,7 +2,7 @@
 
 This directory contains the pre-freeze submission materials for the Hees Console Build Week 2026 entry. It is public drafting material, not evidence that a release, hosted demo, video, or Devpost submission exists.
 
-The submission pack was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 18, 2026. The official rules remain authoritative if this pack becomes stale or incomplete.
+The submission pack was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 19, 2026. The official rules remain authoritative if this pack becomes stale or incomplete.
 
 ## Documents
 

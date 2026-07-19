@@ -1,10 +1,11 @@
 """Contract tests for bounded nominal identifiers and their transparent JSON representation."""
 
-from std.testing import assert_eq
+from std.testing import assert_eq, assert_is_err, assert_is_ok
 from crate.identifiers import (
     DigestIdType,
     IdType,
     MAX_IDENTIFIER_LENGTH,
+    RevisionType,
     action_id,
     action_id_text,
     evidence_id,
@@ -21,16 +22,13 @@ def repeated_a(count: int) -> str:
 
 def test_id_type_accepts_the_exact_maximum_length() -> None:
     value = repeated_a(MAX_IDENTIFIER_LENGTH)
-    match IdType.from_underlying(value):
-        Err(_) => assert_eq(false, true)
-        Ok(identifier) => assert_eq(len(identifier.0), MAX_IDENTIFIER_LENGTH)
+    identifier = assert_is_ok(IdType.from_underlying(value))
+    assert_eq(len(identifier.0), MAX_IDENTIFIER_LENGTH)
 
 
 def test_id_type_rejects_a_book_length_identifier_before_storage() -> None:
     value = repeated_a(MAX_IDENTIFIER_LENGTH + 1)
-    match IdType.from_underlying(value):
-        Err(_) => assert_eq(true, true)
-        Ok(_) => assert_eq(false, true)
+    assert_is_err(IdType.from_underlying(value))
 
 
 def test_nominal_namespaces_share_validation_without_sharing_types() -> None:
@@ -42,9 +40,11 @@ def test_nominal_namespaces_share_validation_without_sharing_types() -> None:
 
 def test_digest_identifier_type_accepts_only_exact_sha256_identity() -> None:
     valid = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-    match DigestIdType.from_underlying(valid):
-        Err(_) => assert_eq(false, true)
-        Ok(_) => assert_eq(true, true)
-    match DigestIdType.from_underlying("sha256:not-a-digest"):
-        Err(_) => assert_eq(true, true)
-        Ok(_) => assert_eq(false, true)
+    assert_is_ok(DigestIdType.from_underlying(valid))
+    assert_is_err(DigestIdType.from_underlying("sha256:not-a-digest"))
+
+
+def test_revision_type_owns_revision_validation() -> None:
+    revision = assert_is_ok(RevisionType.from_underlying("1.0.0"))
+    assert_eq(revision.0, "1.0.0")
+    assert_is_err(RevisionType.from_underlying("one.zero.zero"))

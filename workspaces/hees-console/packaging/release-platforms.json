@@ -1,37 +1,30 @@
 {
   "schema_version": 1,
-  "incan_release": {
-    "version": "0.4.0",
-    "tag": "v0.4.0",
-    "release_url": "https://github.com/encero-systems/incan/releases/tag/v0.4.0",
-    "download_base_url": "https://github.com/encero-systems/incan/releases/download/v0.4.0"
+  "incan_toolchain": {
+    "version": "0.5.0-dev.18",
+    "source_repository": "https://github.com/encero-systems/incan",
+    "source_commit": "79e7025bef547cd6eb79f08159630ec5998412d1"
   },
   "platforms": {
     "linux-x86_64": {
       "runner": "ubuntu-24.04",
       "system": "Linux",
-      "machine": "x86_64",
-      "incan_archive": "incan-v0.4.0-x86_64-unknown-linux-gnu.tar.gz",
-      "incan_sha256": "f39e941e3fc0c817de9656b78b1c8899ef226784f095f9fff02efac3f06562b0"
+      "machine": "x86_64"
     },
     "macos-aarch64": {
       "runner": "macos-15",
       "system": "Darwin",
-      "machine": "aarch64",
-      "incan_archive": "incan-v0.4.0-aarch64-apple-darwin.tar.gz",
-      "incan_sha256": "f1cc83611de33808b609f814c9cec7fe59c0e3315e2767f65ecda9c71e9b966a"
+      "machine": "aarch64"
     },
     "macos-x86_64": {
       "runner": "macos-15-intel",
       "system": "Darwin",
-      "machine": "x86_64",
-      "incan_archive": "incan-v0.4.0-x86_64-apple-darwin.tar.gz",
-      "incan_sha256": "f5f4b13c85b0823b1d517a3ac618441e7147eb9987f1f3450bcefbe26fabca70"
+      "machine": "x86_64"
     }
   },
   "unsupported_platforms": {
-    "linux-aarch64": "Incan v0.4.0 has no Linux ARM64 native archive.",
-    "windows-aarch64": "Incan v0.4.0 has no Windows ARM64 native archive.",
-    "windows-x86_64": "Incan v0.4.0 has no Windows x86_64 native archive."
+    "linux-aarch64": "The candidate matrix has no standard hosted Linux ARM64 runner.",
+    "windows-aarch64": "The candidate matrix has not executed a Windows ARM64 build.",
+    "windows-x86_64": "The candidate matrix has not executed a Windows x86_64 build."
   }
 }

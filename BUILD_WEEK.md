@@ -62,7 +62,7 @@ No placeholder in this ledger may be interpreted as evidence. Each value must be
 
 | Requirement or claim | Required evidence | Final evidence |
 | --- | --- | --- |
-| Public, licensed source repository | Public repository URL, Apache-2.0 license, release revision | **[FINALIZE BEFORE RELEASE: REPOSITORY URL, LICENSE URL, AND COMMIT]** |
+| Public, licensed source repository | Public repository URL, Apache-2.0 license, release revision | [Hees.ai](https://github.com/encero-systems/hees.ai), [Apache-2.0 license](https://github.com/encero-systems/hees.ai/blob/main/LICENSE); **[FINALIZE BEFORE RELEASE: FROZEN COMMIT]** |
 | Meaningful post-July-13 extension | Dated commit range and implementation pull requests distinguishing prior work | [RFC foundation PR #10](https://github.com/encero-systems/hees.ai/pull/10), [Console RFC PR #15](https://github.com/encero-systems/hees.ai/pull/15), and [native implementation PR #17](https://github.com/encero-systems/hees.ai/pull/17) |
 | Codex collaboration | Timestamped task evidence, dated commits, review and implementation records | **[FINALIZE BEFORE RELEASE: CODEX EVIDENCE LINKS]** |
 | Majority core task | `/feedback` Session ID supplied by Danny | **[MANUAL INPUT REQUIRED BEFORE SUBMISSION: CODEX SESSION ID]** |

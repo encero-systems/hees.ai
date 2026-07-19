@@ -1,4 +1,4 @@
-from std.testing import assert_eq, assert_is_ok
+from std.testing import assert_eq, assert_is_err, assert_is_ok
 
 """Contract and precedence tests for the fixed Build Week console profile."""
 
@@ -9,14 +9,17 @@ from std.hash import sha256
 from std.serde import json
 from std.serde.json import Deserialize
 from crate.identifiers import (
+    DigestIdType,
     action_id,
     constraint_plan_id,
     contract_id,
     evidence_id,
     evidence_id_text,
+    digest_id_type,
     finding_id_text,
     memory_id_text,
     request_id,
+    revision,
     response_contract_id,
 )
 from crate.console_profile import (
@@ -24,27 +27,32 @@ from crate.console_profile import (
     ConsoleProposal,
     ConsolePolicy,
     ConsoleRequestBinding,
-    DerivedFinding,
     RelationObservation,
     SynthesisObservation,
-    bind_console_request_json,
-    classify_relation,
-    classify_synthesis,
-    build_verifier_manifest,
+    evaluate_console_profile,
+)
+from crate.console_profile_identity import (
+    digest_canonical_json,
     digest_atom_provenance,
     digest_package_artifact,
     digest_proposal,
     digest_request_binding,
-    derive_findings,
-    evaluate_console_profile,
-    finding_policy_reason,
+)
+from crate.console_profile_models import DerivedFinding
+from crate.console_profile_observations import derive_findings, finding_policy_reason, validate_observation_coverage
+from crate.console_profile_planning import (
+    bind_console_request_json,
+    build_verifier_manifest,
     identify_console_proposal_json,
     plan_console_manifest_json,
     plan_console_provider_context_json,
+)
+from crate.console_profile_validation import (
+    classify_relation,
+    classify_synthesis,
     validate_console_package,
     validate_console_proposal,
     validate_request_binding,
-    validate_observation_coverage,
 )
 
 
@@ -53,9 +61,9 @@ def policy() -> ConsolePolicy:
 
     return ConsolePolicy(
         constraint_plan_id=constraint_plan_id("fictional_lesson_constraints"),
-        constraint_plan_revision="1.0.0",
+        constraint_plan_revision=revision("1.0.0"),
         response_contract_id=response_contract_id("fictional_lesson_response"),
-        response_contract_revision="1.0.0",
+        response_contract_revision=revision("1.0.0"),
         min_support_bps=6500,
         max_contradiction_bps=3500,
         max_relation_unresolved_bps=2500,
@@ -65,13 +73,27 @@ def policy() -> ConsolePolicy:
     )
 
 
+def test_canonical_json_digest_returns_a_typed_result() -> None:
+    """Canonicalize equivalent object ordering before constructing a digest identity."""
+
+    left = assert_is_ok(digest_canonical_json("{\"b\":2,\"a\":1}"))
+    right = assert_is_ok(digest_canonical_json("{\"a\":1,\"b\":2}"))
+    assert_eq(left, right)
+
+
+def test_canonical_json_digest_rejects_malformed_input() -> None:
+    """Keep malformed arbitrary JSON outside the identity-bearing digest path."""
+
+    assert_is_err(digest_canonical_json("{\"a\":"))
+
+
 def test_request_digest_matches_the_frozen_rfc010_golden() -> None:
     """Bind the exact request identifier and question to the RFC golden digest."""
 
     request = ConsoleRequestBinding(
         request_id=request_id("request_valid_lantern"),
         question="What order should I use for the Lantern Path cards?",
-        request_digest="sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71",
+        request_digest=digest_id_type("sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71"),
     )
     assert_eq(digest_request_binding(request), request.request_digest)
 
@@ -173,10 +195,10 @@ def load_syntheses() -> Result[list[SynthesisObservation], str]:
     return Ok(result)
 
 
-def text_digest(value: str) -> str:
+def text_digest(value: str) -> DigestIdType:
     """Hash exact UTF-8 fixture text for adversarial package mutations."""
 
-    return f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}"
+    return digest_id_type(f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}")
 
 
 def self_consistent_forged_package() -> ConsolePackage:
@@ -267,18 +289,42 @@ def test_incan_manifest_matches_all_frozen_target_digests() -> None:
     proposal = assert_is_ok(load_proposal())
     assert_eq(
         digest_proposal(proposal.clone()),
-        "sha256:1eb12d81b9766254c61281524d9c18cd68ec9027ec65f4f059944b4638ed2b19",
+        digest_id_type("sha256:1eb12d81b9766254c61281524d9c18cd68ec9027ec65f4f059944b4638ed2b19"),
     )
     manifest = build_verifier_manifest(package, request, proposal)
     assert_eq(len(manifest), 8)
-    assert_eq(manifest[0].target_digest, "sha256:271b2e6039cd713abe53435fcacb820e5a311bca6e87b99e06ea55cc09646336")
-    assert_eq(manifest[1].target_digest, "sha256:73fadba709376ab7df86ad957e8759f0139775889c994738d6da44c2c0748267")
-    assert_eq(manifest[2].target_digest, "sha256:6a12e4324d63e1df7a769c0262370b53e15373a7593a8f32e0164dda4855de3f")
-    assert_eq(manifest[3].target_digest, "sha256:12ee1309d571b36b72e40cebcc641b7fd7fb292df4712aa3c317bda80ae71f00")
-    assert_eq(manifest[4].target_digest, "sha256:f6b6878ae664c1c3cab42efe594fe81613a7cf92cac5e02d00ae16b3989281f4")
-    assert_eq(manifest[5].target_digest, "sha256:02e512ba1eedf2d9fad53cb715b692c4a54fa470272c22873f57d2462e305046")
-    assert_eq(manifest[6].target_digest, "sha256:bdd23fbcdcb26fe9075bfbcd2bec9898b90ac6ca49d3840fcc17dc5025d42391")
-    assert_eq(manifest[7].target_digest, "sha256:08a4140d009e8cb48527abf891e218584f0e834951a6fbbae0a55933f66e52ee")
+    assert_eq(
+        manifest[0].target_digest,
+        digest_id_type("sha256:271b2e6039cd713abe53435fcacb820e5a311bca6e87b99e06ea55cc09646336"),
+    )
+    assert_eq(
+        manifest[1].target_digest,
+        digest_id_type("sha256:73fadba709376ab7df86ad957e8759f0139775889c994738d6da44c2c0748267"),
+    )
+    assert_eq(
+        manifest[2].target_digest,
+        digest_id_type("sha256:6a12e4324d63e1df7a769c0262370b53e15373a7593a8f32e0164dda4855de3f"),
+    )
+    assert_eq(
+        manifest[3].target_digest,
+        digest_id_type("sha256:12ee1309d571b36b72e40cebcc641b7fd7fb292df4712aa3c317bda80ae71f00"),
+    )
+    assert_eq(
+        manifest[4].target_digest,
+        digest_id_type("sha256:f6b6878ae664c1c3cab42efe594fe81613a7cf92cac5e02d00ae16b3989281f4"),
+    )
+    assert_eq(
+        manifest[5].target_digest,
+        digest_id_type("sha256:02e512ba1eedf2d9fad53cb715b692c4a54fa470272c22873f57d2462e305046"),
+    )
+    assert_eq(
+        manifest[6].target_digest,
+        digest_id_type("sha256:bdd23fbcdcb26fe9075bfbcd2bec9898b90ac6ca49d3840fcc17dc5025d42391"),
+    )
+    assert_eq(
+        manifest[7].target_digest,
+        digest_id_type("sha256:08a4140d009e8cb48527abf891e218584f0e834951a6fbbae0a55933f66e52ee"),
+    )
 
 
 def test_public_proposal_identity_projects_only_the_hees_canonical_digest() -> None:
@@ -341,7 +387,7 @@ def test_public_provider_context_fails_closed_without_returning_an_authority_rea
     """Return a typed non-plannable envelope for an invalid request without a terminal reason."""
 
     mut request = assert_is_ok(load_request())
-    request.request_digest = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string()
+    request.request_digest = digest_id_type("sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
     plan = plan_console_provider_context_json(assert_is_ok(load_package()), request)
     assert_eq(plan.contains("\"plannable\":false"), true)
     assert_eq(plan.contains("\"context\":null"), true)
@@ -423,7 +469,7 @@ def test_observation_identity_failure_precedes_coverage_failure() -> None:
     manifest = build_verifier_manifest(package.clone(), request.clone(), proposal.clone())
     mut relations = assert_is_ok(load_relations())
     mut mismatched = relations[0]
-    mismatched.target_digest = f"sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    mismatched.target_digest = digest_id_type("sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
     relations[0] = mismatched
     relation_last_index = len(relations) - 1
     relations.remove(relation_last_index)

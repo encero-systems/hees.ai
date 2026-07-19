@@ -5,5 +5,8 @@ description = "Bounded process adapter for the Hees admission kernel"
 authors = ["Encero Systems"]
 license = "Apache-2.0"
 
+[project.scripts]
+main = "src/main.incn"
+
 [dependencies]
-hees = { path = "../../.." }
+hees_ai = { workspace = true }

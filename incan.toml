@@ -1,7 +1,34 @@
 [project]
-name = "hees"
+name = "hees_ai"
 version = "0.0.1"
 description = "Incan-first contracts for admitting governed AI proposals"
 authors = ["Encero Systems"]
 license = "Apache-2.0"
 readme = "README.md"
+
+[project.scripts]
+library = "src/lib.incn"
+
+[workspace]
+members = [
+    "examples/minimal_governed_agent",
+    "workspaces/external-consumer",
+    "workspaces/hees-console",
+    "workspaces/hees-console/runner",
+    "workspaces/hees-console/contracts/domain/kernel_compatibility",
+]
+default-members = [
+    "hees_ai",
+    "minimal_governed_agent",
+    "hees_external_consumer",
+    "hees_console",
+    "hees_runner",
+    "console_kernel_compatibility",
+]
+
+[workspace.dependencies]
+hees_ai = { path = "." }
+
+[workspace.rust-dependencies]
+crossterm = "0.29"
+ureq = { version = "2.12", features = ["tls"] }

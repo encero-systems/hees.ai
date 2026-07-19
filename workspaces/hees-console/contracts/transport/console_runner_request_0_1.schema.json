@@ -83,7 +83,7 @@
       "properties": {
         "runner_id": {"const": "hees_console_runner_0_1"},
         "hees_version": {"const": "0.0.1"},
-        "toolchain_version": {"const": "incan_0.4.0"},
+        "toolchain_version": {"const": "incan_0.5.0_dev_18"},
         "build_id": {"$ref": "#/$defs/digest"},
         "provider_id": {"$ref": "#/$defs/identifier"},
         "request_schema_id": {"const": "console_runner_request_0_1"},

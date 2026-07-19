@@ -43,7 +43,9 @@ The release archive contains one native executable plus the project license, not
 ./hees-console
 ```
 
-Use `1` through `5` to select the admitted and adversarial scenarios. The arrow keys or `h`, `j`, `k`, and `l` move between scenarios and inspectors, `enter` advances to the next inspector, and `q` quits. Headless mode evaluates one scenario and emits stable, control-free, privacy-redacted output:
+Use `1` through `5` to select the admitted and adversarial scenarios. The interaction browser opens first. Use `↑` and `↓`, or `j` and `k`, to move through visible interactions; `enter` opens the selected inspector and `g` returns to the browser. Within an inspector, `←` and `→`, or `h` and `l`, move through the available views. Press `b` to collapse or expand the navigation rail.
+
+The browser integrates tags into its free-text search control. Press `/`, type a query, use `↑` and `↓` to highlight a tag, use `tab` to check or uncheck it, and use `ctrl-u` to clear the combined query. Press `s` to operate the Status column header, where `↑` and `↓` choose `ADMITTED`, `REJECTED`, or the ordering row and `space` or `tab` changes the selected value. Interactive state cells use green `✓ ADMITTED` and red `✕ REJECTED`; icon and text carry the complete distinction without colour. Press `q` to quit. Headless mode evaluates one scenario and emits stable, control-free, privacy-redacted output:
 
 ```bash
 ./hees-console --headless --scenario valid

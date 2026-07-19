@@ -2,5 +2,8 @@
 name = "console_kernel_compatibility"
 version = "0.0.1"
 
+[project.scripts]
+main = "src/main.incn"
+
 [dependencies]
-hees = { path = "../../../../.." }
+hees_ai = { workspace = true }

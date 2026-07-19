@@ -196,6 +196,22 @@ pub def scenario_title(slug: str) -> str:
     return "Unknown scenario"
 
 
+pub def scenario_tags(slug: str) -> list[str]:
+    """Return bounded presentation-only tags for browsing the shipped scenarios."""
+
+    if slug == "valid":
+        return ["happy-path", "evidence"]
+    if slug == "undeclared-action":
+        return ["adversarial", "action"]
+    if slug == "unknown-evidence":
+        return ["adversarial", "evidence"]
+    if slug == "unknown-memory":
+        return ["adversarial", "memory"]
+    if slug == "non-admitted-memory":
+        return ["adversarial", "memory", "review"]
+    return []
+
+
 def expected_scenario_id(slug: str) -> str:
     """Map each public slug to the immutable replay scenario identity."""
 

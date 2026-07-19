@@ -4,8 +4,9 @@ set -eu
 
 PRODUCT_NAME=hees-console
 PRODUCT_VERSION=0.1.0
-INCAN_VERSION=0.4.0
-INCAN_DOWNLOAD_BASE=https://github.com/encero-systems/incan/releases/download/v0.4.0
+INCAN_VERSION=0.5.0-dev.18
+INCAN_SOURCE_REPOSITORY=https://github.com/encero-systems/incan.git
+INCAN_SOURCE_COMMIT=79e7025bef547cd6eb79f08159630ec5998412d1
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 REPOSITORY_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/../../.." && pwd)
 THIRD_PARTY_LICENSES_SOURCE=${THIRD_PARTY_LICENSES_SOURCE:-}
@@ -20,7 +21,7 @@ usage() {
 usage:
   release_candidate.sh current-platform
   release_candidate.sh validate-platform --platform PLATFORM
-  release_candidate.sh fetch-incan --platform PLATFORM --destination DIRECTORY
+  release_candidate.sh prepare-incan --platform PLATFORM --destination DIRECTORY
   THIRD_PARTY_LICENSES_SOURCE=FILE release_candidate.sh package --binary FILE --platform PLATFORM --output-directory DIRECTORY --source-commit COMMIT --source-date-epoch EPOCH --incan-root DIRECTORY --incan-lock FILE [--forbidden PATH ...]
   release_candidate.sh smoke-binary --binary FILE
   release_candidate.sh smoke-archive --archive FILE --platform PLATFORM [--forbidden PATH ...]
@@ -59,20 +60,14 @@ load_platform() {
         linux-x86_64)
             PLATFORM_SYSTEM=Linux
             PLATFORM_MACHINE=x86_64
-            INCAN_ARCHIVE=incan-v0.4.0-x86_64-unknown-linux-gnu.tar.gz
-            INCAN_SHA256=f39e941e3fc0c817de9656b78b1c8899ef226784f095f9fff02efac3f06562b0
             ;;
         macos-aarch64)
             PLATFORM_SYSTEM=Darwin
             PLATFORM_MACHINE=aarch64
-            INCAN_ARCHIVE=incan-v0.4.0-aarch64-apple-darwin.tar.gz
-            INCAN_SHA256=f1cc83611de33808b609f814c9cec7fe59c0e3315e2767f65ecda9c71e9b966a
             ;;
         macos-x86_64)
             PLATFORM_SYSTEM=Darwin
             PLATFORM_MACHINE=x86_64
-            INCAN_ARCHIVE=incan-v0.4.0-x86_64-apple-darwin.tar.gz
-            INCAN_SHA256=f5f4b13c85b0823b1d517a3ac618441e7147eb9987f1f3450bcefbe26fabca70
             ;;
         *) fail "unsupported_platform" ;;
     esac
@@ -301,7 +296,7 @@ write_manifest() {
     notice_sha256=$9
     third_party_licenses_sha256=${10}
     cat >"$destination" <<EOF
-{"schema_version":1,"product":{"name":"$PRODUCT_NAME","version":"$PRODUCT_VERSION"},"build":{"language":"Incan","profile":"release"},"platform":"$platform","source":{"commit":"$source_commit","date_epoch":$source_date_epoch,"tree_state":"$tree_state"},"toolchain":{"compiler":"incan","compiler_version":"$INCAN_VERSION","release_archive":"$INCAN_ARCHIVE","release_sha256":"$INCAN_SHA256"},"dependencies":{"incan_lock_file":"workspaces/hees-console/incan.lock","incan_lock_sha256":"$incan_lock_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$third_party_licenses_sha256"},"artifact":{"name":"hees-console","sha256":"$binary_sha256","size_bytes":$binary_size}}
+{"schema_version":1,"product":{"name":"$PRODUCT_NAME","version":"$PRODUCT_VERSION"},"build":{"language":"Incan","profile":"release"},"platform":"$platform","source":{"commit":"$source_commit","date_epoch":$source_date_epoch,"tree_state":"$tree_state"},"toolchain":{"compiler":"incan","compiler_version":"$INCAN_VERSION","source_repository":"$INCAN_SOURCE_REPOSITORY","source_commit":"$INCAN_SOURCE_COMMIT"},"dependencies":{"incan_lock_file":"incan.lock","incan_lock_sha256":"$incan_lock_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$third_party_licenses_sha256"},"artifact":{"name":"hees-console","sha256":"$binary_sha256","size_bytes":$binary_size}}
 EOF
 }
 
@@ -342,23 +337,26 @@ run_smoke_scenario() {
     fi
 }
 
-fetch_incan() {
+prepare_incan() {
     platform=$1
     destination=$2
     validate_platform "$platform"
     [ ! -e "$destination" ] || fail "incan_destination_exists"
-    scratch=$(make_temp_directory)
-    trap 'rm -rf "$scratch"' EXIT HUP INT TERM
-    archive="$scratch/$INCAN_ARCHIVE"
-    curl --fail --location --proto '=https' --tlsv1.2 \
-        "$INCAN_DOWNLOAD_BASE/$INCAN_ARCHIVE" \
-        --output "$archive" || fail "incan_download_failed"
-    [ "$(sha256_file "$archive")" = "$INCAN_SHA256" ] || fail "incan_checksum_mismatch"
-    mkdir -p "$destination"
-    tar -xzf "$archive" -C "$destination" || fail "incan_extract_failed"
+    command -v cargo >/dev/null 2>&1 || fail "cargo_unavailable"
+    command -v git >/dev/null 2>&1 || fail "git_unavailable"
+    mkdir -p "$destination/source" "$destination/bin"
+    git -C "$destination/source" init --quiet || fail "incan_source_init_failed"
+    git -C "$destination/source" remote add origin "$INCAN_SOURCE_REPOSITORY" || fail "incan_source_remote_failed"
+    git -C "$destination/source" fetch --quiet --depth 1 origin "$INCAN_SOURCE_COMMIT" || fail "incan_source_fetch_failed"
+    git -C "$destination/source" checkout --quiet --detach FETCH_HEAD || fail "incan_source_checkout_failed"
+    [ "$(git -C "$destination/source" rev-parse HEAD 2>/dev/null)" = "$INCAN_SOURCE_COMMIT" ] || fail "incan_source_commit_mismatch"
+    cargo build \
+        --manifest-path "$destination/source/Cargo.toml" \
+        --locked \
+        --release \
+        --bin incan || fail "incan_source_build_failed"
+    install -m 755 "$destination/source/target/release/incan" "$destination/bin/incan" || fail "incan_install_failed"
     [ "$("$destination/bin/incan" --version 2>/dev/null)" = "incan $INCAN_VERSION" ] || fail "incan_version_mismatch"
-    rm -rf "$scratch"
-    trap - EXIT HUP INT TERM
 }
 
 package_release() {
@@ -503,7 +501,7 @@ case "$command" in
         [ -n "$platform" ] || fail "platform_required"
         validate_platform "$platform"
         ;;
-    fetch-incan)
+    prepare-incan)
         platform=
         destination=
         while [ "$#" -gt 0 ]; do
@@ -515,7 +513,7 @@ case "$command" in
         done
         [ -n "$platform" ] || fail "platform_required"
         [ -n "$destination" ] || fail "destination_required"
-        fetch_incan "$platform" "$destination"
+        prepare_incan "$platform" "$destination"
         ;;
     package)
         binary=

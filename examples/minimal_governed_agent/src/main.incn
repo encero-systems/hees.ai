@@ -1,6 +1,6 @@
 """Fictional external implementation using the checked Hees public API."""
 
-from pub::hees import (
+from pub::hees_ai import (
     ReviewStatus,
     RightsStatus,
     action_id,

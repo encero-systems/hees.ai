@@ -1,6 +1,6 @@
 """Bounded NDJSON transport for the complete ``console_profile_0_1`` authority path."""
 
-from pub::hees import (
+from pub::hees_ai import (
     ConsoleAtom,
     ConsolePackage,
     ConsoleProposal,
@@ -13,6 +13,7 @@ from pub::hees import (
     action_id_text,
     constraint_plan_id_text,
     contract_id_text,
+    digest_id_type_text,
     domain_id_text,
     evidence_id_text,
     evaluate_console_profile_json,
@@ -21,6 +22,7 @@ from pub::hees import (
     profile_id_text,
     proposal_id_text,
     request_id_text,
+    revision_text,
 )
 from rust::std::io import Read, Write, stderr, stdin, stdout
 from rust::std::process import exit
@@ -40,7 +42,7 @@ const OPERATION: str = "evaluate_console_profile"
 const REASON_NAMESPACE: str = "console_admission_0_1"
 const RUNNER_ID: str = "hees_console_runner_0_1"
 const HEES_VERSION: str = "0.0.1"
-const TOOLCHAIN_VERSION: str = "incan_0.4.0"
+const TOOLCHAIN_VERSION: str = "incan_0.5.0_dev_18"
 const PROPOSAL_SCHEMA_DIGEST: str = "sha256:f042eeab88670c8431b3cb6cb79d36d09cc618d9a03fadf4baaa82b2fd4e9d41"
 const RELATION_SCHEMA_DIGEST: str = "sha256:85cd5aaa0684430f6414d138d961af13a4806d3705b7d151fed16c80b5bb2b65"
 const SYNTHESIS_SCHEMA_DIGEST: str = "sha256:6558a7e0df960b7493e6b7f17606dd9110c208e28205a658779867d9823a0316"
@@ -362,10 +364,7 @@ def digest_canonical_json(source: str) -> str:
 def evidence_id_texts(values: list[EvidenceId]) -> list[str]:
     """Project nominal evidence identifiers into the transport-local JSON shape."""
 
-    mut result: list[str] = []
-    for value in values:
-        result.append(evidence_id_text(value))
-    return result
+    return [evidence_id_text(value) for value in values]
 
 
 def digest_proposal(proposal: ConsoleProposal) -> str:
@@ -376,10 +375,10 @@ def digest_proposal(proposal: ConsoleProposal) -> str:
         profile_id=profile_id_text(proposal.profile_id),
         package_id=package_id_text(proposal.package_id),
         domain_id=domain_id_text(proposal.domain_id),
-        package_revision=proposal.package_revision,
-        artifact_digest=proposal.artifact_digest,
+        package_revision=revision_text(proposal.package_revision),
+        artifact_digest=digest_id_type_text(proposal.artifact_digest),
         request_id=request_id_text(proposal.request_id),
-        request_digest=proposal.request_digest,
+        request_digest=digest_id_type_text(proposal.request_digest),
         proposal_id=proposal_id_text(proposal.proposal_id),
         action_id=action_id_text(proposal.action_id),
         evidence_ids=evidence_id_texts(proposal.evidence_ids),
@@ -443,21 +442,21 @@ def replay_fingerprints_are_exact(relations: list[RelationObservation], synthese
     """Require every replay observation to use the frozen evaluator fingerprints."""
 
     for observation in relations:
-        if observation.model_fingerprint != REPLAY_MODEL_FINGERPRINT:
+        if digest_id_type_text(observation.model_fingerprint) != REPLAY_MODEL_FINGERPRINT:
             return false
-        if observation.configuration_fingerprint != REPLAY_CONFIGURATION_FINGERPRINT:
+        if digest_id_type_text(observation.configuration_fingerprint) != REPLAY_CONFIGURATION_FINGERPRINT:
             return false
         if observation.evaluator_role == "contradiction_cross_check":
-            if observation.prompt_fingerprint != CONTRADICTION_PROMPT_FINGERPRINT:
+            if digest_id_type_text(observation.prompt_fingerprint) != CONTRADICTION_PROMPT_FINGERPRINT:
                 return false
-        elif observation.prompt_fingerprint != RELATION_PROMPT_FINGERPRINT:
+        elif digest_id_type_text(observation.prompt_fingerprint) != RELATION_PROMPT_FINGERPRINT:
             return false
     for observation in syntheses:
-        if observation.model_fingerprint != REPLAY_MODEL_FINGERPRINT:
+        if digest_id_type_text(observation.model_fingerprint) != REPLAY_MODEL_FINGERPRINT:
             return false
-        if observation.configuration_fingerprint != REPLAY_CONFIGURATION_FINGERPRINT:
+        if digest_id_type_text(observation.configuration_fingerprint) != REPLAY_CONFIGURATION_FINGERPRINT:
             return false
-        if observation.prompt_fingerprint != SYNTHESIS_PROMPT_FINGERPRINT:
+        if digest_id_type_text(observation.prompt_fingerprint) != SYNTHESIS_PROMPT_FINGERPRINT:
             return false
     return true
 
@@ -518,9 +517,9 @@ def trace_observations(request: RunnerRequest) -> list[TraceObservation]:
             result.append(
                 TraceObservation(
                     observation_id=identifier,
-                    model_fingerprint=observation.model_fingerprint,
-                    prompt_fingerprint=observation.prompt_fingerprint,
-                    configuration_fingerprint=observation.configuration_fingerprint,
+                    model_fingerprint=digest_id_type_text(observation.model_fingerprint),
+                    prompt_fingerprint=digest_id_type_text(observation.prompt_fingerprint),
+                    configuration_fingerprint=digest_id_type_text(observation.configuration_fingerprint),
                 ),
             )
     for observation in request.synthesis_observations:
@@ -529,9 +528,9 @@ def trace_observations(request: RunnerRequest) -> list[TraceObservation]:
             result.append(
                 TraceObservation(
                     observation_id=identifier,
-                    model_fingerprint=observation.model_fingerprint,
-                    prompt_fingerprint=observation.prompt_fingerprint,
-                    configuration_fingerprint=observation.configuration_fingerprint,
+                    model_fingerprint=digest_id_type_text(observation.model_fingerprint),
+                    prompt_fingerprint=digest_id_type_text(observation.prompt_fingerprint),
+                    configuration_fingerprint=digest_id_type_text(observation.configuration_fingerprint),
                 ),
             )
     return result
@@ -564,10 +563,7 @@ def proposal_digest(proposal: Option[ConsoleProposal]) -> Option[str]:
 def finding_ids(findings: list[DerivedFindingProjection]) -> list[str]:
     """Project finding identifiers in deterministic manifest order."""
 
-    mut result: list[str] = []
-    for finding in findings:
-        result.append(finding.finding_id)
-    return result
+    return [finding.finding_id for finding in findings]
 
 
 def make_trace(request: RunnerRequest, findings: list[DerivedFindingProjection], policy_effect: str) -> ConsoleTrace:
@@ -579,7 +575,7 @@ def make_trace(request: RunnerRequest, findings: list[DerivedFindingProjection],
 
     constraint_plan_revision = match request.package:
         None => None
-        Some(package) => Some(package.policy.constraint_plan_revision)
+        Some(package) => Some(revision_text(package.policy.constraint_plan_revision))
 
     return ConsoleTrace(
         contract_version="console_trace_0_1",
@@ -636,10 +632,10 @@ def established_identity(
     return EstablishedIdentity(
         package_id=package_id_text(package.package_id),
         domain_id=domain_id_text(package.domain_id),
-        package_revision=package.package_revision,
-        artifact_digest=package.artifact_digest,
+        package_revision=revision_text(package.package_revision),
+        artifact_digest=digest_id_type_text(package.artifact_digest),
         request_id=request_id_text(request.request_id),
-        request_digest=request.request_digest,
+        request_digest=digest_id_type_text(request.request_digest),
         proposal_id=proposal_id_text(proposal.proposal_id),
         candidate_digest=digest_proposal(proposal),
     )

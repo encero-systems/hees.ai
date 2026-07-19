@@ -5,9 +5,12 @@ description = "Native Incan console for inspecting governed Hees interactions"
 authors = ["Encero Systems"]
 license = "Apache-2.0"
 
+[project.scripts]
+main = "src/main.incn"
+
 [dependencies]
-hees = { path = "../.." }
+hees_ai = { workspace = true }
 
 [rust-dependencies]
-crossterm = "0.29"
-ureq = { version = "2.12", features = ["tls"] }
+crossterm = { workspace = true }
+ureq = { workspace = true }

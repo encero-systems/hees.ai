@@ -4,7 +4,7 @@ Direct public-Hees evaluation boundary for the native Console.
 This module transports typed offline inputs into the Incan-authored Hees profile and decodes its complete projection for inspection. It owns no admission policy and cannot construct a terminal decision.
 """
 
-from pub::hees import (
+from pub::hees_ai import (
     ConsolePackage,
     ConsoleProposal,
     ConsoleRequestBinding,
@@ -453,7 +453,7 @@ def trace_projection(interaction: ConsoleInteraction, result: CompleteProfilePro
         contract_version="console_trace_0_1",
         profile_id="console_profile_0_1",
         build_identity="hees_console_0_1_0",
-        toolchain_identity="incan_0_4_0",
+        toolchain_identity="incan_0_5_0_dev_18",
         runner_identity="hees_0_0_1_console_profile_0_1",
         mode=interaction.mode,
         input_id=interaction.input_id,

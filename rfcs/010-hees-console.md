@@ -547,4 +547,4 @@ Separating the public local-first Console from an operations product also requir
 - What exact cross-profile resource ceilings and workspace-retention defaults are safe on supported developer machines, and what stricter limits apply to self-contained or constrained-device releases?
 - Which platforms must the first permanent-product release support, and under what reproducibility and license gates?
 
-<!-- Rename this section to "Design Decisions" once all questions have been resolved. An RFC cannot move from Draft to Planned until no unresolved questions remain. -->
+<!-- An RFC cannot move from Draft to Planned until no unresolved questions remain. -->

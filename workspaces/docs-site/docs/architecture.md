@@ -14,7 +14,7 @@ external implementation
 
 The external implementation owns concrete domain content, model execution, retrieval, package authoring, and source-rights work. Hees owns the generic structural kernel and the deterministic authority decisions implemented by the closed initial console profile.
 
-Public contract identifiers are distinct Incan newtypes; `PackageId` cannot be substituted for `DomainId` merely because both carry the same spelling. Every identifier derives from a shared `IdType` that provides a 128-character storage bound. A symbolic specialization enforces the canonical lowercase ASCII identifier alphabet, while a digest specialization enforces the exact lowercase SHA-256 form used by Content DNA and receipt identities. Both forms serialize transparently as JSON strings. Because released Incan `0.4.0` does not yet invoke validated-newtype construction during derived JSON deserialization, each authority boundary explicitly revalidates the nominal IDs after decoding. Successful decoding alone establishes no authority.
+Public contract identifiers are distinct Incan newtypes; `PackageId` cannot be substituted for `DomainId` merely because both carry the same spelling. Every identifier derives from a shared `IdType` that provides a 128-character storage bound. A symbolic specialization enforces the canonical lowercase ASCII identifier alphabet, while a digest specialization enforces the exact lowercase SHA-256 form used by Content DNA and receipt identities. Both forms serialize transparently as JSON strings. The pinned compiler invokes validated-newtype construction during derived JSON deserialization, so malformed identifier text never inhabits a typed contract. Authority checks remain separate: a well-formed identifier is not proof that the package declared or admitted the referenced object.
 
 A proposal is untrusted. It becomes admitted only after the runtime verifies that:
 
@@ -39,7 +39,7 @@ The experimental `console_profile_0_1` implements one complete acceptance path w
 7. construct Content DNA and the admitted receipt, or a redacted rejection receipt after identity is safely established; and
 8. expose the answer only in the same terminal result as those artifacts.
 
-The released Incan module topology is intentionally one-way: `content_dna.incn` seals closed envelope bodies, while `console_profile.incn` owns composition. Authority-bearing Content DNA and receipt types and constructors remain internal. The root library exposes only canonical terminal projections; Console renders those results without reconstructing authority.
+The Incan module topology is intentionally one-way: `content_dna.incn` seals closed envelope bodies, while the focused `console_profile_*` modules own composition behind the small `console_profile.incn` facade. Authority-bearing Content DNA and receipt types and constructors remain internal. The root library exposes only canonical terminal projections; Console renders those results without reconstructing authority.
 
 ## Proposed governed-runtime architecture
 

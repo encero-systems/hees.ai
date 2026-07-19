@@ -1,0 +1,278 @@
+"""Content DNA and receipt projection for terminal Console evaluations."""
+
+from std.serde.json import Serialize
+from crate.console_profile_evaluation import evaluate_console_profile, rejected_evaluation
+from crate.console_profile_identity import digest_proposal, digest_serialized_json
+from crate.console_profile_models import (
+    AnswerProjection,
+    CompleteProfileEvaluation,
+    ConsoleAtom,
+    ConsolePackage,
+    ConsoleProposal,
+    ConsoleRequestBinding,
+    ProfileEvaluation,
+    RelationObservation,
+    SynthesisObservation,
+)
+from crate.console_profile_validation import (
+    validate_console_package,
+    validate_console_proposal_identity,
+    validate_request_binding,
+)
+from crate.content_dna import (
+    AdmittedReceiptBody,
+    ContentDna,
+    ContentDnaBody,
+    ContentDnaEntry,
+    ContentDnaPackage,
+    ContentDnaPolicy,
+    ContentDnaTerminal,
+    ProfileReceipt,
+    RejectedReceiptBody,
+    construct_admitted_receipt,
+    construct_content_dna,
+    construct_rejected_receipt,
+    content_dna_identifier,
+)
+from crate.identifiers import (
+    ContentDnaId,
+    DigestIdType,
+    contract_id,
+    digest_id_type,
+    domain_id,
+    package_id,
+    profile_id,
+    revision,
+)
+
+const CONSOLE_PROFILE_ID: str = "console_profile_0_1"
+const REASON_NAMESPACE: str = "console_admission_0_1"
+const FIXED_PACKAGE_ID: str = "lantern_labs"
+const FIXED_DOMAIN_ID: str = "fictional_lesson_support"
+const FIXED_PACKAGE_REVISION: str = "1.0.0"
+const FIXED_ARTIFACT_DIGEST: str = "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335"
+
+
+def complete_evaluation(
+    evaluation: ProfileEvaluation,
+    content_dna: Option[ContentDna],
+    receipt: Option[ProfileReceipt],
+) -> CompleteProfileEvaluation:
+    """Project internal terminal artifacts as canonical JSON across the public ABI."""
+
+    content_dna_json = match content_dna:
+        None => None
+        Some(value) => Some(value.to_json())
+
+    receipt_json = match receipt:
+        None => None
+        Some(value) => Some(value.to_json())
+
+    return CompleteProfileEvaluation(
+        manifest=evaluation.manifest,
+        findings=evaluation.findings,
+        spectrum=evaluation.spectrum,
+        admitted_visible_units=evaluation.admitted_visible_units,
+        selected_memory=evaluation.selected_memory,
+        content_dna_json=content_dna_json,
+        receipt_json=receipt_json,
+    )
+
+
+def content_dna_entries(atoms: list[ConsoleAtom]) -> list[ContentDnaEntry]:
+    """Project selected memory into ordered source-safe Content DNA entries."""
+
+    return [ContentDnaEntry(
+        memory_id=atom.memory_id,
+        source_ref=atom.source_ref,
+        source_kind=atom.source_kind,
+        source_fingerprint=atom.source_fingerprint,
+        provenance_digest=atom.provenance_digest,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+        authority_class=atom.authority_class,
+        evidence_kind=atom.evidence_kind,
+    ) for atom in atoms]
+
+
+def selected_source_digests(atoms: list[ConsoleAtom]) -> list[DigestIdType]:
+    """Collect source fingerprints once in terminal first-use order."""
+
+    mut result: list[DigestIdType] = []
+    for atom in atoms:
+        if not result.contains(atom.clone().source_fingerprint):
+            result.append(atom.source_fingerprint)
+    return result
+
+
+def admitted_content_dna_body(
+    package: ConsolePackage,
+    proposal: ConsoleProposal,
+    evaluation: ProfileEvaluation,
+) -> ContentDnaBody:
+    """Build the admitted-answer provenance body from terminal selected memory."""
+
+    return ContentDnaBody(
+        contract_version=contract_id("console_content_dna_0_1"),
+        state="admitted_answer",
+        package=ContentDnaPackage(
+            package_id=package.package_id,
+            domain_id=package.domain_id,
+            package_revision=package.package_revision,
+            artifact_digest=package.artifact_digest,
+        ),
+        proposal_id=proposal.proposal_id,
+        spectrum_decision_id=evaluation.spectrum.decision_id,
+        terminal=ContentDnaTerminal(
+            decision=evaluation.spectrum.decision,
+            reason_namespace=evaluation.spectrum.reason_namespace,
+            reason=evaluation.spectrum.reason,
+        ),
+        policy=ContentDnaPolicy(
+            constraint_plan_id=package.policy.constraint_plan_id,
+            constraint_plan_revision=package.policy.constraint_plan_revision,
+            response_contract_id=package.policy.response_contract_id,
+            response_contract_revision=package.policy.response_contract_revision,
+        ),
+        entries=content_dna_entries(evaluation.selected_memory.clone()),
+        source_digests=selected_source_digests(evaluation.selected_memory.clone()),
+        answer_digest=digest_serialized_json(
+            AnswerProjection(visible_units=evaluation.admitted_visible_units.clone()).to_json(),
+        ),
+    )
+
+
+def admitted_receipt_body(
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    evaluation: ProfileEvaluation,
+    content_dna_id: ContentDnaId,
+) -> AdmittedReceiptBody:
+    """Project the admitted terminal result into a redacted receipt body."""
+
+    return AdmittedReceiptBody(
+        contract_version=contract_id("console_profile_receipt_0_1"),
+        profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+        package_id=package_id(f"{FIXED_PACKAGE_ID}"),
+        domain_id=domain_id(f"{FIXED_DOMAIN_ID}"),
+        package_revision=revision(FIXED_PACKAGE_REVISION),
+        artifact_digest=digest_id_type(FIXED_ARTIFACT_DIGEST),
+        request_id=request.request_id,
+        request_digest=request.request_digest,
+        proposal_id=proposal.proposal_id,
+        candidate_digest=digest_proposal(proposal),
+        decision=evaluation.spectrum.decision,
+        reason_namespace=evaluation.spectrum.reason_namespace,
+        reason=evaluation.spectrum.reason,
+        structural_reason=evaluation.spectrum.structural_reason,
+        admitted_evidence_ids=evaluation.spectrum.admitted_evidence_ids,
+        selected_memory_ids=evaluation.spectrum.selected_memory_ids,
+        content_dna_id=content_dna_id,
+    )
+
+
+def rejected_receipt_body(
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    evaluation: ProfileEvaluation,
+) -> RejectedReceiptBody:
+    """Project a rejection only after every identity retained in the body is trusted."""
+
+    return RejectedReceiptBody(
+        contract_version=contract_id("console_profile_receipt_0_1"),
+        profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+        package_id=package_id(f"{FIXED_PACKAGE_ID}"),
+        domain_id=domain_id(f"{FIXED_DOMAIN_ID}"),
+        package_revision=revision(FIXED_PACKAGE_REVISION),
+        artifact_digest=digest_id_type(FIXED_ARTIFACT_DIGEST),
+        request_id=request.request_id,
+        request_digest=request.request_digest,
+        proposal_id=proposal.proposal_id,
+        candidate_digest=digest_proposal(proposal),
+        decision="reject",
+        reason_namespace=REASON_NAMESPACE,
+        reason=evaluation.spectrum.reason,
+        structural_reason=evaluation.spectrum.structural_reason,
+    )
+
+
+def receipt_identity_is_established(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> bool:
+    """Return whether the fixed package, request, and proposal identity are safe to export."""
+
+    if not validate_console_package(package.clone()).valid:
+        return false
+    if not validate_request_binding(request.clone()).valid:
+        return false
+    return validate_console_proposal_identity(package, request, proposal).valid
+
+
+pub def evaluate_console_profile_with_artifacts(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    relations: list[RelationObservation],
+    syntheses: list[SynthesisObservation],
+) -> CompleteProfileEvaluation:
+    """Add Content DNA on admission and a receipt whenever its complete identity is established."""
+
+    evaluation = evaluate_console_profile(package.clone(), request.clone(), proposal.clone(), relations, syntheses)
+    if not evaluation.spectrum.admitted:
+        if not receipt_identity_is_established(package.clone(), request.clone(), proposal.clone()):
+            return complete_evaluation(evaluation, None, None)
+        match construct_rejected_receipt(rejected_receipt_body(request, proposal.clone(), evaluation.clone())):
+            Some(receipt) => return complete_evaluation(evaluation, None, Some(receipt))
+            None =>
+                failed = rejected_evaluation(
+                    proposal.proposal_id,
+                    "receipt_projection_failed",
+                    evaluation.spectrum.structural_reason,
+                    evaluation.manifest,
+                    evaluation.findings,
+                )
+                return complete_evaluation(failed, None, None)
+    match construct_content_dna(admitted_content_dna_body(package.clone(), proposal.clone(), evaluation.clone())):
+        None =>
+            failed = rejected_evaluation(
+                proposal.proposal_id,
+                "content_dna_projection_failed",
+                evaluation.spectrum.structural_reason,
+                evaluation.manifest,
+                evaluation.findings,
+            )
+            return complete_evaluation(failed, None, None)
+        Some(content_dna) =>
+            match construct_admitted_receipt(
+                admitted_receipt_body(
+                    request,
+                    proposal.clone(),
+                    evaluation.clone(),
+                    content_dna_identifier(content_dna.clone()),
+                ),
+            ):
+                Some(receipt) => return complete_evaluation(evaluation, Some(content_dna), Some(receipt))
+                None =>
+                    failed = rejected_evaluation(
+                        proposal.proposal_id,
+                        "receipt_projection_failed",
+                        evaluation.spectrum.structural_reason,
+                        evaluation.manifest,
+                        evaluation.findings,
+                    )
+                    return complete_evaluation(failed, None, None)
+
+
+pub def evaluate_console_profile_json(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    relations: list[RelationObservation],
+    syntheses: list[SynthesisObservation],
+) -> str:
+    """Return one complete terminal evaluation as canonical JSON across the public ABI."""
+
+    return evaluate_console_profile_with_artifacts(package, request, proposal, relations, syntheses).to_json()

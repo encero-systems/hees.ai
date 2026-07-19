@@ -6,10 +6,10 @@ admits a proposal, classifies an observation, selects memory, constructs Content
 closed context and manifest envelopes authored by Hees. An empty manifest is valid: it means the proposal must continue
 to Hees with no committee observations so the terminal boundary can return the exact earlier structural rejection.
 
-Live committee calls are intentionally sequential under released Incan 0.4.0. The direct `ureq` edge has a 15-second
+Live committee calls are intentionally sequential in the current Console profile. The direct `ureq` edge has a 15-second
 timeout and the frozen profile permits at most 22 targets, so the committee has a deterministic 330-second upper bound.
-The module does not claim cancellable concurrency for a blocking HTTP primitive that the released toolchain has not
-demonstrated safely.
+The module does not claim cancellable concurrency for a blocking HTTP primitive that this profile has not demonstrated
+safely.
 """
 
 from rust::std::string import String as RustString
@@ -22,7 +22,7 @@ from std.hash import sha256
 from std.json import JsonValue
 from std.serde import json
 from std.serde.json import Deserialize
-from pub::hees import (
+from pub::hees_ai import (
     ConsoleAction,
     ConsoleProposal,
     ConsoleRequestBinding,
@@ -30,11 +30,13 @@ from pub::hees import (
     RelationObservation,
     SynthesisObservation,
     contract_id_text,
+    digest_id_type_text,
     domain_id_text,
     identify_console_proposal_json,
     package_id_text,
     profile_id_text,
     proposal_id_text,
+    revision_text,
 )
 
 pub const GPT56_MODEL: str = "gpt-5.6-sol"
@@ -822,21 +824,17 @@ def proposal_matches_context(proposal: ConsoleProposal, context: ProviderContext
         proposal.profile_id,
     ) == context.profile_id and package_id_text(proposal.package_id) == context.package_id and domain_id_text(
         proposal.domain_id,
-    ) == context.domain_id and proposal.package_revision == context.package_revision and proposal.artifact_digest == context.artifact_digest and proposal.request_id == context.request.request_id and proposal.request_digest == context.request.request_digest)
+    ) == context.domain_id and revision_text(proposal.package_revision) == context.package_revision and digest_id_type_text(
+        proposal.artifact_digest,
+    ) == context.artifact_digest and proposal.request_id == context.request.request_id and proposal.request_digest == context.request.request_digest)
 
 
 def target_matches_interaction(target: ProviderManifestTarget, context: ProviderContext, candidate_digest: str) -> bool:
     """Reject targets crossed between packages, requests, or proposal candidates."""
 
-    return (
-        target.body.profile_id == context.profile_id
-        and target.body.package_id == context.package_id
-        and target.body.domain_id == context.domain_id
-        and target.body.package_revision == context.package_revision
-        and target.body.artifact_digest == context.artifact_digest
-        and target.body.request_digest == context.request.request_digest
-        and target.body.candidate_digest == candidate_digest
-    )
+    return (target.body.profile_id == context.profile_id and target.body.package_id == context.package_id and target.body.domain_id == context.domain_id and target.body.package_revision == context.package_revision and target.body.artifact_digest == context.artifact_digest and target.body.request_digest == digest_id_type_text(
+        context.request.request_digest,
+    ) and target.body.candidate_digest == candidate_digest)
 
 
 def identify_candidate(proposal: ConsoleProposal) -> Result[str, ProviderFailure]:

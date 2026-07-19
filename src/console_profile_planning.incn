@@ -1,0 +1,366 @@
+"""Verifier-target and provider-context planning for the Console profile."""
+
+from std.serde.json import Serialize
+from crate.console_profile_identity import (
+    digest_proposal,
+    digest_request_binding,
+    digest_request_fields,
+    digest_serialized_json,
+)
+from crate.console_profile_models import (
+    ConsoleAtom,
+    ConsoleManifestPlan,
+    ConsolePackage,
+    ConsoleProposal,
+    ConsoleProposalIdentity,
+    ConsoleProviderContext,
+    ConsoleProviderContextPlan,
+    ConsoleProviderMemory,
+    ConsoleRequestBinding,
+    ConsoleRequestPlan,
+    ManifestTarget,
+    ManifestTargetBody,
+    PremiseIdentity,
+    PremiseProjection,
+    RequestSynthesisSubject,
+    RequirementSynthesisSubject,
+    SupportClaimSubject,
+    VisibleResponseSubject,
+    VisibleUnitSubject,
+)
+from crate.console_profile_validation import (
+    admitted_atoms,
+    find_atom_by_memory,
+    find_unit,
+    validate_console_package,
+    validate_console_proposal,
+    validate_request_binding,
+)
+from crate.identifiers import (
+    DigestIdType,
+    TargetId,
+    contract_id,
+    memory_id_text,
+    profile_id,
+    request_id_from_text,
+    requirement_id_text,
+    support_claim_id_text,
+    target_id,
+    unit_id_text,
+)
+
+const CONSOLE_PROFILE_ID: str = "console_profile_0_1"
+const MANIFEST_PLAN_CONTRACT: str = "console_manifest_plan_0_1"
+const PROVIDER_CONTEXT_PLAN_CONTRACT: str = "console_provider_context_plan_0_1"
+const PROPOSAL_IDENTITY_CONTRACT: str = "console_proposal_identity_0_1"
+const REQUEST_PLAN_CONTRACT: str = "console_request_plan_0_1"
+
+
+def premise_identity(atom: ConsoleAtom) -> PremiseIdentity:
+    """Project one governed atom into a source-free verifier premise identity."""
+
+    projection = PremiseProjection(
+        memory_id=atom.memory_id,
+        claim=atom.claim,
+        guidance=atom.guidance,
+        language=atom.language,
+        source_ref=atom.source_ref,
+        source_kind=atom.source_kind,
+        source_fingerprint=atom.source_fingerprint,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+        authority_class=atom.authority_class,
+        evidence_kind=atom.evidence_kind,
+    )
+    return PremiseIdentity(memory_id=projection.memory_id, content_digest=digest_serialized_json(projection.to_json()))
+
+
+def admitted_premises(package: ConsolePackage) -> list[PremiseIdentity]:
+    """Project all admitted package atoms into ordered verifier premises."""
+
+    return [premise_identity(atom) for atom in admitted_atoms(package)]
+
+
+def target(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    candidate_digest: DigestIdType,
+    target_id: TargetId,
+    evaluator_role: str,
+    target_role: str,
+    subject_digest: DigestIdType,
+    premises: list[PremiseIdentity],
+) -> ManifestTarget:
+    """Seal one canonical verifier target under its target digest."""
+
+    body = ManifestTargetBody(
+        profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        request_digest=request.request_digest,
+        candidate_digest=candidate_digest,
+        target_id=target_id,
+        evaluator_role=evaluator_role,
+        target_role=target_role,
+        subject_digest=subject_digest,
+        premises=premises,
+    )
+    return ManifestTarget(body=body.clone(), target_digest=digest_serialized_json(body.to_json()))
+
+
+def suffix_after(value: str, prefix: str) -> str:
+    """Remove a known identifier prefix without changing unmatched values."""
+
+    if value.startswith(prefix):
+        return value[len(prefix):]
+    return value
+
+
+pub def build_verifier_manifest(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> list[ManifestTarget]:
+    """Derive the complete ordered evaluator manifest from authoritative profile state."""
+    candidate_digest = digest_proposal(proposal.clone())
+    all_premises = admitted_premises(package.clone())
+    mut targets: list[ManifestTarget] = []
+    for unit in proposal.visible_units.clone():
+        subject = VisibleUnitSubject(subject_kind="visible_unit", unit=unit.clone())
+        targets.append(
+            target(
+                package.clone(),
+                request.clone(),
+                candidate_digest,
+                target_id(f"target_visible_unit_{suffix_after(unit_id_text(unit.unit_id), "unit_")}"),
+                "evidence_relation",
+                "visible_unit_union",
+                digest_serialized_json(subject.to_json()),
+                all_premises.clone(),
+            ),
+        )
+    for mapping in proposal.support_mappings.clone():
+        match find_unit(proposal.visible_units.clone(), mapping.unit_id):
+            None => return []
+            Some(unit) =>
+                match find_atom_by_memory(package.atoms.clone(), mapping.memory_id):
+                    None => return []
+                    Some(atom) =>
+                        subject = SupportClaimSubject(
+                            subject_kind="support_claim",
+                            support_claim_id=mapping.support_claim_id,
+                            unit_id=mapping.unit_id,
+                            text=unit.text,
+                        )
+                        targets.append(
+                            target(
+                                package.clone(),
+                                request.clone(),
+                                candidate_digest,
+                                target_id(
+                                    f"target_support_claim_{suffix_after(
+                                        support_claim_id_text(subject.support_claim_id),
+                                        "support_",
+                                    )}",
+                                ),
+                                "evidence_relation",
+                                "support_claim_memory",
+                                digest_serialized_json(subject.to_json()),
+                                [premise_identity(atom)],
+                            ),
+                        )
+    response_subject = VisibleResponseSubject(
+        subject_kind="visible_response",
+        visible_units=proposal.visible_units.clone(),
+    )
+    targets.append(
+        target(
+            package.clone(),
+            request.clone(),
+            candidate_digest,
+            target_id("target_proposal_contradiction"),
+            "contradiction_cross_check",
+            "proposal_union",
+            digest_serialized_json(response_subject.to_json()),
+            all_premises,
+        ),
+    )
+    request_subject = RequestSynthesisSubject(
+        subject_kind="request_synthesis",
+        visible_units=proposal.visible_units.clone(),
+        request_digest=request.request_digest,
+    )
+    targets.append(
+        target(
+            package.clone(),
+            request.clone(),
+            candidate_digest,
+            target_id("target_request_coverage"),
+            "synthesis_coverage",
+            "request_coverage",
+            digest_serialized_json(request_subject.to_json()),
+            [],
+        ),
+    )
+    for requirement in package.requirements.clone():
+        requirement_subject = RequirementSynthesisSubject(
+            subject_kind="requirement_synthesis",
+            visible_units=proposal.visible_units.clone(),
+            requirement=requirement.clone(),
+        )
+        targets.append(
+            target(
+                package.clone(),
+                request.clone(),
+                candidate_digest,
+                target_id(f"target_requirement_{requirement_id_text(requirement.requirement_id)}"),
+                "synthesis_coverage",
+                "requirement_coverage",
+                digest_serialized_json(requirement_subject.to_json()),
+                [],
+            ),
+        )
+    return targets
+
+
+pub def plan_console_manifest_json(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> str:
+    """Return Hees-authored evaluator targets without exposing internal target types as public authority."""
+
+    if not validate_console_package(package.clone()).valid:
+        return ConsoleManifestPlan(
+            contract_version=contract_id(f"{MANIFEST_PLAN_CONTRACT}"),
+            profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+            plannable=false,
+            targets=[],
+        ).to_json()
+    if not validate_request_binding(request.clone()).valid:
+        return ConsoleManifestPlan(
+            contract_version=contract_id(f"{MANIFEST_PLAN_CONTRACT}"),
+            profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+            plannable=false,
+            targets=[],
+        ).to_json()
+    if not validate_console_proposal(package.clone(), request.clone(), proposal.clone()).valid:
+        return ConsoleManifestPlan(
+            contract_version=contract_id(f"{MANIFEST_PLAN_CONTRACT}"),
+            profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+            plannable=false,
+            targets=[],
+        ).to_json()
+    targets = build_verifier_manifest(package, request, proposal)
+    return ConsoleManifestPlan(
+        contract_version=contract_id(f"{MANIFEST_PLAN_CONTRACT}"),
+        profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+        plannable=len(targets) > 0,
+        targets=targets,
+    ).to_json()
+
+
+def provider_memory(atom: ConsoleAtom) -> ConsoleProviderMemory:
+    """Project one Hees-admitted atom without exposing source text or terminal authority."""
+
+    return ConsoleProviderMemory(
+        evidence_id=atom.evidence_id,
+        memory_id=atom.memory_id,
+        claim=atom.claim,
+        guidance=atom.guidance,
+        language=atom.language,
+        source_ref=atom.source_ref,
+        source_kind=atom.source_kind,
+        source_fingerprint=atom.source_fingerprint,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+        authority_class=atom.authority_class,
+        evidence_kind=atom.evidence_kind,
+    )
+
+
+pub def bind_console_request_json(request_id_value: str, question: str) -> str:
+    """Bind one bounded Console question without exposing raw digest construction as a root operation."""
+
+    if question.strip() == "" or len(question) > 512:
+        return ConsoleRequestPlan(
+            contract_version=contract_id(f"{REQUEST_PLAN_CONTRACT}"),
+            profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+            plannable=false,
+            request=None,
+        ).to_json()
+    match request_id_from_text(request_id_value):
+        Err(_) =>
+            return ConsoleRequestPlan(
+                contract_version=contract_id(f"{REQUEST_PLAN_CONTRACT}"),
+                profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+                plannable=false,
+                request=None,
+            ).to_json()
+        Ok(bound_request_id) =>
+            request_digest = digest_request_fields(bound_request_id, f"{question}")
+            request = ConsoleRequestBinding(
+                request_id=bound_request_id,
+                question=question,
+                request_digest=request_digest,
+            )
+            return ConsoleRequestPlan(
+                contract_version=contract_id(f"{REQUEST_PLAN_CONTRACT}"),
+                profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+                plannable=true,
+                request=Some(request),
+            ).to_json()
+
+
+pub def identify_console_proposal_json(proposal: ConsoleProposal) -> str:
+    """Project the Hees-canonical proposal digest without exposing the raw digest helper as a root operation."""
+
+    return ConsoleProposalIdentity(
+        contract_version=contract_id(f"{PROPOSAL_IDENTITY_CONTRACT}"),
+        profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+        proposal_id=proposal.proposal_id,
+        candidate_digest=digest_proposal(proposal),
+    ).to_json()
+
+
+pub def plan_console_provider_context_json(package: ConsolePackage, request: ConsoleRequestBinding) -> str:
+    """Return only the validated package surface and Hees-admitted memory needed by an untrusted proposal call."""
+
+    if not validate_console_package(package.clone()).valid or not validate_request_binding(request.clone()).valid:
+        return ConsoleProviderContextPlan(
+            contract_version=contract_id(f"{PROVIDER_CONTEXT_PLAN_CONTRACT}"),
+            profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+            plannable=false,
+            context=None,
+        ).to_json()
+    memory: list[ConsoleProviderMemory] = [provider_memory(atom) for atom in admitted_atoms(package.clone())]
+    if len(memory) == 0:
+        return ConsoleProviderContextPlan(
+            contract_version=contract_id(f"{PROVIDER_CONTEXT_PLAN_CONTRACT}"),
+            profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+            plannable=false,
+            context=None,
+        ).to_json()
+    return ConsoleProviderContextPlan(
+        contract_version=contract_id(f"{PROVIDER_CONTEXT_PLAN_CONTRACT}"),
+        profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+        plannable=true,
+        context=Some(
+            ConsoleProviderContext(
+                profile_id=profile_id(f"{CONSOLE_PROFILE_ID}"),
+                package_id=package.package_id,
+                domain_id=package.domain_id,
+                package_revision=package.package_revision,
+                artifact_digest=package.artifact_digest,
+                mission=package.mission,
+                request=request,
+                declared_actions=package.actions,
+                requirements=package.requirements,
+                admitted_memory=memory,
+            ),
+        ),
+    ).to_json()

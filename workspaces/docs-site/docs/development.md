@@ -1,6 +1,6 @@
 # Development
 
-Run the complete local gate with released Incan `0.4.0`:
+Run the complete local gate with commit-pinned Incan `0.5.0-dev.18`:
 
 ```bash
 make ci INCAN=/path/to/incan
@@ -22,29 +22,29 @@ Changes to the initial console profile or application also require:
 
 ```bash
 make console-test console-native-smoke \
-  INCAN=/path/to/incan-0.4.0/bin/incan
+  INCAN=/path/to/incan-0.5.0-dev.18/bin/incan
 ```
 
 Those gates compile the native Incan Console, run the direct profile and application suite, and execute all five offline scenarios through the real Hees profile. The domain JSON Schemas constrain provider-facing shape; profile authority and public reason selection remain inside the Hees profile.
 
 ## Release-candidate archive
 
-Build a local candidate only with the released toolchain for the current native target:
+Build a local candidate only with the pinned toolchain for the current native target:
 
 ```bash
 make console-release-candidate \
-  INCAN=/path/to/incan-0.4.0/bin/incan \
+  INCAN=/path/to/incan-0.5.0-dev.18/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 ```
 
-The candidate-platform registry is `workspaces/hees-console/packaging/release-platforms.json`. It pins the exact official Incan archive, SHA-256, target architecture, and standard hosted runner for Linux x86_64, macOS ARM64, and macOS x86_64. The command fails when the executing host does not match the selected target. Windows and Linux ARM64 have no Incan `0.4.0` native release archive and are excluded.
+The candidate-platform registry is `workspaces/hees-console/packaging/release-platforms.json`. It pins the exact public Incan source commit, target architecture, and standard hosted runner for Linux x86_64, macOS ARM64, and macOS x86_64. Each lane builds that compiler commit natively, verifies its version, then builds Console. The command fails when the executing host does not match the selected target. Windows and Linux ARM64 are excluded until equivalent native lanes execute successfully.
 
 For a fixed source tree, the gate:
 
 1. reruns the package and release-contract tests;
 2. audits the native bundle after remapping build paths, including checks for active credential values in the bundle;
 3. embeds exactly the native Console binary, project license, repository notice, the current platform build's generated third-party license report, and release manifest, while keeping the build-side smoke oracle out of the artifact;
-4. writes `RELEASE-MANIFEST.json` with the source commit, clean-tree evidence, candidate platform, Incan release identity, Console lock digest, notice digests, and binary hash;
+4. writes `RELEASE-MANIFEST.json` with the source commit, clean-tree evidence, candidate platform, exact Incan source identity, Console lock digest, notice digests, and binary hash;
 5. creates a normalized `hees-console-<version>-<platform>.tar.gz` plus adjacent `.sha256`; and
 6. extracts and executes that archive from a clean temporary working directory with a minimal environment, temporary home, and no API key.
 

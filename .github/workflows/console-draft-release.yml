@@ -49,16 +49,16 @@ jobs:
         run: |
           cargo install cargo-deny --version 0.19.0 --locked
           cargo install cargo-about --version 0.9.1 --locked --features cli
-      - name: Fetch released Incan for dependency audit
+      - name: Build pinned Incan for dependency audit
         run: >-
           workspaces/hees-console/packaging/release_candidate.sh
-          fetch-incan
+          prepare-incan
           --platform linux-x86_64
-          --destination "$RUNNER_TEMP/incan-0.4.0"
+          --destination "$RUNNER_TEMP/incan-0.5.0-dev.18"
       - name: Audit the locked native license graph
         run: >-
           make console-license-audit
-          INCAN="$RUNNER_TEMP/incan-0.4.0/bin/incan"
+          INCAN="$RUNNER_TEMP/incan-0.5.0-dev.18/bin/incan"
 
   build:
     needs: validate
@@ -93,7 +93,7 @@ jobs:
           git show-ref --verify --quiet refs/remotes/origin/main
           git merge-base --is-ancestor HEAD origin/main
           printf 'commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          printf 'INCAN_ROOT=%s\n' "$RUNNER_TEMP/incan-0.4.0" >> "$GITHUB_ENV"
+          printf 'INCAN_ROOT=%s\n' "$RUNNER_TEMP/incan-0.5.0-dev.18" >> "$GITHUB_ENV"
           printf 'RELEASE_OUTPUT=%s\n' "$RUNNER_TEMP/hees-console-release" >> "$GITHUB_ENV"
       - name: Install Rust 1.93
         uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66 # 1.93.0
@@ -101,10 +101,10 @@ jobs:
         run: |
           cargo install cargo-deny --version 0.19.0 --locked
           cargo install cargo-about --version 0.9.1 --locked --features cli
-      - name: Fetch checksum-pinned released Incan 0.4.0
+      - name: Build commit-pinned Incan 0.5 development toolchain
         run: >-
           workspaces/hees-console/packaging/release_candidate.sh
-          fetch-incan
+          prepare-incan
           --platform "$RELEASE_PLATFORM"
           --destination "$INCAN_ROOT"
       - name: Build and clean-smoke the release archive

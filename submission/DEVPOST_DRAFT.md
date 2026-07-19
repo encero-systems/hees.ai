@@ -9,10 +9,10 @@
 | Title | Hees Console |
 | Tagline | GPT-5.6 proposes. Hees decides. |
 | Category | Developer Tools |
-| Repository | **[FINALIZE BEFORE RELEASE: PUBLIC REPOSITORY URL AT THE FROZEN REVISION]** |
+| Repository | [Hees.ai](https://github.com/encero-systems/hees.ai); **[FINALIZE BEFORE RELEASE: FROZEN REVISION URL]** |
 | Try it | **[FINALIZE BEFORE RELEASE: HOSTED SANDBOX OR NO-REBUILD TEST-BUILD URL]** |
 | Video | **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]** |
-| License | Apache-2.0; **[FINALIZE BEFORE RELEASE: LICENSE AND THIRD-PARTY NOTICE URLS]** |
+| License | [Apache-2.0](https://github.com/encero-systems/hees.ai/blob/main/LICENSE); **[FINALIZE BEFORE RELEASE: THIRD-PARTY NOTICE URL]** |
 
 ## Short description
 
@@ -81,7 +81,7 @@ The same authority boundary is designed to serve deterministic offline replay an
 
 ## Technologies used
 
-- Incan `0.4.0` and the Hees `0.0.1` structural-admission kernel;
+- commit-pinned Incan `0.5.0-dev.18` and the Hees `0.0.1` structural-admission kernel;
 - a compiled Incan-authored Build Week profile runner;
 - `crossterm` through explicit Incan interop for native terminal primitives;
 - `ureq` through explicit Incan interop for the fixed native HTTPS boundary;

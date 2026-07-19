@@ -96,11 +96,15 @@ See [TESTING.md](TESTING.md) for the complete judge path, expected trust labels,
 | `4` | Unknown memory scenario |
 | `5` | Non-admitted memory scenario |
 | `←` / `→` or `h` / `l` | Previous or next inspector |
-| `↑` / `↓` or `k` / `j` | Previous or next scenario |
-| `enter` | Next inspector |
+| `↑` / `↓` or `k` / `j` | Previous or next visible interaction |
+| `enter` | Inspect the selected interaction, or advance to the next inspector |
+| `g` | Return to the interaction browser |
+| `/` | Focus the combined free-text and tag filter |
+| `s` | Focus filtering and ordering in the Status column header |
+| `b` | Collapse or expand the navigation rail |
 | `q` | Quit |
 
-Colour reinforces status but is not the only status signal. Trusted and untrusted surfaces use explicit text labels and stable symbols so the boundary remains legible in monochrome and narrow terminals.
+While the search control has focus, type to filter, use `↑` and `↓` to highlight a tag, use `tab` to check or uncheck it, and use `ctrl-u` to clear the combined query. While the Status header has focus, use `↑` and `↓` to choose `ADMITTED`, `REJECTED`, or the ordering row; use `space` or `tab` to change the selected value. Interactive state cells use a green `✓ ADMITTED` and red `✕ REJECTED` vocabulary. The icons and explicit text remain complete status signals when colour is unavailable, so the boundary stays legible in monochrome and narrow terminals.
 
 #### Modes
 
@@ -123,7 +127,7 @@ The relevant provider contracts follow the official [GPT-5.6 Sol model](https://
 | Self-contained executable | Exact-head candidates execute successfully on macOS ARM64, macOS x86-64, and Linux x86-64; **[FINALIZE BEFORE RELEASE: PUBLIC ASSET URLS, HASHES, AND MINIMUM SYSTEM REQUIREMENTS]** |
 | Publication state | Native matrix artifacts are short-lived CI evidence, not signed or notarized public releases |
 | Hosted equivalent | Not configured and not required when the published native test build remains available; any later hosted surface must run the same frozen executable in bounded, isolated, no-shell sessions |
-| Source build | Contributor-only; released Incan `0.4.0`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
+| Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.18`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
 
 Unsupported platforms will be stated explicitly in the final release notes. Source portability is not evidence that a self-contained artifact works on a platform.
 
@@ -148,7 +152,7 @@ Report vulnerabilities through the private process in [SECURITY.md](SECURITY.md)
 The Build Week lineage, Codex collaboration, rules checklist, and evidence ledger live in [BUILD_WEEK.md](BUILD_WEEK.md). The pre-freeze Devpost copy, video script, screenshot plan, and finalization controls live in the [submission pack](submission/README.md); those drafts are not release or submission evidence. Before release, the following placeholders must be replaced with public evidence:
 
 - release tag and immutable source commit: **[FINALIZE BEFORE RELEASE: TAG AND COMMIT]**;
-- public repository and implementation pull request: **[FINALIZE BEFORE RELEASE: REPOSITORY AND PR URLS]**;
+- public repository and implementation pull request: [Hees.ai](https://github.com/encero-systems/hees.ai) and [PR #17](https://github.com/encero-systems/hees.ai/pull/17);
 - green CI and artifact smoke tests: **[FINALIZE BEFORE RELEASE: CI AND TEST URLS]**;
 - release artifacts, provenance, and SHA-256 values: **[FINALIZE BEFORE RELEASE: RELEASE URL, PROVENANCE URL, AND HASHES]**;
 - hosted equivalent, only if one is claimed: **[FINALIZE BEFORE RELEASE: HOSTED URL AND DATES, OR REMOVE THIS OPTIONAL CLAIM]**;
@@ -170,7 +174,7 @@ Implemented now:
 - deterministic relation and synthesis classification, checked structural-kernel delegation, and exact selected-memory freezing;
 - admitted-answer Content DNA, admitted receipts, and identity-safe rejection receipts with frozen canonical SHA-256 goldens;
 - an Incan-authored native Console application that owns terminal rendering, privacy-redacted headless output, deterministic replay, bounded trace projection, and optional live-provider composition while calling the Hees profile directly;
-- fourteen native application tests and fourteen provider-boundary tests, including injected end-to-end live composition without network access;
+- fifteen native application tests and fourteen provider-boundary tests, including injected end-to-end live composition without network access;
 - reproducible native release-candidate packaging with license, provenance, checksum, leakage, and extracted-archive smoke gates;
 - a checked `src/lib.incn` public surface; and
 - an external-consumer fixture and fictional external example.
@@ -189,7 +193,7 @@ Not implemented by the checked `0.0.1` library:
 
 ### Toolchain
 
-The library preview is locked and verified with the released Incan `0.4.0` toolchain. Install that release and make `incan` available on `PATH`, or pass an explicit binary to Make:
+The library preview is locked and verified with Incan `0.5.0-dev.18` at source commit [`79e7025be`](https://github.com/encero-systems/incan/commit/79e7025bef547cd6eb79f08159630ec5998412d1). That commit contains the sibling-module metadata and validated-newtype decoding support required by this source tree. Make the resulting `incan` binary available on `PATH`, or pass it explicitly to Make:
 
 ```bash
 make ci INCAN=/path/to/incan
@@ -208,22 +212,22 @@ The current gate formats and builds the public library, runs the package and run
 The standalone Console has focused source and native smoke gates:
 
 ```bash
-make console-test console-native-smoke INCAN=/path/to/incan-0.4.0/bin/incan
+make console-test console-native-smoke INCAN=/path/to/incan-0.5.0-dev.18/bin/incan
 ```
 
-They compile the Incan-authored Console, run fourteen native application tests and fourteen provider-boundary tests, build the native artifact, and execute all five headless replay smokes against the fictional RFC 010 corpus.
+They compile the Incan-authored Console, run fifteen native application tests and fourteen provider-boundary tests, build the native artifact, and execute all five headless replay smokes against the fictional RFC 010 corpus.
 
 The separate release-candidate lane wraps that proof in a checked archive:
 
 ```bash
 make console-release-candidate \
-  INCAN=/path/to/incan-0.4.0/bin/incan \
+  INCAN=/path/to/incan-0.5.0-dev.18/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 ```
 
 The command is intentionally not a release publisher. It builds and audits the native Console, records the source commit plus clean-tree evidence and the Console lock digest, includes the project license, repository notice, and generated third-party license report, creates a normalized `tar.gz` envelope and SHA-256 file under `workspaces/hees-console/target/release/`, and runs only the extracted binary from a clean temporary working directory. The smoke receives a minimal environment with no API key and needs no compiler or source checkout at runtime.
 
-The pinned registry contains candidate lanes only for Linux x86_64, macOS ARM64, and macOS x86_64 because those are the native archives published by the official [Incan 0.4.0 release](https://github.com/encero-systems/incan/releases/tag/v0.4.0). Windows and Linux ARM64 are unsupported at this revision. A native artifact becomes supported only after that exact archive executes in its target lane; an unrun matrix entry is not support evidence. The selected standard runner labels come from the current [GitHub-hosted runner reference](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
+The pinned registry contains candidate lanes for Linux x86_64, macOS ARM64, and macOS x86_64. Each lane builds the exact Incan source commit natively before compiling and smoke-testing Console; no mutable compiler branch or preinstalled toolchain is trusted. Windows and Linux ARM64 remain unsupported until equivalent native lanes execute successfully. The selected standard runner labels come from the current [GitHub-hosted runner reference](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
 
 Release-candidate archives are not identity-signed or notarized. macOS tooling may apply ad-hoc signatures needed for local execution, but those signatures establish no publisher identity. The workflow has read-only repository permission and uploads short-lived Actions artifacts only; it does not create a GitHub release, sign an artifact, or publish the stable no-rebuild test-build links above. Archive metadata is deterministic for fixed bundle inputs, while bit-for-bit reproducibility of native compiler output is not claimed.
 
@@ -231,17 +235,17 @@ Release-candidate archives are not identity-signed or notarized. macOS tooling m
 
 Public Hees contracts use nominal identifier types such as `PackageId`, `ActionId`, and `EvidenceId` over one shared, bounded `IdType`. Its symbolic specialization accepts at most 128 lowercase ASCII letters, digits, underscores, or hyphens and requires a letter or digit first. Its fixed-form digest specialization supplies content-addressed `ContentDnaId` and `ReceiptId` values. Every concrete identifier therefore derives from the same bounded string base while remaining a plain JSON string on the wire. The public constructors and text projections preserve namespace separation in Incan code without changing the existing JSON contracts.
 
-Released Incan `0.4.0` currently bypasses validated-newtype construction while deriving JSON deserializers ([Incan #904](https://github.com/encero-systems/incan/issues/904)). Hees therefore revalidates every deserialized identifier at its package, proposal, request, and observation boundaries; callers must not treat successful JSON decoding alone as admission.
+The pinned Incan compiler invokes validated-newtype construction during derived JSON deserialization ([Incan #904](https://github.com/encero-systems/incan/issues/904), [merged fix](https://github.com/encero-systems/incan/commit/3802fe8e03b1d61237abb0d48abbddb17c4044b4)). Malformed identifier text is therefore rejected before it can inhabit a typed Hees contract. Admission still validates what those well-formed identifiers are allowed to reference; decoding success never establishes authority.
 
 An implementation package can depend on a local checkout during pre-release development:
 
 ```toml
 [dependencies]
-hees = { path = "../hees.ai" }
+hees_ai = { path = "../hees.ai" }
 ```
 
 ```incan
-from pub::hees import package_loader_descriptor, validate_package_loader_descriptor
+from pub::hees_ai import package_loader_descriptor, validate_package_loader_descriptor
 
 descriptor = package_loader_descriptor(
     "lesson_support",

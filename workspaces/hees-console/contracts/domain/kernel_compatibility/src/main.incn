@@ -3,7 +3,7 @@
 from rust::std::process import exit
 from std.fs import Path
 from std.json import JsonValue
-from pub::hees import (
+from pub::hees_ai import (
     ReviewStatus,
     RightsStatus,
     action_id,

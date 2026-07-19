@@ -5,18 +5,7 @@ The runtime does not invoke a model, retrieve evidence, or claim semantic verifi
 an untrusted proposal; Hees checks structural authority before admitting the visible output.
 """
 
-from crate.identifiers import (
-    ActionId,
-    DomainId,
-    EvidenceId,
-    PackageId,
-    action_id_is_safe,
-    action_id_text,
-    domain_id_is_safe,
-    evidence_id_is_safe,
-    evidence_id_text,
-    package_id_is_safe,
-)
+from crate.identifiers import ActionId, DomainId, EvidenceId, PackageId
 
 const GOVERNED_PACKAGE_SCHEMA_VERSION: str = "0.1"
 
@@ -211,36 +200,30 @@ def source_ref_is_safe(value: str) -> bool:
 def has_duplicate_action_ids(actions: list[ActionContract]) -> bool:
     """Return whether package actions repeat an earlier identifier."""
 
-    mut seen: list[str] = []
-    for action in actions:
-        text = action_id_text(action.id)
-        if seen.contains(f"{text}"):
-            return true
-        seen.append(text)
+    for left in range(len(actions)):
+        for right in range(len(actions)):
+            if right > left and actions[left].id == actions[right].id:
+                return true
     return false
 
 
 def has_duplicate_evidence_ids(evidence: list[EvidenceRecord]) -> bool:
     """Return whether package evidence repeats an earlier identifier."""
 
-    mut seen: list[str] = []
-    for record in evidence:
-        text = evidence_id_text(record.id)
-        if seen.contains(f"{text}"):
-            return true
-        seen.append(text)
+    for left in range(len(evidence)):
+        for right in range(len(evidence)):
+            if right > left and evidence[left].id == evidence[right].id:
+                return true
     return false
 
 
 def has_duplicate_evidence_references(values: list[EvidenceId]) -> bool:
     """Return whether a proposal repeats an earlier evidence identifier."""
 
-    mut seen: list[str] = []
-    for value in values:
-        text = evidence_id_text(value)
-        if seen.contains(f"{text}"):
-            return true
-        seen.append(text)
+    for left in range(len(values)):
+        for right in range(len(values)):
+            if right > left and values[left] == values[right]:
+                return true
     return false
 
 
@@ -249,24 +232,15 @@ pub def validate_governed_package(package: GovernedPackage) -> PackageValidation
     mut errors: list[str] = []
     if package.schema_version != GOVERNED_PACKAGE_SCHEMA_VERSION:
         errors.append("unsupported_schema_version")
-    if not package_id_is_safe(package.package_id):
-        errors.append("invalid_package_id")
-    if not domain_id_is_safe(package.domain_id):
-        errors.append("invalid_domain_id")
     if package.mission.strip() == "":
         errors.append("missing_mission")
     if len(package.actions) == 0:
         errors.append("missing_actions")
     if has_duplicate_action_ids(package.actions):
         errors.append("duplicate_action_id")
-    for action in package.actions:
-        if not action_id_is_safe(action.id):
-            errors.append("invalid_action_id")
     if has_duplicate_evidence_ids(package.evidence):
         errors.append("duplicate_evidence_id")
     for record in package.evidence:
-        if not evidence_id_is_safe(record.id):
-            errors.append("invalid_evidence_id")
         if record.claim.strip() == "":
             errors.append("missing_evidence_claim")
         if record.guidance.strip() == "":
@@ -317,12 +291,9 @@ pub def admit_model_proposal(package: GovernedPackage, proposal: ModelProposal) 
     if evidence_required and len(proposal.evidence_ids) == 0:
         return rejected_admission("evidence_required", [])
 
+    package_evidence_ids = [record.id for record in package.evidence]
     for evidence_id in proposal.evidence_ids:
-        mut known = false
-        for record in package.evidence:
-            if evidence_id_text(record.id) == evidence_id_text(evidence_id):
-                known = true
-        if not known:
+        if not package_evidence_ids.contains(evidence_id):
             return rejected_admission("unknown_evidence", [])
 
     return AdmissionResult(

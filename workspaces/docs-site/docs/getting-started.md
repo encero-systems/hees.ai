@@ -2,7 +2,7 @@
 
 ## Requirements
 
-Use the released Incan `0.4.0` toolchain. The lockfiles in this repository were generated with that release.
+Use Incan `0.5.0-dev.18` at source commit [`79e7025be`](https://github.com/encero-systems/incan/commit/79e7025bef547cd6eb79f08159630ec5998412d1). The canonical root `incan.lock` was generated with that exact compiler revision.
 
 ## Verify the repository
 
@@ -18,34 +18,34 @@ During pre-release development, another Incan project can use a local path depen
 
 ```toml
 [dependencies]
-hees = { path = "../hees.ai" }
+hees_ai = { path = "../hees.ai" }
 ```
 
 Import checked symbols through the library namespace:
 
 ```incan
-from pub::hees import package_loader_descriptor, validate_package_loader_descriptor
+from pub::hees_ai import package_loader_descriptor, validate_package_loader_descriptor
 ```
 
 The test project under `workspaces/external-consumer/` compiles and tests this exact dependency boundary.
 
 ## Verify the initial console profile
 
-The Console workspace uses only original fictional acceptance data. Its current proof runs fourteen native application tests and fourteen provider-boundary tests, builds the native Incan executable, and reruns all five replay inputs through Hees:
+The Console workspace uses only original fictional acceptance data. Its current proof runs fifteen native application tests and fourteen provider-boundary tests, builds the native Incan executable, and reruns all five replay inputs through Hees:
 
 ```bash
 make console-test console-native-smoke \
-  INCAN=/path/to/incan-0.4.0/bin/incan
+  INCAN=/path/to/incan-0.5.0-dev.18/bin/incan
 ```
 
 This proves the closed `console_profile_0_1` path. It does not download or invoke a language model, perform retrieval, or grant the provider-facing Console module admission authority.
 
 ## Run the native Console
 
-Build the executable with released Incan `0.4.0`, then start the zero-credential offline experience:
+Build the executable with the pinned Incan compiler, then start the zero-credential offline experience:
 
 ```bash
-make console-build INCAN=/path/to/incan-0.4.0/bin/incan
+make console-build INCAN=/path/to/incan-0.5.0-dev.18/bin/incan
 workspaces/hees-console/target/incan/.cargo-target/release/hees_console
 ```
 

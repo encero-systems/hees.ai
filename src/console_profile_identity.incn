@@ -1,0 +1,145 @@
+"""Canonical identity and two-phase provenance hashing for the Console profile."""
+
+from rust::std::string import String as RustString
+from std.encoding.hex import hexlify
+from std.hash import sha256
+from std.json import JsonValue
+from std.serde.json import Serialize
+from crate.console_profile_models import (
+    AtomArtifactProjection,
+    ConsoleAtom,
+    ConsolePackage,
+    ConsoleProposal,
+    ConsoleRequestBinding,
+    PackageArtifactProjection,
+    PackageIdentity,
+    ProvenanceEntry,
+    ProvenanceProjection,
+    RequestDigestProjection,
+)
+from crate.identifiers import DigestIdType, RequestId, digest_id_type
+
+
+def serialize_json_value(value: JsonValue) -> Result[str, str]:
+    """Serialize a parsed value while retaining failure as data."""
+
+    return value.to_json().map_err((_error) => f"json_serialization_failed")
+
+
+pub def digest_canonical_json(source: str) -> Result[DigestIdType, str]:
+    """Normalize arbitrary JSON with the current Incan serializer and hash the rendered bytes."""
+
+    return JsonValue
+        .parse(source)
+        .map_err((_error) => f"invalid_json")
+        .and_then(serialize_json_value)
+        .map(digest_text_bytes)
+
+
+pub def digest_serialized_json(source: str) -> DigestIdType:
+    """
+    Normalize and digest JSON emitted by an Incan model serializer.
+
+    This internal helper accepts only serializer-produced model output, so parse failure is a broken invariant rather
+    than an invalid digest value. It does not claim a durable cross-version canonical encoding. Callers that accept
+    arbitrary JSON must use ``digest_canonical_json`` and handle its ``Result``.
+    """
+
+    return digest_canonical_json(source).unwrap()
+
+
+pub def digest_text_bytes(value: str) -> DigestIdType:
+    """Hash an exact UTF-8 string without JSON canonicalization."""
+
+    return digest_id_type(f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}")
+
+
+def artifact_digest_atom_body(atom: ConsoleAtom) -> AtomArtifactProjection:
+    """
+    Project an atom before provenance is bound to the package artifact digest.
+
+    Package identity is established in two phases to avoid a digest cycle. The package artifact digest covers every
+    governed atom field except ``provenance_digest``. Each provenance digest then binds that established package
+    artifact identity back to its atom's source and review metadata.
+    """
+
+    return AtomArtifactProjection(
+        memory_id=atom.memory_id,
+        evidence_id=atom.evidence_id,
+        source_id=atom.source_id,
+        source_ref=atom.source_ref,
+        source_kind=atom.source_kind,
+        source_fingerprint=atom.source_fingerprint,
+        source_span=atom.source_span,
+        claim=atom.claim,
+        guidance=atom.guidance,
+        language=atom.language,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+        authority_class=atom.authority_class,
+        evidence_kind=atom.evidence_kind,
+    )
+
+
+pub def digest_package_artifact(package: ConsolePackage) -> DigestIdType:
+    """Recompute the fixed package digest over its canonical artifact projection."""
+
+    atoms: list[AtomArtifactProjection] = [artifact_digest_atom_body(atom) for atom in package.atoms]
+    projection = PackageArtifactProjection(
+        contract_version=package.contract_version,
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        mission=package.mission,
+        sources=package.sources,
+        actions=package.actions,
+        requirements=package.requirements,
+        atoms=atoms,
+        policy=package.policy,
+    )
+    return digest_serialized_json(projection.to_json())
+
+
+pub def digest_atom_provenance(package: ConsolePackage, atom: ConsoleAtom) -> DigestIdType:
+    """Bind one atom's review and source metadata to the exact package identity."""
+
+    projection = ProvenanceProjection(
+        package=PackageIdentity(
+            package_id=package.package_id,
+            domain_id=package.domain_id,
+            package_revision=package.package_revision,
+            artifact_digest=package.artifact_digest,
+        ),
+        entry=ProvenanceEntry(
+            memory_id=atom.memory_id,
+            source_ref=atom.source_ref,
+            source_kind=atom.source_kind,
+            source_fingerprint=atom.source_fingerprint,
+            review_state=atom.review_state,
+            review_revision=atom.review_revision,
+            rights_state=atom.rights_state,
+            authority_class=atom.authority_class,
+            evidence_kind=atom.evidence_kind,
+        ),
+    )
+    return digest_serialized_json(projection.to_json())
+
+
+pub def digest_request_binding(request: ConsoleRequestBinding) -> DigestIdType:
+    """Bind the exact request identifier and question without normalization."""
+
+    return digest_request_fields(request.request_id, request.question)
+
+
+pub def digest_request_fields(request_id: RequestId, question: str) -> DigestIdType:
+    """Bind validated request fields before a complete request model exists."""
+
+    projection = RequestDigestProjection(request_id=request_id, question=question)
+    return digest_serialized_json(projection.to_json())
+
+
+pub def digest_proposal(proposal: ConsoleProposal) -> DigestIdType:
+    """Bind the complete normalized proposal, including exact visible units and request digest."""
+    return digest_serialized_json(proposal.to_json())

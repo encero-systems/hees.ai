@@ -24,7 +24,7 @@ The target runtime is **2:50 or shorter**, leaving ten seconds of safety under t
 
 ### 0:45–1:20 — Valid offline replay
 
-**On screen:** Run scenario `1`, `Valid declared action`, from the frozen artifact. Keep `REPLAY` visible. Open the proposal and findings views, then show `ADMITTED`, namespace `console_admission_0_1`, reason `admitted`, selected memory `memory_lantern_sequence`, experimental Content DNA, and the admitted receipt.
+**On screen:** Run scenario `1`, `Valid declared action`, from the frozen artifact. Keep `REPLAY` visible. Open the proposal and findings views, then show the green `✓ ADMITTED` state, namespace `console_admission_0_1`, reason `admitted`, selected memory `memory_lantern_sequence`, experimental Content DNA, and the admitted receipt.
 
 **Spoken script:**
 
@@ -32,7 +32,7 @@ The target runtime is **2:50 or shorter**, leaving ten seconds of safety under t
 
 ### 1:20–1:50 — Undeclared action rejection
 
-**On screen:** Run scenario `2`. Hold on the proposal label, then the terminal result `REJECTED`, namespace `console_admission_0_1`, reason `unknown_action`. Show that the trusted answer, selected memory, and Content DNA are absent, then open the rejection receipt.
+**On screen:** Run scenario `2`. Hold on the proposal label, then the red `✕ REJECTED` terminal state, namespace `console_admission_0_1`, reason `unknown_action`. Show that the trusted answer, selected memory, and Content DNA are absent, then open the rejection receipt.
 
 **Spoken script:**
 
@@ -40,7 +40,7 @@ The target runtime is **2:50 or shorter**, leaving ten seconds of safety under t
 
 ### 1:50–2:15 — Unknown evidence rejection
 
-**On screen:** Run scenario `3`, `Unknown evidence reference`. Show the proposal's schema-valid `evidence_missing_lantern` identifier, then `REJECTED`, namespace `console_admission_0_1`, reason `unknown_evidence`. Show that the trusted answer, selected memory, and Content DNA are absent; the receipt records the rejection.
+**On screen:** Run scenario `3`, `Unknown evidence reference`. Show the proposal's schema-valid `evidence_missing_lantern` identifier, then the red `✕ REJECTED` state, namespace `console_admission_0_1`, reason `unknown_evidence`. Show that the trusted answer, selected memory, and Content DNA are absent; the receipt records the rejection.
 
 **Spoken script:**
 

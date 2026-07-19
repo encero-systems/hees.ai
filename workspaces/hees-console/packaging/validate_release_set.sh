@@ -76,7 +76,7 @@ validate_manifest() {
                 (.product | keys == ["name", "version"]) and
                 (.build | keys == ["language", "profile"]) and
                 (.source | keys == ["commit", "date_epoch", "tree_state"]) and
-                (.toolchain | keys == ["compiler", "compiler_version", "release_archive", "release_sha256"]) and
+                (.toolchain | keys == ["compiler", "compiler_version", "source_commit", "source_repository"]) and
                 (.dependencies | keys == ["incan_lock_file", "incan_lock_sha256"]) and
                 (.notices | keys == ["notice_file", "notice_sha256", "notice_source", "third_party_licenses_file", "third_party_licenses_sha256"]) and
                 (.artifact | keys == ["name", "sha256", "size_bytes"]) and
@@ -90,10 +90,10 @@ validate_manifest() {
                 .source.tree_state == "clean" and
                 (.source.date_epoch | type == "number" and . >= 0) and
                 .toolchain.compiler == "incan" and
-                .toolchain.compiler_version == "0.4.0" and
-                (.toolchain.release_archive | type == "string" and length > 0) and
-                (.toolchain.release_sha256 | test("^[0-9a-f]{64}$")) and
-                .dependencies.incan_lock_file == "workspaces/hees-console/incan.lock" and
+                .toolchain.compiler_version == "0.5.0-dev.18" and
+                .toolchain.source_repository == "https://github.com/encero-systems/incan.git" and
+                .toolchain.source_commit == "79e7025bef547cd6eb79f08159630ec5998412d1" and
+                .dependencies.incan_lock_file == "incan.lock" and
                 (.dependencies.incan_lock_sha256 | test("^[0-9a-f]{64}$")) and
                 .notices.notice_file == "NOTICE" and
                 .notices.notice_source == "repository_root" and

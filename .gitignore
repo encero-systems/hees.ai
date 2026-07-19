@@ -22,8 +22,10 @@ node_modules/
 *.p12
 *.pfx
 
-# Material that is outside the public framework boundary
-.agents/
+# Repository-local agent standards are public; execution state is not
+.agents/*
+!.agents/skills/
+!.agents/skills/**
 outputs/
 reference/
 research/

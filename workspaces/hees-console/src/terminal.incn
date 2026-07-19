@@ -10,7 +10,7 @@ from rust::crossterm::terminal import disable_raw_mode, enable_raw_mode
 from evaluation import ConsoleRun, evaluate_offline_scenario
 from rendering import render_screen
 from replays import scenario_slugs
-from state import ConsoleState, apply_command, initial_state, selected_scenario_slug
+from state import ConsoleState, apply_command, initial_inspector_state, initial_state, selected_scenario_slug
 
 
 pub def command_for_byte(value: int) -> str:
@@ -28,6 +28,14 @@ pub def command_for_byte(value: int) -> str:
         return "scenario-4"
     if value == 53:
         return "scenario-5"
+    if value == 98:
+        return "toggle-sidebar"
+    if value == 103:
+        return "show-interactions"
+    if value == 47:
+        return "open-search"
+    if value == 115:
+        return "open-status"
     if value == 104:
         return "previous-inspector"
     if value == 108:
@@ -38,6 +46,75 @@ pub def command_for_byte(value: int) -> str:
         return "next-scenario"
     if value == 10 or value == 13:
         return "next-inspector"
+    return "noop"
+
+
+def printable_ascii_character(value: int) -> str:
+    """Decode the bounded text vocabulary without moving character policy into Rust."""
+
+    lower = "abcdefghijklmnopqrstuvwxyz"
+    upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    digits = "0123456789"
+    if value >= 97 and value <= 122:
+        offset = value - 97
+        return lower[offset:offset + 1]
+    if value >= 65 and value <= 90:
+        offset = value - 65
+        return upper[offset:offset + 1]
+    if value >= 48 and value <= 57:
+        offset = value - 48
+        return digits[offset:offset + 1]
+    if value == 32:
+        return " "
+    if value == 45:
+        return "-"
+    if value == 46:
+        return "."
+    if value == 47:
+        return "/"
+    if value == 58:
+        return ":"
+    if value == 63:
+        return "?"
+    if value == 95:
+        return "_"
+    return ""
+
+
+def text_command_for_byte(value: int) -> str:
+    """Decode one printable ASCII byte into a bounded search-text command."""
+
+    character = printable_ascii_character(value)
+    if character == "":
+        return "noop"
+    return f"text:{character}"
+
+
+pub def search_command_for_byte(value: int) -> str:
+    """Map raw bytes while the integrated search-and-tags control owns focus."""
+
+    if value == 10 or value == 13:
+        return "close-control"
+    if value == 8 or value == 127:
+        return "backspace"
+    if value == 9:
+        return "toggle-option"
+    if value == 21:
+        return "clear-search"
+    return text_command_for_byte(value)
+
+
+pub def status_command_for_byte(value: int) -> str:
+    """Map raw bytes while the Status table-column control owns focus."""
+
+    if value == 10 or value == 13:
+        return "close-control"
+    if value == 9 or value == 32:
+        return "toggle-option"
+    if value == 111:
+        return "cycle-sort"
+    if value == 115:
+        return "open-status"
     return "noop"
 
 
@@ -57,6 +134,18 @@ pub def command_for_escape_sequence(second: int, third: int) -> str:
     return "noop"
 
 
+def option_command_for_escape_sequence(second: int, third: int) -> str:
+    """Map ANSI cursor keys while a bounded filter control owns focus."""
+
+    if second != 91:
+        return "noop"
+    if third == 65:
+        return "previous-option"
+    if third == 66:
+        return "next-option"
+    return "noop"
+
+
 def read_byte() -> Result[int, str]:
     """Read exactly one raw terminal byte through the portable standard-I/O trait boundary."""
 
@@ -70,14 +159,20 @@ def read_byte() -> Result[int, str]:
             return Ok(int(buffer[0]))
 
 
-def read_command() -> Result[str, str]:
+def read_command(state: ConsoleState) -> Result[str, str]:
     """Wait for one raw key sequence and return a pure application command."""
 
     first = read_byte()?
     if first != 27:
+        if state.focus == "search":
+            return Ok(search_command_for_byte(first))
+        if state.focus == "status":
+            return Ok(status_command_for_byte(first))
         return Ok(command_for_byte(first))
     second = read_byte()?
     third = read_byte()?
+    if state.focus == "search" or state.focus == "status":
+        return Ok(option_command_for_escape_sequence(second, third))
     return Ok(command_for_escape_sequence(second, third))
 
 
@@ -107,10 +202,10 @@ def leave_terminal_screen() -> None:
     println(terminal_sequence(b"\x1b[?25h\x1b[?1049l"))
 
 
-def draw_frame(state: ConsoleState, run: ConsoleRun) -> None:
+def draw_frame(state: ConsoleState, runs: list[ConsoleRun]) -> None:
     """Replace the alternate-screen frame with bounded native Incan output."""
 
-    frame = render_screen(state, run).replace("\n", "\r\n")
+    frame = render_screen(state, runs).replace("\n", "\r\n")
     println(f"{clear_and_home()}{frame}")
 
 
@@ -119,39 +214,39 @@ def live_safe_command(command: str) -> str:
 
     if command == "next-scenario" or command == "previous-scenario" or command.starts_with("scenario-"):
         return "noop"
+    if command == "show-interactions" or command == "open-search" or command == "open-status":
+        return "noop"
     return command
 
 
-def run_screen(initial_state: ConsoleState, initial_run: ConsoleRun, allow_scenarios: bool) -> Result[None, str]:
+def admitted_states(runs: list[ConsoleRun]) -> list[bool]:
+    """Project terminal Hees states for presentation-only browser filtering."""
+
+    return [run.result.spectrum.admitted for run in runs]
+
+
+def run_screen(initial_state: ConsoleState, initial_runs: list[ConsoleRun], allow_scenarios: bool) -> Result[None, str]:
     """Run one full-screen inspector with optional replay scenario switching."""
 
     mut state = initial_state
-    mut run = initial_run
+    runs = initial_runs
+    states = admitted_states(runs.clone())
     enable_raw_mode().map_err((_error) => f"terminal_raw_mode_failed")?
     enter_terminal_screen()
-    draw_frame(state.clone(), run.clone())
+    draw_frame(state.clone(), runs.clone())
     mut failure: Option[str] = None
     while state.running:
-        match read_command():
+        match read_command(state.clone()):
             Err(code) =>
                 failure = Some(code)
                 state.running = false
             Ok(command) =>
-                previous_slug = selected_scenario_slug(state.clone())
                 mut selected_command = command
                 if not allow_scenarios:
                     selected_command = live_safe_command(selected_command)
-                state = apply_command(state, selected_command)
-                next_slug = selected_scenario_slug(state.clone())
-                if allow_scenarios and next_slug != previous_slug:
-                    match evaluate_offline_scenario(next_slug):
-                        Err(code) =>
-                            failure = Some(code)
-                            state.running = false
-                        Ok(next_run) =>
-                            run = next_run
+                state = apply_command(state, selected_command, states.clone())
                 if state.running:
-                    draw_frame(state.clone(), run.clone())
+                    draw_frame(state.clone(), runs.clone())
     leave_terminal_screen()
     match disable_raw_mode():
         Err(_) => return Err("terminal_restore_failed")
@@ -169,11 +264,13 @@ pub def run_interactive(initial_slug: str) -> Result[None, str]:
     for index, slug in enumerate(slugs):
         if slug == initial_slug:
             state.scenario_index = index
-    run = evaluate_offline_scenario(selected_scenario_slug(state.clone()))?
-    return run_screen(state, run, true)
+    mut runs: list[ConsoleRun] = []
+    for slug in slugs:
+        runs.append(evaluate_offline_scenario(slug)?)
+    return run_screen(state, runs, true)
 
 
 pub def run_evaluated_interactive(run: ConsoleRun) -> Result[None, str]:
     """Inspect one live evaluated interaction without exposing replay navigation."""
 
-    return run_screen(initial_state(), run, false)
+    return run_screen(initial_inspector_state(), [run], false)

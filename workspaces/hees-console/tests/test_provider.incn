@@ -5,13 +5,15 @@ from std.json import JsonValue
 from std.serde import json
 from std.serde.json import Deserialize, Serialize
 from std.testing import assert_eq, assert_is_err, assert_is_ok
-from pub::hees import (
+from pub::hees_ai import (
     ConsoleProposal,
     RelationObservation,
     SupportMapping,
     SynthesisObservation,
     VisibleUnit,
     action_id_text,
+    digest_id_type,
+    digest_id_type_text,
     evidence_id,
     identify_console_proposal_json,
     memory_id,
@@ -520,7 +522,9 @@ def test_committee_rejects_cross_interaction_proposals_and_targets() -> None:
     """Never evaluate a target plan against a proposal from another request or candidate."""
 
     mut crossed_request = load_proposal()
-    crossed_request.request_digest = f"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    crossed_request.request_digest = digest_id_type(
+        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    )
     request_error = assert_is_err(build_committee_calls(context_plan(), crossed_request, fixture_manifest_json()))
     assert_eq(request_error.value(), "provider_invalid_input")
     mut crossed_candidate = load_proposal()
@@ -545,8 +549,8 @@ def test_observation_decoders_add_only_non_authoritative_fingerprints() -> None:
         decode_relation_response(calls[0], response_with_output(assert_is_ok(relation_source.to_json()))),
     )
     assert_eq(relation.support_bps, 9000)
-    assert_eq(relation.model_fingerprint.starts_with("sha256:"), true)
-    assert_eq(len(relation.model_fingerprint), 71)
+    assert_eq(digest_id_type_text(relation.model_fingerprint).starts_with("sha256:"), true)
+    assert_eq(len(digest_id_type_text(relation.model_fingerprint)), 71)
     mut synthesis_source = assert_is_ok(JsonValue.parse(read_text(fixture_path("observations/synthesis_request.json"))))
     assert_is_ok(synthesis_source.remove("model_fingerprint"))
     assert_is_ok(synthesis_source.remove("prompt_fingerprint"))
@@ -555,7 +559,7 @@ def test_observation_decoders_add_only_non_authoritative_fingerprints() -> None:
         decode_synthesis_response(calls[5], response_with_output(assert_is_ok(synthesis_source.to_json()))),
     )
     assert_eq(synthesis.covered_bps, 9000)
-    assert_eq(len(synthesis.configuration_fingerprint), 71)
+    assert_eq(len(digest_id_type_text(synthesis.configuration_fingerprint)), 71)
 
 
 def test_transport_relation_bound_matches_the_frozen_maximum() -> None:

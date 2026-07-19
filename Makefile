@@ -4,10 +4,11 @@ MDBOOK ?= mdbook
 CARGO_ABOUT ?= cargo-about
 CARGO_DENY ?= cargo-deny
 CONSOLE_ROOT := workspaces/hees-console
+HEES_MEMBER := hees_ai
 CONSOLE_SOURCE := src/main.incn
 CONSOLE_NATIVE_TEST := tests/native_console_test.incn
 CONSOLE_PROVIDER_TEST := tests/test_provider.incn
-CONSOLE_LOCK := $(abspath $(CONSOLE_ROOT)/incan.lock)
+CONSOLE_LOCK := $(abspath incan.lock)
 CONSOLE_BINARY := $(abspath $(CONSOLE_ROOT)/target/incan/.cargo-target/release/hees_console)
 CONSOLE_BUILD_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/build-report.json)
 CONSOLE_RELEASE_TOOL := $(abspath $(CONSOLE_ROOT)/packaging/release_candidate.sh)
@@ -23,6 +24,7 @@ LICENSE_CONFIG_ROOT := $(abspath tools/licenses)
 INCAN_RESOLVED := $(shell command -v "$(INCAN)" 2>/dev/null || printf '%s' "$(INCAN)")
 INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
 CONSOLE_RUSTFLAGS := --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(HOME)=/build-home --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain
+INCAN_REQUIRED_VERSION := incan 0.5.0-dev.18
 RELEASE_OUTPUT ?= $(abspath $(CONSOLE_ROOT)/target/release)
 RELEASE_PLATFORM ?=
 SOURCE_COMMIT ?= $(shell git rev-parse HEAD)
@@ -34,10 +36,10 @@ fmt:
 	$(INCAN) fmt --check .
 
 lib:
-	$(INCAN) build --lib $(INCAN_FLAGS)
+	$(INCAN) build --lib --member $(HEES_MEMBER) $(INCAN_FLAGS)
 
 test:
-	$(INCAN) test tests $(INCAN_FLAGS) --fail-on-empty
+	$(INCAN) test --member $(HEES_MEMBER) tests $(INCAN_FLAGS) --fail-on-empty
 
 consumer: lib
 	cd workspaces/external-consumer && $(INCAN) test tests $(INCAN_FLAGS) --fail-on-empty
@@ -55,24 +57,24 @@ docs:
 	$(MDBOOK) build workspaces/docs-site
 
 console-build:
-	@test "$$($(INCAN) --version)" = "incan 0.4.0" || { echo "Hees Console requires released Incan 0.4.0" >&2; exit 1; }
+	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "Hees Console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	@mkdir -p "$(dir $(CONSOLE_BUILD_REPORT))"
-	RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build --lib $(INCAN_FLAGS)
+	RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build --lib --member $(HEES_MEMBER) $(INCAN_FLAGS)
 	cd $(CONSOLE_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build $(CONSOLE_SOURCE) $(INCAN_FLAGS) --release --report json --report-output $(CONSOLE_BUILD_REPORT)
-	@test -x "$(CONSOLE_BINARY)" || { echo "released Incan did not emit $(CONSOLE_BINARY)" >&2; exit 1; }
+	@test -x "$(CONSOLE_BINARY)" || { echo "pinned Incan did not emit $(CONSOLE_BINARY)" >&2; exit 1; }
 
 console-test:
-	@test "$$($(INCAN) --version)" = "incan 0.4.0" || { echo "Hees Console requires released Incan 0.4.0" >&2; exit 1; }
+	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "Hees Console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	cd $(CONSOLE_ROOT) && $(INCAN) test $(CONSOLE_NATIVE_TEST) $(INCAN_FLAGS) --fail-on-empty
 	cd $(CONSOLE_ROOT) && $(INCAN) test $(CONSOLE_PROVIDER_TEST) $(INCAN_FLAGS) --fail-on-empty
 
 console-runner-build:
-	@test "$$($(INCAN) --version)" = "incan 0.4.0" || { echo "Hees Console requires released Incan 0.4.0" >&2; exit 1; }
+	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "Hees Console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	cd $(CONSOLE_RUNNER_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build src/main.incn $(INCAN_FLAGS) --release
-	@test -x "$(CONSOLE_RUNNER_BINARY)" || { echo "released Incan did not emit $(CONSOLE_RUNNER_BINARY)" >&2; exit 1; }
+	@test -x "$(CONSOLE_RUNNER_BINARY)" || { echo "pinned Incan did not emit $(CONSOLE_RUNNER_BINARY)" >&2; exit 1; }
 
 console-kernel-compatibility:
-	@test "$$($(INCAN) --version)" = "incan 0.4.0" || { echo "Hees Console requires released Incan 0.4.0" >&2; exit 1; }
+	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "Hees Console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	cd $(CONSOLE_COMPATIBILITY_ROOT) && $(INCAN) run src/main.incn $(INCAN_FLAGS)
 
 console-native-smoke: console-build

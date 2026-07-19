@@ -1,5 +1,5 @@
 from std.testing import assert_eq
-from pub::hees import (
+from pub::hees_ai import (
     PackageLoaderDescriptor,
     PackageLoaderValidation,
     package_loader_descriptor,

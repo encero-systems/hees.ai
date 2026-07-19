@@ -5,8 +5,8 @@ All provider- or package-derived strings pass through one finite sanitizer befor
 """
 
 from evaluation import ConsoleRun, FindingProjection
-from replays import ProposalProjection, RelationObservationProjection, SynthesisObservationProjection
-from state import ConsoleState, inspector_names, selected_inspector_name
+from replays import ProposalProjection, RelationObservationProjection, SynthesisObservationProjection, scenario_tags
+from state import ConsoleState, available_tags, inspector_names, selected_inspector_name, visible_scenario_indexes
 from rust::std::string import String as RustString
 from std.regex import Regex
 
@@ -62,6 +62,44 @@ def status_label(run: ConsoleRun) -> str:
     return "REJECTED"
 
 
+def status_icon_label(run: ConsoleRun) -> str:
+    """Pair each terminal state with a stable non-colour-dependent icon."""
+
+    if run.result.spectrum.admitted:
+        return "✓ ADMITTED"
+    return "✕ REJECTED"
+
+
+def fixed_terminal_sequence(value: bytes) -> str:
+    """Decode one application-authored terminal style sequence."""
+
+    match RustString.from_utf8(value):
+        Err(_) => return ""
+        Ok(value) => return value
+
+
+def styled_status_text(value: str, admitted: bool) -> str:
+    """Apply the fixed green/red status vocabulary to already-trusted state text."""
+
+    mut prefix = fixed_terminal_sequence(b"\x1b[1;31m")
+    if admitted:
+        prefix = fixed_terminal_sequence(b"\x1b[1;32m")
+    return f"{prefix}{value}{fixed_terminal_sequence(b"\x1b[0m")}"
+
+
+def styled_status_label(run: ConsoleRun) -> str:
+    """Render one interactive status with both icon and fixed colour."""
+
+    return styled_status_text(status_icon_label(run.clone()), run.result.spectrum.admitted)
+
+
+def styled_status_cell(run: ConsoleRun, width: int) -> str:
+    """Style a padded status cell without counting ANSI bytes as visible width."""
+
+    label = padded_column(status_icon_label(run.clone()), width)
+    return styled_status_text(label, run.result.spectrum.admitted)
+
+
 def option_presence(value: Option[str]) -> str:
     """Render whether one terminal artifact is present without inventing it."""
 
@@ -81,10 +119,7 @@ def option_text(value: Option[str]) -> str:
 def bounded_identifiers(values: list[str]) -> str:
     """Sanitize and join untrusted identifiers before terminal rendering."""
 
-    mut result: list[str] = []
-    for value in values:
-        result.append(bounded_text(value, 128))
-    return ", ".join(result)
+    return ", ".join([bounded_text(value, 128) for value in values])
 
 
 def optional_identifiers(values: Option[list[str]]) -> str:
@@ -260,7 +295,7 @@ def finding_line(finding: FindingProjection) -> str:
 def finding_lines(run: ConsoleRun) -> list[str]:
     """Render bounded Hees-derived findings in manifest order."""
 
-    mut lines = [f"HEES FINDINGS count={len(run.result.findings)}"]
+    mut lines = [f"HEES-CLASSIFIED NON-AUTHORITATIVE FINDINGS count={len(run.result.findings)}"]
     mut count = 0
     for finding in run.result.findings:
         if count >= MAX_INSPECTOR_ITEMS:
@@ -325,6 +360,14 @@ def receipt_lines(run: ConsoleRun, include_json: bool) -> list[str]:
     return lines
 
 
+def visible_mode_label(mode: str) -> str:
+    """Name fixture-backed offline execution as replay at the presentation boundary."""
+
+    if mode == "OFFLINE":
+        return "REPLAY"
+    return mode
+
+
 def replay_integrity_line(run: ConsoleRun) -> str:
     """Describe whether replay integrity was verified before Hees evaluation."""
 
@@ -340,7 +383,7 @@ def trace_lines(run: ConsoleRun) -> list[str]:
     mut lines = ["NON-AUTHORITATIVE EXECUTION TRACE", f"contract={bounded_text(trace.contract_version, 64)} profile={bounded_text(
         trace.profile_id,
         64,
-    )} mode={bounded_text(trace.mode, 32)}", f"build={bounded_text(trace.build_identity, 64)} toolchain={bounded_text(
+    )} mode={bounded_text(visible_mode_label(trace.mode), 32)}", f"build={bounded_text(trace.build_identity, 64)} toolchain={bounded_text(
         trace.toolchain_identity,
         64,
     )} runner={bounded_text(trace.runner_identity, 96)}", f"provider={bounded_text(trace.provider_id, 64)} proposal={bounded_text(
@@ -376,7 +419,7 @@ def append_section(lines: list[str], section: list[str]) -> list[str]:
 pub def render_headless(run: ConsoleRun) -> str:
     """Render stable control-free output with direct question text redacted by default."""
 
-    mut lines = ["HEES CONSOLE 0.1.0", PROFILE_LABEL, f"MODE {run.scenario.mode}", f"SCENARIO {run.scenario.slug}", "QUESTION [redacted from headless output]"]
+    mut lines = ["HEES CONSOLE 0.1.0", PROFILE_LABEL, f"MODE {visible_mode_label(run.scenario.mode)}", f"SCENARIO {run.scenario.slug}", "QUESTION [redacted from headless output]"]
     lines = append_section(lines, package_lines(run.clone()))
     lines = append_section(lines, source_lines(run.clone(), false))
     lines = append_section(lines, atom_comparison_lines())
@@ -423,26 +466,226 @@ def inspector_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
     return trace_lines(run)
 
 
-pub def render_screen(state: ConsoleState, run: ConsoleRun) -> str:
-    """Render one bounded full-screen frame without terminal control sequences."""
+def spaces(count: int) -> str:
+    """Return a small fixed-width padding string without terminal controls."""
 
-    mut mode_line = "OFFLINE REPLAY · 1 valid · 2 action · 3 evidence · 4 memory · 5 non-admitted"
-    if run.scenario.mode == "LIVE":
-        mode_line = f"LIVE GPT-5.6  ·  provider output remains untrusted"
-    mut lines = ["HEES CONSOLE 0.1.0  ·  GPT-5.6 proposes. Hees decides.", PROFILE_LABEL, mode_line, f"SCENARIO  {bounded_text(
-        run.scenario.slug,
-        64,
-    )}  ·  {bounded_text(run.scenario.title, 96)}", f"QUESTION  {bounded_text(
+    mut result = ""
+    mut index = 0
+    while index < count:
+        result = f"{result} "
+        index += 1
+    return result
+
+
+def clip_column(value: str, width: int) -> str:
+    """Clip one presentation value to a fixed terminal column."""
+
+    if width <= 0:
+        return ""
+    clean = bounded_text(value, width)
+    if len(clean) <= width:
+        return clean
+    return clean[0:width - 1] + "…"
+
+
+def padded_column(value: str, width: int) -> str:
+    """Clip and right-pad one fixed terminal column."""
+
+    clipped = clip_column(value, width)
+    if len(clipped) >= width:
+        return clipped
+    return f"{clipped}{spaces(width - len(clipped))}"
+
+
+def checkbox(selected: bool) -> str:
+    """Render a status or tag checkbox without relying on colour."""
+
+    if selected:
+        return "[x]"
+    return "[ ]"
+
+
+def admitted_states(runs: list[ConsoleRun]) -> list[bool]:
+    """Project real Hees terminal states for browser rendering."""
+
+    return [run.result.spectrum.admitted for run in runs]
+
+
+def selected_run(state: ConsoleState, runs: list[ConsoleRun]) -> ConsoleRun:
+    """Return the selected evaluated interaction with a defensive first-run fallback."""
+
+    if state.scenario_index < 0 or state.scenario_index >= len(runs):
+        return runs[0]
+    return runs[state.scenario_index]
+
+
+def status_order_label(state: ConsoleState) -> str:
+    """Render the current Status-column ordering in compact form."""
+
+    if state.status_order == "admitted-first":
+        return "admitted first"
+    if state.status_order == "rejected-first":
+        return "rejected first"
+    return "scenario order"
+
+
+def selected_tags_label(state: ConsoleState) -> str:
+    """Render checked tags inside the search surface rather than a separate dropdown."""
+
+    if len(state.selected_tags) == 0:
+        return "all tags"
+    return ", ".join(state.selected_tags)
+
+
+def search_control_lines(state: ConsoleState) -> list[str]:
+    """Render free text and tag checkboxes as one integrated control."""
+
+    mut query = state.search_query
+    if query == "":
+        query = f"type to filter"
+    mut lines = [f"SEARCH + TAGS [/]  {bounded_text(query, 64)}  ·  {selected_tags_label(state)}"]
+    if state.focus != "search":
+        return lines
+    lines.append("  Type to search · ↑/↓ choose tag · tab check/uncheck · enter apply · ctrl-u clear")
+    for index, tag in enumerate(available_tags()):
+        mut marker = " "
+        if index == state.tag_index:
+            marker = f">"
+        tag_selected = state.selected_tags.contains(f"{tag}")
+        lines.append(f"  {marker} {checkbox(tag_selected)} {tag}")
+    return lines
+
+
+def status_control_lines(state: ConsoleState) -> list[str]:
+    """Render filtering and ordering under the Status table-column header."""
+
+    if state.focus != "status":
+        return []
+    mut lines = ["STATUS FILTER / SORT", "  ↑/↓ choose · space check/change · o cycle order · enter apply"]
+    mut admitted_marker = " "
+    mut rejected_marker = " "
+    mut order_marker = " "
+    if state.status_index == 0:
+        admitted_marker = f">"
+    elif state.status_index == 1:
+        rejected_marker = f">"
+    else:
+        order_marker = f">"
+    lines.append(f"  {admitted_marker} {checkbox(state.show_admitted)} ADMITTED")
+    lines.append(f"  {rejected_marker} {checkbox(state.show_rejected)} REJECTED")
+    lines.append(f"  {order_marker} sort: {status_order_label(state)}")
+    return lines
+
+
+def interaction_browser_lines(state: ConsoleState, runs: list[ConsoleRun]) -> list[str]:
+    """Render evaluated offline interactions with column-owned status and integrated tag search."""
+
+    states = admitted_states(runs.clone())
+    visible = visible_scenario_indexes(state.clone(), states)
+    mut lines = ["INTERACTIONS", "Every status below is recomputed by the real Hees path; tags are navigation metadata only."]
+    lines.extend(search_control_lines(state.clone()))
+    lines.append("")
+    scenario_heading = padded_column("Scenario", 31)
+    status_heading = padded_column(f"Status [s] · {status_order_label(state.clone())}", 32)
+    lines.append(f"   {scenario_heading} {status_heading} Tags")
+    lines.append(
+        "   ─────────────────────────────── ──────────────────────────────── ─────────────────────────",
+    )
+    if len(visible) == 0:
+        lines.append("   No interactions match the active search, tag, and status filters.")
+    for index in visible:
+        run = runs[index].clone()
+        mut marker = " "
+        if index == state.scenario_index:
+            marker = f">"
+        lines.append(
+            f" {marker} {padded_column(run.scenario.title, 31)} {styled_status_cell(run.clone(), 32)} {bounded_identifiers(
+                scenario_tags(run.scenario.slug),
+            )}",
+        )
+    lines.extend(status_control_lines(state))
+    lines.append("")
+    lines.append("↑/↓ or j/k select · enter inspect · 1–5 direct scenario · / search + tags · s status")
+    return lines
+
+
+def navigation_lines(state: ConsoleState) -> list[str]:
+    """Render the interaction and inspector navigation as an expandable or compact rail."""
+
+    mut lines: list[str] = []
+    mut interaction_marker = " "
+    if state.surface == "interactions":
+        interaction_marker = f">"
+    if state.sidebar_collapsed:
+        lines.append("NAV")
+        lines.append(f"{interaction_marker} 0")
+        for index, _name in enumerate(inspector_names()):
+            mut marker = " "
+            if state.surface == "inspector" and index == state.inspector_index:
+                marker = f">"
+            lines.append(f"{marker} {index + 1}")
+        return lines
+    lines.append("NAVIGATION")
+    lines.append(f"{interaction_marker} INTERACTIONS")
+    for index, name in enumerate(inspector_names()):
+        mut marker = " "
+        if state.surface == "inspector" and index == state.inspector_index:
+            marker = f">"
+        lines.append(f"{marker} {bounded_text(name, 19)}")
+    return lines
+
+
+def compose_navigation(state: ConsoleState, content: list[str]) -> list[str]:
+    """Compose the collapsible navigation rail and selected product surface."""
+
+    navigation = navigation_lines(state.clone())
+    mut width = 22
+    if state.sidebar_collapsed:
+        width = 5
+    mut result: list[str] = []
+    mut row = 0
+    mut rows = len(navigation)
+    if len(content) > rows:
+        rows = len(content)
+    while row < rows:
+        mut left = ""
+        mut right = ""
+        if row < len(navigation):
+            left = navigation[row]
+        if row < len(content):
+            right = content[row]
+        result.append(f"{padded_column(left, width)} │ {right}")
+        row += 1
+    return result
+
+
+def inspector_surface_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
+    """Render the selected evaluated interaction and one authority-separated inspector."""
+
+    mut lines = [f"INSPECTOR  {state.inspector_index + 1}/{len(inspector_names())}  {selected_inspector_name(
+        state.clone(),
+    )}", f"SCENARIO  {bounded_text(run.scenario.slug, 64)}  ·  {bounded_text(run.scenario.title, 96)}", f"QUESTION  {bounded_text(
         run.scenario.body.request.question,
         MAX_TEXT_CHARACTERS,
-    )}", f"STATE  {status_label(run)}  ·  reason={bounded_text(run.result.spectrum.reason, 128)}", "────────────────────────────────────────────────────────────────────────────────", f"INSPECTOR  {state.inspector_index + 1}/{len(
-        inspector_names(),
-    )}  {selected_inspector_name(state)}", "VIEWS  PACKAGE · SOURCES · ATOM · PROPOSAL · SUPPORT · MANIFEST · OBSERVATIONS", "       FINDINGS · SPECTRUM · MEMORY · CONTENT DNA · RECEIPT · TRACE", "────────────────────────────────────────────────────────────────────────────────"]
+    )}", f"STATE  {styled_status_label(run.clone())}  ·  reason={bounded_text(run.result.spectrum.reason, 128)}", "────────────────────────────────────────────────────────────────────────────────"]
     lines.extend(inspector_lines(state, run))
     lines.append("")
+    lines.append("←/→ or h/l inspector · ↑/↓ or k/j scenario · g interactions · b collapse nav · q quit")
+    return lines
+
+
+pub def render_screen(state: ConsoleState, runs: list[ConsoleRun]) -> str:
+    """Render one bounded interactive frame with only fixed application-authored style sequences."""
+
+    run = selected_run(state.clone(), runs.clone())
+    mut mode_line = "OFFLINE REPLAY · terminal states evaluated locally by Hees"
     if run.scenario.mode == "LIVE":
-        lines.append("Keys: ←/→ or h/l inspector · Enter next inspector · q quit")
-    else:
-        lines.append("Keys: 1–5 scenario · ←/→ or h/l inspector · ↑/↓ or k/j scenario")
-        lines.append("      Enter next inspector · q quit")
+        mode_line = f"LIVE GPT-5.6 · provider output remains untrusted"
+    mut content = inspector_surface_lines(state.clone(), run.clone())
+    if state.surface == "interactions" and run.scenario.mode == "OFFLINE":
+        content = interaction_browser_lines(state.clone(), runs)
+    mut lines = ["HEES CONSOLE 0.1.0  ·  GPT-5.6 proposes. Hees decides.", PROFILE_LABEL, mode_line, ""]
+    lines.extend(compose_navigation(state, content))
+    lines.append("")
+    lines.append("Global: b collapse/expand navigation · q quit")
     return "\n".join(lines)

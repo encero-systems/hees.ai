@@ -8,7 +8,7 @@ Nothing in this document confirms that Hees Console has been released, hosted, r
 
 | Submission claim or requirement | Public evidence needed | Final link or value |
 | --- | --- | --- |
-| Public licensed repository | Repository at frozen revision; Apache-2.0 license; third-party notices | **[FINALIZE BEFORE RELEASE: REPOSITORY, COMMIT, LICENSE, AND NOTICE URLS]** |
+| Public licensed repository | Repository at frozen revision; Apache-2.0 license; third-party notices | [Hees.ai](https://github.com/encero-systems/hees.ai), [Apache-2.0 license](https://github.com/encero-systems/hees.ai/blob/main/LICENSE); **[FINALIZE BEFORE RELEASE: FROZEN COMMIT AND THIRD-PARTY NOTICE URLS]** |
 | Meaningful Build Week extension | Dated July 13–21 commit range and public implementation/review PRs that distinguish prior work | **[FINALIZE BEFORE RELEASE: COMMIT RANGE AND PR URLS]** |
 | Codex collaboration | Timestamped Codex evidence, dated commits, and README lineage | **[FINALIZE BEFORE RELEASE: CODEX EVIDENCE AND README URLS]** |
 | Majority core-functionality task | Codex `/feedback` Session ID | **[MANUAL INPUT REQUIRED: SESSION ID]** |

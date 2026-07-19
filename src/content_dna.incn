@@ -15,6 +15,7 @@ from crate.identifiers import (
     ContentDnaId,
     ContractId,
     DecisionId,
+    DigestIdType,
     DomainId,
     EvidenceId,
     MemoryId,
@@ -22,11 +23,12 @@ from crate.identifiers import (
     ProfileId,
     ProposalId,
     ReceiptId,
+    RevisionType,
     RequestId,
     ResponseContractId,
-    content_dna_id,
     content_dna_id_text,
-    receipt_id,
+    digest_id_type,
+    digest_id_type_text,
     receipt_id_text,
 )
 
@@ -37,8 +39,8 @@ pub model ContentDnaPackage:
 
     pub package_id: PackageId
     pub domain_id: DomainId
-    pub package_revision: str
-    pub artifact_digest: str
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
 
 
 @derive(Clone, json)
@@ -55,9 +57,9 @@ pub model ContentDnaPolicy:
     """Package-owned constraint and response-contract identity for one answer."""
 
     pub constraint_plan_id: ConstraintPlanId
-    pub constraint_plan_revision: str
+    pub constraint_plan_revision: RevisionType
     pub response_contract_id: ResponseContractId
-    pub response_contract_revision: str
+    pub response_contract_revision: RevisionType
 
 
 @derive(Clone, json)
@@ -67,10 +69,10 @@ pub model ContentDnaEntry:
     pub memory_id: MemoryId
     pub source_ref: str
     pub source_kind: str
-    pub source_fingerprint: str
-    pub provenance_digest: str
+    pub source_fingerprint: DigestIdType
+    pub provenance_digest: DigestIdType
     pub review_state: str
-    pub review_revision: str
+    pub review_revision: RevisionType
     pub rights_state: str
     pub authority_class: str
     pub evidence_kind: str
@@ -88,8 +90,8 @@ pub model ContentDnaBody:
     pub terminal: ContentDnaTerminal
     pub policy: ContentDnaPolicy
     pub entries: list[ContentDnaEntry]
-    pub source_digests: list[str]
-    pub answer_digest: str
+    pub source_digests: list[DigestIdType]
+    pub answer_digest: DigestIdType
 
 
 @derive(Clone, json)
@@ -108,12 +110,12 @@ pub model AdmittedReceiptBody:
     pub profile_id: ProfileId
     pub package_id: PackageId
     pub domain_id: DomainId
-    pub package_revision: str
-    pub artifact_digest: str
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
     pub request_id: RequestId
-    pub request_digest: str
+    pub request_digest: DigestIdType
     pub proposal_id: ProposalId
-    pub candidate_digest: str
+    pub candidate_digest: DigestIdType
     pub decision: str
     pub reason_namespace: str
     pub reason: str
@@ -131,12 +133,12 @@ pub model RejectedReceiptBody:
     pub profile_id: ProfileId
     pub package_id: PackageId
     pub domain_id: DomainId
-    pub package_revision: str
-    pub artifact_digest: str
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
     pub request_id: RequestId
-    pub request_digest: str
+    pub request_digest: DigestIdType
     pub proposal_id: ProposalId
-    pub candidate_digest: str
+    pub candidate_digest: DigestIdType
     pub decision: str
     pub reason_namespace: str
     pub reason: str
@@ -151,20 +153,34 @@ pub model ProfileReceipt:
     pub receipt_id: ReceiptId
 
 
-def digest_canonical_json(source: str) -> str:
-    """Return the lowercase SHA-256 identity of one canonical JSON value."""
+def serialize_json_value(value: JsonValue) -> Result[str, str]:
+    """Serialize one parsed value while preserving failure as data."""
 
-    match JsonValue.parse(source):
-        Err(_) => return ""
-        Ok(value) =>
-            match value.to_json():
-                Err(_) => return ""
-                Ok(canonical) => return f"sha256:{hexlify(sha256.digest(RustString.from(canonical).into_bytes()))}"
+    return value.to_json().map_err((_error) => f"json_serialization_failed")
 
 
-pub def construct_content_dna(body: ContentDnaBody) -> ContentDna:
-    """Seal one complete admitted-answer body under its canonical digest."""
-    return ContentDna(body=body.clone(), content_dna_id=content_dna_id(digest_canonical_json(body.to_json())))
+def digest_text_bytes(value: str) -> DigestIdType:
+    """Return the lowercase SHA-256 identity of exact UTF-8 text."""
+
+    return digest_id_type(f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}")
+
+
+def digest_canonical_json(source: str) -> Result[DigestIdType, str]:
+    """Normalize arbitrary JSON with the current Incan serializer and hash the rendered bytes."""
+
+    return JsonValue
+        .parse(source)
+        .map_err((_error) => f"invalid_json")
+        .and_then(serialize_json_value)
+        .map(digest_text_bytes)
+
+
+pub def construct_content_dna(body: ContentDnaBody) -> Option[ContentDna]:
+    """Seal one admitted-answer body, or fail closed if its JSON projection cannot be normalized."""
+
+    match digest_canonical_json(body.to_json()):
+        Err(_) => return None
+        Ok(identity) => return Some(ContentDna(body=body, content_dna_id=ContentDnaId(identity)))
 
 
 pub def content_dna_identity(value: ContentDna) -> str:
@@ -179,14 +195,18 @@ pub def content_dna_identifier(value: ContentDna) -> ContentDnaId:
 
 pub def content_dna_answer_digest(value: ContentDna) -> str:
     """Expose the answer binding without making the sealed body caller-constructible."""
-    return value.body.answer_digest
+    return digest_id_type_text(value.body.answer_digest)
 
 
 def construct_profile_receipt(body_source: str) -> Option[ProfileReceipt]:
     """Seal one typed receipt body after converting it to an opaque JSON projection."""
     match JsonValue.parse(body_source):
         Err(_) => return None
-        Ok(body) => return Some(ProfileReceipt(body=body, receipt_id=receipt_id(digest_canonical_json(body_source))))
+        Ok(body) =>
+            match body.to_json():
+                Err(_) => return None
+                Ok(canonical) =>
+                    return Some(ProfileReceipt(body=body, receipt_id=ReceiptId(digest_text_bytes(canonical))))
 
 
 pub def construct_admitted_receipt(body: AdmittedReceiptBody) -> Option[ProfileReceipt]:

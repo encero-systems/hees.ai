@@ -5,16 +5,7 @@ This module validates descriptor metadata only. It does not read, parse, verify,
 """
 
 from std.serde import json
-from crate.identifiers import (
-    DomainId,
-    PackageId,
-    domain_id,
-    domain_id_is_safe,
-    domain_id_text,
-    package_id_is_safe,
-    package_id_text,
-    package_id,
-)
+from crate.identifiers import DomainId, PackageId, domain_id, domain_id_text, package_id_text, package_id
 
 const PACKAGE_SCHEMA_VERSION: str = "0.1"
 const SOURCE_CONTROLLED_PACKAGE: str = "source_controlled_domain_package"
@@ -80,10 +71,6 @@ def package_path_is_safe(path: str) -> bool:
 
 pub def validate_package_loader_descriptor(descriptor: PackageLoaderDescriptor) -> PackageLoaderValidation:
     """Validate the declared identity, schema, source kind, and repository-relative canonical path."""
-    if not package_id_is_safe(descriptor.package_id):
-        return PackageLoaderValidation(descriptor=descriptor, valid=false, reason="invalid_package_id")
-    if not domain_id_is_safe(descriptor.domain_id):
-        return PackageLoaderValidation(descriptor=descriptor, valid=false, reason="invalid_domain_id")
     if descriptor.package_path == "":
         return PackageLoaderValidation(descriptor=descriptor, valid=false, reason="missing_package_path")
     if not package_path_is_safe(descriptor.package_path):
