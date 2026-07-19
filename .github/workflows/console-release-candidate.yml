@@ -27,8 +27,6 @@ jobs:
           persist-credentials: false
       - name: Install Rust 1.93
         uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66 # 1.93.0
-        with:
-          toolchain: 1.93.0
       - name: Install checksum-pinned actionlint 1.7.12
         env:
           ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -85,8 +83,6 @@ jobs:
           printf 'RELEASE_OUTPUT=%s\n' "$RUNNER_TEMP/hees-console-release" >> "$GITHUB_ENV"
       - name: Install Rust 1.93
         uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66 # 1.93.0
-        with:
-          toolchain: 1.93.0
       - name: Install pinned license-audit tools
         run: |
           cargo install cargo-deny --version 0.19.0 --locked
