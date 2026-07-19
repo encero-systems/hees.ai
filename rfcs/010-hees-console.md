@@ -73,7 +73,7 @@ The first implementation can still be smaller than this north star. A bounded im
 - Making every source connector, extraction engine, package topology, provider SDK, model runtime, or deployment target part of this RFC.
 - Claiming that the initial profile implements the complete Draft Spectrum, Content DNA, governed-memory, constraint, package-artifact, receipt, verifier, behavior, or response-lifecycle contracts.
 - Shipping private content, client packages, unpublished research, credentials, downloaded model artifacts, local paths, or unrelated product code in public fixtures or releases.
-- Requiring a network, provider credential, or live model call for a profile that advertises an offline judge path.
+- Requiring a network, provider credential, or live model call for a profile that advertises offline operation.
 - Silently changing the Hees library version when releasing a separately versioned Console profile.
 
 ## Guide-level explanation
@@ -512,7 +512,7 @@ Rejected because exact implementation profiles can prove useful end-to-end bound
 
 ### Require source rebuilds for every profile
 
-Rejected for distributable profiles because a frozen prebuilt artifact is stronger release evidence and a better judge path. Development profiles may still support source execution when explicitly documented.
+Rejected for distributable profiles because a frozen prebuilt artifact is stronger release evidence and a better no-rebuild path for consumer verification. Development profiles may still support source execution when explicitly documented.
 
 ## Drawbacks
 
