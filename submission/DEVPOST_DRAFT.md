@@ -61,7 +61,7 @@ The Console is designed around inspection rather than chat. The checked implemen
 - proposal text is escaped and confined to an explicitly untrusted surface;
 - observations and Hees-classified findings are adjacent but not conflated;
 - the terminal action, reason namespace, and reason are visible without opening raw protocol data; and
-- selected memory, experimental Content DNA, and the profile receipt appear only on an admitted path.
+- selected memory and experimental Content DNA appear only on an admitted path; after safe package, request, and proposal identity establishment, a profile receipt records either admission or rejection without exposing rejected prose as trusted output.
 
 The interaction is keyboard-first and deterministic for judges: keys `1` through `5` run one valid and four adversarial scenarios, while thirteen dedicated inspectors expose the package, sources, optional atom-comparison state, proposal, support mappings, manifest, observations, findings, Spectrum result, selected memory, Content DNA, receipt, and trace.
 

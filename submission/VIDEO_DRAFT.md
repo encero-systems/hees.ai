@@ -28,7 +28,7 @@ The target runtime is **2:50 or shorter**, leaving ten seconds of safety under t
 
 **Spoken script:**
 
-> This is the zero-credential replay path. Its integrity-checked fixture contains proposal and observation inputs, never a stored Hees result. Here is the escaped untrusted proposal, followed by bounded observations and the non-authoritative findings Hees classified from package policy. The compiled Incan runner reruns the decision and admits the declared action. Only then do selected memory, experimental Content DNA, and the profile receipt appear.
+> This is the zero-credential replay path. Its integrity-checked fixture contains proposal and observation inputs, never a stored Hees result. Here is the escaped untrusted proposal, followed by bounded observations and the non-authoritative findings Hees classified from package policy. The compiled Incan runner reruns the decision and admits the declared action. Only after admission do selected memory and experimental Content DNA appear; the admitted receipt binds them to that result.
 
 ### 1:20–1:50 — Undeclared action rejection
 
