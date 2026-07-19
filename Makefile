@@ -18,6 +18,8 @@ CONSOLE_RUNNER_BINARY := $(CONSOLE_RUNNER_ROOT)/target/incan/.cargo-target/relea
 CONSOLE_COMPATIBILITY_ROOT := $(abspath $(CONSOLE_ROOT)/contracts/domain/kernel_compatibility)
 CONSOLE_LICENSE_REPORT := $(abspath $(CONSOLE_ROOT)/packaging/THIRD_PARTY_LICENSES.md)
 CONSOLE_GENERATED_LICENSE_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/THIRD_PARTY_LICENSES.md)
+CONSOLE_CHECKED_LICENSE_NORMALIZED := $(abspath $(CONSOLE_ROOT)/target/release-evidence/THIRD_PARTY_LICENSES.checked.normalized.md)
+CONSOLE_GENERATED_LICENSE_NORMALIZED := $(abspath $(CONSOLE_ROOT)/target/release-evidence/THIRD_PARTY_LICENSES.generated.normalized.md)
 LICENSE_CONFIG_ROOT := $(abspath tools/licenses)
 INCAN_RESOLVED := $(shell command -v "$(INCAN)" 2>/dev/null || printf '%s' "$(INCAN)")
 INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
@@ -82,7 +84,9 @@ console-license-audit: console-build
 	install -m 644 LICENSE $(CONSOLE_GENERATED_ROOT)/LICENSE
 	$(CARGO_DENY) --manifest-path $(CONSOLE_GENERATED_ROOT)/Cargo.toml check --config $(LICENSE_CONFIG_ROOT)/deny.toml licenses
 	$(CARGO_ABOUT) generate $(LICENSE_CONFIG_ROOT)/third-party-licenses.hbs --config $(LICENSE_CONFIG_ROOT)/about.toml --manifest-path $(CONSOLE_GENERATED_ROOT)/Cargo.toml --locked --offline --fail --output-file $(CONSOLE_GENERATED_LICENSE_REPORT)
-	cmp $(CONSOLE_LICENSE_REPORT) $(CONSOLE_GENERATED_LICENSE_REPORT)
+	LC_ALL=C awk '{ sub(/\r$$/, ""); sub(/[[:blank:]]+$$/, ""); lines[NR] = $$0 } END { last = NR; while (last > 0 && lines[last] == "") last--; for (line = 1; line <= last; line++) print lines[line] }' $(CONSOLE_LICENSE_REPORT) > $(CONSOLE_CHECKED_LICENSE_NORMALIZED)
+	LC_ALL=C awk '{ sub(/\r$$/, ""); sub(/[[:blank:]]+$$/, ""); lines[NR] = $$0 } END { last = NR; while (last > 0 && lines[last] == "") last--; for (line = 1; line <= last; line++) print lines[line] }' $(CONSOLE_GENERATED_LICENSE_REPORT) > $(CONSOLE_GENERATED_LICENSE_NORMALIZED)
+	cmp $(CONSOLE_CHECKED_LICENSE_NORMALIZED) $(CONSOLE_GENERATED_LICENSE_NORMALIZED)
 
 console-release-contract-test:
 	$(CONSOLE_RELEASE_TEST)

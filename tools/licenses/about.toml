@@ -16,4 +16,3 @@ accepted = [
 
 ignore-build-dependencies = false
 ignore-dev-dependencies = true
-
