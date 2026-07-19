@@ -443,5 +443,5 @@ pub def render_screen(state: ConsoleState, run: ConsoleRun) -> str:
     if run.scenario.mode == "LIVE":
         lines.append("Keys: ←/→ or h/l inspector  Enter next  ↑/↓ or k/j scenario  q quit")
     else:
-        lines.append("Keys: 1–4 scenario  ←/→ inspector  ↑/↓ scenario  q quit")
+        lines.append("Keys: 1–4 scenario  h/l inspector  k/j scenario  q quit")
     return "\n".join(lines)

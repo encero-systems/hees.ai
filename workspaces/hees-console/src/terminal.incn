@@ -1,14 +1,12 @@
 """
 Raw-key terminal boundary for the native Incan Console.
 
-Crossterm supplies only raw-mode and alternate-screen primitives. Incan owns byte-level key decoding, state transitions, scenario evaluation, rendering, and all application behavior.
+Crossterm supplies only cross-platform raw-mode primitives. Incan owns byte-level key decoding, fixed terminal-control sequences, state transitions, scenario evaluation, rendering, and all application behavior.
 """
 
-from rust::std::io import Read, stdin, stdout
+from rust::std::io import Read, stdin
 from rust::std::string import String as RustString
-from rust::crossterm import ExecutableCommand
-from rust::crossterm::cursor import Hide, Show
-from rust::crossterm::terminal import EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode
+from rust::crossterm::terminal import disable_raw_mode, enable_raw_mode
 from evaluation import ConsoleRun, evaluate_offline_scenario
 from rendering import render_screen
 from replays import scenario_slugs
@@ -81,28 +79,30 @@ def read_command() -> Result[str, str]:
     return Ok(command_for_escape_sequence(second, third))
 
 
-def clear_and_home() -> str:
-    """Decode a fixed ANSI clear-and-home byte sequence at the terminal boundary."""
+def terminal_sequence(value: bytes) -> str:
+    """Decode one fixed ANSI byte sequence at the terminal boundary."""
 
-    match RustString.from_utf8(b"\x1b[2J\x1b[H"):
+    match RustString.from_utf8(value):
         Err(_) => return ""
         Ok(value) => return value
 
 
-def enter_terminal_screen() -> None:
-    """Enter crossterm's alternate screen and hide the cursor."""
+def clear_and_home() -> str:
+    """Return the fixed ANSI clear-and-home sequence."""
 
-    mut output = stdout()
-    output.execute(EnterAlternateScreen)
-    output.execute(Hide)
+    return terminal_sequence(b"\x1b[2J\x1b[H")
+
+
+def enter_terminal_screen() -> None:
+    """Enter the alternate screen and hide the cursor with fixed ANSI controls."""
+
+    println(terminal_sequence(b"\x1b[?1049h\x1b[?25l"))
 
 
 def leave_terminal_screen() -> None:
-    """Restore the cursor and leave crossterm's alternate screen."""
+    """Restore the cursor and leave the alternate screen with fixed ANSI controls."""
 
-    mut output = stdout()
-    output.execute(Show)
-    output.execute(LeaveAlternateScreen)
+    println(terminal_sequence(b"\x1b[?25h\x1b[?1049l"))
 
 
 def draw_frame(state: ConsoleState, run: ConsoleRun) -> None:
