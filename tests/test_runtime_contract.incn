@@ -1,4 +1,5 @@
 from std.testing import assert_eq
+from crate.identifiers import action_id, domain_id, evidence_id, evidence_id_text, package_id
 from crate.runtime import (
     GovernedPackage,
     ReviewStatus,
@@ -16,12 +17,12 @@ from crate.runtime import (
 def approved_package() -> GovernedPackage:
     return governed_package(
         "0.1",
-        "minimal_stationery",
-        "stationery_help",
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
         "Offer one bounded stationery suggestion from reviewed evidence.",
-        [action_contract("answer", true), action_contract("refuse", false)],
+        [action_contract(action_id("answer"), true), action_contract(action_id("refuse"), false)],
         [evidence_record(
-            "visible_note",
+            evidence_id("visible_note"),
             "A visible note can keep a reminder in view.",
             "Suggest a sticky note for a small visible reminder.",
             "source:stationery/visible-note",
@@ -35,22 +36,22 @@ def test_valid_package_and_supported_visible_proposal_are_admitted() -> None:
     package = approved_package()
     assert_eq(validate_governed_package(package).valid, true)
     proposal = model_proposal(
-        "minimal_stationery",
-        "stationery_help",
-        "answer",
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
+        action_id("answer"),
         "Use a sticky note for a small reminder that should remain visible.",
-        ["visible_note"],
+        [evidence_id("visible_note")],
     )
     result = admit_model_proposal(package, proposal)
     assert_eq(result.admitted, true)
     assert_eq(result.decision, RuntimeDecision.Admit)
     assert_eq(result.reason, "admitted")
-    assert_eq(result.evidence_ids, ["visible_note"])
+    assert_eq(evidence_id_text(result.evidence_ids[0]), "visible_note")
 
 
 def test_rights_blocked_and_unreviewed_evidence_invalidates_package() -> None:
     denied = evidence_record(
-        "blocked",
+        evidence_id("blocked"),
         "A claim.",
         "Some guidance.",
         "source:stationery/blocked",
@@ -59,10 +60,10 @@ def test_rights_blocked_and_unreviewed_evidence_invalidates_package() -> None:
     )
     package = governed_package(
         "0.1",
-        "minimal_stationery",
-        "stationery_help",
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
         "A mission.",
-        [action_contract("answer", true)],
+        [action_contract(action_id("answer"), true)],
         [denied],
     )
     validation = validate_governed_package(package)
@@ -73,7 +74,7 @@ def test_rights_blocked_and_unreviewed_evidence_invalidates_package() -> None:
 
 def test_duplicate_package_ids_fail_closed() -> None:
     record = evidence_record(
-        "same_id",
+        evidence_id("same_id"),
         "A claim.",
         "Some guidance.",
         "source:stationery/one",
@@ -82,10 +83,10 @@ def test_duplicate_package_ids_fail_closed() -> None:
     )
     package = governed_package(
         "0.1",
-        "minimal_stationery",
-        "stationery_help",
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
         "A mission.",
-        [action_contract("answer", true), action_contract("answer", false)],
+        [action_contract(action_id("answer"), true), action_contract(action_id("answer"), false)],
         [record, record],
     )
     validation = validate_governed_package(package)
@@ -94,50 +95,92 @@ def test_duplicate_package_ids_fail_closed() -> None:
 
 
 def test_missing_visible_synthesis_is_rejected() -> None:
-    proposal = model_proposal("minimal_stationery", "stationery_help", "answer", "", ["visible_note"])
+    proposal = model_proposal(
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
+        action_id("answer"),
+        "",
+        [evidence_id("visible_note")],
+    )
     result = admit_model_proposal(approved_package(), proposal)
     assert_eq(result.reason, "missing_visible_output")
     assert_eq(result.decision, RuntimeDecision.Reject)
 
 
 def test_unknown_action_and_unknown_evidence_are_rejected() -> None:
-    action = model_proposal("minimal_stationery", "stationery_help", "invented", "Visible refusal.", [])
-    evidence = model_proposal("minimal_stationery", "stationery_help", "answer", "Visible answer.", ["invented"])
+    action = model_proposal(
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
+        action_id("invented"),
+        "Visible refusal.",
+        [],
+    )
+    evidence = model_proposal(
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
+        action_id("answer"),
+        "Visible answer.",
+        [evidence_id("invented")],
+    )
     assert_eq(admit_model_proposal(approved_package(), action).reason, "unknown_action")
     assert_eq(admit_model_proposal(approved_package(), evidence).reason, "unknown_evidence")
 
 
 def test_required_and_duplicate_evidence_references_are_rejected() -> None:
-    missing = model_proposal("minimal_stationery", "stationery_help", "answer", "Visible answer.", [])
-    duplicate = model_proposal(
-        "minimal_stationery",
-        "stationery_help",
-        "answer",
+    missing = model_proposal(
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
+        action_id("answer"),
         "Visible answer.",
-        ["visible_note", "visible_note"],
+        [],
+    )
+    duplicate = model_proposal(
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
+        action_id("answer"),
+        "Visible answer.",
+        [evidence_id("visible_note"), evidence_id("visible_note")],
     )
     assert_eq(admit_model_proposal(approved_package(), missing).reason, "evidence_required")
     assert_eq(admit_model_proposal(approved_package(), duplicate).reason, "duplicate_evidence_reference")
 
 
 def test_package_and_domain_mismatches_are_rejected() -> None:
-    package_mismatch = model_proposal("other", "stationery_help", "refuse", "I cannot help with that.", [])
-    domain_mismatch = model_proposal("minimal_stationery", "other", "refuse", "I cannot help with that.", [])
+    package_mismatch = model_proposal(
+        package_id("other"),
+        domain_id("stationery_help"),
+        action_id("refuse"),
+        "I cannot help with that.",
+        [],
+    )
+    domain_mismatch = model_proposal(
+        package_id("minimal_stationery"),
+        domain_id("other"),
+        action_id("refuse"),
+        "I cannot help with that.",
+        [],
+    )
     assert_eq(admit_model_proposal(approved_package(), package_mismatch).reason, "package_id_mismatch")
     assert_eq(admit_model_proposal(approved_package(), domain_mismatch).reason, "domain_id_mismatch")
 
 
 def test_invalid_package_is_rejected_before_proposal_admission() -> None:
-    package = governed_package("9.0", "bad package", "", "", [], [])
-    proposal = model_proposal("bad package", "", "answer", "Visible output.", [])
+    package = governed_package("9.0", package_id("bad_package"), domain_id("bad_domain"), "", [], [])
+    proposal = model_proposal(
+        package_id("bad_package"),
+        domain_id("bad_domain"),
+        action_id("answer"),
+        "Visible output.",
+        [],
+    )
     result = admit_model_proposal(package, proposal)
     assert_eq(result.reason, "invalid_package")
     assert_eq(len(result.package_errors) > 0, true)
 
 
-def test_windows_drive_and_control_character_inputs_fail_closed() -> None:
+def test_windows_drive_and_control_character_source_inputs_fail_closed() -> None:
     windows_source = evidence_record(
-        "windows_source",
+        evidence_id("windows_source"),
         "A claim.",
         "Some guidance.",
         "C:/private/source.txt",
@@ -145,7 +188,7 @@ def test_windows_drive_and_control_character_inputs_fail_closed() -> None:
         ReviewStatus.Approved,
     )
     control_source = evidence_record(
-        "control_source",
+        evidence_id("control_source"),
         "A claim.",
         "Some guidance.",
         "source:stationery/private\nrecord",
@@ -154,13 +197,12 @@ def test_windows_drive_and_control_character_inputs_fail_closed() -> None:
     )
     package = governed_package(
         "0.1",
-        "minimal_stationery",
-        "stationery_help",
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
         "A mission.",
-        [action_contract("answer\tquietly", true)],
+        [action_contract(action_id("answer"), true)],
         [windows_source, control_source],
     )
     validation = validate_governed_package(package)
     assert_eq(validation.valid, false)
-    assert_eq(validation.errors.contains("invalid_action_id"), true)
     assert_eq(validation.errors.contains("unsafe_source_ref"), true)

@@ -229,6 +229,10 @@ Release-candidate archives are not identity-signed or notarized. macOS tooling m
 
 ### External package descriptor
 
+Public Hees contracts use nominal identifier types such as `PackageId`, `ActionId`, and `EvidenceId` over one shared, bounded `IdType`. Its symbolic specialization accepts at most 128 lowercase ASCII letters, digits, underscores, or hyphens and requires a letter or digit first. Its fixed-form digest specialization supplies content-addressed `ContentDnaId` and `ReceiptId` values. Every concrete identifier therefore derives from the same bounded string base while remaining a plain JSON string on the wire. The public constructors and text projections preserve namespace separation in Incan code without changing the existing JSON contracts.
+
+Released Incan `0.4.0` currently bypasses validated-newtype construction while deriving JSON deserializers ([Incan #904](https://github.com/encero-systems/incan/issues/904)). Hees therefore revalidates every deserialized identifier at its package, proposal, request, and observation boundaries; callers must not treat successful JSON decoding alone as admission.
+
 An implementation package can depend on a local checkout during pre-release development:
 
 ```toml

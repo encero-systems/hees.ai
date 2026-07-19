@@ -7,6 +7,7 @@ All notable changes will be recorded here.
 ### Added
 
 - A curated Incan-first pre-v0.1 public kernel.
+- Bounded nominal identifier contracts over a shared `IdType` base.
 - Checked external package-descriptor and structural proposal-admission contracts.
 - External-consumer, adversarial, boundary, and documentation verification.
 

@@ -28,10 +28,13 @@ from pub::hees import (
     ConsoleRequestBinding,
     ConsoleRequirement,
     RelationObservation,
-    SupportMapping,
     SynthesisObservation,
-    VisibleUnit,
+    contract_id_text,
+    domain_id_text,
     identify_console_proposal_json,
+    package_id_text,
+    profile_id_text,
+    proposal_id_text,
 )
 
 pub const GPT56_MODEL: str = "gpt-5.6-sol"
@@ -114,6 +117,40 @@ model ProviderProposalResult:
     contract_version: str
     profile_id: str
     proposal: ConsoleProposal
+
+
+@derive(Clone, json)
+model UntypedProposalEnvelope:
+    """JSON-value envelope used to preserve strict provider shape checks before typed decoding."""
+
+    proposal: JsonValue
+
+
+@derive(Clone, json)
+model TypedProposalEnvelope:
+    """Untrusted public-Hees proposal decoded without granting it authority."""
+
+    proposal: ConsoleProposal
+
+
+@derive(Clone, json)
+model UntypedRelationEnvelope:
+    relation: JsonValue
+
+
+@derive(Clone, json)
+model TypedRelationEnvelope:
+    relation: RelationObservation
+
+
+@derive(Clone, json)
+model UntypedSynthesisEnvelope:
+    synthesis: JsonValue
+
+
+@derive(Clone, json)
+model TypedSynthesisEnvelope:
+    synthesis: SynthesisObservation
 
 
 @derive(Clone, json)
@@ -781,16 +818,11 @@ def committee_schema(operation: str) -> JsonValue:
 def proposal_matches_context(proposal: ConsoleProposal, context: ProviderContext) -> bool:
     """Bind an untrusted proposal to the exact context used to request it."""
 
-    return (
-        proposal.contract_version == "console_proposal_0_1"
-        and proposal.profile_id == context.profile_id
-        and proposal.package_id == context.package_id
-        and proposal.domain_id == context.domain_id
-        and proposal.package_revision == context.package_revision
-        and proposal.artifact_digest == context.artifact_digest
-        and proposal.request_id == context.request.request_id
-        and proposal.request_digest == context.request.request_digest
-    )
+    return (contract_id_text(proposal.contract_version) == "console_proposal_0_1" and profile_id_text(
+        proposal.profile_id,
+    ) == context.profile_id and package_id_text(proposal.package_id) == context.package_id and domain_id_text(
+        proposal.domain_id,
+    ) == context.domain_id and proposal.package_revision == context.package_revision and proposal.artifact_digest == context.artifact_digest and proposal.request_id == context.request.request_id and proposal.request_digest == context.request.request_digest)
 
 
 def target_matches_interaction(target: ProviderManifestTarget, context: ProviderContext, candidate_digest: str) -> bool:
@@ -821,7 +853,9 @@ def identify_candidate(proposal: ConsoleProposal) -> Result[str, ProviderFailure
             if (json_string_field(identity.clone(), "contract_version")? != "console_proposal_identity_0_1" or json_string_field(
                 identity.clone(),
                 "profile_id",
-            )? != proposal.profile_id or json_string_field(identity.clone(), "proposal_id")? != proposal.proposal_id):
+            )? != profile_id_text(proposal.profile_id) or json_string_field(identity.clone(), "proposal_id")? != proposal_id_text(
+                proposal.proposal_id,
+            )):
                 return Err(ProviderFailure.InvalidInput)
             candidate_digest = json_string_field(identity, "candidate_digest")?
             if not candidate_digest.starts_with("sha256:") or len(candidate_digest) != 71:
@@ -1018,48 +1052,9 @@ def proposal_shape_is_closed(value: JsonValue) -> bool:
 def proposal_from_value(value: JsonValue) -> Result[ConsoleProposal, ProviderFailure]:
     """Construct the public Hees proposal model after the strict shape check succeeds."""
 
-    mut visible_units: list[VisibleUnit] = []
-    for item in json_array_field(value.clone(), "visible_units")?:
-        visible_units.append(
-            VisibleUnit(
-                unit_id=json_string_field(item.clone(), "unit_id")?,
-                text=json_string_field(item.clone(), "text")?,
-                requirement_ids=json_string_array_field(item, "requirement_ids")?,
-            ),
-        )
-    mut support_mappings: list[SupportMapping] = []
-    for item in json_array_field(value.clone(), "support_mappings")?:
-        match item.get("evidence_ids"):
-            None => return Err(ProviderFailure.MalformedOutput)
-            Some(raw_evidence_ids) =>
-                mut evidence_ids: Option[list[str]] = None
-                if not raw_evidence_ids.is_null():
-                    evidence_ids = Some(json_string_values(raw_evidence_ids)?)
-                support_mappings.append(
-                    SupportMapping(
-                        support_claim_id=json_string_field(item.clone(), "support_claim_id")?,
-                        unit_id=json_string_field(item.clone(), "unit_id")?,
-                        memory_id=json_string_field(item, "memory_id")?,
-                        evidence_ids=evidence_ids,
-                    ),
-                )
-    return Ok(
-        ConsoleProposal(
-            contract_version=json_string_field(value.clone(), "contract_version")?,
-            profile_id=json_string_field(value.clone(), "profile_id")?,
-            package_id=json_string_field(value.clone(), "package_id")?,
-            domain_id=json_string_field(value.clone(), "domain_id")?,
-            package_revision=json_string_field(value.clone(), "package_revision")?,
-            artifact_digest=json_string_field(value.clone(), "artifact_digest")?,
-            request_id=json_string_field(value.clone(), "request_id")?,
-            request_digest=json_string_field(value.clone(), "request_digest")?,
-            proposal_id=json_string_field(value.clone(), "proposal_id")?,
-            action_id=json_string_field(value.clone(), "action_id")?,
-            evidence_ids=json_string_array_field(value, "evidence_ids")?,
-            visible_units=visible_units,
-            support_mappings=support_mappings,
-        ),
-    )
+    source = UntypedProposalEnvelope(proposal=value).to_json()
+    envelope = TypedProposalEnvelope.from_json(source).map_err((_error) => ProviderFailure.MalformedOutput)?
+    return Ok(envelope.proposal)
 
 
 pub def decode_proposal_response(
@@ -1129,59 +1124,17 @@ def attach_fingerprints(call: PreparedProviderCall, output_text: str, relation: 
 def relation_from_value(value: JsonValue) -> Result[RelationObservation, ProviderFailure]:
     """Construct a public Hees relation observation from the closed provider projection."""
 
-    return Ok(
-        RelationObservation(
-            contract_version=json_string_field(value.clone(), "contract_version")?,
-            profile_id=json_string_field(value.clone(), "profile_id")?,
-            observation_id=json_string_field(value.clone(), "observation_id")?,
-            package_id=json_string_field(value.clone(), "package_id")?,
-            domain_id=json_string_field(value.clone(), "domain_id")?,
-            package_revision=json_string_field(value.clone(), "package_revision")?,
-            artifact_digest=json_string_field(value.clone(), "artifact_digest")?,
-            request_id=json_string_field(value.clone(), "request_id")?,
-            request_digest=json_string_field(value.clone(), "request_digest")?,
-            candidate_digest=json_string_field(value.clone(), "candidate_digest")?,
-            target_id=json_string_field(value.clone(), "target_id")?,
-            target_digest=json_string_field(value.clone(), "target_digest")?,
-            evaluator_role=json_string_field(value.clone(), "evaluator_role")?,
-            target_role=json_string_field(value.clone(), "target_role")?,
-            support_bps=json_int_field(value.clone(), "support_bps")?,
-            contradiction_bps=json_int_field(value.clone(), "contradiction_bps")?,
-            unresolved_bps=json_int_field(value.clone(), "unresolved_bps")?,
-            model_fingerprint=json_string_field(value.clone(), "model_fingerprint")?,
-            prompt_fingerprint=json_string_field(value.clone(), "prompt_fingerprint")?,
-            configuration_fingerprint=json_string_field(value, "configuration_fingerprint")?,
-        ),
-    )
+    source = UntypedRelationEnvelope(relation=value).to_json()
+    envelope = TypedRelationEnvelope.from_json(source).map_err((_error) => ProviderFailure.MalformedOutput)?
+    return Ok(envelope.relation)
 
 
 def synthesis_from_value(value: JsonValue) -> Result[SynthesisObservation, ProviderFailure]:
     """Construct a public Hees synthesis observation from the closed provider projection."""
 
-    return Ok(
-        SynthesisObservation(
-            contract_version=json_string_field(value.clone(), "contract_version")?,
-            profile_id=json_string_field(value.clone(), "profile_id")?,
-            observation_id=json_string_field(value.clone(), "observation_id")?,
-            package_id=json_string_field(value.clone(), "package_id")?,
-            domain_id=json_string_field(value.clone(), "domain_id")?,
-            package_revision=json_string_field(value.clone(), "package_revision")?,
-            artifact_digest=json_string_field(value.clone(), "artifact_digest")?,
-            request_id=json_string_field(value.clone(), "request_id")?,
-            request_digest=json_string_field(value.clone(), "request_digest")?,
-            candidate_digest=json_string_field(value.clone(), "candidate_digest")?,
-            target_id=json_string_field(value.clone(), "target_id")?,
-            target_digest=json_string_field(value.clone(), "target_digest")?,
-            evaluator_role=json_string_field(value.clone(), "evaluator_role")?,
-            target_role=json_string_field(value.clone(), "target_role")?,
-            covered_bps=json_int_field(value.clone(), "covered_bps")?,
-            gap_bps=json_int_field(value.clone(), "gap_bps")?,
-            unresolved_bps=json_int_field(value.clone(), "unresolved_bps")?,
-            model_fingerprint=json_string_field(value.clone(), "model_fingerprint")?,
-            prompt_fingerprint=json_string_field(value.clone(), "prompt_fingerprint")?,
-            configuration_fingerprint=json_string_field(value, "configuration_fingerprint")?,
-        ),
-    )
+    source = UntypedSynthesisEnvelope(synthesis=value).to_json()
+    envelope = TypedSynthesisEnvelope.from_json(source).map_err((_error) => ProviderFailure.MalformedOutput)?
+    return Ok(envelope.synthesis)
 
 
 pub def decode_relation_response(

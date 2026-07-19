@@ -11,7 +11,16 @@ from pub::hees import (
     SupportMapping,
     SynthesisObservation,
     VisibleUnit,
+    action_id_text,
+    evidence_id,
     identify_console_proposal_json,
+    memory_id,
+    memory_id_text,
+    proposal_id,
+    proposal_id_text,
+    requirement_id,
+    support_claim_id,
+    unit_id,
 )
 from crate.provider import (
     GPT56_MODEL,
@@ -279,20 +288,20 @@ def maximum_proposal() -> ConsoleProposal:
     proposal.support_mappings = []
     for index in range(8):
         number = index + 1
-        unit_id = f"unit_capacity_{number}"
+        unit_identifier = unit_id(f"unit_capacity_{number}")
         proposal.visible_units.append(
             VisibleUnit(
-                unit_id=unit_id,
+                unit_id=unit_identifier,
                 text=f"Bounded fictional answer unit {number}.",
-                requirement_ids=["explain_sequence"],
+                requirement_ids=[requirement_id("explain_sequence")],
             ),
         )
         proposal.support_mappings.append(
             SupportMapping(
-                support_claim_id=f"support_capacity_{number}",
-                unit_id=unit_id,
-                memory_id="memory_lantern_sequence",
-                evidence_ids=Some(["evidence_lantern_path"]),
+                support_claim_id=support_claim_id(f"support_capacity_{number}"),
+                unit_id=unit_identifier,
+                memory_id=memory_id("memory_lantern_sequence"),
+                evidence_ids=Some([evidence_id("evidence_lantern_path")]),
             ),
         )
     return proposal
@@ -389,18 +398,18 @@ def test_schema_valid_unauthorized_proposals_remain_pass_through_values() -> Non
             response_with_output(read_text(fixture_path("proposals/undeclared_action.json"))),
         ),
     )
-    assert_eq(undeclared.action_id, "assign_final_grade")
+    assert_eq(action_id_text(undeclared.action_id), "assign_final_grade")
     unknown_memory: ConsoleProposal = assert_is_ok(
         decode_proposal_response(call, response_with_output(read_text(fixture_path("proposals/unknown_memory.json")))),
     )
-    assert_eq(unknown_memory.support_mappings[0].memory_id, "memory_missing_route")
+    assert_eq(memory_id_text(unknown_memory.support_mappings[0].memory_id), "memory_missing_route")
 
 
 def test_propose_with_transport_is_deterministic_and_network_free() -> None:
     """Exercise proposal request and typed decoding through an injected transport."""
 
     proposal: ConsoleProposal = assert_is_ok(propose_with_transport(context_plan(), fixture_transport))
-    assert_eq(proposal.proposal_id, "proposal_valid_lantern")
+    assert_eq(proposal_id_text(proposal.proposal_id), "proposal_valid_lantern")
 
 
 def test_private_provider_envelopes_are_versioned_and_fail_closed() -> None:
@@ -515,7 +524,7 @@ def test_committee_rejects_cross_interaction_proposals_and_targets() -> None:
     request_error = assert_is_err(build_committee_calls(context_plan(), crossed_request, fixture_manifest_json()))
     assert_eq(request_error.value(), "provider_invalid_input")
     mut crossed_candidate = load_proposal()
-    crossed_candidate.proposal_id = f"proposal_other_interaction"
+    crossed_candidate.proposal_id = proposal_id("proposal_other_interaction")
     candidate_error = assert_is_err(build_committee_calls(context_plan(), crossed_candidate, fixture_manifest_json()))
     assert_eq(candidate_error.value(), "provider_invalid_input")
 

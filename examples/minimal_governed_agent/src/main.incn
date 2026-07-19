@@ -3,23 +3,27 @@
 from pub::hees import (
     ReviewStatus,
     RightsStatus,
+    action_id,
     action_contract,
     admit_model_proposal,
     evidence_record,
+    domain_id,
+    evidence_id,
     governed_package,
     model_proposal,
+    package_id,
 )
 
 
 def main() -> None:
     package = governed_package(
         "0.1",
-        "minimal_stationery",
-        "stationery_help",
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
         "Offer one bounded stationery suggestion from reviewed evidence.",
-        [action_contract("answer", true), action_contract("refuse", false)],
+        [action_contract(action_id("answer"), true), action_contract(action_id("refuse"), false)],
         [evidence_record(
-            "visible_note",
+            evidence_id("visible_note"),
             "A visible note can keep a reminder in view.",
             "Suggest a sticky note for a small visible reminder.",
             "source:stationery/visible-note",
@@ -28,11 +32,11 @@ def main() -> None:
         )],
     )
     proposal = model_proposal(
-        "minimal_stationery",
-        "stationery_help",
-        "answer",
+        package_id("minimal_stationery"),
+        domain_id("stationery_help"),
+        action_id("answer"),
         "Use a sticky note for a small reminder that should remain visible.",
-        ["visible_note"],
+        [evidence_id("visible_note")],
     )
     result = admit_model_proposal(package, proposal)
     println(f"decision={result.decision.value()} reason={result.reason}")

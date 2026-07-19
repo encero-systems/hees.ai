@@ -88,10 +88,12 @@ required_files=(
     src/lib.incn
     src/console_profile.incn
     src/content_dna.incn
+    src/identifiers.incn
     src/package_loader.incn
     src/runtime.incn
     tests/test_console_profile_contract.incn
     tests/test_content_dna_contract.incn
+    tests/test_identifier_contract.incn
     tests/test_package_loader_contract.incn
     tests/test_runtime_contract.incn
     tools/validation/test_framework_boundary.sh
@@ -116,7 +118,7 @@ done
 
 for path in src/*.incn; do
     case "$path" in
-        src/console_profile.incn | src/content_dna.incn | src/lib.incn | src/package_loader.incn | src/runtime.incn) ;;
+        src/console_profile.incn | src/content_dna.incn | src/identifiers.incn | src/lib.incn | src/package_loader.incn | src/runtime.incn) ;;
         *) fail "source module is outside the public allowlist: $path" ;;
     esac
 done
@@ -204,7 +206,7 @@ if grep -RInE --exclude-dir=target '(hees\.runner\.v1|runner-request-v1|runner-r
     fail "console transport contains a forbidden runner contract alias"
 fi
 
-if grep -Eq 'ContentDna|ProfileReceipt|CompleteProfileEvaluation|DerivedFinding|ManifestTarget|PremiseIdentity|ProfileEvaluation|ProfileValidation|SpectrumResult|construct_(content_dna|admitted_receipt|rejected_receipt)|content_dna_(identity|answer_digest)|profile_receipt_identity|build_verifier_manifest|classify_(relation|synthesis)|derive_findings|finding_policy_reason|evaluate_console_profile_with_artifacts' src/lib.incn; then
+if grep -Eq 'ContentDna([,[:space:]]|$)|ProfileReceipt|CompleteProfileEvaluation|DerivedFinding|ManifestTarget|PremiseIdentity|ProfileEvaluation|ProfileValidation|SpectrumResult|construct_(content_dna|admitted_receipt|rejected_receipt)|content_dna_(identity|answer_digest)|profile_receipt_identity|build_verifier_manifest|classify_(relation|synthesis)|derive_findings|finding_policy_reason|evaluate_console_profile_with_artifacts' src/lib.incn; then
     fail "authority-bearing profile types or intermediate operations are re-exported by the root library"
 fi
 

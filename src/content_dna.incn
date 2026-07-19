@@ -10,14 +10,33 @@ from std.encoding.hex import hexlify
 from std.hash import sha256
 from std.json import JsonValue
 from std.serde import json
+from crate.identifiers import (
+    ConstraintPlanId,
+    ContentDnaId,
+    ContractId,
+    DecisionId,
+    DomainId,
+    EvidenceId,
+    MemoryId,
+    PackageId,
+    ProfileId,
+    ProposalId,
+    ReceiptId,
+    RequestId,
+    ResponseContractId,
+    content_dna_id,
+    content_dna_id_text,
+    receipt_id,
+    receipt_id_text,
+)
 
 
 @derive(Clone, json)
 pub model ContentDnaPackage:
     """Fixed governed-package identity bound into admitted-answer provenance."""
 
-    pub package_id: str
-    pub domain_id: str
+    pub package_id: PackageId
+    pub domain_id: DomainId
     pub package_revision: str
     pub artifact_digest: str
 
@@ -35,9 +54,9 @@ pub model ContentDnaTerminal:
 pub model ContentDnaPolicy:
     """Package-owned constraint and response-contract identity for one answer."""
 
-    pub constraint_plan_id: str
+    pub constraint_plan_id: ConstraintPlanId
     pub constraint_plan_revision: str
-    pub response_contract_id: str
+    pub response_contract_id: ResponseContractId
     pub response_contract_revision: str
 
 
@@ -45,7 +64,7 @@ pub model ContentDnaPolicy:
 pub model ContentDnaEntry:
     """Source-safe provenance projection for one terminally selected memory atom."""
 
-    pub memory_id: str
+    pub memory_id: MemoryId
     pub source_ref: str
     pub source_kind: str
     pub source_fingerprint: str
@@ -61,11 +80,11 @@ pub model ContentDnaEntry:
 pub model ContentDnaBody:
     """Closed admitted-answer provenance body before envelope sealing."""
 
-    pub contract_version: str
+    pub contract_version: ContractId
     pub state: str
     pub package: ContentDnaPackage
-    pub proposal_id: str
-    pub spectrum_decision_id: str
+    pub proposal_id: ProposalId
+    pub spectrum_decision_id: DecisionId
     pub terminal: ContentDnaTerminal
     pub policy: ContentDnaPolicy
     pub entries: list[ContentDnaEntry]
@@ -78,45 +97,45 @@ pub model ContentDna:
     """Internally sealed Content DNA envelope and its canonical identity."""
 
     pub body: ContentDnaBody
-    pub content_dna_id: str
+    pub content_dna_id: ContentDnaId
 
 
 @derive(Clone, json)
 pub model AdmittedReceiptBody:
     """Redacted terminal receipt body for an admitted visible answer."""
 
-    pub contract_version: str
-    pub profile_id: str
-    pub package_id: str
-    pub domain_id: str
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
     pub package_revision: str
     pub artifact_digest: str
-    pub request_id: str
+    pub request_id: RequestId
     pub request_digest: str
-    pub proposal_id: str
+    pub proposal_id: ProposalId
     pub candidate_digest: str
     pub decision: str
     pub reason_namespace: str
     pub reason: str
     pub structural_reason: Option[str]
-    pub admitted_evidence_ids: list[str]
-    pub selected_memory_ids: list[str]
-    pub content_dna_id: str
+    pub admitted_evidence_ids: list[EvidenceId]
+    pub selected_memory_ids: list[MemoryId]
+    pub content_dna_id: ContentDnaId
 
 
 @derive(Clone, json)
 pub model RejectedReceiptBody:
     """Redacted receipt body for a rejection with safely established identity."""
 
-    pub contract_version: str
-    pub profile_id: str
-    pub package_id: str
-    pub domain_id: str
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
     pub package_revision: str
     pub artifact_digest: str
-    pub request_id: str
+    pub request_id: RequestId
     pub request_digest: str
-    pub proposal_id: str
+    pub proposal_id: ProposalId
     pub candidate_digest: str
     pub decision: str
     pub reason_namespace: str
@@ -129,7 +148,7 @@ pub model ProfileReceipt:
     """Internally sealed receipt projection and its canonical identity."""
 
     pub body: JsonValue
-    pub receipt_id: str
+    pub receipt_id: ReceiptId
 
 
 def digest_canonical_json(source: str) -> str:
@@ -145,11 +164,16 @@ def digest_canonical_json(source: str) -> str:
 
 pub def construct_content_dna(body: ContentDnaBody) -> ContentDna:
     """Seal one complete admitted-answer body under its canonical digest."""
-    return ContentDna(body=body.clone(), content_dna_id=digest_canonical_json(body.to_json()))
+    return ContentDna(body=body.clone(), content_dna_id=content_dna_id(digest_canonical_json(body.to_json())))
 
 
 pub def content_dna_identity(value: ContentDna) -> str:
     """Expose the sealed identity without requiring sibling modules to inspect model storage."""
+    return content_dna_id_text(value.content_dna_id)
+
+
+pub def content_dna_identifier(value: ContentDna) -> ContentDnaId:
+    """Expose the nominal sealed identity for authority-bearing sibling contracts."""
     return value.content_dna_id
 
 
@@ -162,7 +186,7 @@ def construct_profile_receipt(body_source: str) -> Option[ProfileReceipt]:
     """Seal one typed receipt body after converting it to an opaque JSON projection."""
     match JsonValue.parse(body_source):
         Err(_) => return None
-        Ok(body) => return Some(ProfileReceipt(body=body, receipt_id=digest_canonical_json(body_source)))
+        Ok(body) => return Some(ProfileReceipt(body=body, receipt_id=receipt_id(digest_canonical_json(body_source))))
 
 
 pub def construct_admitted_receipt(body: AdmittedReceiptBody) -> Option[ProfileReceipt]:
@@ -177,4 +201,4 @@ pub def construct_rejected_receipt(body: RejectedReceiptBody) -> Option[ProfileR
 
 pub def profile_receipt_identity(value: ProfileReceipt) -> str:
     """Expose the receipt digest while keeping its sealed body non-constructible."""
-    return value.receipt_id
+    return receipt_id_text(value.receipt_id)

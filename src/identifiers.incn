@@ -1,0 +1,498 @@
+"""Validated nominal identifier vocabulary shared by every public Hees contract."""
+
+from std.serde import json
+
+pub const MAX_IDENTIFIER_LENGTH: int = 128
+
+
+pub def id_text_is_safe(value: str) -> bool:
+    """Accept one nonempty, trimmed identifier within the shared storage bound."""
+
+    return value != "" and len(value) <= MAX_IDENTIFIER_LENGTH and value.strip() == value
+
+
+pub def identifier_text_is_safe(value: str) -> bool:
+    """Accept one bounded lowercase ASCII identifier in canonical form."""
+
+    if not id_text_is_safe(value):
+        return false
+    if "_-".contains(value[0:1]):
+        return false
+    for character in value:
+        if not "abcdefghijklmnopqrstuvwxyz0123456789_-".contains(character):
+            return false
+    return true
+
+
+pub def digest_id_text_is_safe(value: str) -> bool:
+    """Accept one exact lowercase SHA-256 identity."""
+
+    if len(value) != 71 or not value.startswith("sha256:"):
+        return false
+    for character in value[7:]:
+        if not "0123456789abcdef".contains(character):
+            return false
+    return true
+
+
+@derive(Clone, Eq, json)
+pub type IdType = newtype str:
+    """Shared bounded string representation beneath every nominal ID namespace."""
+
+    def from_underlying(value: str) -> Result[Self, ValidationError]:
+        if not id_text_is_safe(value):
+            return Err(
+                ValidationError(message="identifier must be trimmed and contain 1 to 128 characters", code="invalid_id"),
+            )
+        return Ok(IdType(value))
+
+
+@derive(Clone, Eq, json)
+pub type SymbolicIdType = newtype IdType:
+    """Canonical lowercase ASCII identifier representation for symbolic namespaces."""
+
+    def from_underlying(value: IdType) -> Result[Self, ValidationError]:
+        if not identifier_text_is_safe(value.0):
+            return Err(
+                ValidationError(message="identifier must match ^[a-z0-9][a-z0-9_-]{0,127}$", code="invalid_symbolic_id"),
+            )
+        return Ok(SymbolicIdType(value))
+
+
+@derive(Clone, Eq, json)
+pub type DigestIdType = newtype IdType:
+    """Exact SHA-256 identity representation for content-addressed artifacts."""
+
+    def from_underlying(value: IdType) -> Result[Self, ValidationError]:
+        if not digest_id_text_is_safe(value.0):
+            return Err(
+                ValidationError(message="digest identity must be lowercase sha256:<64 hex>", code="invalid_digest_id"),
+            )
+        return Ok(DigestIdType(value))
+
+
+@derive(Clone, Eq, json)
+pub type ActionId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type ConstraintPlanId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type ContentDnaId = newtype DigestIdType
+
+
+@derive(Clone, Eq, json)
+pub type ContractId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type DecisionId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type DomainId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type EvidenceId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type FindingId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type InputId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type MemoryId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type ObservationId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type PackageId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type ProfileId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type ProposalId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type ProviderId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type ReceiptId = newtype DigestIdType
+
+
+@derive(Clone, Eq, json)
+pub type RequestId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type RequirementId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type ResponseContractId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type ScenarioId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type SourceId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type SupportClaimId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type TargetId = newtype SymbolicIdType
+
+
+@derive(Clone, Eq, json)
+pub type UnitId = newtype SymbolicIdType
+
+
+pub def action_id(value: str) -> ActionId:
+    return ActionId(SymbolicIdType(IdType(value)))
+
+
+pub def constraint_plan_id(value: str) -> ConstraintPlanId:
+    return ConstraintPlanId(SymbolicIdType(IdType(value)))
+
+
+pub def content_dna_id(value: str) -> ContentDnaId:
+    return ContentDnaId(DigestIdType(IdType(value)))
+
+
+pub def contract_id(value: str) -> ContractId:
+    return ContractId(SymbolicIdType(IdType(value)))
+
+
+pub def decision_id(value: str) -> DecisionId:
+    return DecisionId(SymbolicIdType(IdType(value)))
+
+
+pub def domain_id(value: str) -> DomainId:
+    return DomainId(SymbolicIdType(IdType(value)))
+
+
+pub def evidence_id(value: str) -> EvidenceId:
+    return EvidenceId(SymbolicIdType(IdType(value)))
+
+
+pub def finding_id(value: str) -> FindingId:
+    return FindingId(SymbolicIdType(IdType(value)))
+
+
+pub def input_id(value: str) -> InputId:
+    return InputId(SymbolicIdType(IdType(value)))
+
+
+pub def memory_id(value: str) -> MemoryId:
+    return MemoryId(SymbolicIdType(IdType(value)))
+
+
+pub def observation_id(value: str) -> ObservationId:
+    return ObservationId(SymbolicIdType(IdType(value)))
+
+
+pub def package_id(value: str) -> PackageId:
+    return PackageId(SymbolicIdType(IdType(value)))
+
+
+pub def profile_id(value: str) -> ProfileId:
+    return ProfileId(SymbolicIdType(IdType(value)))
+
+
+pub def proposal_id(value: str) -> ProposalId:
+    return ProposalId(SymbolicIdType(IdType(value)))
+
+
+pub def provider_id(value: str) -> ProviderId:
+    return ProviderId(SymbolicIdType(IdType(value)))
+
+
+pub def receipt_id(value: str) -> ReceiptId:
+    return ReceiptId(DigestIdType(IdType(value)))
+
+
+pub def request_id(value: str) -> RequestId:
+    return RequestId(SymbolicIdType(IdType(value)))
+
+
+pub def requirement_id(value: str) -> RequirementId:
+    return RequirementId(SymbolicIdType(IdType(value)))
+
+
+pub def response_contract_id(value: str) -> ResponseContractId:
+    return ResponseContractId(SymbolicIdType(IdType(value)))
+
+
+pub def scenario_id(value: str) -> ScenarioId:
+    return ScenarioId(SymbolicIdType(IdType(value)))
+
+
+pub def source_id(value: str) -> SourceId:
+    return SourceId(SymbolicIdType(IdType(value)))
+
+
+pub def support_claim_id(value: str) -> SupportClaimId:
+    return SupportClaimId(SymbolicIdType(IdType(value)))
+
+
+pub def target_id(value: str) -> TargetId:
+    return TargetId(SymbolicIdType(IdType(value)))
+
+
+pub def unit_id(value: str) -> UnitId:
+    return UnitId(SymbolicIdType(IdType(value)))
+
+
+pub def append_memory_id(mut values: list[MemoryId], value: MemoryId) -> list[MemoryId]:
+    """Append a memory ID inside the defining module for Incan 0.4 compatibility."""
+
+    values.append(value)
+    return values
+
+
+pub def id_type_text(identifier: IdType) -> str:
+    """Expose canonical text only at serialization, hashing, and presentation boundaries."""
+
+    return identifier.0
+
+
+pub def id_type_is_safe(identifier: IdType) -> bool:
+    """Revalidate deserialized ID storage until Incan issue #904 is resolved."""
+
+    return id_text_is_safe(identifier.0)
+
+
+pub def symbolic_id_type_text(identifier: SymbolicIdType) -> str:
+    """Expose canonical symbolic text at serialization, hashing, and presentation boundaries."""
+
+    return id_type_text(identifier.0)
+
+
+pub def symbolic_id_type_is_safe(identifier: SymbolicIdType) -> bool:
+    """Revalidate a deserialized symbolic identity and its shared storage bound."""
+
+    return id_type_is_safe(identifier.0) and identifier_text_is_safe(id_type_text(identifier.0))
+
+
+pub def digest_id_type_text(identifier: DigestIdType) -> str:
+    """Expose an exact content identity at hashing and presentation boundaries."""
+
+    return id_type_text(identifier.0)
+
+
+pub def digest_id_type_is_safe(identifier: DigestIdType) -> bool:
+    """Revalidate deserialized digest identity storage until Incan issue #904 is resolved."""
+
+    return id_type_is_safe(identifier.0) and digest_id_text_is_safe(id_type_text(identifier.0))
+
+
+pub def action_id_text(identifier: ActionId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def action_id_is_safe(identifier: ActionId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def constraint_plan_id_text(identifier: ConstraintPlanId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def constraint_plan_id_is_safe(identifier: ConstraintPlanId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def content_dna_id_text(identifier: ContentDnaId) -> str:
+    return digest_id_type_text(identifier.0)
+
+
+pub def content_dna_id_is_safe(identifier: ContentDnaId) -> bool:
+    return digest_id_type_is_safe(identifier.0)
+
+
+pub def contract_id_text(identifier: ContractId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def contract_id_is_safe(identifier: ContractId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def decision_id_text(identifier: DecisionId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def decision_id_is_safe(identifier: DecisionId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def domain_id_text(identifier: DomainId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def domain_id_is_safe(identifier: DomainId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def evidence_id_text(identifier: EvidenceId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def evidence_id_is_safe(identifier: EvidenceId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def finding_id_text(identifier: FindingId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def finding_id_is_safe(identifier: FindingId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def input_id_text(identifier: InputId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def input_id_is_safe(identifier: InputId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def memory_id_text(identifier: MemoryId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def memory_id_is_safe(identifier: MemoryId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def observation_id_text(identifier: ObservationId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def observation_id_is_safe(identifier: ObservationId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def package_id_text(identifier: PackageId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def package_id_is_safe(identifier: PackageId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def profile_id_text(identifier: ProfileId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def profile_id_is_safe(identifier: ProfileId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def proposal_id_text(identifier: ProposalId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def proposal_id_is_safe(identifier: ProposalId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def provider_id_text(identifier: ProviderId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def provider_id_is_safe(identifier: ProviderId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def receipt_id_text(identifier: ReceiptId) -> str:
+    return digest_id_type_text(identifier.0)
+
+
+pub def receipt_id_is_safe(identifier: ReceiptId) -> bool:
+    return digest_id_type_is_safe(identifier.0)
+
+
+pub def request_id_text(identifier: RequestId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def request_id_is_safe(identifier: RequestId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def requirement_id_text(identifier: RequirementId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def requirement_id_is_safe(identifier: RequirementId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def response_contract_id_text(identifier: ResponseContractId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def response_contract_id_is_safe(identifier: ResponseContractId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def scenario_id_text(identifier: ScenarioId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def scenario_id_is_safe(identifier: ScenarioId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def source_id_text(identifier: SourceId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def source_id_is_safe(identifier: SourceId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def support_claim_id_text(identifier: SupportClaimId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def support_claim_id_is_safe(identifier: SupportClaimId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def target_id_text(identifier: TargetId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def target_id_is_safe(identifier: TargetId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)
+
+
+pub def unit_id_text(identifier: UnitId) -> str:
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def unit_id_is_safe(identifier: UnitId) -> bool:
+    return symbolic_id_type_is_safe(identifier.0)

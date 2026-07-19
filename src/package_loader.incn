@@ -4,6 +4,18 @@ Descriptor contract for an external implementation package.
 This module validates descriptor metadata only. It does not read, parse, verify, or admit the referenced package.
 """
 
+from std.serde import json
+from crate.identifiers import (
+    DomainId,
+    PackageId,
+    domain_id,
+    domain_id_is_safe,
+    domain_id_text,
+    package_id_is_safe,
+    package_id_text,
+    package_id,
+)
+
 const PACKAGE_SCHEMA_VERSION: str = "0.1"
 const SOURCE_CONTROLLED_PACKAGE: str = "source_controlled_domain_package"
 
@@ -12,12 +24,12 @@ def contains_control_characters(value: str) -> bool:
     return value.contains("\n") or value.contains("\r") or value.contains("\t")
 
 
-@derive(Clone)
+@derive(Clone, json)
 pub model PackageLoaderDescriptor:
     """Relative location and identity supplied by an external package repository."""
 
-    pub package_id: str
-    pub domain_id: str
+    pub package_id: PackageId
+    pub domain_id: DomainId
     pub package_path: str
     pub schema_version: str
     pub source_kind: str
@@ -33,28 +45,20 @@ pub model PackageLoaderValidation:
 
 
 pub def package_loader_descriptor(
-    package_id: str,
-    domain_id: str,
+    package_id_value: str,
+    domain_id_value: str,
     package_path: str,
     schema_version: str,
     source_kind: str,
 ) -> PackageLoaderDescriptor:
     """Build a descriptor without importing or executing the external package."""
     return PackageLoaderDescriptor(
-        package_id=package_id,
-        domain_id=domain_id,
+        package_id=package_id(package_id_value),
+        domain_id=domain_id(domain_id_value),
         package_path=package_path,
         schema_version=schema_version,
         source_kind=source_kind,
     )
-
-
-def identifier_is_safe(value: str) -> bool:
-    if value == "" or value.strip() != value or contains_control_characters(value):
-        return false
-    if value.contains("/") or value.contains("\\") or value.contains(":") or value.contains(" "):
-        return false
-    return true
 
 
 def package_path_is_safe(path: str) -> bool:
@@ -76,9 +80,9 @@ def package_path_is_safe(path: str) -> bool:
 
 pub def validate_package_loader_descriptor(descriptor: PackageLoaderDescriptor) -> PackageLoaderValidation:
     """Validate the declared identity, schema, source kind, and repository-relative canonical path."""
-    if not identifier_is_safe(descriptor.package_id):
+    if not package_id_is_safe(descriptor.package_id):
         return PackageLoaderValidation(descriptor=descriptor, valid=false, reason="invalid_package_id")
-    if not identifier_is_safe(descriptor.domain_id):
+    if not domain_id_is_safe(descriptor.domain_id):
         return PackageLoaderValidation(descriptor=descriptor, valid=false, reason="invalid_domain_id")
     if descriptor.package_path == "":
         return PackageLoaderValidation(descriptor=descriptor, valid=false, reason="missing_package_path")
@@ -93,4 +97,6 @@ pub def validate_package_loader_descriptor(descriptor: PackageLoaderDescriptor) 
 
 pub def package_loader_summary(validation: PackageLoaderValidation) -> str:
     """Render a stable, path-free summary suitable for logs and examples."""
-    return (f"package_loader package={validation.descriptor.package_id} " + f"domain={validation.descriptor.domain_id} " + f"source={validation.descriptor.source_kind} " + f"valid={validation.valid} reason={validation.reason}")
+    return (f"package_loader package={package_id_text(validation.descriptor.package_id)} " + f"domain={domain_id_text(
+        validation.descriptor.domain_id,
+    )} " + f"source={validation.descriptor.source_kind} " + f"valid={validation.valid} reason={validation.reason}")

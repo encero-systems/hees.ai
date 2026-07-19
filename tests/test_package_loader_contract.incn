@@ -1,4 +1,6 @@
-from std.testing import assert_eq
+from std.testing import assert_eq, assert_is_ok
+from std.serde import json
+from std.serde.json import Deserialize
 from crate.package_loader import (
     PackageLoaderDescriptor,
     package_loader_descriptor,
@@ -15,6 +17,13 @@ def valid_descriptor() -> PackageLoaderDescriptor:
         "0.1",
         "source_controlled_domain_package",
     )
+
+
+def oversized_identifier() -> str:
+    mut result = ""
+    for _index in range(129):
+        result = result + "a"
+    return result
 
 
 def test_external_package_descriptor_is_valid() -> None:
@@ -96,12 +105,10 @@ def test_unsupported_schema_and_source_kind_are_rejected() -> None:
 
 
 def test_control_characters_in_ids_and_paths_are_rejected() -> None:
-    bad_id = package_loader_descriptor(
-        "lesson\nsupport",
-        "lesson_support",
-        "packages/lesson_support/package/domain.json",
-        "0.1",
-        "source_controlled_domain_package",
+    bad_id = assert_is_ok(
+        PackageLoaderDescriptor.from_json(
+            "{\"package_id\":\"lesson\\nsupport\",\"domain_id\":\"lesson_support\",\"package_path\":\"packages/lesson_support/package/domain.json\",\"schema_version\":\"0.1\",\"source_kind\":\"source_controlled_domain_package\"}",
+        ),
     )
     bad_path = package_loader_descriptor(
         "lesson_support",
@@ -112,3 +119,9 @@ def test_control_characters_in_ids_and_paths_are_rejected() -> None:
     )
     assert_eq(validate_package_loader_descriptor(bad_id).reason, "invalid_package_id")
     assert_eq(validate_package_loader_descriptor(bad_path).reason, "unsafe_package_path")
+
+
+def test_deserialized_oversized_id_is_revalidated_at_the_loader_boundary() -> None:
+    source = ("{\"package_id\":\"" + oversized_identifier() + "\",\"domain_id\":\"lesson_support\",\"package_path\":\"packages/lesson_support/package/domain.json\"," + "\"schema_version\":\"0.1\",\"source_kind\":\"source_controlled_domain_package\"}")
+    descriptor = assert_is_ok(PackageLoaderDescriptor.from_json(source))
+    assert_eq(validate_package_loader_descriptor(descriptor).reason, "invalid_package_id")

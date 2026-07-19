@@ -1,9 +1,10 @@
 # Architecture
 
-The kernel has one public Incan library boundary and four focused internal modules:
+The kernel has one public Incan library boundary and five focused internal modules:
 
 ```text
 external implementation
+  -> bounded nominal identifier vocabulary -> identifiers.incn
   -> package descriptor shape -> package_loader.incn
   -> in-memory package + proposal -> runtime.incn
   -> closed initial profile + Spectrum composition -> console_profile.incn
@@ -12,6 +13,8 @@ external implementation
 ```
 
 The external implementation owns concrete domain content, model execution, retrieval, package authoring, and source-rights work. Hees owns the generic structural kernel and the deterministic authority decisions implemented by the closed initial console profile.
+
+Public contract identifiers are distinct Incan newtypes; `PackageId` cannot be substituted for `DomainId` merely because both carry the same spelling. Every identifier derives from a shared `IdType` that provides a 128-character storage bound. A symbolic specialization enforces the canonical lowercase ASCII identifier alphabet, while a digest specialization enforces the exact lowercase SHA-256 form used by Content DNA and receipt identities. Both forms serialize transparently as JSON strings. Because released Incan `0.4.0` does not yet invoke validated-newtype construction during derived JSON deserialization, each authority boundary explicitly revalidates the nominal IDs after decoding. Successful decoding alone establishes no authority.
 
 A proposal is untrusted. It becomes admitted only after the runtime verifies that:
 

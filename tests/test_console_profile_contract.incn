@@ -8,6 +8,17 @@ from std.fs import Path
 from std.hash import sha256
 from std.serde import json
 from std.serde.json import Deserialize
+from crate.identifiers import (
+    action_id,
+    constraint_plan_id,
+    contract_id,
+    evidence_id,
+    evidence_id_text,
+    finding_id_text,
+    memory_id_text,
+    request_id,
+    response_contract_id,
+)
 from crate.console_profile import (
     ConsolePackage,
     ConsoleProposal,
@@ -41,9 +52,9 @@ def policy() -> ConsolePolicy:
     """Return the frozen policy thresholds used by classification unit tests."""
 
     return ConsolePolicy(
-        constraint_plan_id="fictional_lesson_constraints",
+        constraint_plan_id=constraint_plan_id("fictional_lesson_constraints"),
         constraint_plan_revision="1.0.0",
-        response_contract_id="fictional_lesson_response",
+        response_contract_id=response_contract_id("fictional_lesson_response"),
         response_contract_revision="1.0.0",
         min_support_bps=6500,
         max_contradiction_bps=3500,
@@ -58,7 +69,7 @@ def test_request_digest_matches_the_frozen_rfc010_golden() -> None:
     """Bind the exact request identifier and question to the RFC golden digest."""
 
     request = ConsoleRequestBinding(
-        request_id="request_valid_lantern",
+        request_id=request_id("request_valid_lantern"),
         question="What order should I use for the Lantern Path cards?",
         request_digest="sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71",
     )
@@ -241,9 +252,9 @@ def test_evidence_failure_precedence_is_independent_of_array_order() -> None:
     package = assert_is_ok(load_package())
     request = assert_is_ok(load_request())
     mut pending_first = assert_is_ok(load_proposal())
-    pending_first.evidence_ids = ["evidence_public_ranking_draft", "evidence_unknown"]
+    pending_first.evidence_ids = [evidence_id("evidence_public_ranking_draft"), evidence_id("evidence_unknown")]
     mut unknown_first = assert_is_ok(load_proposal())
-    unknown_first.evidence_ids = ["evidence_unknown", "evidence_public_ranking_draft"]
+    unknown_first.evidence_ids = [evidence_id("evidence_unknown"), evidence_id("evidence_public_ranking_draft")]
     assert_eq(validate_console_proposal(package.clone(), request.clone(), pending_first).reason, "unknown_evidence")
     assert_eq(validate_console_proposal(package, request, unknown_first).reason, "unknown_evidence")
 
@@ -305,7 +316,7 @@ def test_public_manifest_plan_does_not_prejudge_an_unauthorized_proposal() -> No
     """Return no target plan and leave the exact rejection to terminal profile evaluation."""
 
     mut proposal = assert_is_ok(load_proposal())
-    proposal.action_id = "action_unknown".to_string()
+    proposal.action_id = action_id("action_unknown")
     plan = plan_console_manifest_json(assert_is_ok(load_package()), assert_is_ok(load_request()), proposal)
     assert_eq(plan.contains("\"plannable\":false"), true)
     assert_eq(plan.contains("\"targets\":[]"), true)
@@ -358,11 +369,11 @@ def test_complete_observations_derive_the_frozen_supported_findings() -> None:
     assert_eq(validation.valid, true)
     findings: list[DerivedFinding] = derive_findings(package, relations, syntheses)
     assert_eq(len(findings), 8)
-    assert_eq(findings[0].finding_id, "finding_visible_sequence")
+    assert_eq(finding_id_text(findings[0].finding_id), "finding_visible_sequence")
     assert_eq(findings[0].classification, "supported")
-    assert_eq(findings[4].finding_id, "finding_proposal_contradiction")
+    assert_eq(finding_id_text(findings[4].finding_id), "finding_proposal_contradiction")
     assert_eq(findings[4].classification, "supported")
-    assert_eq(findings[5].finding_id, "finding_request_coverage")
+    assert_eq(finding_id_text(findings[5].finding_id), "finding_request_coverage")
     assert_eq(findings[5].classification, "covered")
     assert_eq(finding_policy_reason(findings), "ok")
 
@@ -390,7 +401,7 @@ def test_manifest_failure_precedes_an_unsupported_observation_contract() -> None
     manifest.remove(manifest_last_index)
     mut relations = assert_is_ok(load_relations())
     mut unsupported = relations[0]
-    unsupported.contract_version = f"console_relation_observation_unknown"
+    unsupported.contract_version = contract_id("console_relation_observation_unknown")
     relations[0] = unsupported
     validation = validate_observation_coverage(
         package,
@@ -441,7 +452,7 @@ def test_happy_path_reaches_the_checked_kernel_and_freezes_selected_memory() -> 
     assert_eq(evaluation.spectrum.reason_namespace, "console_admission_0_1")
     assert_eq(evaluation.spectrum.reason, "admitted")
     assert_eq(evaluation.spectrum.structural_reason, Some("admitted"))
-    assert_eq(evaluation.spectrum.admitted_evidence_ids, ["evidence_lantern_path"])
-    assert_eq(evaluation.spectrum.selected_memory_ids, ["memory_lantern_sequence"])
+    assert_eq(evidence_id_text(evaluation.spectrum.admitted_evidence_ids[0]), "evidence_lantern_path")
+    assert_eq(memory_id_text(evaluation.spectrum.selected_memory_ids[0]), "memory_lantern_sequence")
     assert_eq(len(evaluation.admitted_visible_units), 2)
     assert_eq(len(evaluation.selected_memory), 1)
