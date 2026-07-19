@@ -16,10 +16,7 @@ CONSOLE_GENERATED_ROOT := $(abspath $(CONSOLE_ROOT)/target/incan/hees_console)
 CONSOLE_RUNNER_ROOT := $(abspath $(CONSOLE_ROOT)/runner)
 CONSOLE_RUNNER_BINARY := $(CONSOLE_RUNNER_ROOT)/target/incan/.cargo-target/release/hees_runner
 CONSOLE_COMPATIBILITY_ROOT := $(abspath $(CONSOLE_ROOT)/contracts/domain/kernel_compatibility)
-CONSOLE_LICENSE_REPORT := $(abspath $(CONSOLE_ROOT)/packaging/THIRD_PARTY_LICENSES.md)
 CONSOLE_GENERATED_LICENSE_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/THIRD_PARTY_LICENSES.md)
-CONSOLE_CHECKED_LICENSE_NORMALIZED := $(abspath $(CONSOLE_ROOT)/target/release-evidence/THIRD_PARTY_LICENSES.checked.normalized.md)
-CONSOLE_GENERATED_LICENSE_NORMALIZED := $(abspath $(CONSOLE_ROOT)/target/release-evidence/THIRD_PARTY_LICENSES.generated.normalized.md)
 LICENSE_CONFIG_ROOT := $(abspath tools/licenses)
 INCAN_RESOLVED := $(shell command -v "$(INCAN)" 2>/dev/null || printf '%s' "$(INCAN)")
 INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
@@ -84,9 +81,9 @@ console-license-audit: console-build
 	install -m 644 LICENSE $(CONSOLE_GENERATED_ROOT)/LICENSE
 	$(CARGO_DENY) --manifest-path $(CONSOLE_GENERATED_ROOT)/Cargo.toml check --config $(LICENSE_CONFIG_ROOT)/deny.toml licenses
 	$(CARGO_ABOUT) generate $(LICENSE_CONFIG_ROOT)/third-party-licenses.hbs --config $(LICENSE_CONFIG_ROOT)/about.toml --manifest-path $(CONSOLE_GENERATED_ROOT)/Cargo.toml --locked --offline --fail --output-file $(CONSOLE_GENERATED_LICENSE_REPORT)
-	LC_ALL=C awk '{ sub(/\r$$/, ""); sub(/[[:blank:]]+$$/, ""); lines[NR] = $$0 } END { last = NR; while (last > 0 && lines[last] == "") last--; for (line = 1; line <= last; line++) print lines[line] }' $(CONSOLE_LICENSE_REPORT) > $(CONSOLE_CHECKED_LICENSE_NORMALIZED)
-	LC_ALL=C awk '{ sub(/\r$$/, ""); sub(/[[:blank:]]+$$/, ""); lines[NR] = $$0 } END { last = NR; while (last > 0 && lines[last] == "") last--; for (line = 1; line <= last; line++) print lines[line] }' $(CONSOLE_GENERATED_LICENSE_REPORT) > $(CONSOLE_GENERATED_LICENSE_NORMALIZED)
-	cmp $(CONSOLE_CHECKED_LICENSE_NORMALIZED) $(CONSOLE_GENERATED_LICENSE_NORMALIZED)
+	@test -s $(CONSOLE_GENERATED_LICENSE_REPORT)
+	@grep -Fq '# Third-party licenses' $(CONSOLE_GENERATED_LICENSE_REPORT)
+	@grep -Fq '## ' $(CONSOLE_GENERATED_LICENSE_REPORT)
 
 console-release-contract-test:
 	$(CONSOLE_RELEASE_TEST)
@@ -99,7 +96,7 @@ console-release-lint:
 console-release-candidate: console-release-contract-test console-test console-native-smoke console-license-audit
 	@test -n "$(RELEASE_PLATFORM)" || { echo "RELEASE_PLATFORM is required" >&2; exit 1; }
 	$(CONSOLE_RELEASE_TOOL) validate-platform --platform "$(RELEASE_PLATFORM)"
-	$(CONSOLE_RELEASE_TOOL) package --binary "$(CONSOLE_BINARY)" --platform "$(RELEASE_PLATFORM)" --output-directory "$(RELEASE_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --source-date-epoch "$(SOURCE_DATE_EPOCH)" --incan-root "$(INCAN_RELEASE_ROOT)" --incan-lock "$(CONSOLE_LOCK)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
+	THIRD_PARTY_LICENSES_SOURCE="$(CONSOLE_GENERATED_LICENSE_REPORT)" $(CONSOLE_RELEASE_TOOL) package --binary "$(CONSOLE_BINARY)" --platform "$(RELEASE_PLATFORM)" --output-directory "$(RELEASE_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --source-date-epoch "$(SOURCE_DATE_EPOCH)" --incan-root "$(INCAN_RELEASE_ROOT)" --incan-lock "$(CONSOLE_LOCK)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
 	$(CONSOLE_RELEASE_TOOL) smoke-archive --archive "$(RELEASE_OUTPUT)/hees-console-0.1.0-$(RELEASE_PLATFORM).tar.gz" --platform "$(RELEASE_PLATFORM)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
 
 ci: fmt lib test consumer example boundary boundary-self-test docs console-test console-runner-build console-kernel-compatibility console-release-contract-test

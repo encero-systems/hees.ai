@@ -257,6 +257,6 @@ The fictional [minimal governed agent](examples/minimal_governed_agent/README.md
 
 This repository contains the reusable Hees kernel, public documentation, fictional examples and fixtures, tests, repository guardrails, and the public Hees Console reference product. Private corpora, model files, confidential packages, unpublished research artifacts, and unrelated product code do not belong here.
 
-Hees is licensed under the [Apache License 2.0](LICENSE). Console `0.1.0` release candidates include the checked [third-party license report](workspaces/hees-console/packaging/THIRD_PARTY_LICENSES.md) and [repository notice](NOTICE); the public release URL remains a publication gate.
+Hees is licensed under the [Apache License 2.0](LICENSE). Each Console `0.1.0` release candidate audits its locked platform dependency graph and includes that build's generated third-party license report plus the [repository notice](NOTICE). The checked [macOS ARM64 reference report](workspaces/hees-console/packaging/THIRD_PARTY_LICENSES.md) supports source review but is not substituted for another platform's generated report. The public release URL remains a publication gate.
 
 See [the documentation](workspaces/docs-site/docs/index.md), [contribution guidance](CONTRIBUTING.md), [RFC process](rfcs/README.md), and [security policy](SECURITY.md).

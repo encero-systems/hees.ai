@@ -8,7 +8,7 @@ INCAN_VERSION=0.4.0
 INCAN_DOWNLOAD_BASE=https://github.com/encero-systems/incan/releases/download/v0.4.0
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 REPOSITORY_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/../../.." && pwd)
-THIRD_PARTY_LICENSES_SOURCE=$SCRIPT_DIR/THIRD_PARTY_LICENSES.md
+THIRD_PARTY_LICENSES_SOURCE=${THIRD_PARTY_LICENSES_SOURCE:-}
 
 fail() {
     printf 'hees-console-release: %s\n' "$1" >&2
@@ -21,7 +21,7 @@ usage:
   release_candidate.sh current-platform
   release_candidate.sh validate-platform --platform PLATFORM
   release_candidate.sh fetch-incan --platform PLATFORM --destination DIRECTORY
-  release_candidate.sh package --binary FILE --platform PLATFORM --output-directory DIRECTORY --source-commit COMMIT --source-date-epoch EPOCH --incan-root DIRECTORY --incan-lock FILE [--forbidden PATH ...]
+  THIRD_PARTY_LICENSES_SOURCE=FILE release_candidate.sh package --binary FILE --platform PLATFORM --output-directory DIRECTORY --source-commit COMMIT --source-date-epoch EPOCH --incan-root DIRECTORY --incan-lock FILE [--forbidden PATH ...]
   release_candidate.sh smoke-binary --binary FILE
   release_candidate.sh smoke-archive --archive FILE --platform PLATFORM [--forbidden PATH ...]
 EOF
@@ -377,7 +377,7 @@ package_release() {
     if [ ! -f "$incan_lock" ] || [ ! -s "$incan_lock" ]; then
         fail "incan_lock_missing"
     fi
-    if [ ! -f "$THIRD_PARTY_LICENSES_SOURCE" ] || [ ! -s "$THIRD_PARTY_LICENSES_SOURCE" ]; then
+    if [ -z "$THIRD_PARTY_LICENSES_SOURCE" ] || [ ! -f "$THIRD_PARTY_LICENSES_SOURCE" ] || [ ! -s "$THIRD_PARTY_LICENSES_SOURCE" ]; then
         fail "third_party_licenses_missing"
     fi
     tree_state=$(source_tree_state)

@@ -43,7 +43,7 @@ For a fixed source tree, the gate:
 
 1. reruns the package and release-contract tests;
 2. audits the native bundle after remapping build paths, including checks for active credential values in the bundle;
-3. embeds exactly the native Console binary, project license, repository notice, third-party license report, and release manifest, while keeping the build-side smoke oracle out of the artifact;
+3. embeds exactly the native Console binary, project license, repository notice, the current platform build's generated third-party license report, and release manifest, while keeping the build-side smoke oracle out of the artifact;
 4. writes `RELEASE-MANIFEST.json` with the source commit, clean-tree evidence, candidate platform, Incan release identity, Console lock digest, notice digests, and binary hash;
 5. creates a normalized `hees-console-<version>-<platform>.tar.gz` plus adjacent `.sha256`; and
 6. extracts and executes that archive from a clean temporary working directory with a minimal environment, temporary home, and no API key.

@@ -118,7 +118,11 @@ make_fake_incan "$fake_incan"
 printf '%s\n' 'lock-version = "1"' >"$fake_incan_lock"
 fake_incan_lock_sha256=$(sha256_file "$fake_incan_lock")
 repository_notice_sha256=$(sha256_file "$REPOSITORY_ROOT/NOTICE")
-third_party_licenses_sha256=$(sha256_file "$SCRIPT_DIR/THIRD_PARTY_LICENSES.md")
+third_party_licenses_source="$TEST_ROOT/THIRD_PARTY_LICENSES.md"
+cp "$SCRIPT_DIR/THIRD_PARTY_LICENSES.md" "$third_party_licenses_source"
+printf '\nrelease-test-platform-report\n' >>"$third_party_licenses_source"
+export THIRD_PARTY_LICENSES_SOURCE="$third_party_licenses_source"
+third_party_licenses_sha256=$(sha256_file "$third_party_licenses_source")
 
 expect_failure \
     "missing Console dependency lock is rejected" \
@@ -132,6 +136,19 @@ expect_failure \
     --source-date-epoch "$source_date_epoch" \
     --incan-root "$fake_incan" \
     --incan-lock "$TEST_ROOT/missing.incan.lock"
+
+expect_failure \
+    "missing platform license report is rejected" \
+    "third_party_licenses_missing" \
+    env ALLOW_DIRTY_SOURCE=1 HEES_RELEASE_ALLOW_TEST_EXECUTABLE=1 THIRD_PARTY_LICENSES_SOURCE= \
+    "$RELEASE_TOOL" package \
+    --binary "$fake_console" \
+    --platform "$platform" \
+    --output-directory "$TEST_ROOT/missing-licenses-output" \
+    --source-commit "$source_commit" \
+    --source-date-epoch "$source_date_epoch" \
+    --incan-root "$fake_incan" \
+    --incan-lock "$fake_incan_lock"
 
 ALLOW_DIRTY_SOURCE=1 HEES_RELEASE_ALLOW_TEST_EXECUTABLE=1 \
     "$RELEASE_TOOL" package \
