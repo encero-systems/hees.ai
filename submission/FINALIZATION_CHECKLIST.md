@@ -1,6 +1,6 @@
 # Hees Console submission finalization checklist
 
-This checklist was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 18, 2026. The rules can change and remain authoritative. Recheck them on the day of submission.
+This checklist was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 19, 2026. The rules can change and remain authoritative. Recheck them on the day of submission.
 
 Nothing in this document confirms that Hees Console has been released, hosted, recorded, submitted, or tested in live GPT-5.6 mode. Placeholders are blockers, not evidence.
 
@@ -14,7 +14,7 @@ Nothing in this document confirms that Hees Console has been released, hosted, r
 | Majority core-functionality task | Codex `/feedback` Session ID | **[MANUAL INPUT REQUIRED: SESSION ID]** |
 | Working Incan-authored decision path | Runner source, generated artifact identity, integration tests, and valid/adversarial run evidence | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, CI, AND RUN URLS]** |
 | Bounded Training by Committee slice | Target derivation, complete observation coverage, Hees classification, and authority-negative tests | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, AND RUN URLS]** |
-| Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` canary reaching the same runner, with model/configuration identity and public result | **[FINALIZE BEFORE RELEASE: LIVE CANARY URL OR EXPLICIT `NOT VERIFIED`]** |
+| Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` canary reaching the same runner, with model/configuration identity and public result | `NOT VERIFIED` on July 19: API reached, HTTP 429 `insufficient_quota`; retain this limitation unless a later public canary passes |
 | No-rebuild judge path | Hosted sandbox or functioning test build, supported platforms, clean-system smoke test, access window | **[FINALIZE BEFORE RELEASE: TEST URL, PLATFORM MATRIX, SMOKE TEST, AND DATES]** |
 | Release integrity | Tag, immutable commit, asset names, SHA-256 values, provenance, dependency licenses | **[FINALIZE BEFORE RELEASE: RELEASE, HASH, PROVENANCE, AND LICENSE URLS]** |
 | Product behavior | Frozen golden outputs for valid action, undeclared action, and scenario `3` unknown evidence | **[FINALIZE BEFORE RELEASE: GOLDENS, TESTS, AND RUN URLS]** |
@@ -30,7 +30,7 @@ Nothing in this document confirms that Hees Console has been released, hosted, r
 - [ ] The valid and adversarial scenarios rerun through the compiled Incan-authored runner; replay files contain no stored terminal result.
 - [ ] Scenario `3` is frozen as `Unknown evidence reference`, namespace `console_admission_0_1`, public reason `unknown_evidence`, with a golden output and test link.
 - [ ] The release artifact has passed a clean-system, no-rebuild smoke test on every claimed platform.
-- [ ] The hosted or test-build path invokes the frozen artifact, exposes no unrestricted shell, isolates sessions, and is scheduled to remain free and unrestricted through August 5, 2026 at 17:00 PDT.
+- [ ] The functioning test build remains free and unrestricted through August 5, 2026 at 17:00 PDT. If a hosted equivalent is also claimed, it invokes the frozen artifact, exposes no unrestricted shell, and isolates sessions.
 - [ ] Optional live GPT-5.6 claims are backed by a public canary, or every live claim is narrowed to an unverified optional adapter and the video uses replay only.
 - [ ] CI, artifact hashes, provenance, dependency notices, supported platforms, and release links all identify the same frozen commit.
 - [ ] Screenshots and video surfaces contain no credentials, personal data, personal paths, private repositories, private packages, hidden prompts, raw provider metadata, unrestricted rationale, or unrelated work.
@@ -69,7 +69,7 @@ Nothing in this document confirms that Hees Console has been released, hosted, r
 - [ ] The signed-out/incognito judge path works from the public links without access to development credentials or a private account.
 - [ ] Every submission material is in English or has the required English translation.
 - [ ] The final form is submitted before July 21, 2026 at 17:00 PDT. Do not rely on post-deadline edits; the official rules permit only narrow exceptions.
-- [ ] The submitted Devpost page, YouTube video, repository, release, hosted path, and testing instructions remain available and mutually consistent.
+- [ ] The submitted Devpost page, YouTube video, repository, release, no-rebuild test path, and testing instructions remain available and mutually consistent; include a hosted equivalent only if one is actually supplied.
 
 ## Danny-only manual actions
 

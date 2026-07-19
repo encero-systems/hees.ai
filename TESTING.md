@@ -2,20 +2,7 @@
 
 This is the judge and reviewer test plan for the Build Week 2026 `console_profile_0_1` release targeted for Hees Console `0.1.0`. It tests one bounded, fictional-domain implementation profile, not the permanent provider-neutral and domain-neutral Console north star or its future evidence-intake and package-authoring workflow. The release is still in development, so every field labelled `FINALIZE BEFORE RELEASE` must be replaced with verified public evidence before these instructions are presented as the final judge path.
 
-## Fastest path: hosted offline replay
-
-1. Open **[FINALIZE BEFORE RELEASE: HOSTED SANDBOX URL]** during **[FINALIZE BEFORE RELEASE: ACCESS AVAILABILITY WINDOW]**.
-2. Confirm the header says `REPLAY` and `BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1` before running a scenario.
-3. The valid declared-action scenario runs immediately through Hees. Use `←` and `→` to move through the inspectors.
-4. Compare the escaped `UNTRUSTED PROPOSAL`, bounded observations, Hees-classified findings, selected memory, experimental Console Content DNA, and profile receipt.
-5. Press `2` for the undeclared-action scenario and confirm that the trusted result says `REJECTED`, namespace `console_admission_0_1`, reason `unknown_action`.
-6. Press `3` for unknown evidence and confirm `unknown_evidence`; press `4` for unknown memory and confirm `unknown_memory`; press `5` for non-admitted memory and confirm `memory_not_admitted`. No rejection may expose a trusted answer.
-7. Inspect a rejection receipt and confirm that it records the rejection while selected memory and Content DNA remain absent.
-8. Press `q` to close the session. The hosted surface must expose the Console directly, not an unrestricted shell, and the session must not persist judge input across sessions.
-
-**Hosted-path evidence:** **[FINALIZE BEFORE RELEASE: HOSTED SMOKE TEST, SESSION-ISOLATION RESULT, FROZEN ARTIFACT IDENTITY, AND SCREENSHOTS]**.
-
-## Local offline replay
+## Fastest path: published offline test build
 
 The Build Week profile archive runs without an Incan compiler, package manager, source checkout, network connection, or API key. Exact-head candidate executions pass on macOS ARM64, macOS x86-64, and Linux x86-64, but the following download fields remain blocked until the audited archives are published as stable release assets.
 
@@ -33,16 +20,20 @@ The Build Week profile archive runs without an Incan compiler, package manager, 
 
 Download the artifact and verify it using the exact platform command:
 
-```text
-[FINALIZE BEFORE RELEASE: COPY-PASTE DOWNLOAD AND SHA-256 VERIFICATION COMMANDS FOR EACH SUPPORTED PLATFORM]
+```bash
+shasum -a 256 -c hees-console-0.1.0-macos-aarch64.tar.gz.sha256
+# Linux:
+sha256sum -c hees-console-0.1.0-linux-x86_64.tar.gz.sha256
 ```
 
 Do not run an artifact whose digest differs from the published value.
 
 ### 2. Launch
 
-```text
-[FINALIZE BEFORE RELEASE: EXACT PLATFORM-SPECIFIC COMMAND THAT STARTS `hees-console` IN DEFAULT REPLAY MODE]
+```bash
+tar -xzf hees-console-0.1.0-<platform>.tar.gz
+cd hees-console-0.1.0-<platform>
+./hees-console
 ```
 
 The initial view must identify Console `0.1.0`, profile `console_profile_0_1`, mode `REPLAY`, the fictional package, and the active scenario. The dedicated manifest and trace inspectors expose runner, schema, and replay-integrity identities. Offline startup must not ask for an API key or silently access the network.
@@ -73,20 +64,26 @@ The following checks are more important than the wording of the fictional answer
 - Replay mode remains visibly labelled in every view and exported run record.
 - Rejected model text stays inside the escaped untrusted inspection view and never appears as a trusted answer.
 
+## Optional hosted equivalent
+
+A hosted equivalent is not required when the published native test build remains free and unrestricted through the judging period. If one is supplied, it must invoke the same frozen executable, expose the Console directly rather than an unrestricted shell, isolate sessions, avoid persisting judge input, and remain available through August 5, 2026 at 17:00 PDT.
+
+**Hosted equivalent:** not configured. Use the published native test build unless this field is replaced with a verified hosted URL, availability window, frozen artifact identity, and isolation result.
+
 ## Optional live GPT-5.6 test
 
 Live mode is optional for judges. It requires network access, an OpenAI API key with available quota, and an explicit selection that remains visibly labelled `LIVE`. Never paste a key into an issue, log, screenshot, fixture, command argument, or exported artifact.
 
 1. Set `OPENAI_API_KEY` in the environment using your platform's secret-safe method.
-2. Start live mode with **[FINALIZE BEFORE RELEASE: EXACT DOCUMENTED LIVE-MODE COMMAND OR INTERACTION]**.
-3. Ask **[FINALIZE BEFORE RELEASE: EXACT FICTIONAL LIVE CANARY QUESTION]**.
+2. From the extracted archive, start `./hees-console --mode live --question "What order should I use for the Lantern Path cards?"`.
+3. Confirm that the question is the original fictional Lantern Path prompt and that the UI remains labelled `LIVE`.
 4. Confirm that the Console identifies model `gpt-5.6-sol`, displays a strict structured untrusted proposal and bounded observations, and sends the complete normalized bundle to the same runner identity used by replay.
 5. Confirm that provider refusal, timeout, rate limit, malformed structured output, or incomplete observation coverage produces a typed fail-closed state and never silently substitutes replay values under a live label.
 6. Remove the environment credential after the test.
 
-**Verified live canary:** **[FINALIZE BEFORE RELEASE: DATE, COMMIT, MODEL AND CONFIGURATION FINGERPRINTS, CANARY RESULT, AND PUBLIC EVIDENCE URL]**.
+**Verified live canary:** not verified as of July 19, 2026. The bounded canary reached the Responses API but received HTTP 429 `insufficient_quota`. The video and primary judge path must therefore use offline replay unless a later public canary proves the frozen live path.
 
-Until that field is replaced, live operation remains an intended release capability rather than a verified claim. The adapter is designed against the official [GPT-5.6 Sol model](https://developers.openai.com/api/docs/models/gpt-5.6-sol) and [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs) documentation.
+The adapter's request construction, strict decoding, injected-transport composition, and fail-closed behavior are covered by fourteen provider-boundary tests. It is designed against the official [GPT-5.6 Sol model](https://developers.openai.com/api/docs/models/gpt-5.6-sol), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), and [API data controls](https://developers.openai.com/api/docs/guides/your-data) documentation.
 
 ## Source verification for contributors
 
@@ -107,7 +104,7 @@ make console-release-candidate \
   RELEASE_PLATFORM=macos-aarch64
 ```
 
-**Green verification evidence:** **[FINALIZE BEFORE RELEASE: LOCAL COMMAND TRANSCRIPT SUMMARY AND GITHUB CI URLS AT THE RELEASE COMMIT]**.
+At reviewed candidate `b208c9664293b277fb4990ca34cd2c8890e67246`, the complete local gate passed with 38 kernel/profile tests, one external-consumer test, fourteen native Console tests, fourteen provider-boundary tests, and ten release-contract tests. The exact-head [CI](https://github.com/encero-systems/hees.ai/actions/runs/29670369339), [documentation build](https://github.com/encero-systems/hees.ai/actions/runs/29670369341), and [three-platform native matrix](https://github.com/encero-systems/hees.ai/actions/runs/29670369356) also passed. Final release evidence must identify the later frozen release commit if it differs.
 
 ## Expected limitations
 
@@ -117,19 +114,19 @@ make console-release-candidate \
 - This profile exercises only a bounded proposal-pressure-testing slice of the permanent Training by Committee workflow. It is not model-weight training or fine-tuning. Role-bound live-provider observations remain non-authoritative; Hees classifies findings and decides, and no provider majority or vote can select the terminal result. Replay uses neutral observation fixtures rather than a provider recording.
 - Experimental `console_content_dna_0_1` does not establish full RFC 002 conformance, and `console_profile_receipt_0_1` is not RFC 006-compatible.
 - Offline replay proves deterministic operation over integrity-checked fixture inputs. It does not prove live GPT provenance, provider availability, or live language quality.
-- Supported local platforms are limited to those with published and smoke-tested release artifacts; **[FINALIZE BEFORE RELEASE: EXACT UNSUPPORTED OR UNTESTED PLATFORMS]**.
+- Candidate artifacts have been built and smoke-tested on macOS 15 ARM64, macOS 15 x86-64, and Ubuntu 24.04 x86-64 GitHub runners. Windows, Linux ARM64, and every unlisted operating-system or architecture combination remain untested and unsupported for this release unless a published artifact proves otherwise.
 
 ## Troubleshooting without weakening the boundary
 
 | Symptom | Safe response |
 | --- | --- |
 | Digest mismatch | Stop and download the asset again from the published release; do not bypass verification. |
-| Unsupported platform | Use the hosted sandbox or a documented supported artifact; do not infer support from source portability. |
+| Unsupported platform | Use a documented supported artifact or a verified hosted equivalent if one is published; do not infer support from source portability. |
 | Replay integrity failure | Treat the fixture as invalid; do not run or display a stored fallback decision. |
 | Runner unavailable or malformed response | Show a typed host failure; do not fabricate a Hees rejection or admission. |
 | Missing API key | Stay in explicitly labelled replay mode or configure live mode deliberately; do not ask judges to expose a credential. |
 | Live timeout, refusal, rate limit, or malformed output | Fail closed under the documented typed state; do not relabel replay as live. |
-| Hosted session expired | Start a fresh bounded session using **[FINALIZE BEFORE RELEASE: HOSTED RESTART INSTRUCTION]**. |
+| Hosted session expired | Use the published native test build, or follow the verified hosted restart instruction if a hosted equivalent is later supplied. |
 
 ## What a successful test establishes
 

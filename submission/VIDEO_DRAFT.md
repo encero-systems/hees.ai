@@ -24,7 +24,7 @@ The target runtime is **2:50 or shorter**, leaving ten seconds of safety under t
 
 ### 0:45–1:20 — Valid offline replay
 
-**On screen:** Run scenario `1` from the frozen artifact. Keep `REPLAY` visible. Open the proposal and findings views, then the terminal result, selected memory, experimental Content DNA, and receipt. Use **[FINALIZE BEFORE RECORDING: EXACT VALID SCENARIO LABEL AND FROZEN VISIBLE VALUES]**.
+**On screen:** Run scenario `1`, `Valid declared action`, from the frozen artifact. Keep `REPLAY` visible. Open the proposal and findings views, then show `ADMITTED`, namespace `console_admission_0_1`, reason `admitted`, selected memory `memory_lantern_sequence`, experimental Content DNA, and the admitted receipt.
 
 **Spoken script:**
 
@@ -56,7 +56,7 @@ The target runtime is **2:50 or shorter**, leaving ten seconds of safety under t
 
 ### 2:40–2:50 — Lineage, impact, and quick start
 
-**On screen:** Show the frozen public repository, release/test link, and a short lineage card. End on **[FINALIZE BEFORE RECORDING: PUBLIC NO-REBUILD TEST URL]**.
+**On screen:** Show the frozen public repository, published native test-build link, and a short lineage card. End on **[FINALIZE BEFORE RECORDING: PUBLIC NO-REBUILD TEST-BUILD URL]**.
 
 **Spoken script:**
 
@@ -95,4 +95,4 @@ All captures must come from the frozen release artifact. Use a clean terminal, n
 > Release and hashes: **[FINALIZE BEFORE RELEASE: RELEASE URL]**<br>
 > Testing instructions: **[FINALIZE BEFORE RELEASE: PUBLIC TESTING URL]**
 >
-> Offline replay reruns the compiled Hees decision path over integrity-checked inputs. It does not prove live GPT provenance, semantic truth, source ownership, or full Draft RFC conformance. Optional live GPT-5.6 status: **[FINALIZE BEFORE RELEASE: VERIFIED CANARY STATUS AND LINK, OR `NOT DEMONSTRATED`]**.
+> Offline replay reruns the compiled Hees decision path over integrity-checked inputs. It does not prove live GPT provenance, semantic truth, source ownership, or full Draft RFC conformance. Optional live GPT-5.6 was not demonstrated because the July 19 canary reached the API but received `insufficient_quota`.

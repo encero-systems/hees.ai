@@ -92,7 +92,7 @@ The same authority boundary is designed to serve deterministic offline replay an
 
 ## How Codex and GPT-5.6 were used
 
-Hees and Incan were not created during Build Week. Before July 13, 2026, Incan was already a long-running, human-directed language and compiler project built with substantial GPT assistance over nearly a year, and earlier Hees design and implementation work also predated the event.
+Hees and Incan were not created during Build Week. Before July 13, 2026, Incan was already a long-running, human-directed language and compiler project built with substantial GPT assistance throughout its multi-month development, and earlier Hees design and implementation work also predated the event.
 
 During the July 13–21 Build Week submission period, Codex with GPT-5.6 was used to design, implement, review, test, package, and document the bounded Hees Console profile and the public Hees extension required to support it. Dated commits and task evidence will distinguish that new work from the pre-existing projects.
 
@@ -106,8 +106,8 @@ Under the optional live contract, GPT-5.6 is narrower still: it may return stric
 
 The primary judge path is offline replay and must not require rebuilding the project, installing Incan, creating an account, using a network connection, or supplying an API key.
 
-1. Open **[FINALIZE BEFORE RELEASE: HOSTED SANDBOX URL]** or download **[FINALIZE BEFORE RELEASE: SUPPORTED PLATFORM ARTIFACT URL]**.
-2. If downloading, verify **[FINALIZE BEFORE RELEASE: ASSET NAME AND SHA-256]** and launch it with **[FINALIZE BEFORE RELEASE: EXACT COMMAND]**.
+1. Download **[FINALIZE BEFORE RELEASE: SUPPORTED PLATFORM TEST-BUILD URL]**. If a verified hosted equivalent is later supplied, it may be offered as a secondary path.
+2. Verify **[FINALIZE BEFORE RELEASE: ASSET NAME AND SHA-256]**, extract the archive, and launch `./hees-console`.
 3. Confirm the header identifies `console_profile_0_1` and mode `REPLAY`.
 4. Run scenario `1`; inspect the untrusted proposal, observations, findings, `ADMITTED` result, selected memory, experimental Content DNA, and receipt.
 5. Run scenario `2`; confirm `REJECTED`, namespace `console_admission_0_1`, reason `unknown_action`, with no trusted answer.
@@ -125,7 +125,7 @@ Complete instructions, platform support, expected values, and safe troubleshooti
 - Admission does not prove factual correctness, universal claim support, source ownership, legal rights outside declared package state, provider correctness, producer authenticity, or remote attestation.
 - Offline replay proves deterministic operation over integrity-checked inputs, not live GPT provenance, provider availability, or language quality.
 - Supported platforms are only those backed by published, smoke-tested release artifacts: **[FINALIZE BEFORE RELEASE: SUPPORTED AND UNSUPPORTED PLATFORMS]**.
-- Hosted and optional live availability remain bounded by the final published access window and provider requirements: **[FINALIZE BEFORE RELEASE: HOSTED WINDOW AND VERIFIED LIVE STATUS]**.
+- No hosted equivalent is currently configured. Optional live GPT-5.6 was not verified on July 19 because the canary reached the API but received HTTP 429 `insufficient_quota`; the submitted demo must therefore use offline replay unless later public evidence proves the frozen live path.
 
 ## Judging-criteria map
 

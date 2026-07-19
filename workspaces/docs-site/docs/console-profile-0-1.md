@@ -60,7 +60,7 @@ The timing measurement used Hyperfine `--shell=none` with five warm-up runs and 
 
 The immutable-source GitHub matrix has built, extracted, and smoke-tested exact-head candidates on macOS ARM64, macOS x86-64, and Linux x86-64. Those candidates remain short-lived CI evidence rather than signed, notarized, or publicly released assets. A platform becomes part of the judge-facing support claim only when its exact audited artifact is published with its checksum, provenance, dependency notices, and test instructions. Windows and Linux ARM64 are not supported by the released Incan `0.4.0` archive set used by this profile.
 
-The live adapter and its injected network-free composition tests are implemented, but no successful public GPT-5.6 canary is recorded yet. Offline replay remains fully functional without that evidence. A restricted hosted judge session is also a release gate and must run the same prebuilt executable without exposing an unrestricted shell, credentials, unrelated files, or cross-session persistence.
+The live adapter and its injected network-free composition tests are implemented, but no successful public GPT-5.6 canary is recorded yet. Offline replay remains fully functional without that evidence. The required no-rebuild judge path can be satisfied by the published native test build. Any optional hosted equivalent must run the same prebuilt executable without exposing an unrestricted shell, credentials, unrelated files, or cross-session persistence.
 
 The optional atom-comparison inspector is present and explicitly reports `not_configured` for the current interaction. Candidate-memory creation and Hees-derived comparison are permanent Console work, but their absence cannot affect the terminal profile path.
 

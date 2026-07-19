@@ -6,7 +6,7 @@ Hees is an Incan-first project for deterministic runtime governance of AI intera
 
 Hees Console is the permanent terminal-first, local-first, provider-neutral and domain-neutral developer product for building, validating, running, and inspecting governed AI systems. It is not defined by one model, provider, fixture domain, event profile, or deployment topology.
 
-> **Current status:** The permanent Console contract remains Draft under [RFC 010](rfcs/010-hees-console.md). The checked repository now contains the complete native Incan application for `console_profile_0_1`, deterministic offline replay, optional live GPT-5.6 composition, focused tests, and reproducible self-contained release-candidate packaging. No public release asset or hosted judge instance is available yet, so those remain explicit release gates rather than implied capabilities. The separate checked Hees library remains the implemented `0.0.1` preview described under [Hees library 0.0.1](#hees-library-001).
+> **Current status:** The permanent Console contract remains Draft under [RFC 010](rfcs/010-hees-console.md). The checked repository now contains the complete native Incan application for `console_profile_0_1`, deterministic offline replay, optional live GPT-5.6 composition, focused tests, and reproducible self-contained release-candidate packaging. No stable public test-build asset is available yet, so public no-rebuild access remains a release gate. A hosted equivalent is optional rather than required. The separate checked Hees library remains the implemented `0.0.1` preview described under [Hees library 0.0.1](#hees-library-001).
 
 ### Permanent product north star
 
@@ -73,7 +73,7 @@ Console owns terminal presentation, provider transport, input bounds, and applic
 
 #### Judge quick start
 
-The local release candidate supports an offline path that requires no Incan compiler, package manager, source checkout, network connection, or API key. Public download and hosted-access steps remain intentionally incomplete until their publication gates pass.
+The local release candidate supports an offline path that requires no Incan compiler, package manager, source checkout, network connection, or API key. Public download steps remain intentionally incomplete until the stable test-build assets are published.
 
 1. Download the self-contained archive for **[FINALIZE BEFORE RELEASE: VERIFIED PUBLIC ARTIFACT PLATFORM]** from **[FINALIZE BEFORE RELEASE: RELEASE ASSET URL]**.
 2. Compare the downloaded file's SHA-256 digest with **[FINALIZE BEFORE RELEASE: RELEASE ASSET SHA-256]**.
@@ -82,7 +82,7 @@ The local release candidate supports an offline path that requires no Incan comp
 5. Press `2` for the undeclared-action scenario. Confirm that Hees returns `REJECTED` with `unknown_action` in namespace `console_admission_0_1`.
 6. Press `3` for unknown evidence, `4` for unknown memory, and `5` for non-admitted memory. Confirm the exact respective reasons `unknown_evidence`, `unknown_memory`, and `memory_not_admitted`, with no trusted answer or admitted-only artifacts.
 7. Inspect each rejection receipt to confirm that it records the terminal rejection without projecting an admitted answer, selected memory, or Content DNA.
-8. Alternatively, open **[FINALIZE BEFORE RELEASE: HOSTED SANDBOX URL]** and repeat the same five scenarios against the frozen executable.
+8. A verified hosted equivalent may be supplied later, but it is not required when the published native test build remains available free of charge through judging.
 
 See [TESTING.md](TESTING.md) for the complete judge path, expected trust labels, optional live-mode evidence, and troubleshooting boundaries.
 
@@ -112,7 +112,7 @@ Replay is the zero-credential default. Its fixtures contain neutral deterministi
 
 The implemented adapter uses the OpenAI Responses API with explicit model `gpt-5.6-sol`, strict JSON Schema structured outputs, bounded reasoning effort and output tokens, timeouts, and no tool access. Live mode is an optional, explicitly selected path and never silently falls back to replay while retaining a live label. The only local credential surface is `OPENAI_API_KEY`, and the credential does not enter fixtures, process arguments, logs, screenshots, receipts, Content DNA, or exported traces.
 
-> **Live evidence pending:** **[FINALIZE BEFORE RELEASE: LIVE CANARY COMMIT, CI OR RUN LINK, MODEL AND CONFIGURATION FINGERPRINTS, AND RESULT]**. Until this field is replaced with public evidence, live GPT-5.6 operation is a release target rather than a verified capability.
+> **Live status:** not verified as of July 19, 2026. The bounded canary reached the Responses API but received HTTP 429 `insufficient_quota`. The fourteen provider-boundary tests cover exact request construction, strict decoding, injected-transport composition, and fail-closed behavior, but they are not a substitute for a live canary. The primary judge path and video must use offline replay unless a later public canary proves the frozen live path.
 
 The relevant provider contracts follow the official [GPT-5.6 Sol model](https://developers.openai.com/api/docs/models/gpt-5.6-sol) and [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs) documentation.
 
@@ -122,8 +122,8 @@ The relevant provider contracts follow the official [GPT-5.6 Sol model](https://
 | --- | --- |
 | Self-contained executable | Exact-head candidates execute successfully on macOS ARM64, macOS x86-64, and Linux x86-64; **[FINALIZE BEFORE RELEASE: PUBLIC ASSET URLS, HASHES, AND MINIMUM SYSTEM REQUIREMENTS]** |
 | Publication state | Native matrix artifacts are short-lived CI evidence, not signed or notarized public releases |
-| Hosted sandbox | **[FINALIZE BEFORE RELEASE: URL, AVAILABILITY WINDOW, ACCESS STEPS, AND BOUNDED NO-SHELL SESSION LIMITS]** |
-| Source build | Contributor-only; **[FINALIZE BEFORE RELEASE: EXACT REPRODUCIBLE BUILD COMMANDS AND TOOL VERSIONS]** |
+| Hosted equivalent | Not configured and not required when the published native test build remains available; any later hosted surface must run the same frozen executable in bounded, isolated, no-shell sessions |
+| Source build | Contributor-only; released Incan `0.4.0`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
 
 Unsupported platforms will be stated explicitly in the final release notes. Source portability is not evidence that a self-contained artifact works on a platform.
 
@@ -139,7 +139,7 @@ Admission does not prove semantic truth, factual correctness, universal claim su
 
 The Build Week profile uses only original fictional lesson-support material. Repository and release guardrails reject private packages, personal data, credentials, local paths, downloaded models, hidden prompts, chain-of-thought, raw provider headers, unrestricted evaluator rationale, and unrelated runtime code.
 
-Offline replay does not require provider access. Live mode sends only the bounded inputs described in the [Console documentation](workspaces/docs-site/docs/console.md); **[FINALIZE BEFORE RELEASE: LINK TO VERIFIED RETENTION NOTES]** remains a publication gate. All model, source, fixture, provider, and error text is escaped before terminal rendering. Headless output redacts direct question and source text by default. Rejected model prose remains confined to the explicitly untrusted inspection view and cannot enter the trusted answer, receipt, Content DNA, or default exported response.
+Offline replay does not require provider access. Live mode sends only the bounded inputs described in the [Console documentation](workspaces/docs-site/docs/console.md). OpenAI's current [API data controls](https://developers.openai.com/api/docs/guides/your-data) describe provider-side training, abuse-monitoring, application-state, and retention behavior; `store=false` does not by itself eliminate all provider retention. All model, source, fixture, provider, and error text is escaped before terminal rendering. Headless output redacts direct question and source text by default. Rejected model prose remains confined to the explicitly untrusted inspection view and cannot enter the trusted answer, receipt, Content DNA, or default exported response.
 
 Report vulnerabilities through the private process in [SECURITY.md](SECURITY.md). Do not open a public issue containing credentials, private content, personal data, or exploit details.
 
@@ -151,8 +151,8 @@ The Build Week lineage, Codex collaboration, rules checklist, and evidence ledge
 - public repository and implementation pull request: **[FINALIZE BEFORE RELEASE: REPOSITORY AND PR URLS]**;
 - green CI and artifact smoke tests: **[FINALIZE BEFORE RELEASE: CI AND TEST URLS]**;
 - release artifacts, provenance, and SHA-256 values: **[FINALIZE BEFORE RELEASE: RELEASE URL, PROVENANCE URL, AND HASHES]**;
-- hosted sandbox and availability window: **[FINALIZE BEFORE RELEASE: HOSTED URL AND DATES]**;
-- live GPT-5.6 canary: **[FINALIZE BEFORE RELEASE: CANARY EVIDENCE URL]**;
+- hosted equivalent, only if one is claimed: **[FINALIZE BEFORE RELEASE: HOSTED URL AND DATES, OR REMOVE THIS OPTIONAL CLAIM]**;
+- live GPT-5.6 canary, only if verified after the recorded quota failure: **[FINALIZE BEFORE RELEASE: CANARY EVIDENCE URL, OR RETAIN THE EXPLICIT NOT-VERIFIED LIMITATION]**;
 - screenshots and public demonstration video: **[FINALIZE BEFORE RELEASE: SCREENSHOT AND VIDEO URLS]**; and
 - majority-core-functionality Codex `/feedback` Session ID: **[MANUAL INPUT REQUIRED BEFORE SUBMISSION: CODEX SESSION ID]**.
 
@@ -225,7 +225,7 @@ The command is intentionally not a release publisher. It builds and audits the n
 
 The pinned registry contains candidate lanes only for Linux x86_64, macOS ARM64, and macOS x86_64 because those are the native archives published by the official [Incan 0.4.0 release](https://github.com/encero-systems/incan/releases/tag/v0.4.0). Windows and Linux ARM64 are unsupported at this revision. A native artifact becomes supported only after that exact archive executes in its target lane; an unrun matrix entry is not support evidence. The selected standard runner labels come from the current [GitHub-hosted runner reference](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
 
-Release-candidate archives are not identity-signed or notarized. macOS tooling may apply ad-hoc signatures needed for local execution, but those signatures establish no publisher identity. The workflow has read-only repository permission and uploads short-lived Actions artifacts only; it does not create a GitHub release, sign an artifact, deploy a hosted sandbox, or replace the unresolved judge-access placeholders above. Archive metadata is deterministic for fixed bundle inputs, while bit-for-bit reproducibility of native compiler output is not claimed.
+Release-candidate archives are not identity-signed or notarized. macOS tooling may apply ad-hoc signatures needed for local execution, but those signatures establish no publisher identity. The workflow has read-only repository permission and uploads short-lived Actions artifacts only; it does not create a GitHub release, sign an artifact, or publish the stable no-rebuild test-build links above. Archive metadata is deterministic for fixed bundle inputs, while bit-for-bit reproducibility of native compiler output is not claimed.
 
 ### External package descriptor
 
