@@ -426,7 +426,7 @@ def inspector_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
 pub def render_screen(state: ConsoleState, run: ConsoleRun) -> str:
     """Render one bounded full-screen frame without terminal control sequences."""
 
-    mut mode_line = "OFFLINE REPLAY  ·  1 valid  2 undeclared action  3 unknown memory  4 non-admitted memory"
+    mut mode_line = "OFFLINE REPLAY · 1 valid · 2 action · 3 evidence · 4 memory · 5 non-admitted"
     if run.scenario.mode == "LIVE":
         mode_line = f"LIVE GPT-5.6  ·  provider output remains untrusted"
     mut lines = ["HEES CONSOLE 0.1.0  ·  GPT-5.6 proposes. Hees decides.", PROFILE_LABEL, mode_line, f"SCENARIO  {bounded_text(
@@ -441,7 +441,8 @@ pub def render_screen(state: ConsoleState, run: ConsoleRun) -> str:
     lines.extend(inspector_lines(state, run))
     lines.append("")
     if run.scenario.mode == "LIVE":
-        lines.append("Keys: ←/→ or h/l inspector  Enter next  ↑/↓ or k/j scenario  q quit")
+        lines.append("Keys: ←/→ or h/l inspector · Enter next inspector · q quit")
     else:
-        lines.append("Keys: 1–4 scenario  h/l inspector  k/j scenario  q quit")
+        lines.append("Keys: 1–5 scenario · ←/→ or h/l inspector · ↑/↓ or k/j scenario")
+        lines.append("      Enter next inspector · q quit")
     return "\n".join(lines)

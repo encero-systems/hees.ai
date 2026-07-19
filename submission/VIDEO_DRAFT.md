@@ -32,19 +32,19 @@ The target runtime is **2:50 or shorter**, leaving ten seconds of safety under t
 
 ### 1:20–1:50 — Undeclared action rejection
 
-**On screen:** Run scenario `2`. Hold on the proposal label, then the terminal result `REJECTED`, namespace `console_admission_0_1`, reason `unknown_action`. Show that trusted answer, selected memory, Content DNA, and receipt surfaces are absent.
+**On screen:** Run scenario `2`. Hold on the proposal label, then the terminal result `REJECTED`, namespace `console_admission_0_1`, reason `unknown_action`. Show that the trusted answer, selected memory, and Content DNA are absent, then open the rejection receipt.
 
 **Spoken script:**
 
-> Now the model proposes an action the package never declared. Its prose remains inspectable only as untrusted input. The host cannot reinterpret the outcome: Hees rejects it with the closed reason `unknown_action`, and no trusted answer or admitted memory is exposed.
+> Now the model proposes an action the package never declared. Its prose remains inspectable only as untrusted input. The host cannot reinterpret the outcome: Hees rejects it with the closed reason `unknown_action`. No trusted answer or admitted memory is exposed, and the receipt records the rejection.
 
-### 1:50–2:15 — Unknown or non-admitted material rejection
+### 1:50–2:15 — Unknown evidence rejection
 
-**On screen:** Run scenario `3` and show **[FINALIZE BEFORE RECORDING: EXACT FROZEN SCENARIO LABEL, INPUT CONDITION, NAMESPACE, PUBLIC REASON, AND ABSENT TRUSTED SURFACES]**.
+**On screen:** Run scenario `3`, `Unknown evidence reference`. Show the proposal's schema-valid `evidence_missing_lantern` identifier, then `REJECTED`, namespace `console_admission_0_1`, reason `unknown_evidence`. Show that the trusted answer, selected memory, and Content DNA are absent; the receipt records the rejection.
 
 **Spoken script:**
 
-> The third case references **[FINALIZE BEFORE RECORDING: UNKNOWN EVIDENCE OR UNKNOWN/NON-ADMITTED MEMORY]**. Schema-valid identifiers are still not package authority. Hees rejects the exact violated contract with **[FINALIZE BEFORE RECORDING: PUBLIC REASON]**, again without turning rejected model text into a trusted response.
+> The third case references a schema-valid evidence identifier that the package never declared. Valid shape is still not package authority. Hees rejects the exact violated contract with `unknown_evidence`, again without turning rejected model text into a trusted response.
 
 ### 2:15–2:40 — Architecture and the role of GPT-5.6
 
@@ -83,7 +83,7 @@ All captures must come from the frozen release artifact. Use a clean terminal, n
 | 2. Authority boundary | `UNTRUSTED PROPOSAL`, bounded observations, `HEES-CLASSIFIED NON-AUTHORITATIVE FINDINGS`, no terminal conflation | **Model proposals and evaluator observations remain separate from the findings Hees classifies under package-owned policy.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
 | 3. Admitted result | Valid scenario, `ADMITTED`, exact namespace/reason, selected memory, experimental Content DNA, receipt | **After the Incan-authored runner admits the declared action, the profile exposes selected canonical memory, experimental Content DNA, and a profile receipt.** | **[FINALIZE BEFORE RELEASE: IMAGE URL, EXACT VALUES, AND RUN EVIDENCE]** |
 | 4. Undeclared action | Scenario `2`, `REJECTED`, `console_admission_0_1`, `unknown_action`, absent trusted answer | **A schema-valid proposal cannot invent package authority: Hees rejects an undeclared action with the closed reason `unknown_action`.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
-| 5. Unknown or non-admitted material | Exact frozen scenario `3`, exact public reason, absent selected memory and trusted answer | **Hees rejects a reference that is unknown or not admitted by the package instead of trusting model-provided identifiers.** **[FINALIZE CAPTION TO MATCH THE FROZEN CASE]** | **[FINALIZE BEFORE RELEASE: IMAGE URL, EXACT REASON, AND GOLDEN TEST]** |
+| 5. Unknown evidence | Scenario `3`, proposal evidence `evidence_missing_lantern`, `REJECTED`, `console_admission_0_1`, `unknown_evidence`, absent selected memory and trusted answer | **A schema-valid identifier is not authority: Hees rejects evidence that the package never declared with the closed reason `unknown_evidence`.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
 | 6. No-rebuild access | Release asset or hosted sandbox start screen, supported platform, public test URL, no credential prompt | **Judges can run the frozen offline profile without rebuilding the project or supplying an API key.** | **[FINALIZE BEFORE RELEASE: IMAGE URL, ARTIFACT HASH, HOSTED/SMOKE TEST]** |
 
 ## Video description draft

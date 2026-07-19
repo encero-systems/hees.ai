@@ -53,6 +53,8 @@ def scenario_index_for_command(command: str) -> Option[int]:
         return Some(2)
     if command == "scenario-4":
         return Some(3)
+    if command == "scenario-5":
+        return Some(4)
     return None
 
 

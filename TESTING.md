@@ -9,8 +9,9 @@ This is the judge and reviewer test plan for the Build Week 2026 `console_profil
 3. The valid declared-action scenario runs immediately through Hees. Use `←` and `→` to move through the inspectors.
 4. Compare the escaped `UNTRUSTED PROPOSAL`, bounded observations, Hees-classified findings, selected memory, experimental Console Content DNA, and profile receipt.
 5. Press `2` for the undeclared-action scenario and confirm that the trusted result says `REJECTED`, namespace `console_admission_0_1`, reason `unknown_action`.
-6. Press `3` for unknown memory and confirm `unknown_memory`; press `4` for non-admitted memory and confirm `memory_not_admitted`. Neither rejection may expose a trusted answer.
-7. Press `q` to close the session. The hosted surface must expose the Console directly, not an unrestricted shell, and the session must not persist judge input across sessions.
+6. Press `3` for unknown evidence and confirm `unknown_evidence`; press `4` for unknown memory and confirm `unknown_memory`; press `5` for non-admitted memory and confirm `memory_not_admitted`. No rejection may expose a trusted answer.
+7. Inspect a rejection receipt and confirm that it records the rejection while selected memory and Content DNA remain absent.
+8. Press `q` to close the session. The hosted surface must expose the Console directly, not an unrestricted shell, and the session must not persist judge input across sessions.
 
 **Hosted-path evidence:** **[FINALIZE BEFORE RELEASE: HOSTED SMOKE TEST, SESSION-ISOLATION RESULT, FROZEN ARTIFACT IDENTITY, AND SCREENSHOTS]**.
 
@@ -52,8 +53,9 @@ The initial view must identify Console `0.1.0`, profile `console_profile_0_1`, m
 | --- | --- | --- | --- |
 | `1` | Declared action with reviewed, rights-allowed evidence and admitted memory | `ADMITTED` / `console_admission_0_1` / `admitted` | Visible units, distinct evidence and memory identifiers, observations, Hees-classified findings, structural reason, selected memory, Content DNA, receipt |
 | `2` | Undeclared action | `REJECTED` / `console_admission_0_1` / `unknown_action` | The untrusted proposal remains inspectable, but no trusted answer, selected memory, or Content DNA appears |
-| `3` | Unknown memory | `REJECTED` / `console_admission_0_1` / `unknown_memory` | The untrusted proposal remains inspectable, but no trusted answer, selected memory, or Content DNA appears |
-| `4` | Known but non-admitted memory | `REJECTED` / `console_admission_0_1` / `memory_not_admitted` | The package-owned memory exists but cannot be selected into a trusted answer |
+| `3` | Unknown evidence | `REJECTED` / `console_admission_0_1` / `unknown_evidence` | A schema-valid evidence identifier that the package never declared cannot acquire authority |
+| `4` | Unknown memory | `REJECTED` / `console_admission_0_1` / `unknown_memory` | The untrusted proposal remains inspectable, but no trusted answer, selected memory, or Content DNA appears |
+| `5` | Known but non-admitted memory | `REJECTED` / `console_admission_0_1` / `memory_not_admitted` | The package-owned memory exists but cannot be selected into a trusted answer |
 
 Replay fixtures do not store terminal results. To establish that the real runner executed, compare the displayed runner identity and receipt or Content DNA values with **[FINALIZE BEFORE RELEASE: RELEASE GOLDEN OUTPUT AND RUNNER-INTEGRITY TEST URL]**. A replay-digest check proves fixture integrity, not GPT provenance.
 

@@ -71,6 +71,7 @@ done
 case "$scenario" in
     valid) printf '%s\n' 'STATE ADMITTED reason=admitted' ;;
     undeclared-action) printf '%s\n' 'STATE REJECTED reason=unknown_action' ;;
+    unknown-evidence) printf '%s\n' 'STATE REJECTED reason=unknown_evidence' ;;
     unknown-memory) printf '%s\n' 'STATE REJECTED reason=unknown_memory' ;;
     non-admitted-memory) printf '%s\n' 'STATE REJECTED reason=memory_not_admitted' ;;
     *) exit 64 ;;
@@ -181,7 +182,7 @@ HEES_RELEASE_ALLOW_TEST_EXECUTABLE=1 \
     --platform "$platform" \
     --forbidden "$REPOSITORY_ROOT" \
     --forbidden "$HOME"
-pass "extracted archive passes all four offline replay smokes"
+pass "extracted archive passes all five offline replay smokes"
 
 listing="$TEST_ROOT/archive.list"
 tar -tzf "$archive" | LC_ALL=C sort >"$listing"

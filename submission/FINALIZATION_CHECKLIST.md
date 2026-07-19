@@ -17,7 +17,7 @@ Nothing in this document confirms that Hees Console has been released, hosted, r
 | Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` canary reaching the same runner, with model/configuration identity and public result | **[FINALIZE BEFORE RELEASE: LIVE CANARY URL OR EXPLICIT `NOT VERIFIED`]** |
 | No-rebuild judge path | Hosted sandbox or functioning test build, supported platforms, clean-system smoke test, access window | **[FINALIZE BEFORE RELEASE: TEST URL, PLATFORM MATRIX, SMOKE TEST, AND DATES]** |
 | Release integrity | Tag, immutable commit, asset names, SHA-256 values, provenance, dependency licenses | **[FINALIZE BEFORE RELEASE: RELEASE, HASH, PROVENANCE, AND LICENSE URLS]** |
-| Product behavior | Frozen golden outputs for valid action, undeclared action, and exact scenario `3` | **[FINALIZE BEFORE RELEASE: GOLDENS, TESTS, AND RUN URLS]** |
+| Product behavior | Frozen golden outputs for valid action, undeclared action, and scenario `3` unknown evidence | **[FINALIZE BEFORE RELEASE: GOLDENS, TESTS, AND RUN URLS]** |
 | Product design | Frozen screenshots, narrow and monochrome checks, terminal-escaping tests | **[FINALIZE BEFORE RELEASE: IMAGE AND TEST URLS]** |
 | Public demo video | Approved public YouTube video under three minutes with clear English audio | **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]** |
 | Testing instructions | Public `TESTING.md` at the frozen revision with exact judge steps | **[FINALIZE BEFORE RELEASE: TESTING URL]** |
@@ -28,7 +28,7 @@ Nothing in this document confirms that Hees Console has been released, hosted, r
 
 - [ ] The implementation slices have returned and an evidence-based completion audit has passed against the exact release candidate.
 - [ ] The valid and adversarial scenarios rerun through the compiled Incan-authored runner; replay files contain no stored terminal result.
-- [ ] Scenario `3` has one frozen label, input condition, namespace, public reason, golden output, and test link.
+- [ ] Scenario `3` is frozen as `Unknown evidence reference`, namespace `console_admission_0_1`, public reason `unknown_evidence`, with a golden output and test link.
 - [ ] The release artifact has passed a clean-system, no-rebuild smoke test on every claimed platform.
 - [ ] The hosted or test-build path invokes the frozen artifact, exposes no unrestricted shell, isolates sessions, and is scheduled to remain free and unrestricted through August 5, 2026 at 17:00 PDT.
 - [ ] Optional live GPT-5.6 claims are backed by a public canary, or every live claim is narrowed to an unverified optional adapter and the video uses replay only.

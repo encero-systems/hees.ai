@@ -13,6 +13,7 @@ from embedded_data import (
     non_admitted_memory_replay_json,
     package_json,
     undeclared_action_replay_json,
+    unknown_evidence_replay_json,
     unknown_memory_replay_json,
     valid_replay_json,
 )
@@ -167,7 +168,7 @@ pub model OfflineScenario:
 pub def scenario_slugs() -> list[str]:
     """Return the stable public scenario slugs in keyboard order."""
 
-    return ["valid", "undeclared-action", "unknown-memory", "non-admitted-memory"]
+    return ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]
 
 
 pub def profile_schema_digests() -> list[SchemaDigest]:
@@ -186,6 +187,8 @@ pub def scenario_title(slug: str) -> str:
         return "Valid reviewed evidence"
     if slug == "undeclared-action":
         return "Undeclared action"
+    if slug == "unknown-evidence":
+        return "Unknown evidence reference"
     if slug == "unknown-memory":
         return "Unknown memory reference"
     if slug == "non-admitted-memory":
@@ -208,6 +211,8 @@ def replay_source(slug: str) -> Result[str, str]:
         return Ok(valid_replay_json())
     if slug == "undeclared-action":
         return Ok(undeclared_action_replay_json())
+    if slug == "unknown-evidence":
+        return Ok(unknown_evidence_replay_json())
     if slug == "unknown-memory":
         return Ok(unknown_memory_replay_json())
     if slug == "non-admitted-memory":
@@ -251,7 +256,7 @@ def replay_source_is_integral(source: str) -> bool:
 pub def embedded_inputs_are_non_terminal() -> bool:
     """Prove the embedded replay records contain no decision or terminal artifact fields."""
 
-    for source in [valid_replay_json(), undeclared_action_replay_json(), unknown_memory_replay_json(), non_admitted_memory_replay_json()]:
+    for source in [valid_replay_json(), undeclared_action_replay_json(), unknown_evidence_replay_json(), unknown_memory_replay_json(), non_admitted_memory_replay_json()]:
         if source.contains("\"decision\"") or source.contains("\"reason\""):
             return false
         if source.contains("\"content_dna\"") or source.contains("\"receipt\""):

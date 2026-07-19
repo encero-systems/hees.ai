@@ -111,7 +111,7 @@ The primary judge path is offline replay and must not require rebuilding the pro
 3. Confirm the header identifies `console_profile_0_1` and mode `REPLAY`.
 4. Run scenario `1`; inspect the untrusted proposal, observations, findings, `ADMITTED` result, selected memory, experimental Content DNA, and receipt.
 5. Run scenario `2`; confirm `REJECTED`, namespace `console_admission_0_1`, reason `unknown_action`, with no trusted answer.
-6. Run scenario `3`; confirm **[FINALIZE BEFORE RELEASE: EXACT SCENARIO LABEL, INPUT CONDITION, AND PUBLIC REJECTION REASON]**, again with no trusted answer.
+6. Run scenario `3`, `Unknown evidence reference`; confirm `REJECTED`, namespace `console_admission_0_1`, reason `unknown_evidence`, again with no trusted answer.
 
 Complete instructions, platform support, expected values, and safe troubleshooting live in [TESTING.md](../TESTING.md). Optional live GPT-5.6 operation is not required for the judge path and must not be presented as verified until the public canary field is replaced.
 

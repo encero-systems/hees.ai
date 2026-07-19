@@ -26,6 +26,8 @@ pub def command_for_byte(value: int) -> str:
         return "scenario-3"
     if value == 52:
         return "scenario-4"
+    if value == 53:
+        return "scenario-5"
     if value == 104:
         return "previous-inspector"
     if value == 108:

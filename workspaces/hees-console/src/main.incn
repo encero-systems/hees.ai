@@ -27,7 +27,7 @@ model CliOptions:
 def usage() -> str:
     """Return stable native Console command-line help."""
 
-    return ("Hees Console 0.1.0\n" + "Usage:\n" + "  hees_console [--mode offline] [--scenario <valid|undeclared-action|unknown-memory|non-admitted-memory>] [--headless]\n" + "  hees_console --mode live --question <text> [--headless]\n" + "Offline replay requires no credentials. Live mode requires OPENAI_API_KEY and never falls back to replay.")
+    return ("Hees Console 0.1.0\n" + "Usage:\n" + "  hees_console [--mode offline] [--scenario <valid|undeclared-action|unknown-evidence|unknown-memory|non-admitted-memory>] [--headless]\n" + "  hees_console --mode live --question <text> [--headless]\n" + "Offline replay requires no credentials. Live mode requires OPENAI_API_KEY and never falls back to replay.")
 
 
 def process_arguments() -> list[str]:

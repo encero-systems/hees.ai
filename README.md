@@ -80,8 +80,9 @@ The local release candidate supports an offline path that requires no Incan comp
 3. Extract the archive and launch `./hees-console`. Offline replay is the zero-credential default.
 4. The valid scenario is evaluated immediately through Hees. Use `←` and `→` to inspect the fixed package and sources, optional atom-comparison state, untrusted proposal, support mappings, verifier manifest, observations, Hees-classified findings, `ADMITTED` decision, selected memory, experimental Console Content DNA, profile receipt, and non-authoritative trace.
 5. Press `2` for the undeclared-action scenario. Confirm that Hees returns `REJECTED` with `unknown_action` in namespace `console_admission_0_1`.
-6. Press `3` for unknown memory and `4` for non-admitted memory. Confirm the exact respective reasons `unknown_memory` and `memory_not_admitted`, with no trusted answer or admitted-only artifacts.
-7. Alternatively, open **[FINALIZE BEFORE RELEASE: HOSTED SANDBOX URL]** and repeat the same four scenarios against the frozen executable.
+6. Press `3` for unknown evidence, `4` for unknown memory, and `5` for non-admitted memory. Confirm the exact respective reasons `unknown_evidence`, `unknown_memory`, and `memory_not_admitted`, with no trusted answer or admitted-only artifacts.
+7. Inspect each rejection receipt to confirm that it records the terminal rejection without projecting an admitted answer, selected memory, or Content DNA.
+8. Alternatively, open **[FINALIZE BEFORE RELEASE: HOSTED SANDBOX URL]** and repeat the same five scenarios against the frozen executable.
 
 See [TESTING.md](TESTING.md) for the complete judge path, expected trust labels, optional live-mode evidence, and troubleshooting boundaries.
 
@@ -91,8 +92,9 @@ See [TESTING.md](TESTING.md) for the complete judge path, expected trust labels,
 | --- | --- |
 | `1` | Valid declared-action scenario |
 | `2` | Undeclared-action scenario |
-| `3` | Unknown memory scenario |
-| `4` | Non-admitted memory scenario |
+| `3` | Unknown evidence scenario |
+| `4` | Unknown memory scenario |
+| `5` | Non-admitted memory scenario |
 | `←` / `→` or `h` / `l` | Previous or next inspector |
 | `↑` / `↓` or `k` / `j` | Previous or next scenario |
 | `enter` | Next inspector |
@@ -168,7 +170,7 @@ Implemented now:
 - deterministic relation and synthesis classification, checked structural-kernel delegation, and exact selected-memory freezing;
 - admitted-answer Content DNA, admitted receipts, and identity-safe rejection receipts with frozen canonical SHA-256 goldens;
 - an Incan-authored native Console application that owns terminal rendering, privacy-redacted headless output, deterministic replay, bounded trace projection, and optional live-provider composition while calling the Hees profile directly;
-- thirteen native application tests and fourteen provider-boundary tests, including injected end-to-end live composition without network access;
+- fourteen native application tests and fourteen provider-boundary tests, including injected end-to-end live composition without network access;
 - reproducible native release-candidate packaging with license, provenance, checksum, leakage, and extracted-archive smoke gates;
 - a checked `src/lib.incn` public surface; and
 - an external-consumer fixture and fictional external example.
@@ -209,7 +211,7 @@ The standalone Console has focused source and native smoke gates:
 make console-test console-native-smoke INCAN=/path/to/incan-0.4.0/bin/incan
 ```
 
-They compile the Incan-authored Console, run thirteen native application tests and fourteen provider-boundary tests, build the native artifact, and execute all four headless replay smokes against the fictional RFC 010 corpus.
+They compile the Incan-authored Console, run fourteen native application tests and fourteen provider-boundary tests, build the native artifact, and execute all five headless replay smokes against the fictional RFC 010 corpus.
 
 The separate release-candidate lane wraps that proof in a checked archive:
 

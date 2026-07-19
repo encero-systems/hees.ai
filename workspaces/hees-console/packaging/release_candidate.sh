@@ -313,6 +313,7 @@ smoke_binary() {
     mkdir -p "$scratch/home" "$scratch/work"
     run_smoke_scenario "$binary" valid ADMITTED '' "$scratch"
     run_smoke_scenario "$binary" undeclared-action REJECTED unknown_action "$scratch"
+    run_smoke_scenario "$binary" unknown-evidence REJECTED unknown_evidence "$scratch"
     run_smoke_scenario "$binary" unknown-memory REJECTED unknown_memory "$scratch"
     run_smoke_scenario "$binary" non-admitted-memory REJECTED memory_not_admitted "$scratch"
     rm -rf "$scratch"

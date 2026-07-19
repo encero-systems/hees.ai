@@ -43,11 +43,12 @@ The release archive contains one native executable plus the project license, not
 ./hees-console
 ```
 
-Use `1` through `4` to select the admitted and adversarial scenarios. The arrow keys or `h`, `j`, `k`, and `l` move between scenarios and inspectors, `enter` advances to the next inspector, and `q` quits. Headless mode evaluates one scenario and emits stable, control-free, privacy-redacted output:
+Use `1` through `5` to select the admitted and adversarial scenarios. The arrow keys or `h`, `j`, `k`, and `l` move between scenarios and inspectors, `enter` advances to the next inspector, and `q` quits. Headless mode evaluates one scenario and emits stable, control-free, privacy-redacted output:
 
 ```bash
 ./hees-console --headless --scenario valid
 ./hees-console --headless --scenario undeclared-action
+./hees-console --headless --scenario unknown-evidence
 ./hees-console --headless --scenario unknown-memory
 ./hees-console --headless --scenario non-admitted-memory
 ```

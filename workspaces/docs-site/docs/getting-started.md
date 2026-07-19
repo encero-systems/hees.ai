@@ -31,7 +31,7 @@ The test project under `workspaces/external-consumer/` compiles and tests this e
 
 ## Verify the initial console profile
 
-The Console workspace uses only original fictional acceptance data. Its current proof runs thirteen native application tests and fourteen provider-boundary tests, builds the native Incan executable, and reruns all four replay inputs through Hees:
+The Console workspace uses only original fictional acceptance data. Its current proof runs fourteen native application tests and fourteen provider-boundary tests, builds the native Incan executable, and reruns all five replay inputs through Hees:
 
 ```bash
 make console-test console-native-smoke \

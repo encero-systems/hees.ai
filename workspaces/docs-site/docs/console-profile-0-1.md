@@ -50,9 +50,9 @@ The following measurements were recorded on 2026-07-19 from clean source commit 
 | Peak resident set size | 5,537,792 bytes maximum across five fresh-process runs |
 | Shipped package JSON | 6,891 bytes |
 | Largest shipped replay JSON | 13,325 bytes |
-| All four shipped replay JSON files | 20,023 bytes |
+| All five shipped replay JSON files | 22,276 bytes |
 
-The archive packages the executable, Apache-2.0 project license, repository notice, the current platform build's generated third-party license report, and exact release manifest. The release-candidate gate rebuilt the native Console, ran 14 native tests and 14 provider tests, audited dependency licenses, checked for source-path and active credential leakage, verified the archive checksum and layout, extracted it into a clean temporary directory, and reran all four offline scenarios without an Incan compiler, source checkout, package manager, network service, or API key.
+The archive packages the executable, Apache-2.0 project license, repository notice, the current platform build's generated third-party license report, and exact release manifest. The release-candidate gate rebuilt the native Console, ran 14 native tests and 14 provider tests, audited dependency licenses, checked for source-path and active credential leakage, verified the archive checksum and layout, extracted it into a clean temporary directory, and reran all five offline scenarios without an Incan compiler, source checkout, package manager, network service, or API key.
 
 The timing measurement used Hyperfine `--shell=none` with five warm-up runs and fifty measured fresh processes. It is a warm filesystem-cache result and does not claim cold-boot latency. Peak resident memory came from macOS `/usr/bin/time -l`; the maximum is reported rather than the mean.
 
