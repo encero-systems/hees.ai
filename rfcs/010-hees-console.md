@@ -34,7 +34,7 @@ Hees should provide a permanent, terminal-first, local-first, provider-neutral a
 7. **Profiles make partial implementations honest.** A Console profile names an exact supported capability set, contracts, bounds, and failure behavior. A bounded profile cannot imply that the permanent product or every related Draft RFC is implemented.
 8. **Replay and audit rerun governance.** Stored scenarios contain bounded inputs and integrity metadata, not reusable decisions or fabricated authority. Replaying a scenario invokes the real Hees path again.
 9. **The public Console is not an orchestration or operations control plane.** Local package creation, inspection, testing, and audit belong here; multi-tenant operations, organization workflows, fleet deployment, private catalogs, and managed production control remain separate products or integrations.
-10. **Implementation truth remains explicit.** The checked Hees API and released Console profiles, not north-star prose or screenshots, determine what exists at any point in time.
+10. **Implementation truth remains explicit.** Released Console profiles and the public Hees API, not north-star prose or screenshots, determine what exists.
 
 ## Motivation
 
@@ -366,7 +366,7 @@ Including the request binding makes replay self-contained and lets Hees rederive
 
 Replay values are neutral deterministic fixtures and use profile-reserved fixture fingerprints. They are described as recorded provider output only if a separate live canary cryptographically binds the exact envelope to retained execution evidence. An optional atom-comparison fixture remains a separate display-only UI input and cannot affect replay admission.
 
-The initial live adapter uses the OpenAI Responses API with explicit `gpt-5.6-sol`, strict JSON Schema structured output, bounded reasoning effort, bounded output tokens, timeouts, and no tools. Its current operations produce a proposal plus relation and synthesis observations; the profile reserves a separate optional display-only atom-candidate operation without requiring or invoking it for a governed interaction. The only credential surface is `OPENAI_API_KEY` or equivalent hosted secret injection. Provider failure never silently substitutes replay while the mode remains live.
+The initial live adapter uses the OpenAI Responses API with explicit `gpt-5.6-sol`, strict JSON Schema structured output, bounded reasoning effort, bounded output tokens, timeouts, and no tools. The adapter produces a proposal plus relation and synthesis observations; the profile reserves a separate optional display-only atom-candidate operation without requiring or invoking it for a governed interaction. The only credential surface is `OPENAI_API_KEY` or equivalent hosted secret injection. Provider failure never silently substitutes replay while the mode remains live.
 
 GPT-5.6 is the initial adapter, not a permanent Console dependency or authority. A later adapter that produces the same normalized profile values receives the same Hees processing and terminal result.
 
@@ -386,7 +386,7 @@ The profile inherits the permanent Console's privacy and security rules. Its pro
 
 ### Profile bounds and resource behavior
 
-This profile cannot advance to Planned without enforced ceilings and clean supported-platform measurements for maximum fictional fixtures, request and target bindings, canonicalization, subprocess exchange, terminal rendering, and resident state. The checked release candidate now enforces and documents its initial ceilings, while public release evidence and every other Draft-to-Planned requirement remain outstanding.
+This profile must enforce exact ceilings for maximum fictional fixtures, request and target bindings, canonicalization, subprocess exchange, terminal rendering, and resident state, and it must publish clean measurements for every claimed platform. A release without either enforced ceilings or the corresponding supported-platform measurements is non-conformant.
 
 ### Profile acceptance evidence
 
@@ -418,9 +418,9 @@ This profile is deliberately narrower than the Draft RFC contract family:
 | RFC 008 | Permits one declared action and has no multi-candidate behavior selection or opaque selected-behavior capability. |
 | RFC 009 | Uses one original candidate, one mapping per visible unit, and only `admit` or `reject`. |
 
-### Profile status and cost
+### Profile cost
 
-`console_profile_0_1` remains Draft with this RFC. It may ship before every permanent capability only if its executable, UI, docs, video, and submission materials consistently label the profile and its non-claims.
+Shipping `console_profile_0_1` before every permanent capability is permitted only if its executable, UI, documentation, and release materials consistently label the profile and its non-claims.
 
 The profile remains complex despite being bounded. Cryptographic request and target binding, a compiled runner, strict replay, a full-screen terminal, self-contained packaging, hosted isolation, and a live adapter all add work beyond the small Hees kernel. Those costs are justified only if the profile remains truthful and reusable as the first product slice.
 
@@ -465,16 +465,6 @@ The permanent Console may inspect behavior candidates and selected behavior when
 ### Relationship to RFC 009
 
 The permanent Console preserves RFC 009's singular visible-answer channel, identifier-only support, lifecycle, repair, and clarification boundaries when supported.
-
-### Product status
-
-This RFC is Draft. Its permanent product contract, general profile mechanism, evidence intake, package editing, and complete RFC adoption remain design work. The checked branch contains a bounded Incan-authored `console_profile_0_1` release candidate with offline replay, an optional provider adapter, proposal-pressure-testing observations, terminal inspection, and packaging; that candidate does not implement the permanent Console north star or constitute a public release.
-
-### Public repository boundary
-
-The public Hees repository may contain the reusable kernel, public RFCs, fictional fixtures, tests, and Hees Console because the Console is the reference terminal-first, local-first developer product for the public contracts. The checked repository now contains the first bounded Console candidate, but only released profile manifests and artifacts may establish what ships.
-
-Private packages, customer material, proprietary operations workflows, managed deployment systems, research corpora, model artifacts, and unrelated control planes remain outside the repository. The current README and checked public API remain the source of truth until the applicable Console implementation is merged and released.
 
 ## Alternatives considered
 
@@ -546,7 +536,7 @@ Separating the public local-first Console from an operations product also requir
 - Exact profiles define implemented capability and non-claims beneath the permanent product contract.
 - Replay stores bound inputs and reruns Hees; it never supplies a reusable decision.
 - Every profile must cryptographically bind the exact governed identities it claims and publish its capability non-claims.
-- The checked Hees API and released profile manifests remain the source of implementation truth.
+- Released profile manifests and the public Hees API are the source of implementation truth.
 
 ## Unresolved questions
 
@@ -557,5 +547,4 @@ Separating the public local-first Console from an operations product also requir
 - What exact cross-profile resource ceilings and workspace-retention defaults are safe on supported developer machines, and what stricter limits apply to self-contained or constrained-device releases?
 - Which platforms must the first permanent-product release support, and under what reproducibility and license gates?
 
-<!-- Rename this section to "Design Decisions" once all questions have been resolved.
-     An RFC cannot move from Draft to Planned until no unresolved questions remain. -->
+<!-- Rename this section to "Design Decisions" once all questions have been resolved. An RFC cannot move from Draft to Planned until no unresolved questions remain. -->
