@@ -2,7 +2,7 @@
 
 Hees uses RFCs to review public contracts before implementation. A Draft describes proposed behavior only: it is not part of the checked `0.0.1` API. Until an RFC and its implementation are merged, [Contracts](contracts.md) and `src/lib.incn` remain the source of truth for supported behavior.
 
-The current Draft set is deliberately coupled. RFC 000 defines the foundational authority model; RFC 001 and RFC 002 establish Spectrum and Content DNA as core contracts; RFC 003–009 refine governed memory, constraints, packages, receipts, verifier findings, behavior selection, and visible-response governance; and RFC 010 proposes a permanent Hees Console with one deliberately bounded first profile. None transfers runtime authority to a model or provider.
+The current Draft set is deliberately coupled. RFC 000 defines the foundational authority model; RFC 001 and RFC 002 establish Spectrum and Content DNA as core contracts; RFC 003–009 refine governed memory, constraints, packages, receipts, verifier findings, behavior selection, and visible-response governance; RFC 010 proposes a permanent Hees Console with one deliberately bounded first profile; and RFC 011 proposes canonical structural identity for validated Incan models. None transfers runtime authority to a model, provider, serializer, or storage engine.
 
 | RFC | Proposal | Status |
 | --- | --- | --- |
@@ -17,5 +17,6 @@ The current Draft set is deliberately coupled. RFC 000 defines the foundational 
 | [008: Governed behavior envelopes](https://github.com/encero-systems/hees.ai/blob/main/rfcs/008-governed-behavior-envelopes.md) | [#9](https://github.com/encero-systems/hees.ai/issues/9) | Draft |
 | [009: Governed visible response lifecycle](https://github.com/encero-systems/hees.ai/blob/main/rfcs/009-governed-visible-response-lifecycle.md) | [#11](https://github.com/encero-systems/hees.ai/issues/11) | Draft |
 | [010: Hees Console](https://github.com/encero-systems/hees.ai/blob/main/rfcs/010-hees-console.md) | [#14](https://github.com/encero-systems/hees.ai/issues/14) | Draft |
+| [011: Canonical structural identity for Incan models](https://github.com/encero-systems/hees.ai/blob/main/rfcs/011-canonical-structural-identity.md) | [#18](https://github.com/encero-systems/hees.ai/issues/18) | Draft |
 
 See the [RFC process and lifecycle](https://github.com/encero-systems/hees.ai/blob/main/rfcs/README.md) for the status definitions and publication boundary.
