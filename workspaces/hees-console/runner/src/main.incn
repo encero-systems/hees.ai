@@ -5,11 +5,22 @@ from pub::hees import (
     ConsolePackage,
     ConsoleProposal,
     ConsoleRequestBinding,
+    EvidenceId,
     RelationObservation,
     SupportMapping,
     SynthesisObservation,
     VisibleUnit,
+    action_id_text,
+    constraint_plan_id_text,
+    contract_id_text,
+    domain_id_text,
+    evidence_id_text,
     evaluate_console_profile_json,
+    observation_id_text,
+    package_id_text,
+    profile_id_text,
+    proposal_id_text,
+    request_id_text,
 )
 from rust::std::io import Read, Write, stderr, stdin, stdout
 from rust::std::process import exit
@@ -348,21 +359,30 @@ def digest_canonical_json(source: str) -> str:
                 Ok(canonical) => return f"sha256:{hexlify(sha256.digest(RustString.from(canonical).into_bytes()))}"
 
 
+def evidence_id_texts(values: list[EvidenceId]) -> list[str]:
+    """Project nominal evidence identifiers into the transport-local JSON shape."""
+
+    mut result: list[str] = []
+    for value in values:
+        result.append(evidence_id_text(value))
+    return result
+
+
 def digest_proposal(proposal: ConsoleProposal) -> str:
     """Recompute the candidate digest for non-authoritative runner metadata."""
 
     projection = ProposalProjection(
-        contract_version=proposal.contract_version,
-        profile_id=proposal.profile_id,
-        package_id=proposal.package_id,
-        domain_id=proposal.domain_id,
+        contract_version=contract_id_text(proposal.contract_version),
+        profile_id=profile_id_text(proposal.profile_id),
+        package_id=package_id_text(proposal.package_id),
+        domain_id=domain_id_text(proposal.domain_id),
         package_revision=proposal.package_revision,
         artifact_digest=proposal.artifact_digest,
-        request_id=proposal.request_id,
+        request_id=request_id_text(proposal.request_id),
         request_digest=proposal.request_digest,
-        proposal_id=proposal.proposal_id,
-        action_id=proposal.action_id,
-        evidence_ids=proposal.evidence_ids,
+        proposal_id=proposal_id_text(proposal.proposal_id),
+        action_id=action_id_text(proposal.action_id),
+        evidence_ids=evidence_id_texts(proposal.evidence_ids),
         visible_units=proposal.visible_units,
         support_mappings=proposal.support_mappings,
     )
@@ -493,20 +513,22 @@ def trace_observations(request: RunnerRequest) -> list[TraceObservation]:
 
     mut result: list[TraceObservation] = []
     for observation in request.relation_observations:
-        if not trace_contains(result, observation.observation_id):
+        identifier = observation_id_text(observation.observation_id)
+        if not trace_contains(result, identifier):
             result.append(
                 TraceObservation(
-                    observation_id=observation.observation_id,
+                    observation_id=identifier,
                     model_fingerprint=observation.model_fingerprint,
                     prompt_fingerprint=observation.prompt_fingerprint,
                     configuration_fingerprint=observation.configuration_fingerprint,
                 ),
             )
     for observation in request.synthesis_observations:
-        if not trace_contains(result, observation.observation_id):
+        identifier = observation_id_text(observation.observation_id)
+        if not trace_contains(result, identifier):
             result.append(
                 TraceObservation(
-                    observation_id=observation.observation_id,
+                    observation_id=identifier,
                     model_fingerprint=observation.model_fingerprint,
                     prompt_fingerprint=observation.prompt_fingerprint,
                     configuration_fingerprint=observation.configuration_fingerprint,
@@ -528,7 +550,7 @@ def proposal_identity(proposal: Option[ConsoleProposal]) -> Option[str]:
 
     match proposal:
         None => return None
-        Some(value) => return Some(value.proposal_id)
+        Some(value) => return Some(proposal_id_text(value.proposal_id))
 
 
 def proposal_digest(proposal: Option[ConsoleProposal]) -> Option[str]:
@@ -553,7 +575,7 @@ def make_trace(request: RunnerRequest, findings: list[DerivedFindingProjection],
 
     constraint_plan_id = match request.package.clone():
         None => None
-        Some(package) => Some(package.policy.constraint_plan_id)
+        Some(package) => Some(constraint_plan_id_text(package.policy.constraint_plan_id))
 
     constraint_plan_revision = match request.package:
         None => None
@@ -612,13 +634,13 @@ def established_identity(
     """Project the exact safely validated package, request, and proposal identity."""
 
     return EstablishedIdentity(
-        package_id=package.package_id,
-        domain_id=package.domain_id,
+        package_id=package_id_text(package.package_id),
+        domain_id=domain_id_text(package.domain_id),
         package_revision=package.package_revision,
         artifact_digest=package.artifact_digest,
-        request_id=request.request_id,
+        request_id=request_id_text(request.request_id),
         request_digest=request.request_digest,
-        proposal_id=proposal.proposal_id,
+        proposal_id=proposal_id_text(proposal.proposal_id),
         candidate_digest=digest_proposal(proposal),
     )
 
