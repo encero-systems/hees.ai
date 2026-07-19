@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/console-release-candidate.yml
+      - .github/workflows/console-draft-release.yml
       - Makefile
       - tools/licenses/**
       - workspaces/hees-console/**
@@ -39,8 +40,8 @@ jobs:
           printf '%s  %s\n' "$ACTIONLINT_SHA256" "$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check
           tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/actionlint" actionlint
           printf '%s\n' "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
-      - name: Validate release mechanics and workflow
-        run: make console-release-lint console-release-contract-test
+      - name: Validate release mechanics and workflows
+        run: make console-release-lint console-release-contract-test console-release-set-test
       - name: Install pinned license-audit tools
         run: |
           cargo install cargo-deny --version 0.19.0 --locked

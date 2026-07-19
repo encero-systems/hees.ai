@@ -78,9 +78,10 @@ These are the only account-bound or personal actions reserved for Danny. The rep
 1. Confirm entrant type, eligibility, ownership, and—if entering as a team or organization—the authorized representative.
 2. Run Codex `/feedback` in the task where the majority of core functionality was built and supply **[MANUAL INPUT REQUIRED: SESSION ID]**.
 3. Approve the frozen title, tagline, Developer Tools category, claims, limitations, screenshot set, and final spoken script.
-4. Record or approve the final release-candidate demo, upload it publicly to YouTube, verify it while signed out, and supply **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]**.
-5. Confirm the no-rebuild test path and its free availability through the end of judging, including any account-bound hosting control.
-6. Review the final Devpost draft in the entrant account, populate the representative/account fields, submit before the official deadline, verify the public project page while signed out, and supply **[MANUAL INPUT REQUIRED: DEVPOST PROJECT URL AND SUBMISSION CONFIRMATION]**.
+4. After approving and merging PR #17, create the exact `hees-console-v0.1.0` tag on a commit contained in `main`, let the tag workflow create the draft Release, verify every asset and hash, and decide the macOS signing/notarization posture. If signing is required, do not mutate the unsigned archives because that would invalidate their manifests and checksums; add a reviewed signing lane and rebuild the integrity metadata. Manually publish only the approved draft.
+5. Record or approve the final release-candidate demo, upload it publicly to YouTube, verify it while signed out, and supply **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]**.
+6. Confirm the no-rebuild test path and its free availability through the end of judging, including any account-bound hosting control.
+7. Review the final Devpost draft in the entrant account, populate the representative/account fields, submit before the official deadline, verify the public project page while signed out, and supply **[MANUAL INPUT REQUIRED: DEVPOST PROJECT URL AND SUBMISSION CONFIRMATION]**.
 
 ## Final publication-boundary scan
 

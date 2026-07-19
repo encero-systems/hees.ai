@@ -12,6 +12,8 @@ CONSOLE_BINARY := $(abspath $(CONSOLE_ROOT)/target/incan/.cargo-target/release/h
 CONSOLE_BUILD_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/build-report.json)
 CONSOLE_RELEASE_TOOL := $(abspath $(CONSOLE_ROOT)/packaging/release_candidate.sh)
 CONSOLE_RELEASE_TEST := $(abspath $(CONSOLE_ROOT)/packaging/test_release_candidate.sh)
+CONSOLE_RELEASE_SET_TOOL := $(abspath $(CONSOLE_ROOT)/packaging/validate_release_set.sh)
+CONSOLE_RELEASE_SET_TEST := $(abspath $(CONSOLE_ROOT)/packaging/test_release_set.sh)
 CONSOLE_GENERATED_ROOT := $(abspath $(CONSOLE_ROOT)/target/incan/hees_console)
 CONSOLE_RUNNER_ROOT := $(abspath $(CONSOLE_ROOT)/runner)
 CONSOLE_RUNNER_BINARY := $(CONSOLE_RUNNER_ROOT)/target/incan/.cargo-target/release/hees_runner
@@ -26,7 +28,7 @@ RELEASE_PLATFORM ?=
 SOURCE_COMMIT ?= $(shell git rev-parse HEAD)
 SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct HEAD)
 
-.PHONY: fmt lib test consumer example boundary boundary-self-test docs ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-lint
+.PHONY: fmt lib test consumer example boundary boundary-self-test docs ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-set-test console-release-lint
 
 fmt:
 	$(INCAN) fmt --check .
@@ -88,10 +90,13 @@ console-license-audit: console-build
 console-release-contract-test:
 	$(CONSOLE_RELEASE_TEST)
 
+console-release-set-test:
+	$(CONSOLE_RELEASE_SET_TEST)
+
 console-release-lint:
-	sh -n $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST)
-	shellcheck -s sh $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST)
-	actionlint .github/workflows/console-release-candidate.yml
+	sh -n $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST) $(CONSOLE_RELEASE_SET_TOOL) $(CONSOLE_RELEASE_SET_TEST)
+	shellcheck -s sh $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST) $(CONSOLE_RELEASE_SET_TOOL) $(CONSOLE_RELEASE_SET_TEST)
+	actionlint .github/workflows/console-release-candidate.yml .github/workflows/console-draft-release.yml
 
 console-release-candidate: console-release-contract-test console-test console-native-smoke console-license-audit
 	@test -n "$(RELEASE_PLATFORM)" || { echo "RELEASE_PLATFORM is required" >&2; exit 1; }
@@ -99,4 +104,4 @@ console-release-candidate: console-release-contract-test console-test console-na
 	THIRD_PARTY_LICENSES_SOURCE="$(CONSOLE_GENERATED_LICENSE_REPORT)" $(CONSOLE_RELEASE_TOOL) package --binary "$(CONSOLE_BINARY)" --platform "$(RELEASE_PLATFORM)" --output-directory "$(RELEASE_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --source-date-epoch "$(SOURCE_DATE_EPOCH)" --incan-root "$(INCAN_RELEASE_ROOT)" --incan-lock "$(CONSOLE_LOCK)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
 	$(CONSOLE_RELEASE_TOOL) smoke-archive --archive "$(RELEASE_OUTPUT)/hees-console-0.1.0-$(RELEASE_PLATFORM).tar.gz" --platform "$(RELEASE_PLATFORM)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
 
-ci: fmt lib test consumer example boundary boundary-self-test docs console-test console-runner-build console-kernel-compatibility console-release-contract-test
+ci: fmt lib test consumer example boundary boundary-self-test docs console-test console-runner-build console-kernel-compatibility console-release-contract-test console-release-set-test

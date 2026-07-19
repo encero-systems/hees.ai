@@ -102,9 +102,13 @@ make console-test console-native-smoke \
 make console-release-candidate \
   INCAN=/path/to/incan-0.4.0/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
+
+make console-release-lint console-release-set-test
 ```
 
-At reviewed candidate `b208c9664293b277fb4990ca34cd2c8890e67246`, the complete local gate passed with 38 kernel/profile tests, one external-consumer test, fourteen native Console tests, fourteen provider-boundary tests, and ten release-contract tests. The exact-head [CI](https://github.com/encero-systems/hees.ai/actions/runs/29670369339), [documentation build](https://github.com/encero-systems/hees.ai/actions/runs/29670369341), and [three-platform native matrix](https://github.com/encero-systems/hees.ai/actions/runs/29670369356) also passed. Final release evidence must identify the later frozen release commit if it differs.
+The exact tag `hees-console-v0.1.0` must point to a commit already contained in `origin/main`. Its tag-triggered workflow rebuilds all three supported native artifacts, validates the complete nine-file source-bound release set, writes aggregate checksums, and creates a draft GitHub Release. It never publishes the Release automatically. Review the draft assets, hashes, source identity, macOS signing posture, limitations, and notes before manually publishing it.
+
+Before publication, bind the release evidence to the exact tagged commit: record the aggregate local gate, CI and documentation runs, three-platform native build, archive and executable hashes, manifest source identity, extracted replay smoke, and any signing or notarization result. Historical candidate runs are useful development evidence but cannot substitute for the tagged release evidence.
 
 ## Expected limitations
 
