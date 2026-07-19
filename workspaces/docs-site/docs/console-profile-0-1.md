@@ -36,18 +36,18 @@ The table records enforced implementation limits, not recommended permanent-prod
 
 The runner and provider reject excessive nesting before invoking a JSON parser. Closed typed decoding and canonical round-trip checks reject unknown or duplicate authority-bearing fields. A host may impose stricter platform limits but cannot raise Hees limits or truncate one input into a different valid value.
 
-## Verified local release candidate
+## Measured macOS ARM64 release candidate
 
-The following measurements were recorded on 2026-07-19 from clean source commit `329f2228ad63e5b9b29b4acfb98140c20fddc78d`, using released Incan `0.4.0` on macOS `26.5.2`, Apple M5 Max ARM64. They describe one local candidate and do not establish support for another platform. This snapshot is evidence for the measured implementation, not a substitute for the checksum sidecar of the eventual public release.
+The following measurements were recorded on 2026-07-19 from clean source commit `982932a095c3a61806b6032a74adb36d703e1925`, using released Incan `0.4.0` on macOS `26.5.2`, Apple M5 Max ARM64. They describe one local candidate and do not establish support for another platform. This snapshot is evidence for the measured implementation, not a substitute for the checksum sidecar of the eventual public release.
 
 | Measurement | Observed value |
 | --- | --- |
 | Native executable | 6,159,184 bytes |
-| Complete compressed archive | 2,364,961 bytes |
-| Candidate archive SHA-256 | `99acf35f5d7c82e354cd8b90a86daa6d5e17168d7a2e85f33beceb1dd07a7e24` |
+| Complete compressed archive | 2,364,971 bytes |
+| Candidate archive SHA-256 | `3bfaa19d5ccc2e99457ab922add3b9b980e70aea5e42ea98c128fae211500ee3` |
 | Valid headless report | 7,185 bytes with direct question and source text redacted |
-| Warm-cache headless execution | 8.6 ms mean, 1.4 ms standard deviation, 6.9–13.6 ms range over 50 fresh processes |
-| Peak resident set size | 5,505,024 bytes maximum across five fresh-process runs |
+| Warm-cache headless execution | 9.3 ms mean, 1.2 ms standard deviation, 7.7–13.7 ms range over 50 fresh processes |
+| Peak resident set size | 5,603,328 bytes maximum across five fresh-process runs |
 | Shipped package JSON | 6,891 bytes |
 | Largest shipped replay JSON | 13,325 bytes |
 | All five shipped replay JSON files | 22,276 bytes |
@@ -58,7 +58,7 @@ The timing measurement used Hyperfine `--shell=none` with five warm-up runs and 
 
 ## Current release gates
 
-The macOS ARM64 candidate is locally verified but is not yet a signed or notarized public release. Linux x86-64 and macOS x86-64 remain candidate lanes until their exact GitHub-hosted artifacts execute successfully. Windows and Linux ARM64 are not supported by the released Incan `0.4.0` archive set used by this profile.
+The immutable-source GitHub matrix has built, extracted, and smoke-tested exact-head candidates on macOS ARM64, macOS x86-64, and Linux x86-64. Those candidates remain short-lived CI evidence rather than signed, notarized, or publicly released assets. A platform becomes part of the judge-facing support claim only when its exact audited artifact is published with its checksum, provenance, dependency notices, and test instructions. Windows and Linux ARM64 are not supported by the released Incan `0.4.0` archive set used by this profile.
 
 The live adapter and its injected network-free composition tests are implemented, but no successful public GPT-5.6 canary is recorded yet. Offline replay remains fully functional without that evidence. A restricted hosted judge session is also a release gate and must run the same prebuilt executable without exposing an unrestricted shell, credentials, unrelated files, or cross-session persistence.
 

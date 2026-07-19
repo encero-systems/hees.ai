@@ -120,8 +120,8 @@ The relevant provider contracts follow the official [GPT-5.6 Sol model](https://
 
 | Surface | Status |
 | --- | --- |
-| Self-contained executable | macOS ARM64 release candidate verified locally; **[FINALIZE BEFORE RELEASE: PUBLIC ASSET URL AND MINIMUM SYSTEM REQUIREMENTS]** |
-| Additional local artifacts | Linux x86-64 and macOS x86-64 candidate lanes require exact GitHub-hosted execution before support is claimed |
+| Self-contained executable | Exact-head candidates execute successfully on macOS ARM64, macOS x86-64, and Linux x86-64; **[FINALIZE BEFORE RELEASE: PUBLIC ASSET URLS, HASHES, AND MINIMUM SYSTEM REQUIREMENTS]** |
+| Publication state | Native matrix artifacts are short-lived CI evidence, not signed or notarized public releases |
 | Hosted sandbox | **[FINALIZE BEFORE RELEASE: URL, AVAILABILITY WINDOW, ACCESS STEPS, AND BOUNDED NO-SHELL SESSION LIMITS]** |
 | Source build | Contributor-only; **[FINALIZE BEFORE RELEASE: EXACT REPRODUCIBLE BUILD COMMANDS AND TOOL VERSIONS]** |
 

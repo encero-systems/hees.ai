@@ -17,7 +17,7 @@ This is the judge and reviewer test plan for the Build Week 2026 `console_profil
 
 ## Local offline replay
 
-The locally verified Build Week profile archive runs without an Incan compiler, package manager, source checkout, network connection, or API key. The following download fields remain blocked until an exact archive is published.
+The Build Week profile archive runs without an Incan compiler, package manager, source checkout, network connection, or API key. Exact-head candidate executions pass on macOS ARM64, macOS x86-64, and Linux x86-64, but the following download fields remain blocked until the audited archives are published as stable release assets.
 
 ### 1. Download and verify
 
