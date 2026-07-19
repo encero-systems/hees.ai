@@ -57,24 +57,24 @@ docs:
 	$(MDBOOK) build workspaces/docs-site
 
 console-build:
-	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "Hees Console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
+	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "hees.ai console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	@mkdir -p "$(dir $(CONSOLE_BUILD_REPORT))"
 	RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build --lib --member $(HEES_MEMBER) $(INCAN_FLAGS)
 	cd $(CONSOLE_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build $(CONSOLE_SOURCE) $(INCAN_FLAGS) --release --report json --report-output $(CONSOLE_BUILD_REPORT)
 	@test -x "$(CONSOLE_BINARY)" || { echo "pinned Incan did not emit $(CONSOLE_BINARY)" >&2; exit 1; }
 
 console-test:
-	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "Hees Console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
+	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "hees.ai console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	cd $(CONSOLE_ROOT) && $(INCAN) test $(CONSOLE_NATIVE_TEST) $(INCAN_FLAGS) --fail-on-empty
 	cd $(CONSOLE_ROOT) && $(INCAN) test $(CONSOLE_PROVIDER_TEST) $(INCAN_FLAGS) --fail-on-empty
 
 console-runner-build:
-	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "Hees Console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
+	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "hees.ai console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	cd $(CONSOLE_RUNNER_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build src/main.incn $(INCAN_FLAGS) --release
 	@test -x "$(CONSOLE_RUNNER_BINARY)" || { echo "pinned Incan did not emit $(CONSOLE_RUNNER_BINARY)" >&2; exit 1; }
 
 console-kernel-compatibility:
-	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "Hees Console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
+	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "hees.ai console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	cd $(CONSOLE_COMPATIBILITY_ROOT) && $(INCAN) run src/main.incn $(INCAN_FLAGS)
 
 console-native-smoke: console-build

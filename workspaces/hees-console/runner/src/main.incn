@@ -473,12 +473,9 @@ def replay_reason(request: RunnerRequest) -> str:
     match request.replay:
         None => return "replay_integrity_mismatch"
         Some(replay) =>
-            if not schema_digests_are_exact(replay.schema_digests.clone()):
+            if not schema_digests_are_exact(replay.schema_digests):
                 return "replay_integrity_mismatch"
-            if not replay_fingerprints_are_exact(
-                request.relation_observations.clone(),
-                request.synthesis_observations.clone(),
-            ):
+            if not replay_fingerprints_are_exact(request.relation_observations, request.synthesis_observations):
                 return "replay_integrity_mismatch"
             match request.proposal:
                 None => return "replay_integrity_mismatch"
@@ -569,7 +566,7 @@ def finding_ids(findings: list[DerivedFindingProjection]) -> list[str]:
 def make_trace(request: RunnerRequest, findings: list[DerivedFindingProjection], policy_effect: str) -> ConsoleTrace:
     """Construct the bounded non-authoritative trace without response or source prose."""
 
-    constraint_plan_id = match request.package.clone():
+    constraint_plan_id = match request.package:
         None => None
         Some(package) => Some(constraint_plan_id_text(package.policy.constraint_plan_id))
 
@@ -581,7 +578,7 @@ def make_trace(request: RunnerRequest, findings: list[DerivedFindingProjection],
         contract_version="console_trace_0_1",
         profile_id=PROFILE_ID,
         mode=request.mode,
-        replay_id=replay_id(request.clone()),
+        replay_id=replay_id(request),
         build_id=request.compatibility.build_id,
         runner_id=RUNNER_ID,
         hees_version=HEES_VERSION,
@@ -589,7 +586,7 @@ def make_trace(request: RunnerRequest, findings: list[DerivedFindingProjection],
         provider_id=request.compatibility.provider_id,
         request_schema_id=REQUEST_CONTRACT,
         response_schema_id=RESPONSE_CONTRACT,
-        proposal_id=proposal_identity(request.proposal.clone()),
+        proposal_id=proposal_identity(request.proposal),
         candidate_digest=proposal_digest(request.proposal),
         observations=trace_observations(request),
         finding_ids=finding_ids(findings),
@@ -665,7 +662,7 @@ def evaluated_response(
         .map_err((_error) => f"evaluation_projection_failed")?
     content_dna = projected_json(evaluation.content_dna_json)
     receipt = projected_json(evaluation.receipt_json)
-    identity = match receipt.clone():
+    identity = match receipt:
         None => None
         Some(_) => Some(established_identity(package, request, proposal))
 
@@ -681,7 +678,7 @@ def evaluated_response(
             reason=evaluation.spectrum.reason,
             structural_reason=evaluation.spectrum.structural_reason,
             manifest=evaluation.manifest,
-            findings=evaluation.findings.clone(),
+            findings=evaluation.findings,
             admitted_visible_units=evaluation.admitted_visible_units,
             selected_memory=evaluation.selected_memory,
             content_dna=content_dna,
@@ -694,26 +691,26 @@ def evaluated_response(
 def run_request(request: RunnerRequest) -> Result[RunnerResponse, str]:
     """Run compatibility, replay, package, and profile stages in public precedence."""
 
-    compatibility = compatibility_reason(request.compatibility.clone())
+    compatibility = compatibility_reason(request.compatibility)
     if compatibility != "ok":
         return Ok(rejected_response(request, compatibility))
-    replay = replay_reason(request.clone())
+    replay = replay_reason(request)
     if replay != "ok":
         return Ok(rejected_response(request, replay))
-    match request.package.clone():
+    match request.package:
         None => return Ok(rejected_response(request, "package_unavailable"))
         Some(package) =>
-            match request.proposal.clone():
+            match request.proposal:
                 None => return Ok(rejected_response(request, "proposal_provider_unavailable"))
                 Some(proposal) =>
                     evaluation_source = evaluate_console_profile_json(
-                        package.clone(),
-                        request.request.clone(),
-                        proposal.clone(),
-                        request.relation_observations.clone(),
-                        request.synthesis_observations.clone(),
+                        package,
+                        request.request,
+                        proposal,
+                        request.relation_observations,
+                        request.synthesis_observations,
                     )
-                    return evaluated_response(request.clone(), package, request.request, proposal, evaluation_source)
+                    return evaluated_response(request, package, request.request, proposal, evaluation_source)
 
 
 def write_response(response: RunnerResponse) -> Result[None, str]:

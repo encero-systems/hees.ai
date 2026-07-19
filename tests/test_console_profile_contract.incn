@@ -205,10 +205,10 @@ def self_consistent_forged_package() -> ConsolePackage:
     """Rebind every caller-computable digest after changing fixed package content."""
     mut package = assert_is_ok(load_package())
     package.mission = f"A caller-authored mission that must never become the fixed profile package."
-    package.artifact_digest = digest_package_artifact(package.clone())
+    package.artifact_digest = digest_package_artifact(package)
     for index in range(len(package.atoms)):
         mut atom = package.atoms[index]
-        atom.provenance_digest = digest_atom_provenance(package.clone(), atom.clone())
+        atom.provenance_digest = digest_atom_provenance(package, atom)
         package.atoms[index] = atom
     return package
 
@@ -219,9 +219,9 @@ def test_frozen_package_request_and_proposal_validate_in_incan() -> None:
     package = assert_is_ok(load_package())
     request = assert_is_ok(load_request())
     proposal = assert_is_ok(load_proposal())
-    assert_eq(validate_console_package(package.clone()).valid, true)
-    assert_eq(digest_package_artifact(package.clone()), package.artifact_digest)
-    assert_eq(validate_request_binding(request.clone()).valid, true)
+    assert_eq(validate_console_package(package).valid, true)
+    assert_eq(digest_package_artifact(package), package.artifact_digest)
+    assert_eq(validate_request_binding(request).valid, true)
     assert_eq(validate_console_proposal(package, request, proposal).valid, true)
 
 
@@ -255,9 +255,9 @@ def test_source_spans_must_align_to_utf8_code_point_boundaries() -> None:
     mut source = package.sources[0]
     source.text = "é".to_string()
     source.source_fingerprint = text_digest(source.text)
-    package.sources[0] = source.clone()
+    package.sources[0] = source
     mut atom = package.atoms[0]
-    atom.source_fingerprint = source.source_fingerprint
+    atom.source_fingerprint = text_digest("é")
     atom.source_span.start_utf8_byte = 1
     atom.source_span.end_utf8_byte = 2
     package.atoms[0] = atom
@@ -277,7 +277,7 @@ def test_evidence_failure_precedence_is_independent_of_array_order() -> None:
     pending_first.evidence_ids = [evidence_id("evidence_public_ranking_draft"), evidence_id("evidence_unknown")]
     mut unknown_first = assert_is_ok(load_proposal())
     unknown_first.evidence_ids = [evidence_id("evidence_unknown"), evidence_id("evidence_public_ranking_draft")]
-    assert_eq(validate_console_proposal(package.clone(), request.clone(), pending_first).reason, "unknown_evidence")
+    assert_eq(validate_console_proposal(package, request, pending_first).reason, "unknown_evidence")
     assert_eq(validate_console_proposal(package, request, unknown_first).reason, "unknown_evidence")
 
 
@@ -288,7 +288,7 @@ def test_incan_manifest_matches_all_frozen_target_digests() -> None:
     request = assert_is_ok(load_request())
     proposal = assert_is_ok(load_proposal())
     assert_eq(
-        digest_proposal(proposal.clone()),
+        digest_proposal(proposal),
         digest_id_type("sha256:1eb12d81b9766254c61281524d9c18cd68ec9027ec65f4f059944b4638ed2b19"),
     )
     manifest = build_verifier_manifest(package, request, proposal)
@@ -403,15 +403,8 @@ def test_complete_observations_derive_the_frozen_supported_findings() -> None:
     proposal = assert_is_ok(load_proposal())
     relations = assert_is_ok(load_relations())
     syntheses = assert_is_ok(load_syntheses())
-    manifest = build_verifier_manifest(package.clone(), request.clone(), proposal.clone())
-    validation = validate_observation_coverage(
-        package.clone(),
-        request,
-        proposal,
-        manifest,
-        relations.clone(),
-        syntheses.clone(),
-    )
+    manifest = build_verifier_manifest(package, request, proposal)
+    validation = validate_observation_coverage(package, request, proposal, manifest, relations, syntheses)
     assert_eq(validation.valid, true)
     findings: list[DerivedFinding] = derive_findings(package, relations, syntheses)
     assert_eq(len(findings), 8)
@@ -430,7 +423,7 @@ def test_missing_observations_fail_closed_before_policy() -> None:
     package = assert_is_ok(load_package())
     request = assert_is_ok(load_request())
     proposal = assert_is_ok(load_proposal())
-    manifest = build_verifier_manifest(package.clone(), request.clone(), proposal.clone())
+    manifest = build_verifier_manifest(package, request, proposal)
     validation = validate_observation_coverage(package, request, proposal, manifest, [], [])
     assert_eq(validation.valid, false)
     assert_eq(validation.reason, "observation_unavailable")
@@ -442,7 +435,7 @@ def test_manifest_failure_precedes_an_unsupported_observation_contract() -> None
     package = assert_is_ok(load_package())
     request = assert_is_ok(load_request())
     proposal = assert_is_ok(load_proposal())
-    mut manifest = build_verifier_manifest(package.clone(), request.clone(), proposal.clone())
+    mut manifest = build_verifier_manifest(package, request, proposal)
     manifest_last_index = len(manifest) - 1
     manifest.remove(manifest_last_index)
     mut relations = assert_is_ok(load_relations())
@@ -466,7 +459,7 @@ def test_observation_identity_failure_precedes_coverage_failure() -> None:
     package = assert_is_ok(load_package())
     request = assert_is_ok(load_request())
     proposal = assert_is_ok(load_proposal())
-    manifest = build_verifier_manifest(package.clone(), request.clone(), proposal.clone())
+    manifest = build_verifier_manifest(package, request, proposal)
     mut relations = assert_is_ok(load_relations())
     mut mismatched = relations[0]
     mismatched.target_digest = digest_id_type("sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")

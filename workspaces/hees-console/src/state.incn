@@ -1,9 +1,10 @@
-"""Deterministic browser, filter, navigation, and inspector state for Hees Console."""
+"""Deterministic browser, filter, navigation, and inspector state for hees.ai console."""
 
 from replays import scenario_slugs, scenario_tags, scenario_title
 
 const SURFACE_INTERACTIONS: str = "interactions"
 const SURFACE_INSPECTOR: str = "inspector"
+const SURFACE_HELP: str = "help"
 const FOCUS_NONE: str = "none"
 const FOCUS_STATUS: str = "status"
 const FOCUS_SEARCH: str = "search"
@@ -19,6 +20,7 @@ pub model ConsoleState:
 
     pub scenario_index: int
     pub inspector_index: int
+    pub context_index: int
     pub running: bool
     pub surface: str
     pub focus: str
@@ -50,6 +52,7 @@ pub def initial_state() -> ConsoleState:
     return ConsoleState(
         scenario_index=0,
         inspector_index=0,
+        context_index=2,
         running=true,
         surface=SURFACE_INTERACTIONS,
         focus=FOCUS_NONE,
@@ -88,6 +91,16 @@ pub def selected_inspector_name(state: ConsoleState) -> str:
     if state.inspector_index < 0 or state.inspector_index >= len(names):
         return names[0]
     return names[state.inspector_index]
+
+
+pub def selected_context_name(state: ConsoleState) -> str:
+    """Return the active contextual inspector tab."""
+
+    if state.context_index == 0:
+        return "EVIDENCE"
+    if state.context_index == 1:
+        return "MEMORY"
+    return "RECEIPT"
 
 
 pub def selected_tag_name(state: ConsoleState) -> str:
@@ -150,7 +163,7 @@ def append_visible_indexes(
     mut index = 0
     for slug in slugs:
         if index < len(admitted_states) and admitted_states[index] == admitted:
-            if scenario_matches_status(state.clone(), admitted) and scenario_matches_query(state.clone(), slug):
+            if scenario_matches_status(state, admitted) and scenario_matches_query(state, slug):
                 next.append(index)
         index += 1
     return next
@@ -161,17 +174,17 @@ pub def visible_scenario_indexes(state: ConsoleState, admitted_states: list[bool
 
     mut result: list[int] = []
     if state.status_order == STATUS_ORDER_ADMITTED:
-        result = append_visible_indexes(state.clone(), admitted_states.clone(), true, result)
+        result = append_visible_indexes(state, admitted_states, true, result)
         return append_visible_indexes(state, admitted_states, false, result)
     if state.status_order == STATUS_ORDER_REJECTED:
-        result = append_visible_indexes(state.clone(), admitted_states.clone(), false, result)
+        result = append_visible_indexes(state, admitted_states, false, result)
         return append_visible_indexes(state, admitted_states, true, result)
     slugs = scenario_slugs()
     mut index = 0
     for slug in slugs:
         if index < len(admitted_states):
             admitted = admitted_states[index]
-            if scenario_matches_status(state.clone(), admitted) and scenario_matches_query(state.clone(), slug):
+            if scenario_matches_status(state, admitted) and scenario_matches_query(state, slug):
                 result.append(index)
         index += 1
     return result
@@ -181,7 +194,7 @@ def select_visible_scenario(state: ConsoleState, admitted_states: list[bool]) ->
     """Keep selection visible after a filter mutation whenever any row remains."""
 
     mut next = state
-    visible = visible_scenario_indexes(next.clone(), admitted_states)
+    visible = visible_scenario_indexes(next, admitted_states)
     if len(visible) == 0:
         return next
     if not visible.contains(next.scenario_index):
@@ -193,7 +206,7 @@ def move_visible_scenario(state: ConsoleState, admitted_states: list[bool], offs
     """Move through only rows that survive the active status, tag, and text filters."""
 
     mut next = state
-    visible = visible_scenario_indexes(next.clone(), admitted_states)
+    visible = visible_scenario_indexes(next, admitted_states)
     if len(visible) == 0:
         return next
     mut position = 0
@@ -213,7 +226,7 @@ def toggle_selected_tag(state: ConsoleState) -> ConsoleState:
     """Check or uncheck the highlighted tag without creating another dropdown."""
 
     mut next = state
-    target = selected_tag_name(next.clone())
+    target = selected_tag_name(next)
     mut retained: list[str] = []
     mut removed = false
     for tag in next.selected_tags:
@@ -312,7 +325,7 @@ pub def apply_command(state: ConsoleState, command: str, admitted_states: list[b
         return apply_search_command(state, command, admitted_states)
     if state.focus == FOCUS_STATUS:
         return apply_status_command(state, command, admitted_states)
-    mut next = state.clone()
+    mut next = state
     if command == "quit":
         next.running = false
         return next
@@ -321,6 +334,35 @@ pub def apply_command(state: ConsoleState, command: str, admitted_states: list[b
         return next
     if command == "show-interactions":
         next.surface = f"{SURFACE_INTERACTIONS}"
+        return next
+    if command == "show-package":
+        next.surface = f"{SURFACE_INSPECTOR}"
+        next.inspector_index = 0
+        return next
+    if command == "show-evidence":
+        next.surface = f"{SURFACE_INSPECTOR}"
+        next.inspector_index = 1
+        return next
+    if command == "show-decisions":
+        next.surface = f"{SURFACE_INSPECTOR}"
+        next.inspector_index = 8
+        return next
+    if command == "show-receipts":
+        next.surface = f"{SURFACE_INSPECTOR}"
+        next.inspector_index = 11
+        return next
+    if command == "show-help":
+        next.surface = f"{SURFACE_HELP}"
+        return next
+    if command == "next-context":
+        next.context_index = next.context_index + 1
+        if next.context_index > 2:
+            next.context_index = 0
+        return next
+    if command == "previous-context":
+        next.context_index = next.context_index - 1
+        if next.context_index < 0:
+            next.context_index = 2
         return next
     if command == "open-search" and next.surface == SURFACE_INTERACTIONS:
         next.focus = f"{FOCUS_SEARCH}"
@@ -338,12 +380,18 @@ pub def apply_command(state: ConsoleState, command: str, admitted_states: list[b
     if command == "previous-scenario":
         return move_visible_scenario(next, admitted_states, -1)
     if command == "open-inspector" and next.surface == SURFACE_INTERACTIONS:
-        if len(visible_scenario_indexes(next.clone(), admitted_states)) > 0:
+        if len(visible_scenario_indexes(next, admitted_states)) > 0:
             next.surface = f"{SURFACE_INSPECTOR}"
+            if next.context_index == 0:
+                next.inspector_index = 1
+            elif next.context_index == 1:
+                next.inspector_index = 9
+            else:
+                next.inspector_index = 11
         return next
     if command == "next-inspector":
         if next.surface == SURFACE_INTERACTIONS:
-            if len(visible_scenario_indexes(next.clone(), admitted_states)) > 0:
+            if len(visible_scenario_indexes(next, admitted_states)) > 0:
                 next.surface = f"{SURFACE_INSPECTOR}"
             return next
         next.inspector_index = next.inspector_index + 1
@@ -351,7 +399,7 @@ pub def apply_command(state: ConsoleState, command: str, admitted_states: list[b
             next.inspector_index = 0
     elif command == "previous-inspector":
         if next.surface == SURFACE_INTERACTIONS:
-            if len(visible_scenario_indexes(next.clone(), admitted_states)) > 0:
+            if len(visible_scenario_indexes(next, admitted_states)) > 0:
                 next.surface = f"{SURFACE_INSPECTOR}"
                 next.inspector_index = len(inspector_names()) - 1
             return next

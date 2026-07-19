@@ -1,6 +1,6 @@
-# Testing Hees Console
+# Testing hees.ai console
 
-This is the judge and reviewer test plan for the Build Week 2026 `console_profile_0_1` release targeted for Hees Console `0.1.0`. It tests one bounded, fictional-domain implementation profile, not the permanent provider-neutral and domain-neutral Console north star or its future evidence-intake and package-authoring workflow. The release is still in development, so every field labelled `FINALIZE BEFORE RELEASE` must be replaced with verified public evidence before these instructions are presented as the final judge path.
+This is the judge and reviewer test plan for the Build Week 2026 `console_profile_0_1` release targeted for hees.ai console `0.1.0`. It tests one bounded, fictional-domain implementation profile, not the permanent provider-neutral and domain-neutral Console north star or its future evidence-intake and package-authoring workflow. The release is still in development, so every field labelled `FINALIZE BEFORE RELEASE` must be replaced with verified public evidence before these instructions are presented as the final judge path.
 
 ## Fastest path: published offline test build
 
@@ -40,13 +40,13 @@ The initial view must identify Console `0.1.0`, profile `console_profile_0_1`, m
 
 ### 3. Run the required scenarios
 
-| Key | Scenario | Expected trusted result | What to inspect |
+| Selection | Scenario | Expected trusted result | What to inspect |
 | --- | --- | --- | --- |
-| `1` | Declared action with reviewed, rights-allowed evidence and admitted memory | `ADMITTED` / `console_admission_0_1` / `admitted` | Visible units, distinct evidence and memory identifiers, observations, Hees-classified findings, structural reason, selected memory, Content DNA, receipt |
-| `2` | Undeclared action | `REJECTED` / `console_admission_0_1` / `unknown_action` | The untrusted proposal remains inspectable, but no trusted answer, selected memory, or Content DNA appears |
-| `3` | Unknown evidence | `REJECTED` / `console_admission_0_1` / `unknown_evidence` | A schema-valid evidence identifier that the package never declared cannot acquire authority |
-| `4` | Unknown memory | `REJECTED` / `console_admission_0_1` / `unknown_memory` | The untrusted proposal remains inspectable, but no trusted answer, selected memory, or Content DNA appears |
-| `5` | Known but non-admitted memory | `REJECTED` / `console_admission_0_1` / `memory_not_admitted` | The package-owned memory exists but cannot be selected into a trusted answer |
+| Initial row | Declared action with reviewed, rights-allowed evidence and admitted memory | `ADMITTED` / `console_admission_0_1` / `admitted` | Visible units, distinct evidence and memory identifiers, observations, Hees-classified findings, structural reason, selected memory, Content DNA, receipt |
+| `↓` once | Undeclared action | `REJECTED` / `console_admission_0_1` / `unknown_action` | The untrusted proposal remains inspectable, but no trusted answer, selected memory, or Content DNA appears |
+| `↓` twice | Unknown evidence | `REJECTED` / `console_admission_0_1` / `unknown_evidence` | A schema-valid evidence identifier that the package never declared cannot acquire authority |
+| `↓` three times | Unknown memory | `REJECTED` / `console_admission_0_1` / `unknown_memory` | The untrusted proposal remains inspectable, but no trusted answer, selected memory, or Content DNA appears |
+| `↓` four times | Known but non-admitted memory | `REJECTED` / `console_admission_0_1` / `memory_not_admitted` | The package-owned memory exists but cannot be selected into a trusted answer |
 
 Replay fixtures do not store terminal results. To establish that the real runner executed, compare the displayed runner identity and receipt or Content DNA values with **[FINALIZE BEFORE RELEASE: RELEASE GOLDEN OUTPUT AND RUNNER-INTEGRITY TEST URL]**. A replay-digest check proves fixture integrity, not GPT provenance.
 

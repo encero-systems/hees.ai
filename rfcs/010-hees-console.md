@@ -1,4 +1,4 @@
-# RFC 010: Hees Console
+# RFC 010: hees.ai console
 
 - **Status:** Draft
 - **Created:** 2026-07-18
@@ -21,11 +21,11 @@
 
 ## Summary
 
-Hees should provide a permanent, terminal-first, local-first, provider-neutral and domain-neutral developer product named Hees Console for building, validating, running, and inspecting governed AI systems. Local workspaces and offline-capable workflows are the default, not a prohibition on remote provider adapters, hosted developer access, or other profile-declared execution environments. The Console should help developers turn source evidence into candidate governed-memory material, create and validate governed packages through Hees contracts, run provider proposals and evaluator observations through Hees-owned policy and Spectrum decisions, and inspect selected memory, Content DNA, receipts, replays, and audit evidence without transferring authority to a model or presentation host. A separately specified initial implementation profile may demonstrate a deliberately bounded subset, but its event, fixture, provider, and packaging constraints do not define the permanent product.
+Hees should provide a permanent, terminal-first, local-first, provider-neutral and domain-neutral developer product named hees.ai console for building, validating, running, and inspecting governed AI systems. Local workspaces and offline-capable workflows are the default, not a prohibition on remote provider adapters, hosted developer access, or other profile-declared execution environments. The Console should help developers turn source evidence into candidate governed-memory material, create and validate governed packages through Hees contracts, run provider proposals and evaluator observations through Hees-owned policy and Spectrum decisions, and inspect selected memory, Content DNA, receipts, replays, and audit evidence without transferring authority to a model or presentation host. A separately specified initial implementation profile may demonstrate a deliberately bounded subset, but its event, fixture, provider, and packaging constraints do not define the permanent product.
 
 ## Core model
 
-1. **Hees Console is a permanent developer product.** It is the public terminal-first, local-first environment for understanding and exercising Hees contracts, not a disposable demonstration shell. A profile may use remote adapters or expose the Console through a hosted terminal without making remote infrastructure authoritative.
+1. **hees.ai console is a permanent developer product.** It is the public terminal-first, local-first environment for understanding and exercising Hees contracts, not a disposable demonstration shell. A profile may use remote adapters or expose the Console through a hosted terminal without making remote infrastructure authoritative.
 2. **The product is provider-neutral and domain-neutral.** Provider adapters and governed packages vary independently; no permanent Console capability requires one provider, transport, deployment topology, or fixture domain.
 3. **Local package work belongs in the public product.** Developers may load lawful source evidence, inspect derived atom candidates, author package declarations, and validate governed packages through Hees without using a separate operations platform. Local-first describes workspace ownership and safe defaults, not an exclusive execution topology.
 4. **Models propose and observe; Hees decides.** A model may propose content, candidate atoms, or bounded evaluator observations. Only Hees may admit package state, classify observations under admitted policy, select a terminal Spectrum result and memory, construct Content DNA, and project authority-bearing receipts.
@@ -44,11 +44,11 @@ A developer console can make the complete authority graph tangible. A developer 
 
 The Console also needs a clear boundary from production orchestration. Public local authoring and inspection should not require a private control plane, while the public repository should not absorb organization-specific approval routing, managed deployments, private package catalogs, customer operations, or fleet administration. The dividing line is product responsibility, not whether a screen edits a package.
 
-The first implementation can still be smaller than this north star. A bounded implementation profile can prove a self-contained executable, visible provider-versus-Hees separation, strict replay, and one end-to-end governed interaction. Treating its release constraints as the product definition, however, would permanently confuse one delivery slice with the purpose of Hees Console.
+The first implementation can still be smaller than this north star. A bounded implementation profile can prove a self-contained executable, visible provider-versus-Hees separation, strict replay, and one end-to-end governed interaction. Treating its release constraints as the product definition, however, would permanently confuse one delivery slice with the purpose of hees.ai console.
 
 ## Goals
 
-- Define Hees Console as a durable public developer product around Hees contracts.
+- Define hees.ai console as a durable public developer product around Hees contracts.
 - Define provider-neutral adapter and domain-neutral package boundaries.
 - Support terminal-first evidence intake, candidate-memory inspection, package authoring, package validation, governed interaction, terminal inspection, replay, and audit with local workspace defaults as permanent product capabilities.
 - Make Training by Committee visible without granting evaluator outputs authority or implying model-weight training.
@@ -80,7 +80,7 @@ The first implementation can still be smaller than this north star. A bounded im
 
 ### Permanent developer workflow
 
-A developer starts the terminal-first Hees Console with a local workspace by default. A profile may attach remote provider adapters or expose the same governed workflow through a restricted hosted terminal, but workspace persistence and transmission remain explicit. The developer adds one or more source-evidence records, inspects the exact bytes and source-safe identity that will be governed, and asks a selected adapter to suggest bounded atom candidates. Candidate text is visibly untrusted. The developer may compare it with source evidence, edit package-authored material, establish review and rights declarations, choose authority and evidence classifications, and ask Hees to validate the resulting package.
+A developer starts the terminal-first hees.ai console with a local workspace by default. A profile may attach remote provider adapters or expose the same governed workflow through a restricted hosted terminal, but workspace persistence and transmission remain explicit. The developer adds one or more source-evidence records, inspects the exact bytes and source-safe identity that will be governed, and asks a selected adapter to suggest bounded atom candidates. Candidate text is visibly untrusted. The developer may compare it with source evidence, edit package-authored material, establish review and rights declarations, choose authority and evidence classifications, and ask Hees to validate the resulting package.
 
 The Console shows package validation as a Hees result rather than silently repairing invalid input. Unknown fields, invalid source bindings, missing review state, denied rights, conflicting identifiers, or failed canonical identities remain explicit. The developer may iterate on package material, but neither a model suggestion nor the UI itself can declare a package admitted without the applicable Hees contract.
 
@@ -94,7 +94,7 @@ Developers may save local scenarios for replay and audit. A replay stores the go
 
 ### Product identity, profiles, and evolution
 
-The public product name is `Hees Console`, and the installed launch command is `hees-console`. The Console has its own semantic version independent from the Hees library. Product versions identify the application; profile identifiers identify exact governed behavior and supported contract surfaces.
+The public product name is `hees.ai console`, and the installed launch command is `hees-console`. The Console has its own semantic version independent from the Hees library. Product versions identify the application; profile identifiers identify exact governed behavior and supported contract surfaces.
 
 Every run must name one exact Console profile. A profile manifest must declare its identifier, supported package and request contracts, provider-input contracts, terminal variants, reason namespace, bounds, available authoring and inspection capabilities, persistence behavior, and required Hees contract versions. Missing, unknown, or incompatible profile requirements fail closed. A UI must not expose a control whose authority-bearing contract the active profile cannot execute.
 
@@ -195,7 +195,7 @@ Hees enforces raw byte ceilings before parsing and collection ceilings before pr
 
 ### Acceptance evidence
 
-Permanent Hees Console conformance requires public executable evidence that:
+Permanent hees.ai console conformance requires public executable evidence that:
 
 - a local-default workspace can create candidate memory without treating candidates as reviewed atoms;
 - a developer can author and validate a governed package through Hees contracts and receive exact failures without host-side admission;
@@ -209,7 +209,7 @@ Permanent Hees Console conformance requires public executable evidence that:
 
 ## Initial implementation profile: Build Week 2026
 
-This section specifies one subordinate release profile, not permanent Hees Console requirements. Build Week 2026 is the forcing function for a bounded first slice: one fixed fictional package, one optional initial provider adapter, deterministic offline replay, a self-contained terminal executable, and one end-to-end governed interaction. Every event, provider, fixture, packaging, hosting, schedule, and submission detail below applies only to this section's profile.
+This section specifies one subordinate release profile, not permanent hees.ai console requirements. Build Week 2026 is the forcing function for a bounded first slice: one fixed fictional package, one optional initial provider adapter, deterministic offline replay, a self-contained terminal executable, and one end-to-end governed interaction. Every event, provider, fixture, packaging, hosting, schedule, and submission detail below applies only to this section's profile.
 
 The first public implementation is labelled `BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1`. It demonstrates one original response candidate, relation and synthesis observations, Hees-owned classification, a bounded Spectrum decision, terminal selected memory, experimental Content DNA, and a profile-specific receipt.
 
@@ -428,7 +428,7 @@ The profile remains complex despite being bounded. Cryptographic request and tar
 
 ### Relationship to RFC 000
 
-RFC 000 owns Hees's permanent authority model. Hees Console exposes that model across package creation, committee evaluation, governed interaction, and terminal inspection without introducing another terminal authority.
+RFC 000 owns Hees's permanent authority model. hees.ai console exposes that model across package creation, committee evaluation, governed interaction, and terminal inspection without introducing another terminal authority.
 
 ### Relationship to RFC 001
 
@@ -527,7 +527,7 @@ Separating the public local-first Console from an operations product also requir
 
 ## Design Decisions
 
-- Hees Console is a permanent terminal-first, local-first, provider-neutral and domain-neutral developer product; local-first does not prohibit remote adapters or restricted hosted access.
+- hees.ai console is a permanent terminal-first, local-first, provider-neutral and domain-neutral developer product; local-first does not prohibit remote adapters or restricted hosted access.
 - Local evidence intake, candidate-atom inspection, package authoring, and Hees validation belong in the public Console.
 - The public Console does not absorb multi-tenant orchestration, organization workflows, managed deployment, or fleet operations.
 - Models and evaluator providers emit untrusted candidates, proposals, and observations; Hees contracts retain admission and terminal authority.

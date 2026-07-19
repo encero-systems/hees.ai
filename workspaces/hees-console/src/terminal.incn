@@ -6,9 +6,9 @@ Crossterm supplies only cross-platform raw-mode primitives. Incan owns byte-leve
 
 from rust::std::io import Read, stdin
 from rust::std::string import String as RustString
-from rust::crossterm::terminal import disable_raw_mode, enable_raw_mode
+from rust::crossterm::terminal import disable_raw_mode, enable_raw_mode, size as terminal_size
 from evaluation import ConsoleRun, evaluate_offline_scenario
-from rendering import render_screen
+from rendering import render_screen_for_size
 from replays import scenario_slugs
 from state import ConsoleState, apply_command, initial_inspector_state, initial_state, selected_scenario_slug
 
@@ -19,15 +19,17 @@ pub def command_for_byte(value: int) -> str:
     if value == 113:
         return "quit"
     if value == 49:
-        return "scenario-1"
+        return "show-interactions"
     if value == 50:
-        return "scenario-2"
+        return "show-package"
     if value == 51:
-        return "scenario-3"
+        return "show-evidence"
     if value == 52:
-        return "scenario-4"
+        return "show-decisions"
     if value == 53:
-        return "scenario-5"
+        return "show-receipts"
+    if value == 54:
+        return "show-help"
     if value == 98:
         return "toggle-sidebar"
     if value == 103:
@@ -37,15 +39,17 @@ pub def command_for_byte(value: int) -> str:
     if value == 115:
         return "open-status"
     if value == 104:
-        return "previous-inspector"
+        return "previous-context"
     if value == 108:
-        return "next-inspector"
+        return "next-context"
     if value == 107:
         return "previous-scenario"
     if value == 106:
         return "next-scenario"
+    if value == 9:
+        return "next-context"
     if value == 10 or value == 13:
-        return "next-inspector"
+        return "open-inspector"
     return "noop"
 
 
@@ -124,9 +128,9 @@ pub def command_for_escape_sequence(second: int, third: int) -> str:
     if second != 91:
         return "noop"
     if third == 68:
-        return "previous-inspector"
+        return "previous-context"
     if third == 67:
-        return "next-inspector"
+        return "next-context"
     if third == 65:
         return "previous-scenario"
     if third == 66:
@@ -149,7 +153,7 @@ def option_command_for_escape_sequence(second: int, third: int) -> str:
 def read_byte() -> Result[int, str]:
     """Read exactly one raw terminal byte through the portable standard-I/O trait boundary."""
 
-    mut input = stdin()
+    input = stdin()
     mut buffer: bytes = b""
     match input.take(1).read_to_end(buffer):
         Err(_) => return Err("terminal_read_failed")
@@ -190,6 +194,16 @@ def clear_and_home() -> str:
     return terminal_sequence(b"\x1b[2J\x1b[H")
 
 
+def terminal_dimensions() -> Tuple[int, int]:
+    """Read the current terminal viewport with a conservative wide fallback."""
+
+    match terminal_size():
+        Err(_) => return (160, 44)
+        Ok(dimensions) =>
+            columns, rows = dimensions
+            return (int(columns), int(rows))
+
+
 def enter_terminal_screen() -> None:
     """Enter the alternate screen and hide the cursor with fixed ANSI controls."""
 
@@ -205,7 +219,8 @@ def leave_terminal_screen() -> None:
 def draw_frame(state: ConsoleState, runs: list[ConsoleRun]) -> None:
     """Replace the alternate-screen frame with bounded native Incan output."""
 
-    frame = render_screen(state, runs).replace("\n", "\r\n")
+    columns, rows = terminal_dimensions()
+    frame = render_screen_for_size(state, runs, columns, rows).replace("\n", "\r\n")
     println(f"{clear_and_home()}{frame}")
 
 
@@ -230,13 +245,13 @@ def run_screen(initial_state: ConsoleState, initial_runs: list[ConsoleRun], allo
 
     mut state = initial_state
     runs = initial_runs
-    states = admitted_states(runs.clone())
+    states = admitted_states(runs)
     enable_raw_mode().map_err((_error) => f"terminal_raw_mode_failed")?
     enter_terminal_screen()
-    draw_frame(state.clone(), runs.clone())
+    draw_frame(state, runs)
     mut failure: Option[str] = None
     while state.running:
-        match read_command(state.clone()):
+        match read_command(state):
             Err(code) =>
                 failure = Some(code)
                 state.running = false
@@ -244,9 +259,9 @@ def run_screen(initial_state: ConsoleState, initial_runs: list[ConsoleRun], allo
                 mut selected_command = command
                 if not allow_scenarios:
                     selected_command = live_safe_command(selected_command)
-                state = apply_command(state, selected_command, states.clone())
+                state = apply_command(state, selected_command, states)
                 if state.running:
-                    draw_frame(state.clone(), runs.clone())
+                    draw_frame(state, runs)
     leave_terminal_screen()
     match disable_raw_mode():
         Err(_) => return Err("terminal_restore_failed")

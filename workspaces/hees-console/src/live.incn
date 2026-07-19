@@ -1,5 +1,5 @@
 """
-Native Incan composition for one optional live Hees Console interaction.
+Native Incan composition for one optional live hees.ai console interaction.
 
 The module transports canonical JSON between the typed Hees and provider modules so their authorities remain separate.
 Provider failure codes stay stable and redacted. No provider output can create a finding, Spectrum decision, Content

@@ -1,6 +1,6 @@
-# Hees Console
+# hees.ai console
 
-Hees Console is the permanent terminal-first, local-first developer product for building, validating, running, and inspecting governed AI systems. The product is provider-neutral and domain-neutral. A Console profile declares the exact contracts, capabilities, bounds, and failure behavior available in one release.
+hees.ai console is the permanent terminal-first, local-first developer product for building, validating, running, and inspecting governed AI systems. The product is provider-neutral and domain-neutral. A Console profile declares the exact contracts, capabilities, bounds, and failure behavior available in one release.
 
 The current executable implements the deliberately bounded `console_profile_0_1`. It uses one original fictional lesson-support package to make the authority boundary visible without implying that the fixture, provider, or event profile defines the permanent product.
 
@@ -43,7 +43,7 @@ The release archive contains one native executable plus the project license, not
 ./hees-console
 ```
 
-Use `1` through `5` to select the admitted and adversarial scenarios. The interaction browser opens first. Use `↑` and `↓`, or `j` and `k`, to move through visible interactions; `enter` opens the selected inspector and `g` returns to the browser. Within an inspector, `←` and `→`, or `h` and `l`, move through the available views. Press `b` to collapse or expand the navigation rail.
+The interaction workspace opens first. Use `↑` and `↓`, or `j` and `k`, to move through the admitted and adversarial scenarios. Use `←` and `→`, or `h` and `l`, to move through the contextual Evidence, Memory, and Receipt tabs; `enter` opens the selected context as a deep inspector. Keys `1` through `6` open Interactions, Package, Evidence, Decisions, Receipts, and Help. Press `b` to collapse or expand the interaction rail.
 
 The browser integrates tags into its free-text search control. Press `/`, type a query, use `↑` and `↓` to highlight a tag, use `tab` to check or uncheck it, and use `ctrl-u` to clear the combined query. Press `s` to operate the Status column header, where `↑` and `↓` choose `ADMITTED`, `REJECTED`, or the ordering row and `space` or `tab` changes the selected value. Interactive state cells use green `✓ ADMITTED` and red `✕ REJECTED`; icon and text carry the complete distinction without colour. Press `q` to quit. Headless mode evaluates one scenario and emits stable, control-free, privacy-redacted output:
 

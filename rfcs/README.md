@@ -38,4 +38,4 @@ RFC documents use three-digit numbers and the filename form `NNN-short-title.md`
 - [RFC 007: Evidence-Grounded Claim Verification Findings](007-evidence-grounded-claim-verification-findings.md) — Draft
 - [RFC 008: Governed Behavior Envelopes](008-governed-behavior-envelopes.md) — Draft
 - [RFC 009: Governed Visible Response Lifecycle](009-governed-visible-response-lifecycle.md) — Draft
-- [RFC 010: Hees Console](010-hees-console.md) — Draft
+- [RFC 010: hees.ai console](010-hees-console.md) — Draft

@@ -1,5 +1,5 @@
 [book]
-title = "Hees documentation"
+title = "hees.ai documentation"
 description = "Checked contracts and developer guidance for the Incan-first Hees governance runtime"
 authors = ["Encero Systems"]
 language = "en"
@@ -14,6 +14,7 @@ git-repository-url = "https://github.com/encero-systems/hees.ai"
 edit-url-template = "https://github.com/encero-systems/hees.ai/edit/main/workspaces/docs-site/{path}"
 site-url = "/hees.ai/"
 no-section-label = true
+additional-css = ["theme/hees.css"]
 
 [output.html.search]
 enable = true

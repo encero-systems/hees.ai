@@ -125,12 +125,12 @@ pub def validate_observation_coverage(
     synthesis_count = 1 + len(package.requirements)
     if len(manifest) != relation_count + synthesis_count:
         return validation_error("manifest_construction_failed", "manifest_target_count_invalid")
-    for observation in relations.clone():
+    for observation in relations:
         if (contract_id_text(observation.contract_version) != RELATION_OBSERVATION_CONTRACT or profile_id_text(
             observation.profile_id,
         ) != CONSOLE_PROFILE_ID):
             return validation_error("unsupported_observation_contract", "unsupported_relation_observation_contract")
-    for observation in syntheses.clone():
+    for observation in syntheses:
         if (contract_id_text(observation.contract_version) != SYNTHESIS_OBSERVATION_CONTRACT or profile_id_text(
             observation.profile_id,
         ) != CONSOLE_PROFILE_ID):
@@ -141,49 +141,37 @@ pub def validate_observation_coverage(
             return validation_error("observation_coverage_invalid", "observation_count_invalid")
         relation_observation = relations[relation_index]
         relation_target = manifest[relation_index]
-        if not relation_identity_matches(
-            relation_observation.clone(),
-            relation_target,
-            package.clone(),
-            request.clone(),
-            candidate_digest,
-        ):
+        if not relation_identity_matches(relation_observation, relation_target, package, request, candidate_digest):
             return validation_error("observation_identity_mismatch", "relation_observation_identity_mismatch")
     for synthesis_index in range(len(syntheses)):
         if synthesis_index >= synthesis_count:
             return validation_error("observation_coverage_invalid", "observation_count_invalid")
         synthesis_observation = syntheses[synthesis_index]
         synthesis_target = manifest[relation_count + synthesis_index]
-        if not synthesis_identity_matches(
-            synthesis_observation.clone(),
-            synthesis_target,
-            package.clone(),
-            request.clone(),
-            candidate_digest,
-        ):
+        if not synthesis_identity_matches(synthesis_observation, synthesis_target, package, request, candidate_digest):
             return validation_error("observation_identity_mismatch", "synthesis_observation_identity_mismatch")
     observations_unavailable = len(relations) == 0 and len(syntheses) == 0
     if not observations_unavailable and (len(relations) != relation_count or len(syntheses) != synthesis_count):
         return validation_error("observation_coverage_invalid", "observation_count_invalid")
-    if has_duplicate_strings([observation_id_text(value.observation_id) for value in relations.clone()]):
+    if has_duplicate_strings([observation_id_text(value.observation_id) for value in relations]):
         return validation_error("observation_coverage_invalid", "duplicate_relation_observation")
-    if has_duplicate_strings([observation_id_text(value.observation_id) for value in syntheses.clone()]):
+    if has_duplicate_strings([observation_id_text(value.observation_id) for value in syntheses]):
         return validation_error("observation_coverage_invalid", "duplicate_synthesis_observation")
-    for relation_observation in relations.clone():
+    for relation_observation in relations:
         if not ["evidence_relation", "contradiction_cross_check"].contains(f"{relation_observation.evaluator_role}"):
             return validation_error("observation_malformed", "invalid_relation_evaluator_role")
         if not ["visible_unit_union", "support_claim_memory", "proposal_union"].contains(
             f"{relation_observation.target_role}",
         ):
             return validation_error("observation_malformed", "invalid_relation_target_role")
-        if not relation_score_is_valid(relation_observation.clone()):
+        if not relation_score_is_valid(relation_observation):
             return validation_error("observation_malformed", "invalid_relation_scores")
-    for synthesis_observation in syntheses.clone():
+    for synthesis_observation in syntheses:
         if synthesis_observation.evaluator_role != "synthesis_coverage":
             return validation_error("observation_malformed", "invalid_synthesis_evaluator_role")
         if not ["request_coverage", "requirement_coverage"].contains(f"{synthesis_observation.target_role}"):
             return validation_error("observation_malformed", "invalid_synthesis_target_role")
-        if not synthesis_score_is_valid(synthesis_observation.clone()):
+        if not synthesis_score_is_valid(synthesis_observation):
             return validation_error("observation_malformed", "invalid_synthesis_scores")
     if observations_unavailable:
         return validation_error("observation_unavailable", "observation_unavailable")
@@ -219,7 +207,7 @@ def relation_finding(package: ConsolePackage, observation: RelationObservation) 
         evaluator_role=observation.evaluator_role,
         target_role=observation.target_role,
         classification=classify_relation(
-            package.policy.clone(),
+            package.policy,
             observation.support_bps,
             observation.contradiction_bps,
             observation.unresolved_bps,
@@ -249,7 +237,7 @@ def synthesis_finding(package: ConsolePackage, observation: SynthesisObservation
         evaluator_role=observation.evaluator_role,
         target_role=observation.target_role,
         classification=classify_synthesis(
-            package.policy.clone(),
+            package.policy,
             observation.covered_bps,
             observation.gap_bps,
             observation.unresolved_bps,
@@ -265,21 +253,21 @@ pub def derive_findings(
     syntheses: list[SynthesisObservation],
 ) -> list[DerivedFinding]:
     """Classify the complete observation set under package-owned policy."""
-    relation_findings = [relation_finding(package.clone(), observation) for observation in relations]
-    synthesis_findings = [synthesis_finding(package.clone(), observation) for observation in syntheses]
+    relation_findings = [relation_finding(package, observation) for observation in relations]
+    synthesis_findings = [synthesis_finding(package, observation) for observation in syntheses]
     return relation_findings + synthesis_findings
 
 
 pub def finding_policy_reason(findings: list[DerivedFinding]) -> str:
     """Map findings to the public reason table without provider- or order-dependent authority."""
-    for finding in findings.clone():
+    for finding in findings:
         if finding.evaluator_role == "evidence_relation" and finding.classification != "supported":
             if finding.classification != "uncertain":
                 return "support_not_established"
-    for finding in findings.clone():
+    for finding in findings:
         if finding.evaluator_role == "contradiction_cross_check" and finding.classification == "contradicted":
             return "contradiction_detected"
-    for finding in findings.clone():
+    for finding in findings:
         if finding.evaluator_role == "synthesis_coverage" and finding.classification == "not_covered":
             return "synthesis_incomplete"
     for finding in findings:

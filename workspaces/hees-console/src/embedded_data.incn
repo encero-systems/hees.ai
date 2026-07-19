@@ -1,5 +1,5 @@
 """
-Embedded fictional inputs for credential-free Hees Console replay.
+Embedded fictional inputs for credential-free hees.ai console replay.
 
 Each replay carries only package-bound request, untrusted proposal, non-authoritative observations, and replay integrity metadata. Terminal decisions and artifacts are always produced by the public Hees profile at runtime.
 """

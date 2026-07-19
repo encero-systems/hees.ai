@@ -1,4 +1,4 @@
-# Hees Console video and screenshot draft
+# hees.ai console video and screenshot draft
 
 > **Freeze gate:** Do not record from a development checkout. Record only after the completion audit confirms the exact release artifact, scenario results, labels, links, and claims used below. Replace every placeholder first.
 
@@ -8,11 +8,11 @@ The target runtime is **2:50 or shorter**, leaving ten seconds of safety under t
 
 ### 0:00–0:15 — The authority problem
 
-**On screen:** Hees Console title card, then the frozen Console home view. Show the tagline and an explicit `REPLAY` label. Do not show third-party logos.
+**On screen:** hees.ai console title card, then the frozen Console home view. Show the tagline and an explicit `REPLAY` label. Do not show third-party logos.
 
 **Spoken script:**
 
-> A model can return perfect JSON and still have no authority to act. Hees Console makes that boundary inspectable: GPT-5.6 proposes. Hees decides.
+> A model can return perfect JSON and still have no authority to act. hees.ai console makes that boundary inspectable: GPT-5.6 proposes. Hees decides.
 
 ### 0:15–0:45 — Fictional package and bounded committee
 
@@ -52,7 +52,7 @@ The target runtime is **2:50 or shorter**, leaving ten seconds of safety under t
 
 **Spoken script:**
 
-> Hees Console itself is authored in Incan. It owns terminal rendering, transport, escaping, and the secret boundary, then calls the Incan-authored Hees profile directly. GPT-5.6 can supply strict structured proposals and observations in optional live mode, but Hees owns validation, finding classification, selected memory, provenance, and the terminal decision. A model never votes itself into authority.
+> hees.ai console itself is authored in Incan. It owns terminal rendering, transport, escaping, and the secret boundary, then calls the Incan-authored Hees profile directly. GPT-5.6 can supply strict structured proposals and observations in optional live mode, but Hees owns validation, finding classification, selected memory, provenance, and the terminal decision. A model never votes itself into authority.
 
 ### 2:40–2:50 — Lineage, impact, and quick start
 
@@ -79,7 +79,7 @@ All captures must come from the frozen release artifact. Use a clean terminal, n
 
 | Shot | Required visible content | Draft caption | Final evidence |
 | --- | --- | --- | --- |
-| 1. Product overview | `Hees Console`, `console_profile_0_1`, `REPLAY`, fictional package, scenario keys, runner/schema identity | **Hees Console's bounded Build Week profile runs in zero-credential offline replay mode and keeps the active profile, package, and runner identity visible.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND FROZEN COMMIT]** |
+| 1. Product overview | `hees.ai console`, `console_profile_0_1`, `REPLAY`, fictional package, scenario keys, runner/schema identity | **hees.ai console's bounded Build Week profile runs in zero-credential offline replay mode and keeps the active profile, package, and runner identity visible.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND FROZEN COMMIT]** |
 | 2. Authority boundary | `UNTRUSTED PROPOSAL`, bounded observations, `HEES-CLASSIFIED NON-AUTHORITATIVE FINDINGS`, no terminal conflation | **Model proposals and evaluator observations remain separate from the findings Hees classifies under package-owned policy.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
 | 3. Admitted result | Valid scenario, `ADMITTED`, exact namespace/reason, selected memory, experimental Content DNA, receipt | **After the Incan-authored runner admits the declared action, the profile exposes selected canonical memory, experimental Content DNA, and a profile receipt.** | **[FINALIZE BEFORE RELEASE: IMAGE URL, EXACT VALUES, AND RUN EVIDENCE]** |
 | 4. Undeclared action | Scenario `2`, `REJECTED`, `console_admission_0_1`, `unknown_action`, absent trusted answer | **A schema-valid proposal cannot invent package authority: Hees rejects an undeclared action with the closed reason `unknown_action`.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
@@ -88,7 +88,7 @@ All captures must come from the frozen release artifact. Use a clean terminal, n
 
 ## Video description draft
 
-> Hees Console is a local-first developer tool that keeps model proposals, evaluator observations, policy classification, and terminal authority separate. This video demonstrates the bounded Build Week 2026 `console_profile_0_1` using original fictional content and offline replay.
+> hees.ai console is a local-first developer tool that keeps model proposals, evaluator observations, policy classification, and terminal authority separate. This video demonstrates the bounded Build Week 2026 `console_profile_0_1` using original fictional content and offline replay.
 >
 > Repository: **[FINALIZE BEFORE RELEASE: PUBLIC REPOSITORY URL]**<br>
 > Test it: **[FINALIZE BEFORE RELEASE: NO-REBUILD TEST URL]**<br>

@@ -16,7 +16,7 @@ The public Incan record begins with its [December 11, 2025 initial commit](https
 
 ### July 13–21, 2026
 
-During the submission period, Codex with GPT-5.6 is being used to establish Hees as a coherent public Incan-first project and to design, implement, review, test, package, and document Hees Console as a permanent product. The intended event submission is the bounded Console `0.1.0` release slice and the meaningful public Hees extension it requires; it does not claim historical Incan development as Build Week work.
+During the submission period, Codex with GPT-5.6 is being used to establish Hees as a coherent public Incan-first project and to design, implement, review, test, package, and document hees.ai console as a permanent product. The intended event submission is the bounded Console `0.1.0` release slice and the meaningful public Hees extension it requires; it does not claim historical Incan development as Build Week work.
 
 The human-directed product and architecture decisions include keeping the model untrusted, making Hees the final behavioral authority, making Console a permanent public developer product, using a deliberately limited named profile instead of claiming full RFC 001–009 conformance, keeping offline replay as the zero-credential default, requiring a self-contained no-rebuild judge path, using only original fictional content, and refusing to let the presentation host duplicate the decision.
 
@@ -32,7 +32,7 @@ Default replay mode uses neutral deterministic proposal and observation fixtures
 
 ## What the Build Week slice is
 
-The Build Week release target is the first bounded implementation profile of the permanent Hees Console product, not the definition of that product. The permanent north star is provider-neutral and domain-neutral evidence intake, candidate inspection, package authoring and Hees validation, Training by Committee, governed interactions, terminal Spectrum and Content DNA inspection, receipts, replay, and audit. Those capabilities remain Draft design work unless an exact released profile and checked implementation provide them.
+The Build Week release target is the first bounded implementation profile of the permanent hees.ai console product, not the definition of that product. The permanent north star is provider-neutral and domain-neutral evidence intake, candidate inspection, package authoring and Hees validation, Training by Committee, governed interactions, terminal Spectrum and Content DNA inspection, receipts, replay, and audit. Those capabilities remain Draft design work unless an exact released profile and checked implementation provide them.
 
 For the event profile only, a developer or judge can select an original fictional lesson-support scenario, inspect its fixed package-authored canonical memory, run a structured proposal through the real Incan-authored admission path, and see either an admitted answer with selected memory, experimental Console Content DNA, and a profile-specific receipt or a rejection with the exact violated contract. The fictional domain, fixed package, offline fixtures, and optional GPT-5.6 adapter are profile choices, not permanent Console requirements.
 

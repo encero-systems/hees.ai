@@ -1,10 +1,10 @@
 # Hees
 
-Hees is an Incan-first project for deterministic runtime governance of AI interactions. The checked `0.0.1` kernel performs fail-closed structural admission against package-owned actions and evidence, while the experimental `console_profile_0_1` implements a tightly bounded path from one fictional package and untrusted proposal through Hees-classified findings, Spectrum admission, selected memory, Content DNA, and a receipt. Draft RFC 010 defines Hees Console as the permanent developer product around that authority boundary; the checked kernel and released Console profiles, rather than the north-star design, determine what is implemented at any revision.
+Hees is an Incan-first project for deterministic runtime governance of AI interactions. The checked `0.0.1` kernel performs fail-closed structural admission against package-owned actions and evidence, while the experimental `console_profile_0_1` implements a tightly bounded path from one fictional package and untrusted proposal through Hees-classified findings, Spectrum admission, selected memory, Content DNA, and a receipt. Draft RFC 010 defines hees.ai console as the permanent developer product around that authority boundary; the checked kernel and released Console profiles, rather than the north-star design, determine what is implemented at any revision.
 
-## Hees Console
+## hees.ai console
 
-Hees Console is the permanent terminal-first, local-first, provider-neutral and domain-neutral developer product for building, validating, running, and inspecting governed AI systems. It is not defined by one model, provider, fixture domain, event profile, or deployment topology.
+hees.ai console is the permanent terminal-first, local-first, provider-neutral and domain-neutral developer product for building, validating, running, and inspecting governed AI systems. It is not defined by one model, provider, fixture domain, event profile, or deployment topology.
 
 > **Current status:** The permanent Console contract remains Draft under [RFC 010](rfcs/010-hees-console.md). The checked repository now contains the complete native Incan application for `console_profile_0_1`, deterministic offline replay, optional live GPT-5.6 composition, focused tests, and reproducible self-contained release-candidate packaging. No stable public test-build asset is available yet, so public no-rebuild access remains a release gate. A hosted equivalent is optional rather than required. The separate checked Hees library remains the implemented `0.0.1` preview described under [Hees library 0.0.1](#hees-library-001).
 
@@ -24,7 +24,7 @@ These are Draft north-star capabilities, not claims about the checked `0.0.1` li
 
 ### Why a governed console
 
-Most AI developer tools stop at showing what a model returned. Hees Console is intended to expose the complete path from evidence and candidate memory through package validation, governed interaction, terminal inspection, replay, and audit. Strict structured output can constrain shape, but it does not establish package authority, classify observations under package-owned policy, select a Spectrum result or admitted memory, construct Content DNA, or project a governance receipt. Making those boundaries inspectable gives developers a concrete way to test happy paths and adversarial contract failures.
+Most AI developer tools stop at showing what a model returned. hees.ai console is intended to expose the complete path from evidence and candidate memory through package validation, governed interaction, terminal inspection, replay, and audit. Strict structured output can constrain shape, but it does not establish package authority, classify observations under package-owned policy, select a Spectrum result or admitted memory, construct Content DNA, or project a governance receipt. Making those boundaries inspectable gives developers a concrete way to test happy paths and adversarial contract failures.
 
 ### Training by Committee
 
@@ -56,7 +56,7 @@ The profile exercises one bounded proposal-pressure-testing part of Training by 
 fictional package + question
             |
             v
-Incan-authored Hees Console
+Incan-authored hees.ai console
 GPT-5.6 or replay fixture -> untrusted proposal + observations
             |
             v
@@ -78,9 +78,9 @@ The local release candidate supports an offline path that requires no Incan comp
 1. Download the self-contained archive for **[FINALIZE BEFORE RELEASE: VERIFIED PUBLIC ARTIFACT PLATFORM]** from **[FINALIZE BEFORE RELEASE: RELEASE ASSET URL]**.
 2. Compare the downloaded file's SHA-256 digest with **[FINALIZE BEFORE RELEASE: RELEASE ASSET SHA-256]**.
 3. Extract the archive and launch `./hees-console`. Offline replay is the zero-credential default.
-4. The valid scenario is evaluated immediately through Hees. Use `←` and `→` to inspect the fixed package and sources, optional atom-comparison state, untrusted proposal, support mappings, verifier manifest, observations, Hees-classified findings, `ADMITTED` decision, selected memory, experimental Console Content DNA, profile receipt, and non-authoritative trace.
-5. Press `2` for the undeclared-action scenario. Confirm that Hees returns `REJECTED` with `unknown_action` in namespace `console_admission_0_1`.
-6. Press `3` for unknown evidence, `4` for unknown memory, and `5` for non-admitted memory. Confirm the exact respective reasons `unknown_evidence`, `unknown_memory`, and `memory_not_admitted`, with no trusted answer or admitted-only artifacts.
+4. The valid scenario is evaluated immediately through Hees. Use `←` and `→` to inspect evidence, selected memory, and the typed receipt projection; use the numbered top navigation to open the package, evidence, decision, receipt, and help destinations.
+5. Press `↓` to select the undeclared-action scenario. Confirm that Hees returns `REJECTED` with `unknown_action` in namespace `console_admission_0_1`.
+6. Continue with `↓` through unknown evidence, unknown memory, and non-admitted memory. Confirm the exact respective reasons `unknown_evidence`, `unknown_memory`, and `memory_not_admitted`, with no trusted answer or admitted-only artifacts.
 7. Inspect each rejection receipt to confirm that it records the terminal rejection without projecting an admitted answer, selected memory, or Content DNA.
 8. A verified hosted equivalent may be supplied later, but it is not required when the published native test build remains available free of charge through judging.
 
@@ -90,18 +90,20 @@ See [TESTING.md](TESTING.md) for the complete judge path, expected trust labels,
 
 | Key | View or action |
 | --- | --- |
-| `1` | Valid declared-action scenario |
-| `2` | Undeclared-action scenario |
-| `3` | Unknown evidence scenario |
-| `4` | Unknown memory scenario |
-| `5` | Non-admitted memory scenario |
-| `←` / `→` or `h` / `l` | Previous or next inspector |
+| `1` | Interactions workspace |
+| `2` | Package inspection |
+| `3` | Evidence inspection |
+| `4` | Decision inspection |
+| `5` | Receipt inspection |
+| `6` | Keyboard help |
+| `←` / `→` or `h` / `l` | Previous or next contextual Evidence, Memory, or Receipt tab |
 | `↑` / `↓` or `k` / `j` | Previous or next visible interaction |
-| `enter` | Inspect the selected interaction, or advance to the next inspector |
+| `tab` | Move to the next contextual tab |
+| `enter` | Open the selected contextual inspector |
 | `g` | Return to the interaction browser |
 | `/` | Focus the combined free-text and tag filter |
 | `s` | Focus filtering and ordering in the Status column header |
-| `b` | Collapse or expand the navigation rail |
+| `b` | Collapse or expand the interaction rail |
 | `q` | Quit |
 
 While the search control has focus, type to filter, use `↑` and `↓` to highlight a tag, use `tab` to check or uncheck it, and use `ctrl-u` to clear the combined query. While the Status header has focus, use `↑` and `↓` to choose `ADMITTED`, `REJECTED`, or the ordering row; use `space` or `tab` to change the selected value. Interactive state cells use a green `✓ ADMITTED` and red `✕ REJECTED` vocabulary. The icons and explicit text remain complete status signals when colour is unavailable, so the boundary stays legible in monochrome and narrow terminals.
@@ -265,7 +267,7 @@ The fictional [minimal governed agent](examples/minimal_governed_agent/README.md
 
 ## Repository boundary
 
-This repository contains the reusable Hees kernel, public documentation, fictional examples and fixtures, tests, repository guardrails, and the public Hees Console reference product. Private corpora, model files, confidential packages, unpublished research artifacts, and unrelated product code do not belong here.
+This repository contains the reusable Hees kernel, public documentation, fictional examples and fixtures, tests, repository guardrails, and the public hees.ai console reference product. Private corpora, model files, confidential packages, unpublished research artifacts, and unrelated product code do not belong here.
 
 Hees is licensed under the [Apache License 2.0](LICENSE). Each Console `0.1.0` release candidate audits its locked platform dependency graph and includes that build's generated third-party license report plus the [repository notice](NOTICE). The checked [macOS ARM64 reference report](workspaces/hees-console/packaging/THIRD_PARTY_LICENSES.md) supports source review but is not substituted for another platform's generated report. The public release URL remains a publication gate.
 

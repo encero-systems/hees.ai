@@ -1,6 +1,6 @@
 # Third-party licenses
 
-This file lists the third-party software included in the Hees Console executable and the license terms selected from each dependency's declared SPDX expression. It is generated from the locked native release graph; it is not legal advice.
+This file lists the third-party software included in the hees.ai console executable and the license terms selected from each dependency's declared SPDX expression. It is generated from the locked native release graph; it is not legal advice.
 
 ## Apache License 2.0
 

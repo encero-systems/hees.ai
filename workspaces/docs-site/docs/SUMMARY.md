@@ -1,7 +1,7 @@
 # Summary
 
 - [Hees](index.md)
-- [Hees Console](console.md)
+- [hees.ai console](console.md)
 - [Console profile 0.1 bounds](console-profile-0-1.md)
 - [Getting started](getting-started.md)
 - [Contracts](contracts.md)

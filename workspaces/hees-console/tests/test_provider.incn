@@ -152,20 +152,20 @@ def context_plan() -> str:
     request = assert_is_ok(JsonValue.parse(read_text(fixture_path("requests/valid_lantern.json"))))
     mut admitted_memory: list[JsonValue] = []
     memory_fields = ["evidence_id", "memory_id", "claim", "guidance", "language", "source_ref", "source_kind", "source_fingerprint", "review_state", "review_revision", "rights_state", "authority_class", "evidence_kind"]
-    for atom in require_array(package.clone(), "atoms"):
-        if require_str(atom.clone(), "review_state") == "approved" and require_str(atom.clone(), "rights_state") == "allowed":
+    for atom in require_array(package, "atoms"):
+        if require_str(atom, "review_state") == "approved" and require_str(atom, "rights_state") == "allowed":
             mut projection: Dict[str, JsonValue] = {}
             for field in memory_fields:
-                projection[field] = JsonValue.str(require_str(atom.clone(), field))
+                projection[field] = JsonValue.str(require_str(atom, field))
             admitted_memory.append(JsonValue.object(projection))
     context = JsonValue.object(
-        {"profile_id": JsonValue.str(require_str(package.clone(), "profile_id")), "package_id": JsonValue.str(
-            require_str(package.clone(), "package_id"),
-        ), "domain_id": JsonValue.str(require_str(package.clone(), "domain_id")), "package_revision": JsonValue.str(
-            require_str(package.clone(), "package_revision"),
-        ), "artifact_digest": JsonValue.str(require_str(package.clone(), "artifact_digest")), "mission": JsonValue.str(
-            require_str(package.clone(), "mission"),
-        ), "request": request, "declared_actions": require(package.clone(), "actions"), "requirements": require(
+        {"profile_id": JsonValue.str(require_str(package, "profile_id")), "package_id": JsonValue.str(
+            require_str(package, "package_id"),
+        ), "domain_id": JsonValue.str(require_str(package, "domain_id")), "package_revision": JsonValue.str(
+            require_str(package, "package_revision"),
+        ), "artifact_digest": JsonValue.str(require_str(package, "artifact_digest")), "mission": JsonValue.str(
+            require_str(package, "mission"),
+        ), "request": request, "declared_actions": require(package, "actions"), "requirements": require(
             package,
             "requirements",
         ), "admitted_memory": JsonValue.array(admitted_memory)},
@@ -197,7 +197,7 @@ def assert_object_is_openai_strict(schema: JsonValue) -> None:
     assert_eq(len(required), len(properties.keys()))
     for property_name in properties.keys():
         mut found = false
-        for required_name in required.clone():
+        for required_name in required:
             if assert_is_ok(required_name.expect_str()) == property_name:
                 found = true
         assert_eq(found, true)
@@ -220,12 +220,12 @@ def target_value(index: int, evaluator_role: str, target_role: str, candidate_di
 
     digest = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
     context = require(assert_is_ok(JsonValue.parse(context_plan())), "context")
-    request = require(context.clone(), "request")
+    request = require(context, "request")
     body = JsonValue.object(
-        {"profile_id": JsonValue.str(require_str(context.clone(), "profile_id")), "package_id": JsonValue.str(
-            require_str(context.clone(), "package_id"),
-        ), "domain_id": JsonValue.str(require_str(context.clone(), "domain_id")), "package_revision": JsonValue.str(
-            require_str(context.clone(), "package_revision"),
+        {"profile_id": JsonValue.str(require_str(context, "profile_id")), "package_id": JsonValue.str(
+            require_str(context, "package_id"),
+        ), "domain_id": JsonValue.str(require_str(context, "domain_id")), "package_revision": JsonValue.str(
+            require_str(context, "package_revision"),
         ), "artifact_digest": JsonValue.str(require_str(context, "artifact_digest")), "request_digest": JsonValue.str(
             require_str(request, "request_digest"),
         ), "candidate_digest": JsonValue.str(candidate_digest), "target_id": JsonValue.str(f"target_capacity_{index}"), "evaluator_role": JsonValue.str(
@@ -313,8 +313,8 @@ def maximum_context_plan() -> str:
     """Expand a valid Hees context to the generic four-requirement profile maximum."""
 
     mut plan = assert_is_ok(JsonValue.parse(context_plan()))
-    context = require(plan.clone(), "context")
-    mut requirements = require_array(context.clone(), "requirements")
+    context = require(plan, "context")
+    mut requirements = require_array(context, "requirements")
     requirements.append(
         JsonValue.object(
             {"requirement_id": JsonValue.str("clarify_example"), "description": JsonValue.str(
@@ -356,11 +356,11 @@ def test_proposal_request_is_the_exact_closed_responses_operation() -> None:
     assert_eq(require_str(text_format, "name"), "console_proposal_provider_0_1")
     assert_eq(require_bool(text_format, "strict"), true)
     schema = require(text_format, "schema")
-    assert_object_is_openai_strict(schema.clone())
-    visible_items = require(require(require(schema.clone(), "properties"), "visible_units"), "items")
+    assert_object_is_openai_strict(schema)
+    visible_items = require(require(require(schema, "properties"), "visible_units"), "items")
     support_items = require(require(require(schema, "properties"), "support_mappings"), "items")
     assert_object_is_openai_strict(visible_items)
-    assert_object_is_openai_strict(support_items.clone())
+    assert_object_is_openai_strict(support_items)
     mut evidence_required = false
     for required_name in require_array(support_items, "required"):
         if assert_is_ok(required_name.expect_str()) == "evidence_ids":
@@ -381,8 +381,8 @@ def test_proposal_input_contains_only_hees_authored_untrusted_context() -> None:
     assert_eq(len(memory), 3)
     mut memory_ids: list[str] = []
     for atom in memory:
-        memory_ids.append(require_str(atom.clone(), "memory_id"))
-        assert_eq(require_str(atom.clone(), "review_state"), "approved")
+        memory_ids.append(require_str(atom, "memory_id"))
+        assert_eq(require_str(atom, "review_state"), "approved")
         assert_eq(require_str(atom, "rights_state"), "allowed")
     assert_eq(memory_ids.contains("memory_public_ranking_draft"), false)
     assert_eq(payload.contains_key("decision"), false)
@@ -395,10 +395,7 @@ def test_schema_valid_unauthorized_proposals_remain_pass_through_values() -> Non
 
     call = assert_is_ok(build_proposal_call(context_plan()))
     undeclared: ConsoleProposal = assert_is_ok(
-        decode_proposal_response(
-            call.clone(),
-            response_with_output(read_text(fixture_path("proposals/undeclared_action.json"))),
-        ),
+        decode_proposal_response(call, response_with_output(read_text(fixture_path("proposals/undeclared_action.json")))),
     )
     assert_eq(action_id_text(undeclared.action_id), "assign_final_grade")
     unknown_memory: ConsoleProposal = assert_is_ok(
@@ -419,18 +416,18 @@ def test_private_provider_envelopes_are_versioned_and_fail_closed() -> None:
 
     proposal_source = assert_is_ok(propose_json_with_transport(context_plan(), fixture_transport))
     mut proposal_envelope = assert_is_ok(JsonValue.parse(proposal_source))
-    assert_eq(require_str(proposal_envelope.clone(), "contract_version"), "console_provider_proposal_result_0_1")
-    assert_eq(require_str(proposal_envelope.clone(), "profile_id"), "console_profile_0_1")
+    assert_eq(require_str(proposal_envelope, "contract_version"), "console_provider_proposal_result_0_1")
+    assert_eq(require_str(proposal_envelope, "profile_id"), "console_profile_0_1")
     committee_source = assert_is_ok(
         evaluate_committee_json_with_transport(
             context_plan(),
-            assert_is_ok(proposal_envelope.clone().to_json()),
+            assert_is_ok(proposal_envelope.to_json()),
             manifest_plan_json([], false),
             unavailable_transport,
         ),
     )
     committee_envelope = assert_is_ok(JsonValue.parse(committee_source))
-    assert_eq(require_str(committee_envelope.clone(), "contract_version"), "console_provider_committee_result_0_1")
+    assert_eq(require_str(committee_envelope, "contract_version"), "console_provider_committee_result_0_1")
     assert_eq(require_str(committee_envelope, "profile_id"), "console_profile_0_1")
     assert_is_ok(proposal_envelope.set("contract_version", JsonValue.str("console_provider_proposal_result_9_9")))
     error = assert_is_err(
@@ -485,11 +482,11 @@ def test_maximum_committee_shape_is_exact_and_sequentially_bounded() -> None:
 
     proposal = maximum_proposal()
     calls: list[PreparedProviderCall] = assert_is_ok(
-        build_committee_calls(maximum_context_plan(), proposal.clone(), maximum_manifest_json(proposal)),
+        build_committee_calls(maximum_context_plan(), proposal, maximum_manifest_json(proposal)),
     )
     mut relation_count = 0
     mut synthesis_count = 0
-    for call in calls.clone():
+    for call in calls:
         if call.operation == "synthesis":
             synthesis_count = synthesis_count + 1
         else:

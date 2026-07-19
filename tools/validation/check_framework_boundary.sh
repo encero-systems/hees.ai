@@ -51,6 +51,8 @@ scan_tracked_paths() {
 
     while IFS= read -r -d '' path; do
         case "$path" in
+            .agents/skills/create-pr-description/SKILL.md | .agents/skills/write-commit-message/SKILL.md)
+                ;;
             .env.example | */.env.example)
                 ;;
             .env | */.env | .env.* | */.env.* | *.key | *.pem | *.p12 | *.pfx)
@@ -62,7 +64,7 @@ scan_tracked_paths() {
             *.mjs | *.js | *.bin | *.pdf | *.pptx | *.docx | *.gguf | *.safetensors | *.onnx | *.zip | *.tar | *.tar.gz)
                 fail "tracked disallowed artifact type is present: $path"
                 ;;
-            *.incn | *.md | *.json | *.toml | *.lock | *.sh | *.hbs | *.yml | *.yaml | *.txt | *.ndjson | .editorconfig | .gitattributes | .gitignore | */.gitignore | LICENSE | NOTICE | Makefile)
+            *.incn | *.md | *.json | *.toml | *.lock | *.sh | *.hbs | *.yml | *.yaml | *.txt | *.ndjson | *.css | *.png | .editorconfig | .gitattributes | .gitignore | */.gitignore | LICENSE | NOTICE | Makefile)
                 ;;
             *)
                 fail "tracked file type is outside the public allowlist: $path"
@@ -139,6 +141,7 @@ done
 allowed_docs=(
     workspaces/docs-site/docs/SUMMARY.md
     workspaces/docs-site/docs/architecture.md
+    workspaces/docs-site/docs/assets/governed-runtime-authority-flow.png
     workspaces/docs-site/docs/contracts.md
     workspaces/docs-site/docs/console-profile-0-1.md
     workspaces/docs-site/docs/console.md
@@ -170,7 +173,7 @@ while IFS= read -r path; do
         *.mjs | *.js | *.bin | *.pdf | *.pptx | *.docx | *.gguf | *.safetensors | *.onnx | *.zip | *.tar | *.tar.gz)
             fail "disallowed artifact type is present: ${path#./}"
             ;;
-        *.incn | *.md | *.json | *.toml | *.lock | *.sh | *.hbs | *.yml | *.yaml | *.txt | *.ndjson | ./.editorconfig | ./.gitattributes | ./.gitignore | */.gitignore | ./LICENSE | ./NOTICE | ./Makefile)
+        *.incn | *.md | *.json | *.toml | *.lock | *.sh | *.hbs | *.yml | *.yaml | *.txt | *.ndjson | *.css | *.png | ./.editorconfig | ./.gitattributes | ./.gitignore | */.gitignore | ./LICENSE | ./NOTICE | ./Makefile)
             ;;
         *)
             fail "file type is outside the public allowlist: ${path#./}"

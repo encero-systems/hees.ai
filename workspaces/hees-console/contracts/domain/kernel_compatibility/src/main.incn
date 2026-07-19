@@ -34,6 +34,8 @@ def require_text(value: JsonValue, key: str, expected: str) -> Result[None, str]
 
 def verify_fixture_parsing() -> Result[None, str]:
     """Parse the rewritten request, proposal, target, observation, finding, and replay shapes."""
+
+    # JsonValue.require consumes its receiver in the current standard API. Cloning is deliberately confined to this fixture-only compatibility probe so one parsed object can support several independent field assertions.
     package = read_json_fixture("../../../fixtures/fictional_lesson_support/package/package.json")?
     require_text(package.clone(), "contract_version", "console_package_0_1")?
     require_text(package.clone(), "profile_id", "console_profile_0_1")?

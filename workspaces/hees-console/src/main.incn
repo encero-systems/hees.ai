@@ -1,4 +1,4 @@
-"""Native Incan entrypoint for offline replay and optional live Hees Console interactions."""
+"""Native Incan entrypoint for offline replay and optional live hees.ai console interactions."""
 
 from rust::std::env import args
 from rust::std::process import exit as process_exit
@@ -27,7 +27,7 @@ model CliOptions:
 pub def usage() -> str:
     """Return stable native Console command-line help."""
 
-    return ("Hees Console 0.1.0\n" + "Usage:\n" + "  hees-console [--mode offline] [--scenario <valid|undeclared-action|unknown-evidence|unknown-memory|non-admitted-memory>] [--headless]\n" + "  hees-console --mode live --question <text> [--headless]\n" + "Offline replay requires no credentials. Live mode requires OPENAI_API_KEY and never falls back to replay.")
+    return ("hees.ai console 0.1.0\n" + "Usage:\n" + "  hees-console [--mode offline] [--scenario <valid|undeclared-action|unknown-evidence|unknown-memory|non-admitted-memory>] [--headless]\n" + "  hees-console --mode live --question <text> [--headless]\n" + "Offline replay requires no credentials. Live mode requires OPENAI_API_KEY and never falls back to replay.")
 
 
 def process_arguments() -> list[str]:
@@ -160,7 +160,7 @@ def main() -> None:
         return
     match options.error:
         Some(code) =>
-            println(f"HEES CONSOLE ERROR {code}")
+            println(f"hees.ai console ERROR {code}")
             println(usage())
             process_exit(2)
         None =>
@@ -171,19 +171,19 @@ def main() -> None:
 
                 match run_live(question, options.headless):
                     Err(code) =>
-                        println(f"HEES CONSOLE ERROR {code}")
+                        println(f"hees.ai console ERROR {code}")
                         process_exit(2)
                     Ok(_) => return
             else:
                 if options.headless:
                     match run_headless(options.scenario):
                         Err(code) =>
-                            println(f"HEES CONSOLE ERROR {code}")
+                            println(f"hees.ai console ERROR {code}")
                             process_exit(2)
                         Ok(_) => return
                 else:
                     match run_interactive(options.scenario):
                         Err(code) =>
-                            println(f"HEES CONSOLE ERROR {code}")
+                            println(f"hees.ai console ERROR {code}")
                             process_exit(2)
                         Ok(_) => return

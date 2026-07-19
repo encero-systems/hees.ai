@@ -1,6 +1,6 @@
-# Hees Console submission pack
+# hees.ai console submission pack
 
-This directory contains the pre-freeze submission materials for the Hees Console Build Week 2026 entry. It is public drafting material, not evidence that a release, hosted demo, video, or Devpost submission exists.
+This directory contains the pre-freeze submission materials for the hees.ai console Build Week 2026 entry. It is public drafting material, not evidence that a release, hosted demo, video, or Devpost submission exists.
 
 The submission pack was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 19, 2026. The official rules remain authoritative if this pack becomes stale or incomplete.
 
@@ -12,7 +12,7 @@ The submission pack was reconciled against the [OpenAI Build Week Official Rules
 
 ## Status and placeholder contract
 
-The permanent Hees Console is the terminal-first, local-first, provider-neutral and domain-neutral developer-product north star described in the repository. The event entry is the narrower `console_profile_0_1` Build Week implementation profile. The submission must not present that bounded profile as the complete permanent Console.
+The permanent hees.ai console is the terminal-first, local-first, provider-neutral and domain-neutral developer-product north star described in the repository. The event entry is the narrower `console_profile_0_1` Build Week implementation profile. The submission must not present that bounded profile as the complete permanent Console.
 
 Two placeholder forms are deliberate release controls:
 

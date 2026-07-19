@@ -1,8 +1,8 @@
-# Hees Console submission finalization checklist
+# hees.ai console submission finalization checklist
 
 This checklist was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 19, 2026. The rules can change and remain authoritative. Recheck them on the day of submission.
 
-Nothing in this document confirms that Hees Console has been released, hosted, recorded, submitted, or tested in live GPT-5.6 mode. Placeholders are blockers, not evidence.
+Nothing in this document confirms that hees.ai console has been released, hosted, recorded, submitted, or tested in live GPT-5.6 mode. Placeholders are blockers, not evidence.
 
 ## Public link and evidence matrix
 

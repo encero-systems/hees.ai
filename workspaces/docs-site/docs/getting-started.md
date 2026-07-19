@@ -49,7 +49,7 @@ make console-build INCAN=/path/to/incan-0.5.0-dev.18/bin/incan
 workspaces/hees-console/target/incan/.cargo-target/release/hees_console
 ```
 
-The release-candidate archive renames the installed executable to `hees-console` and needs no compiler, package manager, source checkout, network connection, or API key at runtime. Use `--headless` for privacy-redacted automation output. See [Hees Console](console.md) for interaction keys and live-mode syntax, and consult the [profile bounds and evidence](console-profile-0-1.md) before making platform or resource claims.
+The release-candidate archive renames the installed executable to `hees-console` and needs no compiler, package manager, source checkout, network connection, or API key at runtime. Use `--headless` for privacy-redacted automation output. See [hees.ai console](console.md) for interaction keys and live-mode syntax, and consult the [profile bounds and evidence](console-profile-0-1.md) before making platform or resource claims.
 
 ## Run the fictional runtime example
 

@@ -1,5 +1,5 @@
 """
-Native Incan provider boundary for optional live Hees Console interactions.
+Native Incan provider boundary for optional live hees.ai console interactions.
 
 This module constructs bounded OpenAI Responses API calls and decodes their untrusted structured outputs. It never
 admits a proposal, classifies an observation, selects memory, constructs Content DNA, or creates a receipt. It consumes
@@ -546,7 +546,7 @@ def provider_context_shape_is_closed(value: JsonValue) -> bool:
     """Require every Hees context field and reject host-added or authority-bearing data."""
 
     if not json_keys_are_exact(
-        value.clone(),
+        value,
         ["profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "mission", "request", "declared_actions", "requirements", "admitted_memory"],
     ):
         return false
@@ -600,7 +600,7 @@ def parse_provider_context(source: str) -> Result[ProviderContext, ProviderFailu
     match JsonValue.parse(source):
         Err(_) => return Err(ProviderFailure.InvalidInput)
         Ok(value) =>
-            if not json_keys_are_exact(value.clone(), ["contract_version", "profile_id", "plannable", "context"]):
+            if not json_keys_are_exact(value, ["contract_version", "profile_id", "plannable", "context"]):
                 return Err(ProviderFailure.InvalidInput)
             match value.get("context"):
                 None => return Err(ProviderFailure.InvalidInput)
@@ -641,9 +641,7 @@ def prepare_call(
         model_name=GPT56_MODEL,
         instructions=instructions,
         input=[ResponseInputMessage(role="user", content=[ResponseInputContent(type_="input_text", text=payload_json)])],
-        text=ResponseText(
-            format=ResponseTextFormat(type_="json_schema", name=schema_name, schema=schema.clone(), strict=true),
-        ),
+        text=ResponseText(format=ResponseTextFormat(type_="json_schema", name=schema_name, schema=schema, strict=true)),
         reasoning=ResponseReasoning(effort=REASONING_EFFORT),
         max_output_tokens=max_output_tokens,
         tools=[],
@@ -712,13 +710,13 @@ def json_keys_are_exact(value: JsonValue, expected: list[str]) -> bool:
 def target_shape_is_closed(value: JsonValue) -> bool:
     """Reject injected manifest fields before they can enter a provider prompt."""
 
-    if not json_keys_are_exact(value.clone(), ["body", "target_digest"]):
+    if not json_keys_are_exact(value, ["body", "target_digest"]):
         return false
     match value.get("body"):
         None => return false
         Some(body) =>
             if not json_keys_are_exact(
-                body.clone(),
+                body,
                 ["profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_digest", "candidate_digest", "target_id", "evaluator_role", "target_role", "subject_digest", "premises"],
             ):
                 return false
@@ -746,7 +744,7 @@ def parse_manifest(source: str) -> Result[list[ProviderManifestTarget], Provider
     match JsonValue.parse(source):
         Err(_) => return Err(ProviderFailure.InvalidInput)
         Ok(value) =>
-            if not json_keys_are_exact(value.clone(), ["contract_version", "profile_id", "plannable", "targets"]):
+            if not json_keys_are_exact(value, ["contract_version", "profile_id", "plannable", "targets"]):
                 return Err(ProviderFailure.InvalidInput)
             match value.get("targets"):
                 None => return Err(ProviderFailure.InvalidInput)
@@ -840,18 +838,15 @@ def target_matches_interaction(target: ProviderManifestTarget, context: Provider
 def identify_candidate(proposal: ConsoleProposal) -> Result[str, ProviderFailure]:
     """Consume the narrow Hees proposal-identity projection without reopening digest internals."""
 
-    match JsonValue.parse(identify_console_proposal_json(proposal.clone())):
+    match JsonValue.parse(identify_console_proposal_json(proposal)):
         Err(_) => return Err(ProviderFailure.InvalidInput)
         Ok(identity) =>
-            if not json_keys_are_exact(
-                identity.clone(),
-                ["contract_version", "profile_id", "proposal_id", "candidate_digest"],
-            ):
+            if not json_keys_are_exact(identity, ["contract_version", "profile_id", "proposal_id", "candidate_digest"]):
                 return Err(ProviderFailure.InvalidInput)
-            if (json_string_field(identity.clone(), "contract_version")? != "console_proposal_identity_0_1" or json_string_field(
-                identity.clone(),
+            if (json_string_field(identity, "contract_version")? != "console_proposal_identity_0_1" or json_string_field(
+                identity,
                 "profile_id",
-            )? != profile_id_text(proposal.profile_id) or json_string_field(identity.clone(), "proposal_id")? != proposal_id_text(
+            )? != profile_id_text(proposal.profile_id) or json_string_field(identity, "proposal_id")? != proposal_id_text(
                 proposal.proposal_id,
             )):
                 return Err(ProviderFailure.InvalidInput)
@@ -877,21 +872,21 @@ pub def build_committee_calls(
     if len(targets) == 0:
         return Ok([])
     context = parse_provider_context(context_plan_json)?
-    if not proposal_matches_context(proposal.clone(), context.clone()):
+    if not proposal_matches_context(proposal, context):
         return Err(ProviderFailure.InvalidInput)
-    candidate_digest = identify_candidate(proposal.clone())?
+    candidate_digest = identify_candidate(proposal)?
     mut calls: list[PreparedProviderCall] = []
     mut relation_count = 0
     mut synthesis_count = 0
     mut target_ids: list[str] = []
     for index in range(len(targets)):
         target = targets[index]
-        if not target_matches_interaction(target.clone(), context.clone(), candidate_digest):
+        if not target_matches_interaction(target, context, candidate_digest):
             return Err(ProviderFailure.InvalidInput)
         if target_ids.contains(f"{target.body.target_id}"):
             return Err(ProviderFailure.InvalidInput)
         target_ids.append(f"{target.body.target_id}")
-        operation = committee_operation(target.clone())?
+        operation = committee_operation(target)?
         if operation == "synthesis":
             synthesis_count = synthesis_count + 1
         else:
@@ -904,11 +899,11 @@ pub def build_committee_calls(
             domain_id=f"{context.domain_id}",
             package_revision=f"{context.package_revision}",
             artifact_digest=f"{context.artifact_digest}",
-            request=context.request.clone(),
-            proposal=proposal.clone(),
+            request=context.request,
+            proposal=proposal,
             observation_id=observation_id(index + 1),
             target=target,
-            admitted_memory=context.admitted_memory.clone(),
+            admitted_memory=context.admitted_memory,
         )
         calls.append(
             prepare_call(
@@ -989,12 +984,12 @@ def extract_output_text(call: PreparedProviderCall, response_source: str) -> Res
     match JsonValue.parse(response_source):
         Err(_) => return Err(ProviderFailure.MalformedOutput)
         Ok(response) =>
-            status = json_string_field(response.clone(), "status")?
+            status = json_string_field(response, "status")?
             if status == "incomplete":
                 return Err(ProviderFailure.Incomplete)
             if status != "completed":
                 return Err(ProviderFailure.Unavailable)
-            if json_string_field(response.clone(), "model")? != GPT56_MODEL:
+            if json_string_field(response, "model")? != GPT56_MODEL:
                 return Err(ProviderFailure.UnexpectedModel)
             mut output_texts: list[str] = []
             for output in json_array_field(response, "output")?:
@@ -1005,7 +1000,7 @@ def extract_output_text(call: PreparedProviderCall, response_source: str) -> Res
                             None => return Err(ProviderFailure.MalformedOutput)
                             Some(parts) =>
                                 for part in parts:
-                                    part_type = json_string_field(part.clone(), "type")?
+                                    part_type = json_string_field(part, "type")?
                                     if part_type == "refusal":
                                         return Err(ProviderFailure.Refused)
                                     if part_type == "output_text":
@@ -1022,7 +1017,7 @@ def proposal_shape_is_closed(value: JsonValue) -> bool:
     """Require the exact proposal field graph before typed decoding."""
 
     if not json_keys_are_exact(
-        value.clone(),
+        value,
         ["contract_version", "profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "proposal_id", "action_id", "evidence_ids", "visible_units", "support_mappings"],
     ):
         return false
@@ -1069,7 +1064,7 @@ pub def decode_proposal_response(
     match JsonValue.parse(output_text):
         Err(_) => return Err(ProviderFailure.MalformedOutput)
         Ok(value) =>
-            if not proposal_shape_is_closed(value.clone()):
+            if not proposal_shape_is_closed(value):
                 return Err(ProviderFailure.MalformedOutput)
             return proposal_from_value(value)
 
@@ -1101,9 +1096,9 @@ def attach_fingerprints(call: PreparedProviderCall, output_text: str, relation: 
         Err(_) => return Err(ProviderFailure.MalformedOutput)
         Ok(parsed) =>
             mut value = parsed
-            if relation and not relation_shape_is_closed(value.clone()):
+            if relation and not relation_shape_is_closed(value):
                 return Err(ProviderFailure.MalformedOutput)
-            if not relation and not synthesis_shape_is_closed(value.clone()):
+            if not relation and not synthesis_shape_is_closed(value):
                 return Err(ProviderFailure.MalformedOutput)
             match value.set("model_fingerprint", JsonValue.str(fingerprint(GPT56_MODEL))):
                 Err(_) => return Err(ProviderFailure.MalformedOutput)
@@ -1143,7 +1138,7 @@ pub def decode_relation_response(
 
     if call.operation != "relation" and call.operation != "contradiction":
         return Err(ProviderFailure.InvalidInput)
-    output_text = extract_output_text(call.clone(), response_source)?
+    output_text = extract_output_text(call, response_source)?
     source = attach_fingerprints(call, output_text, true)?
     match JsonValue.parse(source):
         Err(_) => return Err(ProviderFailure.MalformedOutput)
@@ -1158,7 +1153,7 @@ pub def decode_synthesis_response(
 
     if call.operation != "synthesis":
         return Err(ProviderFailure.InvalidInput)
-    output_text = extract_output_text(call.clone(), response_source)?
+    output_text = extract_output_text(call, response_source)?
     source = attach_fingerprints(call, output_text, false)?
     match JsonValue.parse(source):
         Err(_) => return Err(ProviderFailure.MalformedOutput)

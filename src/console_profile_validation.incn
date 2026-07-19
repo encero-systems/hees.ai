@@ -108,7 +108,7 @@ pub def atom_is_admitted(atom: ConsoleAtom) -> bool:
 pub def admitted_atoms(package: ConsolePackage) -> list[ConsoleAtom]:
     """Select admitted atoms without changing their package order."""
 
-    return [atom for atom in package.atoms if atom_is_admitted(atom.clone())]
+    return [atom for atom in package.atoms if atom_is_admitted(atom)]
 
 
 def validate_package_header(package: ConsolePackage) -> ProfileValidation:
@@ -125,23 +125,21 @@ def validate_package_shape(package: ConsolePackage) -> ProfileValidation:
     """Validate bounded collection sizes and nominal uniqueness."""
 
     if len(package.sources) != 3 or has_duplicate_strings(
-        [source_id_text(source.source_id) for source in package.sources.clone()],
+        [source_id_text(source.source_id) for source in package.sources],
     ):
         return validation_error("invalid_package", "invalid_package_sources")
     if len(package.actions) != 3 or has_duplicate_strings(
-        [action_id_text(action.action_id) for action in package.actions.clone()],
+        [action_id_text(action.action_id) for action in package.actions],
     ):
         return validation_error("invalid_package", "invalid_package_actions")
     if len(package.requirements) < 1 or len(package.requirements) > 4:
         return validation_error("invalid_package", "invalid_package_requirements")
-    if has_duplicate_strings(
-        [requirement_id_text(requirement.requirement_id) for requirement in package.requirements.clone()],
-    ):
+    if has_duplicate_strings([requirement_id_text(requirement.requirement_id) for requirement in package.requirements]):
         return validation_error("invalid_package", "duplicate_requirement_id")
     if len(package.atoms) != 4:
         return validation_error("invalid_package", "invalid_package_atoms")
-    if has_duplicate_strings([memory_id_text(atom.memory_id) for atom in package.atoms.clone()]) or has_duplicate_strings(
-        [evidence_id_text(atom.evidence_id) for atom in package.atoms.clone()],
+    if has_duplicate_strings([memory_id_text(atom.memory_id) for atom in package.atoms]) or has_duplicate_strings(
+        [evidence_id_text(atom.evidence_id) for atom in package.atoms],
     ):
         return validation_error("invalid_package", "duplicate_atom_identity")
     return validation_ok()
@@ -223,13 +221,13 @@ def validate_atom(package: ConsolePackage, atom: ConsoleAtom) -> ProfileValidati
         return validation_error("invalid_package", "invalid_atom_evidence_kind")
     if atom.claim.strip() == "" or len(atom.claim) > 512 or atom.guidance.strip() == "" or len(atom.guidance) > 512:
         return validation_error("invalid_package", "invalid_atom_content")
-    match find_source(package.sources.clone(), atom.source_id):
+    match find_source(package.sources, atom.source_id):
         None => return validation_error("invalid_package", "unknown_atom_source")
         Some(source) =>
-            source_validation = validate_atom_source_span(source, atom.clone())
+            source_validation = validate_atom_source_span(source, atom)
             if not source_validation.valid:
                 return source_validation
-    if digest_atom_provenance(package, atom.clone()) != atom.provenance_digest:
+    if digest_atom_provenance(package, atom) != atom.provenance_digest:
         return validation_error("invalid_package", "atom_provenance_digest_mismatch")
     return validation_ok()
 
@@ -237,9 +235,9 @@ def validate_atom(package: ConsolePackage, atom: ConsoleAtom) -> ProfileValidati
 def validate_fixed_package_identity(package: ConsolePackage) -> ProfileValidation:
     """Validate derived package identity and the fixed demo profile binding."""
 
-    if digest_package_artifact(package.clone()) != package.artifact_digest:
+    if digest_package_artifact(package) != package.artifact_digest:
         return validation_error("invalid_package", "artifact_digest_mismatch")
-    if len(admitted_atoms(package.clone())) == 0:
+    if len(admitted_atoms(package)) == 0:
         return validation_error("memory_context_invalid", "no_admitted_memory")
     if package_id_text(package.package_id) != FIXED_PACKAGE_ID:
         return validation_error("package_id_mismatch", "fixed_package_id_mismatch")
@@ -255,21 +253,21 @@ def validate_fixed_package_identity(package: ConsolePackage) -> ProfileValidatio
 pub def validate_console_package(package: ConsolePackage) -> ProfileValidation:
     """Compose focused validators for the complete fixed-profile package."""
 
-    for validation in [validate_package_header(package.clone()), validate_package_shape(package.clone()), validate_package_policy(
-        package.clone().policy,
+    for validation in [validate_package_header(package), validate_package_shape(package), validate_package_policy(
+        package.policy,
     )]:
         if not validation.valid:
             return validation
-    for source in package.clone().sources:
+    for source in package.sources:
         validation = validate_source(source)
         if not validation.valid:
             return validation
-    for requirement in package.clone().requirements:
+    for requirement in package.requirements:
         validation = validate_requirement(requirement)
         if not validation.valid:
             return validation
-    for atom in package.clone().atoms:
-        validation = validate_atom(package.clone(), atom)
+    for atom in package.atoms:
+        validation = validate_atom(package, atom)
         if not validation.valid:
             return validation
     return validate_fixed_package_identity(package)
@@ -301,7 +299,7 @@ pub def validate_request_binding(request: ConsoleRequestBinding) -> ProfileValid
     """Validate an exact, non-normalized request binding."""
     if request.question.strip() == "" or len(request.question) > 512:
         return validation_error("invalid_request_schema", "invalid_question")
-    if digest_request_binding(request.clone()) != request.request_digest:
+    if digest_request_binding(request) != request.request_digest:
         return validation_error("request_digest_mismatch", "request_digest_mismatch")
     return validation_ok()
 
@@ -373,18 +371,18 @@ def validate_visible_answer(package: ConsolePackage, proposal: ConsoleProposal) 
     if len(proposal.visible_units) == 0:
         return validation_error("missing_visible_output", "missing_visible_units")
     if len(proposal.visible_units) > 8 or has_duplicate_strings(
-        [unit_id_text(unit.unit_id) for unit in proposal.visible_units.clone()],
+        [unit_id_text(unit.unit_id) for unit in proposal.visible_units],
     ):
         return validation_error("invalid_visible_unit", "invalid_visible_units")
-    for unit in proposal.visible_units.clone():
+    for unit in proposal.visible_units:
         if unit.text.strip() == "" or len(unit.text) > 1024:
             return validation_error("invalid_visible_unit", "invalid_visible_unit")
         if len(unit.requirement_ids) == 0 or len(unit.requirement_ids) > 4 or has_duplicate_strings(
-            [requirement_id_text(requirement_id) for requirement_id in unit.clone().requirement_ids],
+            [requirement_id_text(requirement_id) for requirement_id in unit.requirement_ids],
         ):
             return validation_error("invalid_visible_unit", "invalid_unit_requirements")
         for requirement_id in unit.requirement_ids:
-            if not [requirement.requirement_id for requirement in package.requirements.clone()].contains(requirement_id):
+            if not [requirement.requirement_id for requirement in package.requirements].contains(requirement_id):
                 return validation_error("invalid_visible_unit", "unknown_unit_requirement")
     return validation_ok()
 
@@ -392,21 +390,21 @@ def validate_visible_answer(package: ConsolePackage, proposal: ConsoleProposal) 
 def validate_declared_evidence(package: ConsolePackage, proposal: ConsoleProposal) -> ProfileValidation:
     """Validate the declared action and its complete evidence-reference set."""
 
-    match action_requirement(package.actions.clone(), proposal.action_id):
+    match action_requirement(package.actions, proposal.action_id):
         None => return validation_error("unknown_action", "unknown_action")
         Some(evidence_required) =>
-            if has_duplicate_strings([evidence_id_text(value) for value in proposal.clone().evidence_ids]):
+            if has_duplicate_strings([evidence_id_text(value) for value in proposal.evidence_ids]):
                 return validation_error("duplicate_evidence_reference", "duplicate_evidence_reference")
-            for mapping in proposal.support_mappings.clone():
-                match mapping.clone().evidence_ids:
+            for mapping in proposal.support_mappings:
+                match mapping.evidence_ids:
                     None => pass
                     Some(mapping_evidence_ids) =>
                         if has_duplicate_strings([evidence_id_text(value) for value in mapping_evidence_ids]):
                             return validation_error("duplicate_evidence_reference", "duplicate_support_evidence")
             if evidence_required and len(proposal.evidence_ids) == 0:
                 return validation_error("evidence_required", "evidence_required")
-    for evidence_id in proposal.clone().evidence_ids:
-        match find_atom_by_evidence(package.atoms.clone(), evidence_id):
+    for evidence_id in proposal.evidence_ids:
+        match find_atom_by_evidence(package.atoms, evidence_id):
             None => return validation_error("unknown_evidence", "unknown_evidence")
             Some(_) => pass
     return validation_ok()
@@ -418,7 +416,7 @@ def validate_support_mappings(package: ConsolePackage, proposal: ConsoleProposal
     if len(proposal.support_mappings) != len(proposal.visible_units):
         return validation_error("support_mapping_invalid", "support_coverage_invalid")
     if len(proposal.support_mappings) > 8 or has_duplicate_strings(
-        [support_claim_id_text(mapping.support_claim_id) for mapping in proposal.support_mappings.clone()],
+        [support_claim_id_text(mapping.support_claim_id) for mapping in proposal.support_mappings],
     ):
         return validation_error("support_mapping_invalid", "duplicate_support_claim")
     for index in range(len(proposal.support_mappings)):
@@ -426,26 +424,26 @@ def validate_support_mappings(package: ConsolePackage, proposal: ConsoleProposal
         unit = proposal.visible_units[index]
         if mapping.unit_id != unit.unit_id:
             return validation_error("support_mapping_invalid", "support_unit_order_invalid")
-        match mapping.clone().evidence_ids:
+        match mapping.evidence_ids:
             None => pass
             Some(mapping_evidence_ids) =>
                 if len(mapping_evidence_ids) == 0 or len(mapping_evidence_ids) > 4:
                     return validation_error("support_mapping_invalid", "support_evidence_invalid")
                 for evidence_id in mapping_evidence_ids:
-                    if not proposal.clone().evidence_ids.contains(evidence_id):
+                    if not proposal.evidence_ids.contains(evidence_id):
                         return validation_error("support_mapping_invalid", "support_evidence_not_declared")
-        match find_atom_by_memory(package.atoms.clone(), mapping.memory_id):
+        match find_atom_by_memory(package.atoms, mapping.memory_id):
             None => pass
             Some(atom) =>
                 match mapping.evidence_ids:
                     None =>
-                        if not proposal.clone().evidence_ids.contains(atom.evidence_id):
+                        if not proposal.evidence_ids.contains(atom.evidence_id):
                             return validation_error("support_mapping_invalid", "support_memory_evidence_mismatch")
                     Some(mapping_evidence_ids) =>
                         if not mapping_evidence_ids.contains(atom.evidence_id):
                             return validation_error("support_mapping_invalid", "support_memory_evidence_mismatch")
-    for mapping in proposal.support_mappings.clone():
-        match find_atom_by_memory(package.atoms.clone(), mapping.memory_id):
+    for mapping in proposal.support_mappings:
+        match find_atom_by_memory(package.atoms, mapping.memory_id):
             None => return validation_error("unknown_memory", "unknown_memory")
             Some(_) => pass
     return validation_ok()
@@ -454,14 +452,14 @@ def validate_support_mappings(package: ConsolePackage, proposal: ConsoleProposal
 def validate_admitted_references(package: ConsolePackage, proposal: ConsoleProposal) -> ProfileValidation:
     """Reject declared evidence or support memory outside the admitted package subset."""
 
-    for evidence_id in proposal.clone().evidence_ids:
-        match find_atom_by_evidence(package.atoms.clone(), evidence_id):
+    for evidence_id in proposal.evidence_ids:
+        match find_atom_by_evidence(package.atoms, evidence_id):
             None => pass
             Some(atom) =>
                 if not atom_is_admitted(atom):
                     return validation_error("memory_not_admitted", "evidence_memory_not_admitted")
     for mapping in proposal.support_mappings:
-        match find_atom_by_memory(package.atoms.clone(), mapping.memory_id):
+        match find_atom_by_memory(package.atoms, mapping.memory_id):
             None => pass
             Some(atom) =>
                 if not atom_is_admitted(atom):
@@ -476,16 +474,16 @@ pub def validate_console_proposal(
 ) -> ProfileValidation:
     """Compose identity, visible-answer, evidence, support, and admitted-memory validation."""
 
-    identity = validate_console_proposal_identity(package.clone(), request, proposal.clone())
+    identity = validate_console_proposal_identity(package, request, proposal)
     if not identity.valid:
         return identity
-    visible_answer = validate_visible_answer(package.clone(), proposal.clone())
+    visible_answer = validate_visible_answer(package, proposal)
     if not visible_answer.valid:
         return visible_answer
-    declared_evidence = validate_declared_evidence(package.clone(), proposal.clone())
+    declared_evidence = validate_declared_evidence(package, proposal)
     if not declared_evidence.valid:
         return declared_evidence
-    support_mappings = validate_support_mappings(package.clone(), proposal.clone())
+    support_mappings = validate_support_mappings(package, proposal)
     if not support_mappings.valid:
         return support_mappings
     return validate_admitted_references(package, proposal)

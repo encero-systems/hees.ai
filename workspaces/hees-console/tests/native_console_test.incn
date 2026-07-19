@@ -16,7 +16,7 @@ from evaluation import ConsoleRun, evaluate_offline_scenario, live_context_plan_
 from live import evaluate_live_with_transports
 from main import cli_error, usage
 from crate.provider import GPT56_MODEL, ProviderFailure
-from rendering import bounded_text, render_headless, render_screen
+from rendering import bounded_text, render_headless, render_screen, render_screen_for_size
 from replays import embedded_inputs_are_non_terminal, load_offline_scenario
 from state import (
     apply_command,
@@ -114,7 +114,7 @@ def proposal_transport_from(relative: str, request_body: str) -> Result[str, Pro
     context = provider_payload(request_body)
     request = required(context, "request")
     mut proposal = assert_is_ok(JsonValue.parse(assert_is_ok(read_fixture(relative))))
-    assert_is_ok(proposal.set("request_id", JsonValue.str(required_str(request.clone(), "request_id"))))
+    assert_is_ok(proposal.set("request_id", JsonValue.str(required_str(request, "request_id"))))
     assert_is_ok(proposal.set("request_digest", JsonValue.str(required_str(request, "request_digest"))))
     return Ok(provider_response(assert_is_ok(proposal.to_json())))
 
@@ -135,22 +135,22 @@ def committee_transport(request_body: str) -> Result[str, ProviderFailure]:
     """Return bound high-support scores for each exact Hees-authored committee target."""
 
     payload = provider_payload(request_body)
-    request = required(payload.clone(), "request")
-    target = required(payload.clone(), "target")
-    target_digest = required_str(target.clone(), "target_digest")
+    request = required(payload, "request")
+    target = required(payload, "target")
+    target_digest = required_str(target, "target_digest")
     body = required(target, "body")
-    evaluator_role = required_str(body.clone(), "evaluator_role")
+    evaluator_role = required_str(body, "evaluator_role")
     mut observation = {"contract_version": JsonValue.str("console_relation_observation_0_1"), "profile_id": JsonValue.str(
-        required_str(payload.clone(), "profile_id"),
-    ), "observation_id": JsonValue.str(required_str(payload.clone(), "observation_id")), "package_id": JsonValue.str(
-        required_str(payload.clone(), "package_id"),
-    ), "domain_id": JsonValue.str(required_str(payload.clone(), "domain_id")), "package_revision": JsonValue.str(
-        required_str(payload.clone(), "package_revision"),
+        required_str(payload, "profile_id"),
+    ), "observation_id": JsonValue.str(required_str(payload, "observation_id")), "package_id": JsonValue.str(
+        required_str(payload, "package_id"),
+    ), "domain_id": JsonValue.str(required_str(payload, "domain_id")), "package_revision": JsonValue.str(
+        required_str(payload, "package_revision"),
     ), "artifact_digest": JsonValue.str(required_str(payload, "artifact_digest")), "request_id": JsonValue.str(
-        required_str(request.clone(), "request_id"),
+        required_str(request, "request_id"),
     ), "request_digest": JsonValue.str(required_str(request, "request_digest")), "candidate_digest": JsonValue.str(
-        required_str(body.clone(), "candidate_digest"),
-    ), "target_id": JsonValue.str(required_str(body.clone(), "target_id")), "target_digest": JsonValue.str(target_digest), "evaluator_role": JsonValue.str(
+        required_str(body, "candidate_digest"),
+    ), "target_id": JsonValue.str(required_str(body, "target_id")), "target_digest": JsonValue.str(target_digest), "evaluator_role": JsonValue.str(
         evaluator_role,
     ), "target_role": JsonValue.str(required_str(body, "target_role"))}
     if evaluator_role == "synthesis_coverage":
@@ -282,23 +282,23 @@ def test_state_transitions_wrap_and_select_scenarios_and_inspectors() -> None:
 
     states = [true, false, false, false, false]
     mut state = initial_state()
-    assert_eq(selected_scenario_slug(state.clone()), "valid")
-    assert_eq(selected_inspector_name(state.clone()), "PACKAGE")
+    assert_eq(selected_scenario_slug(state), "valid")
+    assert_eq(selected_inspector_name(state), "PACKAGE")
     assert_eq(state.surface, "interactions")
-    state = apply_command(state, "previous-scenario", states.clone())
-    assert_eq(selected_scenario_slug(state.clone()), "non-admitted-memory")
-    state = apply_command(state, "next-scenario", states.clone())
-    assert_eq(selected_scenario_slug(state.clone()), "valid")
-    state = apply_command(state, "scenario-3", states.clone())
-    assert_eq(selected_scenario_slug(state.clone()), "unknown-evidence")
-    state = apply_command(state, "scenario-5", states.clone())
-    assert_eq(selected_scenario_slug(state.clone()), "non-admitted-memory")
-    state = apply_command(state, "previous-inspector", states.clone())
+    state = apply_command(state, "previous-scenario", states)
+    assert_eq(selected_scenario_slug(state), "non-admitted-memory")
+    state = apply_command(state, "next-scenario", states)
+    assert_eq(selected_scenario_slug(state), "valid")
+    state = apply_command(state, "scenario-3", states)
+    assert_eq(selected_scenario_slug(state), "unknown-evidence")
+    state = apply_command(state, "scenario-5", states)
+    assert_eq(selected_scenario_slug(state), "non-admitted-memory")
+    state = apply_command(state, "previous-inspector", states)
     assert_eq(state.surface, "inspector")
-    assert_eq(selected_inspector_name(state.clone()), "TRACE")
-    state = apply_command(state, "next-inspector", states.clone())
-    assert_eq(selected_inspector_name(state.clone()), "PACKAGE")
-    state = apply_command(state, "toggle-sidebar", states.clone())
+    assert_eq(selected_inspector_name(state), "TRACE")
+    state = apply_command(state, "next-inspector", states)
+    assert_eq(selected_inspector_name(state), "PACKAGE")
+    state = apply_command(state, "toggle-sidebar", states)
     assert_eq(state.sidebar_collapsed, true)
     state = apply_command(state, "quit", states)
     assert_eq(state.running, false)
@@ -309,29 +309,29 @@ def test_interaction_filters_compose_status_free_text_and_tags() -> None:
 
     states = [true, false, false, false, false]
     mut state = initial_state()
-    state = apply_command(state, "open-status", states.clone())
-    state = apply_command(state, "toggle-option", states.clone())
-    assert_eq(visible_scenario_indexes(state.clone(), states.clone()), [1, 2, 3, 4])
-    state = apply_command(state, "close-control", states.clone())
-    state = apply_command(state, "open-search", states.clone())
+    state = apply_command(state, "open-status", states)
+    state = apply_command(state, "toggle-option", states)
+    assert_eq(visible_scenario_indexes(state, states), [1, 2, 3, 4])
+    state = apply_command(state, "close-control", states)
+    state = apply_command(state, "open-search", states)
     for character in ["text:m", "text:e", "text:m", "text:o", "text:r", "text:y"]:
-        state = apply_command(state, character, states.clone())
-    assert_eq(visible_scenario_indexes(state.clone(), states.clone()), [3, 4])
-    state = apply_command(state, "backspace", states.clone())
-    state = apply_command(state, "clear-search", states.clone())
-    state = apply_command(state, "next-option", states.clone())
-    state = apply_command(state, "toggle-option", states.clone())
+        state = apply_command(state, character, states)
+    assert_eq(visible_scenario_indexes(state, states), [3, 4])
+    state = apply_command(state, "backspace", states)
+    state = apply_command(state, "clear-search", states)
+    state = apply_command(state, "next-option", states)
+    state = apply_command(state, "toggle-option", states)
     assert_eq(state.selected_tags, ["adversarial"])
     assert_eq(visible_scenario_indexes(state, states), [1, 2, 3, 4])
 
     mut empty = initial_state()
-    empty = apply_command(empty, "open-status", states.clone())
-    empty = apply_command(empty, "toggle-option", states.clone())
-    empty = apply_command(empty, "next-option", states.clone())
-    empty = apply_command(empty, "toggle-option", states.clone())
-    empty = apply_command(empty, "close-control", states.clone())
+    empty = apply_command(empty, "open-status", states)
+    empty = apply_command(empty, "toggle-option", states)
+    empty = apply_command(empty, "next-option", states)
+    empty = apply_command(empty, "toggle-option", states)
+    empty = apply_command(empty, "close-control", states)
     no_visible_scenarios: list[int] = []
-    assert_eq(visible_scenario_indexes(empty.clone(), states.clone()), no_visible_scenarios)
+    assert_eq(visible_scenario_indexes(empty, states), no_visible_scenarios)
     empty = apply_command(empty, "next-inspector", states)
     assert_eq(empty.surface, "interactions")
 
@@ -339,22 +339,24 @@ def test_interaction_filters_compose_status_free_text_and_tags() -> None:
 def test_portable_raw_key_decoder_maps_shortcuts_and_cursor_sequences() -> None:
     """Keep raw terminal decoding deterministic without crossterm event metadata."""
 
-    assert_eq(command_for_byte(49), "scenario-1")
-    assert_eq(command_for_byte(52), "scenario-4")
-    assert_eq(command_for_byte(53), "scenario-5")
+    assert_eq(command_for_byte(49), "show-interactions")
+    assert_eq(command_for_byte(52), "show-decisions")
+    assert_eq(command_for_byte(53), "show-receipts")
+    assert_eq(command_for_byte(54), "show-help")
     assert_eq(command_for_byte(98), "toggle-sidebar")
     assert_eq(command_for_byte(103), "show-interactions")
     assert_eq(command_for_byte(47), "open-search")
     assert_eq(command_for_byte(115), "open-status")
-    assert_eq(command_for_byte(104), "previous-inspector")
-    assert_eq(command_for_byte(108), "next-inspector")
+    assert_eq(command_for_byte(104), "previous-context")
+    assert_eq(command_for_byte(108), "next-context")
     assert_eq(command_for_byte(107), "previous-scenario")
     assert_eq(command_for_byte(106), "next-scenario")
-    assert_eq(command_for_byte(13), "next-inspector")
+    assert_eq(command_for_byte(9), "next-context")
+    assert_eq(command_for_byte(13), "open-inspector")
     assert_eq(command_for_byte(113), "quit")
     assert_eq(command_for_byte(0), "noop")
-    assert_eq(command_for_escape_sequence(91, 68), "previous-inspector")
-    assert_eq(command_for_escape_sequence(91, 67), "next-inspector")
+    assert_eq(command_for_escape_sequence(91, 68), "previous-context")
+    assert_eq(command_for_escape_sequence(91, 67), "next-context")
     assert_eq(command_for_escape_sequence(91, 65), "previous-scenario")
     assert_eq(command_for_escape_sequence(91, 66), "next-scenario")
     assert_eq(command_for_escape_sequence(79, 65), "noop")
@@ -403,23 +405,56 @@ def test_full_screen_carries_the_exact_build_week_product_line() -> None:
         runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
     states = [true, false, false, false, false]
     mut state = initial_state()
-    browser = render_screen(state.clone(), runs.clone())
-    assert_eq(browser.contains("INTERACTIONS"), true)
-    assert_eq(browser.contains("SEARCH + TAGS [/]"), true)
-    assert_eq(browser.contains("Status [s]"), true)
+    browser = render_screen(state, runs)
+    assert_eq(browser.contains("[1 INTERACTIONS]"), true)
+    assert_eq(browser.contains("Search interactions"), true)
+    assert_eq(browser.contains("CONTEXT  EVIDENCE  MEMORY  [RECEIPT]"), true)
     assert_eq(browser.contains("ADMITTED"), true)
     assert_eq(browser.contains("REJECTED"), true)
-    assert_eq(browser.contains("✓ ADMITTED"), true)
-    assert_eq(browser.contains("✕ REJECTED"), true)
+    assert_eq(browser.contains("✓"), true)
     escape = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b\"}"))
     assert_eq(browser.contains(escape.value), true)
     state = apply_command(state, "next-inspector", states)
     screen = render_screen(state, runs)
     assert_eq(screen.contains("GPT-5.6 proposes. Hees decides."), true)
-    assert_eq(screen.contains("BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1"), true)
+    assert_eq(screen.contains("console_profile_0_1"), true)
     assert_eq(screen.contains("FIXED PROFILE PACKAGE"), true)
     assert_eq(screen.contains("What order should I use for the Lantern Path cards?"), true)
-    assert_eq(screen.contains("b collapse nav"), true)
+    assert_eq(screen.contains("b collapse"), true)
+
+
+def test_interaction_workspace_prioritizes_navigation_authority_and_readable_receipts() -> None:
+    """Render the selected hees.ai console design without falling back to raw JSON."""
+
+    mut runs: list[ConsoleRun] = []
+    for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
+        runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    state = apply_command(state, "next-scenario", states)
+    screen = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(screen.contains("hees.ai console"), true)
+    assert_eq(screen.contains("[1 INTERACTIONS]"), true)
+    assert_eq(screen.contains("UNTRUSTED PROPOSAL  MODEL"), true)
+    assert_eq(screen.contains("HEES DECISION"), true)
+    assert_eq(screen.contains("unknown_action"), true)
+    assert_eq(screen.contains("CONTEXT  EVIDENCE  MEMORY  [RECEIPT]"), true)
+    assert_eq(screen.contains("{\"body\""), false)
+
+
+def test_compact_workspace_keeps_the_decision_and_controls_visible() -> None:
+    """Keep the core judge path usable in a short or narrow terminal."""
+
+    mut runs: list[ConsoleRun] = []
+    for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
+        runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
+    state = apply_command(initial_state(), "next-scenario", [true, false, false, false, false])
+    screen = render_screen_for_size(state, runs, 100, 20)
+    assert_eq(screen.contains("COMPACT VIEW"), true)
+    assert_eq(screen.contains("HEES DECISION"), true)
+    assert_eq(screen.contains("unknown_action"), true)
+    assert_eq(screen.contains("q quit"), true)
+    assert_eq(len(screen.split("\n")) <= 20, true)
 
 
 def test_trace_is_separate_non_authoritative_and_redacts_interaction_content() -> None:
@@ -487,7 +522,7 @@ def test_private_live_plan_rejects_contract_drift() -> None:
 
     source = assert_is_ok(plan_live_question_json("What is the Lantern Path sequence?"))
     mut plan = assert_is_ok(JsonValue.parse(source))
-    assert_eq(required_str(plan.clone(), "contract_version"), "console_live_question_plan_0_1")
+    assert_eq(required_str(plan, "contract_version"), "console_live_question_plan_0_1")
     assert_is_ok(plan.set("contract_version", JsonValue.str("console_live_question_plan_9_9")))
     error = assert_is_err(live_context_plan_json(assert_is_ok(plan.to_json())))
     assert_eq(error, "live_plan_invalid")

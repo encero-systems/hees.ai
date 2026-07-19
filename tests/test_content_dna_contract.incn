@@ -82,7 +82,7 @@ def test_admitted_content_dna_and_receipt_match_frozen_envelope_ids() -> None:
     assert_eq(result.spectrum.admitted, true)
     content_dna = assert_is_ok(ContentDna.from_json(assert_is_some(result.content_dna_json)))
     assert_eq(
-        content_dna_answer_digest(content_dna.clone()),
+        content_dna_answer_digest(content_dna),
         "sha256:70a8e39c86b1524474352733c3570579321e097e65379a1a8723ba1caa92c57b",
     )
     assert_eq(

@@ -1,4 +1,4 @@
-# Hees Console Devpost draft
+# hees.ai console Devpost draft
 
 > **Pre-freeze draft:** Do not paste this copy into Devpost until every `FINALIZE BEFORE RELEASE` and `MANUAL INPUT REQUIRED` field has been replaced, removed, or narrowed after the completion audit. The finished entry must describe only the frozen release candidate and public evidence.
 
@@ -6,7 +6,7 @@
 
 | Field | Draft value |
 | --- | --- |
-| Title | Hees Console |
+| Title | hees.ai console |
 | Tagline | GPT-5.6 proposes. Hees decides. |
 | Category | Developer Tools |
 | Repository | [Hees.ai](https://github.com/encero-systems/hees.ai); **[FINALIZE BEFORE RELEASE: FROZEN REVISION URL]** |
@@ -16,17 +16,17 @@
 
 ## Short description
 
-Hees Console is a local-first developer tool for inspecting the authority boundary around AI output. Under the bounded live contract, GPT-5.6 may propose structured content and observations; Hees validates the exact inputs, classifies findings under package-owned policy, and makes the terminal decision. The Build Week profile applies that separation to a fictional scenario, with implemented zero-credential offline replay and an optional live adapter whose successful public canary remains unverified.
+hees.ai console is a local-first developer tool for inspecting the authority boundary around AI output. Under the bounded live contract, GPT-5.6 may propose structured content and observations; Hees validates the exact inputs, classifies findings under package-owned policy, and makes the terminal decision. The Build Week profile applies that separation to a fictional scenario, with implemented zero-credential offline replay and an optional live adapter whose successful public canary remains unverified.
 
 ## The problem
 
 Structured model output can make a response machine-readable, but schema validity does not make the model an authority. It does not prove that an action was declared, that cited evidence belongs to the governed package, that memory was reviewed and admitted, or that an evaluator's observation should have a particular policy effect. Those distinctions are easy to hide inside one chat-style response, leaving developers with no clear way to inspect which component proposed, observed, classified, or decided.
 
-Hees Console addresses that developer problem by making the boundary explicit: models propose and observe, package policy defines the admissible space, and the Incan-authored Hees runtime decides. The product is aimed at developers who need a testable, provider-neutral governance boundary rather than another presentation layer around model prose.
+hees.ai console addresses that developer problem by making the boundary explicit: models propose and observe, package policy defines the admissible space, and the Incan-authored Hees runtime decides. The product is aimed at developers who need a testable, provider-neutral governance boundary rather than another presentation layer around model prose.
 
 ## The product
 
-The permanent Hees Console north star is a terminal-first, local-first, provider-neutral and domain-neutral developer product for building, validating, running, replaying, and inspecting governed AI interactions. That broader workflow remains Draft design work; it must not be inferred from this event profile.
+The permanent hees.ai console north star is a terminal-first, local-first, provider-neutral and domain-neutral developer product for building, validating, running, replaying, and inspecting governed AI interactions. That broader workflow remains Draft design work; it must not be inferred from this event profile.
 
 For Build Week, the deliberately bounded `console_profile_0_1` profile uses one original fictional lesson-support package to demonstrate one governed interaction end to end. The checked release candidate provides these judge-visible surfaces; public release evidence remains a separate finalization gate:
 
@@ -69,13 +69,13 @@ The interaction is keyboard-first and deterministic for judges: keys `1` through
 
 ## Potential impact
 
-Hees Console makes a specific governance question testable: who supplied each input, who interpreted it, and who had authority to decide? That matters for developers building AI systems in which a well-formed model response still must not bypass package declarations, evidence state, or application policy.
+hees.ai console makes a specific governance question testable: who supplied each input, who interpreted it, and who had authority to decide? That matters for developers building AI systems in which a well-formed model response still must not bypass package declarations, evidence state, or application policy.
 
 The bounded event profile is designed to demonstrate the approach without requiring network access, credentials, private content, or a source build. The broader product direction is a provider-neutral developer workflow in which teams can author packages, pressure-test proposals through bounded evaluator roles, replay interactions, and inspect terminal artifacts locally. The event entry does not claim those broader authoring and intake capabilities are implemented.
 
 ## Novelty
 
-The central idea is not merely to validate a model's JSON. Hees Console makes proposal, observation, policy classification, and terminal authority separate product surfaces. Even the role-bound evaluator calls used for the bounded Training by Committee demonstration remain non-authoritative: Hees derives their targets, checks complete coverage, applies package-owned policy, and decides without a provider vote.
+The central idea is not merely to validate a model's JSON. hees.ai console makes proposal, observation, policy classification, and terminal authority separate product surfaces. Even the role-bound evaluator calls used for the bounded Training by Committee demonstration remain non-authoritative: Hees derives their targets, checks complete coverage, applies package-owned policy, and decides without a provider vote.
 
 The same authority boundary is designed to serve deterministic offline replay and the optional live GPT-5.6 path. This gives judges a path to inspect the governance mechanism without granting a model authority and without making provider availability a condition of the default demo.
 
@@ -94,7 +94,7 @@ The same authority boundary is designed to serve deterministic offline replay an
 
 Hees and Incan were not created during Build Week. Before July 13, 2026, Incan was already a long-running, human-directed language and compiler project built with substantial GPT assistance throughout its multi-month development, and earlier Hees design and implementation work also predated the event.
 
-During the July 13–21 Build Week submission period, Codex with GPT-5.6 was used to design, implement, review, test, package, and document the bounded Hees Console profile and the public Hees extension required to support it. Dated commits and task evidence will distinguish that new work from the pre-existing projects.
+During the July 13–21 Build Week submission period, Codex with GPT-5.6 was used to design, implement, review, test, package, and document the bounded hees.ai console profile and the public Hees extension required to support it. Dated commits and task evidence will distinguish that new work from the pre-existing projects.
 
 Human decisions remained decisive. Danny chose the model-as-untrusted boundary, kept Hees as the terminal authority, separated the permanent Console product from the event profile, required offline replay as the default, selected original fictional content, and retained publication, release, hosting, and submission approval.
 
@@ -117,7 +117,7 @@ Complete instructions, platform support, expected values, and safe troubleshooti
 
 ## Current limitations
 
-- This is one fictional, bounded implementation profile, not the complete permanent Hees Console and not a general evidence-ingestion, retrieval, RAG, vector-search, or package-authoring system.
+- This is one fictional, bounded implementation profile, not the complete permanent hees.ai console and not a general evidence-ingestion, retrieval, RAG, vector-search, or package-authoring system.
 - The profile has only `admit` and `reject`; it does not implement repair, clarification, escalation, or the complete Draft response lifecycle.
 - The current executable's optional atom-comparison inspector reports `not_configured` and `package_effect=none`; it does not create a model-generated atom candidate during the demonstrated interaction.
 - The bounded Training by Committee slice pressure-tests proposals; it is not model-weight training, fine-tuning, semantic truth, or provider voting.

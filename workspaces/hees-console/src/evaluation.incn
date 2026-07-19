@@ -364,7 +364,7 @@ def decode_embedded_package() -> Result[ConsolePackage, str]:
 def package_inspection(package: ConsolePackage) -> Result[PackageInspectionProjection, str]:
     """Create the local package inspector projection without reconstructing package authority."""
 
-    source = TypedPackageProjection(package=package.clone()).to_json()
+    source = TypedPackageProjection(package=package).to_json()
     envelope = PackageInspectionEnvelope.from_json(source).map_err((_error) => f"package_inspection_failed")?
     package_view = envelope.package
     return Ok(
@@ -480,7 +480,7 @@ def evaluate_inputs(interaction: ConsoleInteraction, inputs: HeesAuthorityInput)
         inputs.synthesis_observations,
     )
     result = CompleteProfileProjection.from_json(source).map_err((_error) => f"evaluation_projection_failed")?
-    trace = trace_projection(interaction.clone(), result.clone())
+    trace = trace_projection(interaction, result)
     return Ok(ConsoleRun(scenario=interaction, result=result, trace=trace))
 
 
@@ -490,8 +490,8 @@ pub def evaluate_offline_scenario(slug: str) -> Result[ConsoleRun, str]:
     if not embedded_inputs_are_non_terminal():
         return Err("embedded_terminal_result")
     scenario = load_offline_scenario(slug)?
-    inputs = decode_authority_input(scenario.clone())?
-    inspection = package_inspection(inputs.package.clone())?
+    inputs = decode_authority_input(scenario)?
+    inspection = package_inspection(inputs.package)?
     replay_interaction = ConsoleInteraction(
         mode="OFFLINE",
         slug=scenario.slug,
@@ -516,14 +516,14 @@ pub def evaluate_live_interaction(
         contract_version="console_live_input_0_1",
         profile_id="console_profile_0_1",
         scenario_id="live_question",
-        request=request.clone(),
-        proposal=proposal.clone(),
-        relation_observations=relation_observations.clone(),
-        synthesis_observations=synthesis_observations.clone(),
+        request=request,
+        proposal=proposal,
+        relation_observations=relation_observations,
+        synthesis_observations=synthesis_observations,
         schema_digests=profile_schema_digests(),
     )
     body = ReplayBody.from_json(projection.to_json()).map_err((_error) => f"live_projection_failed")?
-    inspection = package_inspection(package.clone())?
+    inspection = package_inspection(package)?
     live_interaction = ConsoleInteraction(
         mode="LIVE",
         slug="live",
@@ -553,7 +553,7 @@ pub def plan_live_question_json(question: str) -> Result[str, str]:
     match plan.request:
         None => return Err("live_request_not_plannable")
         Some(request) =>
-            context_plan_json = plan_console_provider_context_json(package.clone(), request.clone())
+            context_plan_json = plan_console_provider_context_json(package, request)
             return Ok(
                 LiveQuestionPlan(
                     contract_version=LIVE_PLAN_CONTRACT,

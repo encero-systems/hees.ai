@@ -1,6 +1,6 @@
 # Console profile 0.1 bounds and evidence
 
-`console_profile_0_1` is the first bounded implementation profile for Hees Console. The exact label displayed by the executable is `BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1`. The profile remains subordinate to the provider-neutral and domain-neutral product contract in Draft RFC 010.
+`console_profile_0_1` is the first bounded implementation profile for hees.ai console. The exact label displayed by the executable is `BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1`. The profile remains subordinate to the provider-neutral and domain-neutral product contract in Draft RFC 010.
 
 ## Enforced ceilings
 

@@ -101,7 +101,7 @@ def selected_source_digests(atoms: list[ConsoleAtom]) -> list[DigestIdType]:
 
     mut result: list[DigestIdType] = []
     for atom in atoms:
-        if not result.contains(atom.clone().source_fingerprint):
+        if not result.contains(atom.source_fingerprint):
             result.append(atom.source_fingerprint)
     return result
 
@@ -135,11 +135,9 @@ def admitted_content_dna_body(
             response_contract_id=package.policy.response_contract_id,
             response_contract_revision=package.policy.response_contract_revision,
         ),
-        entries=content_dna_entries(evaluation.selected_memory.clone()),
-        source_digests=selected_source_digests(evaluation.selected_memory.clone()),
-        answer_digest=digest_serialized_json(
-            AnswerProjection(visible_units=evaluation.admitted_visible_units.clone()).to_json(),
-        ),
+        entries=content_dna_entries(evaluation.selected_memory),
+        source_digests=selected_source_digests(evaluation.selected_memory),
+        answer_digest=digest_serialized_json(AnswerProjection(visible_units=evaluation.admitted_visible_units).to_json()),
     )
 
 
@@ -204,9 +202,9 @@ def receipt_identity_is_established(
 ) -> bool:
     """Return whether the fixed package, request, and proposal identity are safe to export."""
 
-    if not validate_console_package(package.clone()).valid:
+    if not validate_console_package(package).valid:
         return false
-    if not validate_request_binding(request.clone()).valid:
+    if not validate_request_binding(request).valid:
         return false
     return validate_console_proposal_identity(package, request, proposal).valid
 
@@ -220,11 +218,11 @@ pub def evaluate_console_profile_with_artifacts(
 ) -> CompleteProfileEvaluation:
     """Add Content DNA on admission and a receipt whenever its complete identity is established."""
 
-    evaluation = evaluate_console_profile(package.clone(), request.clone(), proposal.clone(), relations, syntheses)
+    evaluation = evaluate_console_profile(package, request, proposal, relations, syntheses)
     if not evaluation.spectrum.admitted:
-        if not receipt_identity_is_established(package.clone(), request.clone(), proposal.clone()):
+        if not receipt_identity_is_established(package, request, proposal):
             return complete_evaluation(evaluation, None, None)
-        match construct_rejected_receipt(rejected_receipt_body(request, proposal.clone(), evaluation.clone())):
+        match construct_rejected_receipt(rejected_receipt_body(request, proposal, evaluation)):
             Some(receipt) => return complete_evaluation(evaluation, None, Some(receipt))
             None =>
                 failed = rejected_evaluation(
@@ -235,7 +233,7 @@ pub def evaluate_console_profile_with_artifacts(
                     evaluation.findings,
                 )
                 return complete_evaluation(failed, None, None)
-    match construct_content_dna(admitted_content_dna_body(package.clone(), proposal.clone(), evaluation.clone())):
+    match construct_content_dna(admitted_content_dna_body(package, proposal, evaluation)):
         None =>
             failed = rejected_evaluation(
                 proposal.proposal_id,
@@ -247,12 +245,7 @@ pub def evaluate_console_profile_with_artifacts(
             return complete_evaluation(failed, None, None)
         Some(content_dna) =>
             match construct_admitted_receipt(
-                admitted_receipt_body(
-                    request,
-                    proposal.clone(),
-                    evaluation.clone(),
-                    content_dna_identifier(content_dna.clone()),
-                ),
+                admitted_receipt_body(request, proposal, evaluation, content_dna_identifier(content_dna)),
             ):
                 Some(receipt) => return complete_evaluation(evaluation, Some(content_dna), Some(receipt))
                 None =>
