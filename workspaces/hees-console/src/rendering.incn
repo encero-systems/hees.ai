@@ -612,7 +612,7 @@ def interaction_browser_lines(state: ConsoleState, runs: list[ConsoleRun]) -> li
         )
     lines.extend(status_control_lines(state))
     lines.append("")
-    lines.append("↑/↓ or j/k select · enter inspect · 1–5 direct scenario · / search + tags · s status")
+    lines.append("↑/↓ or j/k select · enter inspect · 1–6 destinations · / search + tags · s status")
     return lines
 
 
@@ -1099,7 +1099,7 @@ pub def render_screen_for_size(state: ConsoleState, runs: list[ConsoleRun], colu
     lines.append(horizontal_rule(columns))
     lines.append(
         padded_column(
-            "TAB next pane · SHIFT+TAB previous · ENTER inspect · / search · ↑↓ scenario · b collapse · q quit",
+            "TAB or ←/→ context · ENTER inspect · 1–6 destinations · / search · ↑↓ scenario · b collapse · q quit",
             columns,
         ),
     )

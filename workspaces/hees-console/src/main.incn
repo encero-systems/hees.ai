@@ -33,6 +33,7 @@ pub def usage() -> str:
 def process_arguments() -> list[str]:
     """Collect process arguments as Incan strings, excluding the executable path."""
 
+    # Rust Args is an iterator, not the list-backed iterable consumed by Incan comprehensions.
     mut result: list[str] = []
     mut first = true
     for argument in args():

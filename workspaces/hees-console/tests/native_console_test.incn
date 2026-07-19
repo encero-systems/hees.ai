@@ -439,6 +439,10 @@ def test_interaction_workspace_prioritizes_navigation_authority_and_readable_rec
     assert_eq(screen.contains("HEES DECISION"), true)
     assert_eq(screen.contains("unknown_action"), true)
     assert_eq(screen.contains("CONTEXT  EVIDENCE  MEMORY  [RECEIPT]"), true)
+    assert_eq(screen.contains("TAB or ←/→ context"), true)
+    assert_eq(screen.contains("1–6 destinations"), true)
+    assert_eq(screen.contains("SHIFT+TAB"), false)
+    assert_eq(screen.contains("direct scenario"), false)
     assert_eq(screen.contains("{\"body\""), false)
 
 
