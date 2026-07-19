@@ -63,7 +63,7 @@ The Console is designed around inspection rather than chat. The checked implemen
 - the terminal action, reason namespace, and reason are visible without opening raw protocol data; and
 - selected memory, experimental Content DNA, and the profile receipt appear only on an admitted path.
 
-The interaction is keyboard-first and deterministic for judges: keys `1` through `4` run one valid and three adversarial scenarios, while thirteen dedicated inspectors expose the package, sources, optional atom-comparison state, proposal, support mappings, manifest, observations, findings, Spectrum result, selected memory, Content DNA, receipt, and trace.
+The interaction is keyboard-first and deterministic for judges: keys `1` through `5` run one valid and four adversarial scenarios, while thirteen dedicated inspectors expose the package, sources, optional atom-comparison state, proposal, support mappings, manifest, observations, findings, Spectrum result, selected memory, Content DNA, receipt, and trace.
 
 **Design evidence:** **[FINALIZE BEFORE RELEASE: FROZEN SCREENSHOTS, NARROW AND MONOCHROME CHECKS, TERMINAL-ESCAPING TESTS, AND VIDEO TIMECODES]**.
 

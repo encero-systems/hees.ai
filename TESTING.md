@@ -133,4 +133,4 @@ make console-release-candidate \
 
 ## What a successful test establishes
 
-A successful offline judge run establishes that the published executable can rerun the four frozen scenarios through the real Incan-authored Build Week profile and expose that profile's exact trust boundary without rebuilding the project. It does not establish that the fictional answer is true, that provider observations are correct, that source rights exist beyond declared fixture state, that the permanent Console workflow is implemented, or that the limited artifacts conform to the complete Draft RFC suite.
+A successful offline judge run establishes that the published executable can rerun the five frozen scenarios through the real Incan-authored Build Week profile and expose that profile's exact trust boundary without rebuilding the project. It does not establish that the fictional answer is true, that provider observations are correct, that source rights exist beyond declared fixture state, that the permanent Console workflow is implemented, or that the limited artifacts conform to the complete Draft RFC suite.
