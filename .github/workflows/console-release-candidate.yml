@@ -25,6 +25,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install Rust 1.93
         uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66 # 1.93.0
       - name: Install checksum-pinned actionlint 1.7.12
@@ -77,6 +78,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Configure release paths
         run: |
           printf 'INCAN_ROOT=%s\n' "$RUNNER_TEMP/incan-0.4.0" >> "$GITHUB_ENV"
@@ -97,10 +99,18 @@ jobs:
           INCAN="$INCAN_ROOT/bin/incan"
           RELEASE_PLATFORM="$RELEASE_PLATFORM"
           RELEASE_OUTPUT="$RELEASE_OUTPUT"
+      - name: Verify immutable source identity
+        env:
+          RELEASE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_SOURCE_SHA"
+          grep -F '"commit":"'"$RELEASE_SOURCE_SHA"'"' \
+            "$RELEASE_OUTPUT/hees-console-0.1.0-$RELEASE_PLATFORM.manifest.json"
       - name: Upload untrusted release-candidate evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: hees-console-${{ matrix.platform }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          name: hees-console-${{ matrix.platform }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/hees-console-release/*
           if-no-files-found: error
           compression-level: 0
