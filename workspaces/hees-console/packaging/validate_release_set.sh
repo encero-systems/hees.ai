@@ -40,7 +40,9 @@ file_size() {
 assert_native_executable() {
     native_binary=$1
     native_platform=$2
-    [ -f "$native_binary" ] && [ -x "$native_binary" ] || fail "binary_not_executable_$native_platform"
+    if [ ! -f "$native_binary" ] || [ ! -x "$native_binary" ]; then
+        fail "binary_not_executable_$native_platform"
+    fi
     if [ "${HEES_RELEASE_ALLOW_TEST_EXECUTABLE:-0}" = 1 ]; then
         [ -n "${HEES_RELEASE_TEST_ROOT:-}" ] || fail "test_executable_scope_missing"
         case "$native_binary" in
@@ -176,7 +178,9 @@ validate_release_set() {
     entry_count=0
     for entry in "$directory"/*
     do
-        [ -f "$entry" ] && [ ! -L "$entry" ] || fail "release_set_non_file"
+        if [ ! -f "$entry" ] || [ -L "$entry" ]; then
+            fail "release_set_non_file"
+        fi
         name=$(basename -- "$entry")
         case "$name" in
             hees-console-0.1.0-linux-x86_64.tar.gz | \
