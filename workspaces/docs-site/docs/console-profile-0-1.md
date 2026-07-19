@@ -38,16 +38,16 @@ The runner and provider reject excessive nesting before invoking a JSON parser. 
 
 ## Verified local release candidate
 
-The following measurements were recorded on 2026-07-19 from clean source commit `31899e3d807c5e04b5fac26176a827cf9df96337`, using released Incan `0.4.0` on macOS `26.5.2`, Apple M5 Max ARM64. They describe one local candidate and do not establish support for another platform.
+The following measurements were recorded on 2026-07-19 from clean source commit `329f2228ad63e5b9b29b4acfb98140c20fddc78d`, using released Incan `0.4.0` on macOS `26.5.2`, Apple M5 Max ARM64. They describe one local candidate and do not establish support for another platform. This snapshot is evidence for the measured implementation, not a substitute for the checksum sidecar of the eventual public release.
 
 | Measurement | Observed value |
 | --- | --- |
-| Native executable | 6,159,920 bytes |
-| Complete compressed archive | 2,365,341 bytes |
-| Archive SHA-256 | `76dec56bdedfd745ca00d0a71389497aecc852f4ce842c1d4df885c7cc2d40e4` |
+| Native executable | 6,159,184 bytes |
+| Complete compressed archive | 2,364,961 bytes |
+| Candidate archive SHA-256 | `99acf35f5d7c82e354cd8b90a86daa6d5e17168d7a2e85f33beceb1dd07a7e24` |
 | Valid headless report | 7,185 bytes with direct question and source text redacted |
-| Warm-cache headless execution | 7.0 ms mean, 0.3 ms standard deviation, 6.3–7.8 ms range over 50 fresh processes |
-| Peak resident set size | 5,537,792 bytes maximum across five fresh-process runs |
+| Warm-cache headless execution | 8.6 ms mean, 1.4 ms standard deviation, 6.9–13.6 ms range over 50 fresh processes |
+| Peak resident set size | 5,505,024 bytes maximum across five fresh-process runs |
 | Shipped package JSON | 6,891 bytes |
 | Largest shipped replay JSON | 13,325 bytes |
 | All five shipped replay JSON files | 22,276 bytes |
