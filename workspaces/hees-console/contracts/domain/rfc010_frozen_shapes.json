@@ -1256,7 +1256,7 @@
       "/properties/contract_version/const": "console_source_catalog_0_1",
       "/properties/sources/items/properties/language/const": "en",
       "/properties/sources/items/properties/source_kind/const": "fictional_lesson_note",
-      "/properties/sources/items/properties/original_author_statement/const": "Original fictional English content authored for the public Hees Console Build Week initial-profile fixture.",
+      "/properties/sources/items/properties/original_author_statement/const": "Original fictional English content authored for the public hees.ai console Build Week initial-profile fixture.",
       "/properties/sources/items/properties/rights_state/const": "fictional_use_allowed",
       "/properties/sources/items/properties/review_state/const": "approved"
     },

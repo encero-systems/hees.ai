@@ -100,7 +100,7 @@ One complete live invocation is preflight-limited to one proposal call and at mo
 5. Confirm that provider refusal, timeout, rate limit, malformed structured output, or incomplete observation coverage produces a typed fail-closed state and never silently substitutes replay values under a live label.
 6. Remove the environment credential after the test.
 
-**Verified live canary:** not verified as of July 20, 2026. The bounded canary reached the Responses API but received HTTP 429 `insufficient_quota`. The video and primary judge path must therefore use offline replay unless a later public canary proves the frozen live path.
+**Live network status:** implemented and provider-boundary tested, but not demonstrated end to end. After an earlier quota-blocked attempt, the single funded and approved no-retry canary failed closed at its first proposal call with typed state `provider_unavailable`. It returned no structured proposal, made no committee calls, and did not reach a live Hees decision. No retry was attempted. The video and primary judge path use offline replay.
 
 The adapter's request construction, strict decoding, injected-transport composition, budget preflight, and fail-closed behavior are covered by seventeen provider-boundary tests. It is designed against the official [GPT-5.6 Sol model](https://developers.openai.com/api/docs/models/gpt-5.6-sol), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), and [API data controls](https://developers.openai.com/api/docs/guides/your-data) documentation.
 

@@ -21,7 +21,7 @@ The available categories are Developer Tools, Apps for Your Life, Work and Produ
 
 ## Short description
 
-hees.ai console is a local-first development environment for governed AI. It turns evidence into reviewed memory atoms, then binds those atoms, rights declarations, permitted actions, policy, and evaluator roles into reusable governance profiles. Developers can pressure-test model proposals through Training by Committee, run them through the Incan-authored Hees authority boundary, and inspect the resulting bounded Spectrum decision, selected memory, Content DNA, and receipt. GPT-5.6 may propose. Hees decides.
+hees.ai console is a local-first development environment built around reusable governance profiles. Its permanent workflow turns evidence into reviewed memory atoms and binds them to declared rights, permitted actions, policy, and evaluator roles. This Build Week release demonstrates the first bounded slice: inspect supplied fictional evidence and memory, safely modify and validate a session-local candidate, pressure-test proposals through Training by Committee, and inspect the bounded Spectrum result, terminal Hees decision, selected memory, Content DNA, and receipt. GPT-5.6 may propose. Hees decides.
 
 ## The problem
 
@@ -66,7 +66,7 @@ The fictional `console_profile_0_1` package makes the contract concrete:
 | --- | --- | --- |
 | Identity | profile `console_profile_0_1`; package `lantern_labs`; revision `1.0.0` | Binds every request, proposal, observation, and artifact to one exact context. |
 | Source | `source_lantern_path`, English fictional lesson note, exact fingerprint | Establishes the source bytes and source-safe identity available to the profile. |
-| Reviewed memory | `memory_lantern_sequence`, evidence `evidence_lantern_path`, exact source span, `approved`, `allowed` | Makes review, rights, provenance, and answer eligibility explicit rather than model-inferred. |
+| Reviewed memory | `memory_lantern_sequence`, evidence `evidence_lantern_path`, exact source span, `approved`, `allowed` | Makes package-declared review, rights, provenance, and answer eligibility explicit; this release validates those declarations and their governed use, not external ownership or licensing facts. |
 | Permitted action | `explain_lesson` | Causes the plausible but undeclared `assign_final_grade` action to fail as `unknown_action`. |
 | Requirements | `explain_sequence`, `ground_in_lesson` | Defines the visible-answer coverage targets Hees derives. |
 | Policy | minimum support `6500` basis points; maximum contradiction `3500` basis points | Converts bounded observations into deterministic Hees findings. |
@@ -119,7 +119,7 @@ This separation lets developers use multiple models to challenge material and pr
 
 Governed AI should not depend on hoping that a system prompt survives contact with a model. A reusable profile gives developers a testable object that can move across providers and environments while preserving declared evidence, memory eligibility, behavior, policy, and terminal authority.
 
-The Build Week release proves a practical foundation: native profile and evidence exploration, real candidate-state validation, deterministic happy and adversarial runs, provider-neutral pressure testing, selected-memory provenance, Content DNA, receipts, and offline no-rebuild replay through the actual Hees implementation.
+The Build Week release proves a practical foundation: native profile and evidence exploration, real candidate-state validation, deterministic happy and adversarial runs, provider-neutral pressure testing, selected-memory attribution through Content DNA, receipts, and offline no-rebuild replay through the actual Hees implementation.
 
 The product direction builds from this foundation toward semantic and factual assurance, source and claim provenance, rights assurance, conflict management, richer Spectrum adjudication, governed behavior envelopes, durable IncQL-DB-backed workspaces, and reusable profiles across domains and languages. The current slice does not pretend that journey is complete; it demonstrates why the architecture can support it.
 
@@ -193,7 +193,7 @@ Complete platform, unsigned macOS, expected-result, and troubleshooting instruct
 | Offline replay plus optional live GPT-5.6 transport | Additional remote and local model adapters using the same profile authority boundary |
 | Unsigned Linux x86-64, macOS Apple Silicon, and macOS Intel test builds | Signed, notarized, additional-platform, and optional hosted distribution |
 
-Optional live GPT-5.6 is not required for judging. Its final submission status must match the bounded canary evidence: **[FINALIZE BEFORE RELEASE: VERIFIED LIVE CANARY LINK, OR STATE OPTIONAL ADAPTER NOT DEMONSTRATED]**.
+Optional live GPT-5.6 is implemented but is not demonstrated in this submission. The single approved network canary failed closed at its first provider call with `provider_unavailable`; no retry was attempted. Judges use offline replay, which supplies integrity-checked saved inputs to the same post-transport Hees path.
 
 ## Judging-criteria map
 

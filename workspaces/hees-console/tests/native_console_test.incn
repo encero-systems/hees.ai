@@ -247,23 +247,23 @@ def test_embedded_replays_are_non_terminal_and_keep_reviewed_ids() -> None:
     assert_eq(embedded_inputs_are_non_terminal(), true)
     assert_eq(
         assert_is_ok(load_offline_scenario("valid")).replay_id,
-        "sha256:5319b88152ffb04bd8b9e3298333fd370ff33e359d2d8f91ca5ab453fd7a928a",
+        "sha256:edf7ec8fbbaccddd523af0cecb2f9973ed755558b15b10cbbd5e354127ef9aba",
     )
     assert_eq(
         assert_is_ok(load_offline_scenario("undeclared-action")).replay_id,
-        "sha256:b2a9664c73e4f2a4dde8cc81e53b75f760f3b93358eba93d6533053f80c83f1d",
+        "sha256:a9dcd4301d4ebb69ab98716ce2dbb4426e3827a6bcf51270918667aaba056db5",
     )
     assert_eq(
         assert_is_ok(load_offline_scenario("unknown-evidence")).replay_id,
-        "sha256:31ba32884fd026f5347fefa06a96f83bf72c02e61e5a1dcc763f613699b625b6",
+        "sha256:8975cb465c3f20f8c968a04ebd5a2af3fba81f54810e8b150af12f6ea56376aa",
     )
     assert_eq(
         assert_is_ok(load_offline_scenario("unknown-memory")).replay_id,
-        "sha256:e8e18b99bf00727068fb1df8849ab369d1e84af36543a159e9665cee28473f44",
+        "sha256:ee7c96d1db577798fc61650e3663dd82dda70f638c64a555983a6bb712f4aee0",
     )
     assert_eq(
         assert_is_ok(load_offline_scenario("non-admitted-memory")).replay_id,
-        "sha256:4d77d6539d848e96899f63787e26fe21980cf4c665cfa3cbce3c93672382b618",
+        "sha256:25ff2f5b59fe40bb0dd6f4b034491b3c48c1bcf896a35f01d2564b2369adec04",
     )
 
 
@@ -754,7 +754,7 @@ def test_trace_is_separate_non_authoritative_and_redacts_interaction_content() -
     assert_eq(run.trace.toolchain_identity, CONSOLE_TOOLCHAIN_IDENTITY)
     assert_eq(trace.contains("incan_0_5_0_dev_18"), false)
     assert_eq(trace.contains("console_trace_0_1"), true)
-    assert_eq(trace.contains("sha256:5319b88152ffb04bd8b9e3298333fd370ff33e359d2d8f91ca5ab453fd7a928a"), true)
+    assert_eq(trace.contains("sha256:edf7ec8fbbaccddd523af0cecb2f9973ed755558b15b10cbbd5e354127ef9aba"), true)
     assert_eq(trace.contains("What order should I use"), false)
     assert_eq(trace.contains("Lantern Path is a fictional"), false)
     assert_eq(trace.contains("admitted"), false)

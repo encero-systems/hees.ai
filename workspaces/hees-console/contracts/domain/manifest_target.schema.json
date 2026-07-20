@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hees.ai/contracts/console/manifest_target_0_1.schema.json",
-  "title": "Hees Console Build Week initial-profile verifier manifest target",
+  "title": "hees.ai console Build Week initial-profile verifier manifest target",
   "type": "object",
   "additionalProperties": false,
   "required": ["body", "target_digest"],

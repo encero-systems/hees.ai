@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hees.ai/contracts/console/console_relation_observation_0_1.schema.json",
-  "title": "Hees Console Build Week initial-profile non-authoritative relation observation",
+  "title": "hees.ai console Build Week initial-profile non-authoritative relation observation",
   "type": "object",
   "additionalProperties": false,
   "required": ["contract_version", "profile_id", "observation_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "candidate_digest", "target_id", "target_digest", "evaluator_role", "target_role", "support_bps", "contradiction_bps", "unresolved_bps", "model_fingerprint", "prompt_fingerprint", "configuration_fingerprint"],

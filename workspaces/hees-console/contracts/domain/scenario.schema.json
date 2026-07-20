@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hees.ai/contracts/console/scenario_0_1.schema.json",
-  "title": "Hees Console Build Week initial-profile deterministic scenario",
+  "title": "hees.ai console Build Week initial-profile deterministic scenario",
   "type": "object",
   "additionalProperties": false,
   "required": ["scenario_contract", "profile_id", "scenario_id", "title", "package_id", "domain_id", "package_revision", "artifact_digest", "request_path", "proposal_path", "manifest_target_paths", "observation_paths", "expected_result"],

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hees.ai/contracts/console/console_proposal_0_1.schema.json",
-  "title": "Hees Console Build Week initial-profile untrusted proposal",
+  "title": "hees.ai console Build Week initial-profile untrusted proposal",
   "type": "object",
   "additionalProperties": false,
   "required": ["contract_version", "profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "proposal_id", "action_id", "evidence_ids", "visible_units", "support_mappings"],

@@ -3,7 +3,7 @@
   "incan_toolchain": {
     "version": "0.5.0-dev.19",
     "source_repository": "https://github.com/encero-systems/incan",
-    "source_commit": "7d5fec3dca612cfc150f1d59b1a86a914b26e493"
+    "source_commit": "7656195ba94a4fc309ee5ee83c9dd45a42800db0"
   },
   "platforms": {
     "linux-x86_64": {

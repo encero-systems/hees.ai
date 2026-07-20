@@ -96,7 +96,7 @@ validate_manifest() {
                 .toolchain.compiler == "incan" and
                 .toolchain.compiler_version == "0.5.0-dev.19" and
                 .toolchain.source_repository == "https://github.com/encero-systems/incan.git" and
-                .toolchain.source_commit == "7d5fec3dca612cfc150f1d59b1a86a914b26e493" and
+                .toolchain.source_commit == "7656195ba94a4fc309ee5ee83c9dd45a42800db0" and
                 .dependencies.incan_lock_file == "incan.lock" and
                 (.dependencies.incan_lock_sha256 | test("^[0-9a-f]{64}$")) and
                 .guidance.running_file == "RUNNING.txt" and

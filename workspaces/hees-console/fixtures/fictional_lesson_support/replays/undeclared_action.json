@@ -47,17 +47,17 @@
     "schema_digests": [
       {
         "contract_version": "console_proposal_0_1",
-        "schema_digest": "sha256:f042eeab88670c8431b3cb6cb79d36d09cc618d9a03fadf4baaa82b2fd4e9d41"
+        "schema_digest": "sha256:1dd1555e103f1d5030ff9cc417a3989461189f07f0605af0ad7ea9aa915bb927"
       },
       {
         "contract_version": "console_relation_observation_0_1",
-        "schema_digest": "sha256:85cd5aaa0684430f6414d138d961af13a4806d3705b7d151fed16c80b5bb2b65"
+        "schema_digest": "sha256:6d139b259b7a05b6a69f05dedab1747df58d66bccc34b684a255e34f57f6a5b4"
       },
       {
         "contract_version": "console_synthesis_observation_0_1",
-        "schema_digest": "sha256:6558a7e0df960b7493e6b7f17606dd9110c208e28205a658779867d9823a0316"
+        "schema_digest": "sha256:9850bad62dbfc9e5d30c1953161a6f44e8c896701af1ef678195c7690370dd88"
       }
     ]
   },
-  "replay_id": "sha256:b2a9664c73e4f2a4dde8cc81e53b75f760f3b93358eba93d6533053f80c83f1d"
+  "replay_id": "sha256:a9dcd4301d4ebb69ab98716ce2dbb4426e3827a6bcf51270918667aaba056db5"
 }

@@ -50,7 +50,7 @@ For a fixed source tree, the gate:
 
 The smoke proves that the candidate does not need a separately installed Incan compiler, package manager, source checkout, provider credential, or network service. It does not prove that the process is physically network-sandboxed, that a different operating-system build works, that native compiler output is bit-reproducible, or that an unsigned macOS artifact carries publisher identity.
 
-The matching GitHub Actions workflow derives its matrix from the same registry and uses immutable action revisions with read-only repository permission. It uploads short-lived candidate evidence and never creates a release or deployment. A platform remains a candidate until its extracted hosted artifact has run successfully. macOS outputs are ad-hoc signed where the toolchain requires it, but they are not publisher-signed or notarized.
+The matching GitHub Actions workflow checks its matrix against the same registry and uses immutable action revisions with read-only repository permission. It uploads short-lived candidate evidence and never creates a release or deployment. A platform remains a candidate until its extracted hosted artifact has run successfully. macOS outputs are ad-hoc signed where the toolchain requires it, but they are not publisher-signed or notarized.
 
 Public symbols must be re-exported deliberately from `src/lib.incn`. A change that claims a new guarantee needs a test that fails when the guarantee is violated and documentation that distinguishes the guarantee from caller-owned work.
 

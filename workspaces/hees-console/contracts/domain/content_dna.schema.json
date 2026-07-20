@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hees.ai/contracts/console/console_content_dna_0_1.schema.json",
-  "title": "Hees Console Build Week initial-profile experimental Content DNA",
+  "title": "hees.ai console Build Week initial-profile experimental Content DNA",
   "type": "object",
   "additionalProperties": false,
   "required": ["body", "content_dna_id"],

@@ -18,7 +18,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> The hard part of governed AI is not getting a model to answer. It is deciding what the model is allowed to know, claim, and do. hees.ai console turns reviewed evidence, policy, and authority into a reusable governance profile—then makes every decision inside that profile inspectable.
+> The hard part of governed AI is not getting a model to answer. It is deciding what the model is allowed to know, claim, and do. hees.ai console is built around reusable governance profiles. In this first release, I can inspect supplied evidence and memory, modify a session-local candidate, validate it through Hees, and inspect every decision and artifact it governs.
 
 ### 0:18–0:48 — Evidence becomes an executable governance profile
 
@@ -26,7 +26,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> Governance starts here, with evidence. This fictional source is bound to a reviewed memory atom with explicit identity, provenance, rights, and authority. I can unstage it from a session-local candidate and rerun the shipped acceptance interaction. Hees rejects the incomplete package with the stable reason `invalid_package` and pinpoints the failed atom invariant as `invalid_package_atoms`; the active profile remains untouched. Resetting the candidate restores an admitted probe result. This is the beginning of the permanent Console workflow for creating, validating, comparing, and evolving reusable governance profiles.
+> Governance starts here, with evidence. This fictional source is bound to a reviewed memory atom with explicit identity and package-declared provenance, review, rights, and authority. I can unstage it from a session-local candidate and rerun the shipped acceptance interaction. Hees rejects the incomplete package with the stable reason `invalid_package` and pinpoints the failed atom invariant as `invalid_package_atoms`; the active profile remains untouched. Resetting the candidate restores an admitted probe result. This is the beginning of the permanent Console workflow for creating, validating, comparing, and evolving reusable governance profiles.
 
 ### 0:48–1:08 — Training by Committee pressure-tests the proposal
 
@@ -62,11 +62,11 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 ### 2:13–2:32 — Replay and live are transports, not authorities
 
-**On screen:** Show the architecture page and trace the two inputs—saved replay and optional live GPT-5.6—into the single compiled Hees path. Briefly show Incan source. If a live canary has passed, show the verified `LIVE` run; otherwise keep the recorded product demo in `REPLAY` and label live mode as optional.
+**On screen:** Show the architecture page and trace saved replay and the optional live GPT-5.6 adapter into the single compiled Hees path. Keep the recorded demonstration in `REPLAY`. Briefly show Incan source. Do not depict or imply a verified live run.
 
 **Spoken script:**
 
-> Replay and live mode are two ways to supply inputs, not two decision systems. Replay loads integrity-checked saved proposal and observation inputs. Live mode asks GPT-5.6 for the same bounded structures. Both are normalized into the same compiled Incan-authored Hees profile, and neither contains a stored or model-authored decision.
+> Replay and live are transports, not authorities. This recording uses replay: integrity-checked saved proposal and observation inputs containing no stored Hees decision. The optional live adapter is designed to supply the same bounded structures. After decoding, both enter the same compiled Incan-authored Hees path.
 
 ### 2:32–2:45 — From research to a usable governed-AI tool
 
@@ -83,7 +83,7 @@ By the end of the video, a judge should understand that:
 - hees.ai console is a developer environment for creating and exercising reusable governance profiles, not merely an admission harness;
 - a profile binds evidence, reviewed memory, rights state, allowed actions, policy, evaluator requirements, and terminal artifacts into executable governance;
 - Training by Committee pressure-tests proposals without transferring authority to evaluator models;
-- Spectrum is the governed terminal decision boundary, Content DNA binds selected memory to an admitted result, and the receipt preserves an inspectable audit artifact;
+- the demonstrated Spectrum operation is a bounded, Hees-owned adjudication step; Hees remains the terminal authority. Content DNA binds selected memory to the admitted visible result, and the receipt preserves the inspectable audit artifact;
 - offline replay and optional live GPT-5.6 normalize different input transports into the same compiled Hees path; and
 - the Build Week profile is a useful working slice of the larger evidence-to-assurance product direction.
 
@@ -96,7 +96,7 @@ By the end of the video, a judge should understand that:
 - Keep `REPLAY` or `LIVE` visible throughout each run. Never splice replay output under a live label.
 - Use no copyrighted music, third-party logos, private browser chrome, account identifiers, notification banners, or unlicensed assets.
 - Do not display `OPENAI_API_KEY`, environment variables, request headers, hidden prompts, unrestricted rationale, personal data, local paths, issue drafts, or private repositories.
-- If the live canary has not passed, demonstrate replay and describe live only as an optional transport. Do not present quota status as a product limitation.
+- Record the product demonstration in replay. Describe live only as an implemented, provider-boundary-tested optional transport that has not been demonstrated end to end.
 - Confirm every displayed reason, digest, artifact identity, and trust label against the frozen outputs after editing the video.
 - Upload the approved final cut publicly to YouTube and verify it while signed out: **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]**.
 

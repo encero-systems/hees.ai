@@ -2,7 +2,7 @@
 
 This checklist was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 19, 2026. The rules can change and remain authoritative. Recheck them on the day of submission.
 
-Nothing in this document confirms that hees.ai console has been released, hosted, recorded, submitted, or tested in live GPT-5.6 mode. Placeholders are blockers, not evidence.
+Nothing in this document confirms that hees.ai console has been released, hosted, recorded, submitted, or demonstrated end to end in live GPT-5.6 mode. Placeholders are blockers, not evidence.
 
 ## Public link and evidence matrix
 
@@ -16,7 +16,7 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 | Working Profile Studio | Evidence and memory staging, real Hees candidate acceptance probe, separate public reason and exact profile diagnostic, blocked activation, reset, and active-profile preservation | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, SCREENSHOT, AND VIDEO TIMECODE]** |
 | Explained profile contract | Public field-level Lantern Labs package/profile guide with ownership and validation path | **[FINALIZE BEFORE RELEASE: GOVERNANCE PROFILE DOCUMENTATION URL]** |
 | Bounded Training by Committee slice | Target derivation, complete observation coverage, Hees classification, and authority-negative tests | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, AND RUN URLS]** |
-| Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` canary reaching the same runner, with model/configuration identity and public result | `NOT VERIFIED` on July 19: API reached, HTTP 429 `insufficient_quota`; retain this limitation unless a later public canary passes |
+| Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` adapter reaching the same runner, with model/configuration identity and public result | Implemented and provider-boundary tested, but not demonstrated end to end: the single funded no-retry canary failed closed at its first provider call with `provider_unavailable`, returned no proposal, and made no committee calls |
 | No-rebuild judge path | Hosted sandbox or functioning test build, supported platforms, clean-system smoke test, access window | **[FINALIZE BEFORE RELEASE: TEST URL, PLATFORM MATRIX, SMOKE TEST, AND DATES]** |
 | Release integrity | Tag, immutable commit, asset names, SHA-256 values, provenance, dependency licenses | **[FINALIZE BEFORE RELEASE: RELEASE, HASH, PROVENANCE, AND LICENSE URLS]** |
 | Product behavior | Frozen golden outputs for valid action, undeclared action, and scenario `3` unknown evidence | **[FINALIZE BEFORE RELEASE: GOLDENS, TESTS, AND RUN URLS]** |
@@ -36,7 +36,7 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 - [ ] Scenario `3` is frozen as `Unknown evidence reference`, namespace `console_admission_0_1`, public reason `unknown_evidence`, with a golden output and test link.
 - [ ] The release artifact has passed a clean-system, no-rebuild smoke test on every claimed platform.
 - [ ] The functioning test build remains free and unrestricted through August 5, 2026 at 17:00 PDT. If a hosted equivalent is also claimed, it invokes the frozen artifact, exposes no unrestricted shell, and isolates sessions.
-- [ ] Optional live GPT-5.6 claims are backed by a public canary, or every live claim is narrowed to an unverified optional adapter and the video uses replay only.
+- [ ] Every live claim is narrowed to an implemented, provider-boundary-tested optional adapter that was not demonstrated end to end, and the video uses replay only.
 - [ ] CI, artifact hashes, provenance, dependency notices, supported platforms, and release links all identify the same frozen commit.
 - [ ] The mdBook was built locally, scanned for private values and placeholders, published to `gh-pages` without relying on Actions, and verified while signed out.
 - [ ] Screenshots and video surfaces contain no credentials, personal data, personal paths, private repositories, private packages, hidden prompts, raw provider metadata, unrestricted rationale, or unrelated work.
@@ -59,7 +59,7 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 
 ### Required submission material
 
-- [ ] The English text description explains the frozen product's features and functionality without claiming semantic truth, release readiness, live success, or full Draft RFC conformance beyond the evidence.
+- [ ] The English description distinguishes the structural and policy proof working in `console_profile_0_1` from the intended semantic, factual, provenance, and rights-assurance layers, without claiming that those later layers are complete.
 - [ ] The selected category is Developer Tools.
 - [ ] The public YouTube video is shorter than three minutes, has clear English audio, demonstrates the working project, and explains the use of Codex and GPT-5.6.
 - [ ] The video contains no unlicensed third-party trademarks, copyrighted music, or other material.
@@ -95,7 +95,7 @@ Before release and again before submission, search the frozen repository, histor
 - credentials, tokens, email addresses beyond the official testing addresses, environment values, provider headers, and request identifiers;
 - absolute or home-directory paths, usernames, device names, private URLs, and private repository references;
 - proprietary product names, client material, private corpora, downloaded models, unpublished research, hidden prompts, and chain-of-thought;
-- unsupported claims such as “submitted,” “production ready,” “live GPT-5.6 verified,” “semantically true,” or “fully RFC/Spectrum compliant”; and
+- unsupported claims that this release is submitted, production-ready, live-verified, or already provides complete semantic, factual, provenance, rights, or generalized Spectrum/RFC assurance; and
 - placeholder markers including `FINALIZE`, `MANUAL INPUT`, `TODO`, `TBD`, and example domains or hashes presented as final values.
 
 Any finding is a release blocker until it is removed, replaced with verified public evidence, or explicitly narrowed in the final copy.

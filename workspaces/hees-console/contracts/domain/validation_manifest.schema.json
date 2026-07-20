@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hees.ai/contracts/console/validation_manifest_0_1.schema.json",
-  "title": "Hees Console Build Week initial-profile fixture validation manifest",
+  "title": "hees.ai console Build Week initial-profile fixture validation manifest",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest_contract", "positive", "negative"],

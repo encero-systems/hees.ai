@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hees.ai/contracts/console/source_catalog_0_1.schema.json",
-  "title": "Hees Console Build Week initial-profile fictional source catalog",
+  "title": "hees.ai console Build Week initial-profile fictional source catalog",
   "type": "object",
   "additionalProperties": false,
   "required": ["contract_version", "sources"],
@@ -25,7 +25,7 @@
           "content_path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[a-z0-9_./-]+$", "maxLength": 256},
           "source_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "content_bytes": {"type": "integer", "minimum": 1, "maximum": 4096},
-          "original_author_statement": {"const": "Original fictional English content authored for the public Hees Console Build Week initial-profile fixture."},
+          "original_author_statement": {"const": "Original fictional English content authored for the public hees.ai console Build Week initial-profile fixture."},
           "rights_state": {"const": "fictional_use_allowed"},
           "review_state": {"const": "approved"},
           "review_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32},
