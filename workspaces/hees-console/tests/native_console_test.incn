@@ -762,6 +762,16 @@ def test_compact_decisions_render_every_selected_governance_context() -> None:
     assert_eq(evidence.contains("PROPOSAL EVIDENCE  UNTRUSTED"), true)
 
 
+def test_compact_evidence_wraps_claims_to_the_available_frame_width() -> None:
+    """Keep an 80-column Evidence claim whole at word boundaries after frame padding."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    state = apply_command(initial_state(), "show-evidence", [true])
+    screen = strip_terminal_styles(render_screen_for_size(state, [run], 80, 24))
+    assert_eq(screen.contains("before te~"), false)
+    assert_eq(screen.contains("testing the route."), true)
+
+
 def test_source_text_display_omits_transport_newline_control_marker() -> None:
     """Keep reviewed source text readable without mutating its fingerprinted package representation."""
 

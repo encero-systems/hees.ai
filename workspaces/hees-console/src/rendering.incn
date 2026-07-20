@@ -1365,8 +1365,8 @@ def workspace_right_rows(state: ConsoleState, run: ConsoleRun, total: int) -> li
     return candidate_status_rows(state, run)
 
 
-def compact_workflow_lines(state: ConsoleState, run: ConsoleRun, total: int) -> list[str]:
-    """Prioritize the selected task and its authority state in one compact pane."""
+def compact_workflow_lines(state: ConsoleState, run: ConsoleRun, total: int, content_width: int) -> list[str]:
+    """Prioritize the selected task and its authority state within the compact pane width."""
 
     package = run.scenario.package
     if state.surface == "profiles":
@@ -1382,7 +1382,7 @@ def compact_workflow_lines(state: ConsoleState, run: ConsoleRun, total: int) -> 
         mut lines = [f"EVIDENCE  {state.evidence_index + 1} / {len(package.atoms)}", f"{staged_marker(
             state.candidate_evidence_ids.contains(f"{atom.evidence_id}"),
         )} {atom.evidence_id}", f"source id    {atom.source_id}", f"source ref   {atom.source_ref}", f"span         {atom.source_span.start_utf8_byte}..{atom.source_span.end_utf8_byte}", f"language     {atom.language}", f"review       {atom.review_state}", f"rights       {atom.rights_state}", f"kind         {atom.evidence_kind}", "", "CLAIM"]
-        lines.extend(wrapped_text_lines(atom.claim, 82, MAX_TEXT_CHARACTERS))
+        lines.extend(wrapped_text_lines(atom.claim, content_width, MAX_TEXT_CHARACTERS))
         lines.append("↑↓ select · SPACE stage · v probe")
         return lines
     if state.surface == "memory":
@@ -1390,7 +1390,7 @@ def compact_workflow_lines(state: ConsoleState, run: ConsoleRun, total: int) -> 
         mut lines = [f"MEMORY  {state.memory_index + 1} / {len(package.atoms)}", f"{staged_marker(
             state.candidate_memory_ids.contains(f"{atom.memory_id}"),
         )} {atom.memory_id}", f"evidence     {atom.evidence_id}", f"source id    {atom.source_id}", f"source ref   {atom.source_ref}", f"span         {atom.source_span.start_utf8_byte}..{atom.source_span.end_utf8_byte}", f"language     {atom.language}", f"review       {atom.review_state}", f"rights       {atom.rights_state}", f"authority    {atom.authority_class}", "", "CLAIM"]
-        lines.extend(wrapped_text_lines(atom.claim, 82, MAX_TEXT_CHARACTERS))
+        lines.extend(wrapped_text_lines(atom.claim, content_width, MAX_TEXT_CHARACTERS))
         lines.append("↑↓ select · SPACE stage · v probe")
         return lines
     if state.surface == "committee":
@@ -1481,7 +1481,7 @@ def compact_screen(state: ConsoleState, runs: list[ConsoleRun], columns: int, ro
         f"hees.ai console · COMPACT VIEW · {mode_label(run)} · {state.active_profile_id}",
         columns,
     ), framed_row(compact_navigation_line(state), columns), f"├{horizontal_rule(columns - 2)}┤"]
-    content = plain_rows(compact_workflow_lines(state, run, len(runs)))
+    content = plain_rows(compact_workflow_lines(state, run, len(runs), columns - 4))
     mut index = 0
     while index < body_height:
         mut value = StyledRow.Plain("")
