@@ -2,7 +2,7 @@
 
 ## Requirements
 
-Use Incan `0.5.0-dev.19` at source commit [`7d5fec3dc`](https://github.com/encero-systems/incan/commit/7d5fec3dca612cfc150f1d59b1a86a914b26e493). The canonical root `incan.lock` was generated with that exact compiler revision.
+The current branch requires Incan `0.5.0-dev.19`. Its authoritative source commit and fixed-point `incan.lock` remain release gates while the independent compiler repair is reviewed; do not use an interim local pin as release evidence. The final reviewed compiler commit will be named here and in the canonical root lock before publication.
 
 ## Verify the repository
 
@@ -31,14 +31,14 @@ The test project under `workspaces/external-consumer/` compiles and tests this e
 
 ## Verify the initial console profile
 
-The Console workspace uses only original fictional acceptance data. Its current proof runs seventeen native application tests and fourteen provider-boundary tests, builds the native Incan executable, and reruns all five replay inputs through Hees:
+The Console workspace uses only original fictional acceptance data. Its verification covers session-local candidate-profile state, evidence and memory staging, the Hees-owned acceptance probe, blocked activation, reset, responsive rendering, provider boundaries, and all five governed interactions:
 
 ```bash
 make console-test console-native-smoke \
   INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
 ```
 
-This proves the closed `console_profile_0_1` path. It does not download or invoke a language model, perform retrieval, or grant the provider-facing Console module admission authority.
+This proves the bounded `console_profile_0_1` workflow without downloading or invoking a language model. Provider-facing and rendering modules never receive package-authoring, activation, or terminal authority.
 
 ## Run the native Console
 
@@ -49,7 +49,7 @@ make console-build INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
 workspaces/hees-console/target/incan/.cargo-target/release/hees_console
 ```
 
-The release-candidate archive renames the installed executable to `hees-console` and needs no compiler, package manager, source checkout, network connection, or API key at runtime. Use `--headless` for privacy-redacted automation output. See [hees.ai console](console.md) for interaction keys and live-mode syntax, and consult the [profile bounds and evidence](console-profile-0-1.md) before making platform or resource claims.
+The release-candidate archive renames the installed executable to `hees-console` and needs no compiler, package manager, source checkout, network connection, or API key at runtime. Open Evidence with `2`, unstage a record with `Space`, validate with `v`, and reset with `r` to exercise the Profile Studio before running an interaction. Use `--headless` for privacy-redacted automation output. See [Governance profiles](governance-profiles.md) for the package contract, [hees.ai console](console.md) for every interaction key and live-mode syntax, and [profile bounds and evidence](console-profile-0-1.md) before making platform or resource claims.
 
 ## Run the fictional runtime example
 

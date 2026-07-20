@@ -1,6 +1,10 @@
 # Console profile 0.1 bounds and evidence
 
-`console_profile_0_1` is the first bounded implementation profile for hees.ai console. The exact label displayed by the executable is `BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1`. The profile remains subordinate to the provider-neutral and domain-neutral product contract in Draft RFC 010.
+`console_profile_0_1` is the first bounded implementation profile for hees.ai console. It combines a session-local Profile Studio over the supplied fictional evidence catalog with one complete governed-interaction path. The exact profile label remains `console_profile_0_1`; the product itself is provider-neutral and domain-neutral.
+
+## Profile Studio contract
+
+The release exposes one shipped active profile and one session-local candidate derived from it. Evidence and memory records may be staged or unstaged in the candidate, and `v` reruns the shipped acceptance interaction against that candidate through the real Incan-authored Hees boundary. Candidate activation remains blocked as `candidate only — not active` because the public profile does not yet expose a safe activation-authority API. `r` resets the candidate to the shipped profile. No candidate change persists after exit or alters the active profile used by governed interactions.
 
 ## Enforced ceilings
 
@@ -10,7 +14,7 @@ The table records enforced implementation limits, not recommended permanent-prod
 | --- | --- |
 | Raw runner request | 262,144 bytes, one canonical JSON record, at most 16 nested JSON containers |
 | Raw runner response | 65,536 bytes including the terminal line feed |
-| Provider request body | 262,144 bytes |
+| Provider request body | 65,536 UTF-8 bytes |
 | Provider response envelope | 131,072 bytes and at most 16 nested JSON containers |
 | Structured proposal output | 32,768 bytes and at most 2,048 output tokens |
 | Structured observation output | 8,192 bytes and at most 512 output tokens |
@@ -27,12 +31,12 @@ The table records enforced implementation limits, not recommended permanent-prod
 | Unit requirements | 1 through 4 unique requirement identifiers per visible unit |
 | Support mappings | Exactly one per visible unit and at most 8 total; at most 4 evidence identifiers per mapping |
 | Verifier manifest | At most 22 targets: 17 relation or contradiction targets and 5 synthesis targets |
-| Provider committee | At most 22 sequential calls, each with a 15-second timeout; the deterministic worst-case timeout ceiling is 330 seconds |
+| Provider committee | The generic manifest can describe 22 targets, but live preflight permits at most 8 sequential committee calls and one proposal call; each call has a 15-second timeout, for at most 9 calls and 135 seconds per complete live invocation |
 | Selected memory | At most 3 atoms in this fixed package, with no duplicates |
 | Content DNA | Every and only selected memory, therefore at most 3 entries for this profile |
 | Receipt identifiers | At most 8 admitted evidence identifiers and 8 selected-memory identifiers; the fixed package narrows selected memory to 3 |
 | Inspector rendering | At most 8 displayed list items per section, 240 characters per displayed prose value, and 1,200 characters for expanded Content DNA or receipt JSON |
-| Retained interaction state | One package, request, proposal, manifest, observation set, finding set, terminal result, selected-memory set, receipt, Content DNA value, and non-authoritative trace; no durable persistence |
+| Retained workspace state | One shipped active profile, one session-local candidate with staged evidence and memory plus validation state, and one interaction containing request, proposal, manifest, observations, findings, terminal result, selected memory, receipt, Content DNA, and non-authoritative trace; no durable persistence |
 
 The runner and provider reject excessive nesting before invoking a JSON parser. Closed typed decoding and canonical round-trip checks reject unknown or duplicate authority-bearing fields. A host may impose stricter platform limits but cannot raise Hees limits or truncate one input into a different valid value.
 
@@ -52,7 +56,7 @@ The following measurements were recorded on 2026-07-19 from clean source commit 
 | Largest shipped replay JSON | 13,325 bytes |
 | All five shipped replay JSON files | 22,276 bytes |
 
-The archive packages the executable, Apache-2.0 project license, repository notice, the current platform build's generated third-party license report, and exact release manifest. The release-candidate gate rebuilds the native Console, runs 17 native tests and 14 provider tests, audits dependency licenses, checks for source-path and active credential leakage, verifies the archive checksum and layout, extracts it into a clean temporary directory, and reruns all five offline scenarios without an Incan compiler, source checkout, package manager, network service, or API key.
+The historical measured archive packages the executable, Apache-2.0 project license, repository notice, that platform build's generated third-party license report, and exact release manifest. Its release-candidate gate rebuilt the native Console, ran 17 native tests and 14 provider tests, audited dependency licenses, checked for source-path and active credential leakage, verified the archive checksum and layout, extracted it into a clean temporary directory, and reran all five offline scenarios without an Incan compiler, source checkout, package manager, network service, or API key. The redesigned source currently has 17 provider-boundary tests; the final three-platform release must record the frozen native count and refresh the complete release-gate results from its audited artifacts.
 
 The timing measurement used Hyperfine `--shell=none` with five warm-up runs and fifty measured fresh processes. It is a warm filesystem-cache result and does not claim cold-boot latency. Peak resident memory came from macOS `/usr/bin/time -l`; the maximum is reported rather than the mean.
 
@@ -62,6 +66,6 @@ The earlier immutable-source GitHub matrix built, extracted, and smoke-tested ex
 
 The live adapter and its injected network-free composition tests are implemented, but no successful public GPT-5.6 canary is recorded yet. Offline replay remains fully functional without that evidence. The required no-rebuild judge path can be satisfied by the published native test build. Any optional hosted equivalent must run the same prebuilt executable without exposing an unrestricted shell, credentials, unrelated files, or cross-session persistence.
 
-The optional atom-comparison inspector is present and explicitly reports `not_configured` for the current interaction. Candidate-memory creation and Hees-derived comparison are permanent Console work, but their absence cannot affect the terminal profile path.
+The optional atom-comparison inspector remains separate from Profile Studio candidate staging and reports `not_configured` for the current interaction. It concerns model-generated atom comparison, not the session-local selection of supplied reviewed evidence and memory.
 
-The profile does not claim general evidence intake, package authoring, retrieval, semantic truth verification, model-weight training, complete Spectrum conformance, complete Content DNA conformance, RFC 006 receipt compatibility, the complete RFC 009 response lifecycle, or a production operations surface.
+This release is the working foundation for general evidence intake, durable profile authoring, semantic and factual verification, source and claim provenance, rights assurance, richer Spectrum and Content DNA contracts, and broader governed-response lifecycles. Those later capabilities require deeper profiles; they are not implied by the bounded fictional package or its evaluator observations.

@@ -4,7 +4,7 @@ This document separates the work that existed before the OpenAI Build Week submi
 
 The concise project lineage is:
 
-> **GPT helped build Incan. Incan powers Hees. Hees decides whether GPT's proposal is allowed.**
+> **GPT helped build Incan. Danny's long-running research shaped Hees. During Build Week, Codex with GPT-5.6 helped turn that work into a usable public product in days. Incan powers Hees. Hees decides.**
 
 ## Three distinct roles and timelines
 
@@ -16,9 +16,9 @@ The public Incan record begins with its [December 11, 2025 initial commit](https
 
 ### July 13–21, 2026
 
-During the submission period, Codex with GPT-5.6 is being used to establish Hees as a coherent public Incan-first project and to design, implement, review, test, package, and document hees.ai console as a permanent product. The intended event submission is the bounded Console `0.1.0` release slice and the meaningful public Hees extension it requires; it does not claim historical Incan development as Build Week work.
+During the submission period, Codex with GPT-5.6 is being used to turn Danny's long-running Hees research into a coherent, usable public Incan-first product within days. The work includes the governance-profile product model, native Profile Studio, evidence and memory exploration, Training by Committee, the compiled terminal authority path, product design, adversarial testing, release engineering, architecture documentation, and submission production. The event entry remains the new Console `0.1.0` release slice and its meaningful public Hees extension; it does not relabel historical Incan or Hees work as event-period creation.
 
-The human-directed product and architecture decisions include keeping the model untrusted, making Hees the final behavioral authority, making Console a permanent public developer product, using a deliberately limited named profile instead of claiming full RFC 001–009 conformance, keeping offline replay as the zero-credential default, requiring a self-contained no-rebuild judge path, using only original fictional content, and refusing to let the presentation host duplicate the decision.
+The human-directed product and architecture decisions include making governance profiles the unit of governed AI development, starting the Console workflow with evidence rather than a model response, keeping the model untrusted, making Hees the final behavioral authority, making Console a permanent public developer product, keeping offline replay as the zero-credential default, requiring a self-contained no-rebuild judge path, using only original fictional content, and refusing to let the presentation host duplicate the decision.
 
 Codex accelerated repository auditing, boundary design, RFC drafting and review, implementation planning, test-first development, adversarial review, documentation, release engineering, and submission preparation. Human direction remained responsible for the north-star outcome, scope, authority boundaries, product naming, public-versus-private publication decisions, deadline and freeze policy, and final release and submission approval.
 
@@ -26,17 +26,19 @@ The public extension is organized around the [foundational RFC pull request](htt
 
 ### Build Week profile runtime
 
-The Build Week profile assigns `gpt-5.6-sol` only the production of strict structured untrusted proposals and bounded relation or synthesis observations in optional live mode. GPT does not return a trusted admission status, selected-memory set, finding classification, Content DNA, receipt, or terminal action. The Incan-authored Hees profile validates the complete bundle, derives the manifest, classifies observations under package-owned thresholds, composes non-authoritative findings, applies the bounded `console_profile_0_1` operation, and returns the terminal result.
+The Build Week Profile Studio starts from a supplied fictional evidence catalog and reviewed-memory package. A developer can stage or unstage profile-supported evidence and memory in a session-local candidate, rerun the shipped acceptance interaction against that candidate through the real Incan-authored Hees boundary, and reset it. The shipped active profile remains unchanged because the current public profile does not yet expose a safe activation-authority API.
 
-Default replay mode uses neutral deterministic proposal and observation fixtures, not stored model recordings or stored Hees decisions. Every replay runs the same compiled Hees path again. A fixture can be described as recorded GPT output only if separately bound live-canary evidence proves that provenance; otherwise it remains a neutral fixture.
+For governed interactions, optional live mode assigns `gpt-5.6-sol` only the production of strict structured untrusted proposals and bounded relation or synthesis observations. GPT does not return a trusted admission status, selected-memory set, finding classification, Content DNA, receipt, or terminal action. The Incan-authored Hees profile validates the complete bundle, derives the manifest, classifies observations under package-owned thresholds, composes findings, applies the bounded `console_profile_0_1` Spectrum operation, and returns the terminal result.
+
+Default replay mode uses deterministic request, proposal, and observation fixtures plus integrity metadata. It stores no Hees findings, Spectrum result, selected memory, Content DNA, receipt, or terminal decision. Replay and live mode are different transports into the same compiled validation, classification, Spectrum, memory-selection, Content DNA, and receipt path after normalization. A fixture can be described as recorded GPT output only if separately bound live-canary evidence proves that provenance; otherwise it remains a neutral saved input.
 
 ## What the Build Week slice is
 
-The Build Week release target is the first bounded implementation profile of the permanent hees.ai console product, not the definition of that product. The permanent north star is provider-neutral and domain-neutral evidence intake, candidate inspection, package authoring and Hees validation, Training by Committee, governed interactions, terminal Spectrum and Content DNA inspection, receipts, replay, and audit. Those capabilities remain Draft design work unless an exact released profile and checked implementation provide them.
+The Build Week release target is the first bounded implementation profile of the permanent hees.ai console product. Its working product arc is `evidence -> memory atoms -> candidate profile -> Hees acceptance probe -> Training by Committee -> bounded Spectrum evaluation -> governed interaction -> Content DNA and receipt`.
 
-For the event profile only, a developer or judge can select an original fictional lesson-support scenario, inspect its fixed package-authored canonical memory, run a structured proposal through the real Incan-authored admission path, and see either an admitted answer with selected memory, experimental Console Content DNA, and a profile-specific receipt or a rejection with the exact violated contract. The fictional domain, fixed package, offline fixtures, and optional GPT-5.6 adapter are profile choices, not permanent Console requirements.
+A developer or judge can browse every supplied fictional source and memory atom with its exact identity, provenance, review, and rights state; stage or unstage supported material in a session-local candidate; run the shipped acceptance interaction against the candidate through Hees; inspect the active profile's actions, requirements, policy, and evaluator contract; run one admitted and four adversarial interactions; and inspect every terminal artifact. The fictional domain, bounded candidate workflow, offline fixtures, and optional GPT-5.6 adapter are profile choices, not permanent Console constraints.
 
-The checked first release candidate intentionally demonstrates a limited profile rather than claiming the full Draft architecture. It targets the proposal-versus-authority boundary, strict schemas, package-owned policy, deterministic findings and terminal reasons, exact selected-memory provenance, offline replay integrity, and optional live GPT-5.6 integration. It does not establish semantic truth, factual correctness, general package ingestion, full claim verification, model-weight training, full Spectrum conformance, full Content DNA conformance, or RFC 006 receipt compatibility.
+This slice proves a native governed-AI development workflow, not merely a response filter. It provides the authority graph and terminal artifacts on which the wider product direction can build semantic and factual verification, source and claim provenance, rights assurance, conflict management, richer Spectrum adjudication, durable IncQL-DB workspaces, and reusable cross-domain profiles.
 
 Training by Committee is a permanent provider-neutral Console workflow. The Build Week profile exercises only one bounded proposal-pressure-testing slice: separately role-bound structured observations pressure-test the proposal, but Hees derives the evaluation targets, validates coverage, classifies findings under package-owned policy, and decides. The profile does not update model weights, perform fine-tuning, or permit a provider majority or vote to choose the terminal result.
 
@@ -50,7 +52,7 @@ The final repository and submission must link evidence for the following collabo
 | Product contract | RFC drafting, authority-graph pressure testing, terminology and claim review | Permanent Console identity, north star, limited profile, no-rebuild judge path | [RFC issue #14](https://github.com/encero-systems/hees.ai/issues/14) and [RFC PR #15](https://github.com/encero-systems/hees.ai/pull/15) |
 | Runtime | Test-first implementation and adversarial review of the Incan-authored runner | Hees owns classification, terminal selection, Content DNA, and receipt | [Implementation PR #17](https://github.com/encero-systems/hees.ai/pull/17) and [exact-head CI](https://github.com/encero-systems/hees.ai/actions/runs/29672060823) |
 | Provider adapter | Strict structured-output integration, failure-path tests, and live canary support | GPT remains a proposal and observation source only | [Provider tests in PR #17](https://github.com/encero-systems/hees.ai/pull/17/files); live canary not verified because the July 19 attempt returned `insufficient_quota` |
-| Product experience | Terminal interaction, escaping, trust labels, replay, and scripted-demo implementation | Judge interaction model and visual hierarchy | [Implementation PR #17](https://github.com/encero-systems/hees.ai/pull/17) and [exact-head CI](https://github.com/encero-systems/hees.ai/actions/runs/29672060823); final captures remain pending |
+| Product experience | Native Profile Studio, evidence and memory staging, Hees-owned candidate acceptance probe, terminal interaction, authority labels, replay, and responsive layout implementation | Evidence-first workflow, profile as the product unit, candidate-versus-active boundary, judge interaction model, and visual hierarchy | [Implementation PR #17](https://github.com/encero-systems/hees.ai/pull/17); frozen product captures and local verification evidence remain pending |
 | Distribution | Reproducible packaging, hashes, provenance, native test-build checks, and release audit | Supported platforms and publication approval | [Three-platform candidate matrix](https://github.com/encero-systems/hees.ai/actions/runs/29672060812); immutable public Release assets remain pending |
 | Submission | README, testing instructions, evidence audit, video and Devpost drafting | Final claims, recording, form values, and submission | [Implementation PR #17](https://github.com/encero-systems/hees.ai/pull/17); video and Devpost URLs remain manual |
 
@@ -67,6 +69,7 @@ No placeholder in this ledger may be interpreted as evidence. Each value must be
 | Codex collaboration | Timestamped task evidence, dated commits, review and implementation records | **[FINALIZE BEFORE RELEASE: CODEX EVIDENCE LINKS]** |
 | Majority core task | `/feedback` Session ID supplied by Danny | **[MANUAL INPUT REQUIRED BEFORE SUBMISSION: CODEX SESSION ID]** |
 | Real Incan-authored Hees decision | Source, tests, generated runner identity, and happy/adversarial execution evidence | [Implementation PR #17](https://github.com/encero-systems/hees.ai/pull/17), [CI](https://github.com/encero-systems/hees.ai/actions/runs/29672060823), and final published test-build run evidence |
+| Working Profile Studio | Session-local stage/unstage, Hees acceptance probe, blocked activation, reset, and active-profile preservation | **[FINALIZE BEFORE RELEASE: FROZEN SOURCE, NATIVE TEST, SCREENSHOT, AND VIDEO TIMECODE]** |
 | GPT-5.6 runtime use | Secret-gated `gpt-5.6-sol` Responses API canary with strict structured output reaching the same runner | Not verified as of July 19: the canary reached the API but returned HTTP 429 `insufficient_quota`; provider contract tests pass in [CI](https://github.com/encero-systems/hees.ai/actions/runs/29672060823) |
 | Training by Committee | Role-bound proposal-pressure-testing observations, complete manifest coverage, Hees-classified findings, and authority-negative voting evidence | [Implementation PR #17](https://github.com/encero-systems/hees.ai/pull/17) and [CI](https://github.com/encero-systems/hees.ai/actions/runs/29672060823) |
 | Offline no-rebuild path | Clean-system artifact smoke test without Incan, a package manager, source, network, or key | [Three-platform candidate matrix](https://github.com/encero-systems/hees.ai/actions/runs/29672060812); public Release URL pending |
@@ -104,9 +107,8 @@ This checklist follows the [OpenAI Build Week Official Rules](https://openai.dev
 Danny must complete only the account-bound actions that cannot be performed safely from the repository:
 
 1. Supply **[MANUAL INPUT REQUIRED: CODEX `/feedback` SESSION ID]**.
-2. Confirm the entrant identity and authority used for the Devpost entry.
-3. Record or approve the final release-candidate demonstration, upload it publicly to YouTube, and supply **[MANUAL INPUT REQUIRED: YOUTUBE URL]**.
-4. Confirm the published native test build or any hosted equivalent remains available through the judging period.
-5. Review and submit the final Devpost form with **[MANUAL INPUT REQUIRED: DEVPOST PROJECT URL AFTER CREATION]**.
+2. Record or approve the final release-candidate demonstration, upload it publicly to YouTube, and supply **[MANUAL INPUT REQUIRED: YOUTUBE URL]**.
+3. Confirm the published native test build or any hosted equivalent remains available through the judging period.
+4. Review and submit the final Devpost form as Danny Meijer, individual entrant, then supply **[MANUAL INPUT REQUIRED: DEVPOST PROJECT URL AFTER CREATION]**.
 
 No recording or form submission should begin until the evidence-based completion audit confirms that the release candidate, no-rebuild test path, explicit live-canary status, public repository, artifacts, tests, claims, and security boundary match the submitted description.

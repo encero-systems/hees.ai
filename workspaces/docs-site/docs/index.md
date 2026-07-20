@@ -1,13 +1,28 @@
 # Hees
 
-Hees is an Incan-first structural admission boundary for governed AI proposals. An implementation supplies package contracts and untrusted visible output. Hees can admit or reject that proposal using facts represented by its checked types.
+Hees is an Incan-first governed-intelligence runtime. It turns evidence, reviewed memory, declared authority, policy, and evaluator requirements into executable governance profiles, then produces inspectable terminal decisions with selected memory, Content DNA, and receipts.
 
-The current `0.0.1` preview proves three deliberately bounded surfaces:
+> **The model proposes. Hees decides.**
 
-1. descriptor-shape validation for an external source-controlled package;
-2. in-memory validation and proposal admission against package-owned actions and evidence identifiers; and
-3. the closed, fictional `console_profile_0_1` path through verifier manifests and findings, Spectrum admission, selected memory, Content DNA, receipts, offline replay, and optional live-provider composition.
+## The profile is the unit of governed AI development
 
-These checks do not execute a model, retrieve content, open a descriptor path, independently determine content rights, or run a semantic evaluator. The console profile validates exact JSON-derived identities and applies bounded supplied observations, but those observations remain non-authoritative nominations. The broader generalized RFC architecture remains future work.
+A governance profile exists before a model runs. It declares:
 
-Start with [hees.ai console](console.md) for the permanent product and current executable, continue with [Getting started](getting-started.md), and use [Contracts](contracts.md) as the implemented library reference.
+- which source evidence and reviewed memory are eligible;
+- who owns review, rights, provenance, and authority state;
+- which actions and answer requirements exist;
+- how bounded evaluator observations become Hees findings;
+- which Spectrum behavior and terminal reasons apply; and
+- how selected memory, Content DNA, receipts, replay, and export behave.
+
+This shifts governance from an after-the-fact output filter into an executable development artifact that can be inspected, tested, replayed, and eventually reused across models and domains.
+
+## What the current release makes tangible
+
+The native `console_profile_0_1` release provides a session-local Profile Studio over original fictional evidence, real candidate-profile validation through Hees, one admitted and four adversarial interactions, bounded Training by Committee, a profile-specific Spectrum operation, selected memory, Content DNA, receipts, offline replay, and an optional live GPT-5.6 transport.
+
+The underlying `0.0.1` library remains smaller: it supplies checked package and proposal contracts, fail-closed structural admission, deterministic finding classification, selected-memory finality, and terminal artifact construction for the bounded profile.
+
+Together they establish a meaningful foundation for the larger direction: semantic and factual verification, source and claim provenance, rights assurance, conflict management, governed behavior, richer Spectrum adjudication, durable IncQL-DB workspaces, and reusable cross-domain profiles.
+
+Start with [Governance profiles](governance-profiles.md) for the product model and worked fictional contract, continue with [hees.ai console](console.md) for the executable workflow, and use [Contracts](contracts.md) as the checked library reference.

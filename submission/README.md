@@ -1,18 +1,20 @@
 # hees.ai console submission pack
 
-This directory contains the pre-freeze submission materials for the hees.ai console Build Week 2026 entry. It is public drafting material, not evidence that a release, hosted demo, video, or Devpost submission exists.
+This directory contains the production drafts for Danny Meijer's individual hees.ai console Build Week 2026 entry. The material follows one product story: evidence becomes governed memory, governed memory becomes a reusable profile, Training by Committee pressure-tests proposals, and Hees produces the Spectrum decision, selected memory, Content DNA, and receipt.
+
+These documents are drafting and production controls. They are not evidence that a release, hosted demo, video, or Devpost submission exists.
 
 The submission pack was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 19, 2026. The official rules remain authoritative if this pack becomes stale or incomplete.
 
 ## Documents
 
-- [Devpost draft](DEVPOST_DRAFT.md) contains field-complete submission copy, judging-criteria coverage, testing instructions, and limitations.
-- [Video draft](VIDEO_DRAFT.md) contains the timed storyboard, spoken script, recording safety notes, and screenshot shot list with captions.
+- [Devpost draft](DEVPOST_DRAFT.md) contains field-complete product copy, the package/profile contract, judging-criteria coverage, testing instructions, and the current-slice/product-direction map.
+- [Video draft](VIDEO_DRAFT.md) contains the under-2:50 evidence-to-profile-to-decision story, exact Profile Studio demonstration, recording safety notes, and screenshot shot list.
 - [Finalization checklist](FINALIZATION_CHECKLIST.md) contains the public link-and-evidence matrix, rules reconciliation, freeze gates, and the short list of account-bound actions Danny must complete.
 
 ## Status and placeholder contract
 
-The permanent hees.ai console is the terminal-first, local-first, provider-neutral and domain-neutral developer-product north star described in the repository. The event entry is the narrower `console_profile_0_1` Build Week implementation profile. The submission must not present that bounded profile as the complete permanent Console.
+The permanent hees.ai console is the terminal-first, local-first environment for creating, validating, running, replaying, and inspecting reusable governance profiles. The event entry is the working `console_profile_0_1` slice: a session-local Profile Studio over fictional evidence, a Hees-owned candidate acceptance probe, Training by Committee, governed interactions, a bounded Spectrum operation, Content DNA, and receipts. The submission should make the permanent outcome credible through this real slice without implying that general ingestion, durable profile authoring, or complete assurance already ship.
 
 Two placeholder forms are deliberate release controls:
 

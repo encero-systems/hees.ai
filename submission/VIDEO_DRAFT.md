@@ -1,98 +1,126 @@
-# hees.ai console video and screenshot draft
+# hees.ai console video and screenshot plan
 
-> **Freeze gate:** Do not record from a development checkout. Record only after the completion audit confirms the exact release artifact, scenario results, labels, links, and claims used below. Replace every placeholder first.
+> **Freeze gate:** Record only from the audited release artifact after every final-evidence placeholder below has been replaced. The target runtime is **2:45**, leaving fifteen seconds below the official three-minute limit.
 
-The target runtime is **2:50 or shorter**, leaving ten seconds of safety under the official three-minute limit. Rehearse the final cut against actual timecodes; do not accelerate speech to preserve unsupported material.
+## Product story
+
+The video should sell one complete idea:
+
+> **Evidence becomes governed memory. Governed memory becomes a reusable profile. The model proposes inside that profile. Hees decides.**
+
+The Console is not a prettier response viewer. It is the developer environment in which evidence, authority, policy, model pressure tests, terminal decisions, and their audit artifacts become one inspectable system. The Build Week slice demonstrates that system with a session-local Profile Studio over fictional evidence; the permanent product extends the same workflow to general intake, atom curation, governed activation, durable comparison, and export.
 
 ## Timed storyboard and spoken script
 
-### 0:00–0:15 — The authority problem
+### 0:00–0:18 — Govern the system before the answer
 
-**On screen:** hees.ai console title card, then the frozen Console home view. Show the tagline and an explicit `REPLAY` label. Do not show third-party logos.
-
-**Spoken script:**
-
-> A model can return perfect JSON and still have no authority to act. hees.ai console makes that boundary inspectable: GPT-5.6 proposes. Hees decides.
-
-### 0:15–0:45 — Fictional package and bounded committee
-
-**On screen:** Open the separate `PACKAGE` and `SOURCES` inspectors. Show the original fictional lesson-support package, declared action, canonical reviewed memory, evidence identifiers, and policy. Briefly show that `ATOM COMPARISON` is `not_configured`, then show the proposal-pressure-test roles without presenting a vote.
+**On screen:** Begin inside `hees.ai console`, not on a title card. Keep `REPLAY` and `console_profile_0_1` visible. Move from `Profiles` to `Evidence` so the audience immediately sees that the product begins before a model response.
 
 **Spoken script:**
 
-> This Build Week profile is deliberately small. It loads one original fictional lesson-support package with package-declared actions, evidence, reviewed memory, and integer policy thresholds. Bounded evaluator roles can return relation and synthesis observations, but those observations are not decisions. Hees derives their exact targets, checks coverage, and applies the package's policy.
+> The hard part of governed AI is not getting a model to answer. It is deciding what the model is allowed to know, claim, and do. hees.ai console turns reviewed evidence, policy, and authority into a reusable governance profile—then makes every decision inside that profile inspectable.
 
-### 0:45–1:20 — Valid offline replay
+### 0:18–0:48 — Evidence becomes an executable governance profile
 
-**On screen:** Run scenario `1`, `Valid declared action`, from the frozen artifact. Keep `REPLAY` visible. Open the proposal and findings views, then show the green `✓ ADMITTED` state, namespace `console_admission_0_1`, reason `admitted`, selected memory `memory_lantern_sequence`, experimental Content DNA, and the admitted receipt.
-
-**Spoken script:**
-
-> This is the zero-credential replay path. Its integrity-checked fixture contains proposal and observation inputs, never a stored Hees result. Here is the escaped untrusted proposal, followed by bounded observations and the non-authoritative findings Hees classified from package policy. The compiled Incan runner reruns the decision and admits the declared action. Only after admission do selected memory and experimental Content DNA appear; the admitted receipt binds them to that result.
-
-### 1:20–1:50 — Undeclared action rejection
-
-**On screen:** Run scenario `2`. Hold on the proposal label, then the red `✕ REJECTED` terminal state, namespace `console_admission_0_1`, reason `unknown_action`. Show that the trusted answer, selected memory, and Content DNA are absent, then open the rejection receipt.
+**On screen:** Open `Evidence` with `2`, select one fictional source, and show its source-safe identity, review state, rights state, and associated memory atom. Press `Space` to unstage the Lantern evidence from the candidate profile, then press `v` to rerun the shipped acceptance interaction through the real Incan-authored Hees boundary. Hold on `REJECTED` and public reason `invalid_package` while the shipped active profile remains unchanged. Press `r` to reset the candidate and `v` to show the restored `ADMITTED` probe result. Briefly open `Profiles` with `1` to show the active-versus-candidate distinction, declared actions, evidence and memory set, and policy.
 
 **Spoken script:**
 
-> Now the model proposes an action the package never declared. Its prose remains inspectable only as untrusted input. The host cannot reinterpret the outcome: Hees rejects it with the closed reason `unknown_action`. No trusted answer or admitted memory is exposed, and the receipt records the rejection.
+> Governance starts here, with evidence. This fictional source is bound to a reviewed memory atom with explicit identity and rights state. I can unstage it from a session-local candidate and rerun the shipped acceptance interaction. Hees rejects that probe with an exact reason; the active profile remains untouched. Resetting the candidate restores an admitted probe result. This is the beginning of the permanent Console workflow for creating, validating, comparing, and evolving reusable governance profiles.
 
-### 1:50–2:15 — Unknown evidence rejection
+### 0:48–1:08 — Training by Committee pressure-tests the proposal
 
-**On screen:** Run scenario `3`, `Unknown evidence reference`. Show the proposal's schema-valid `evidence_missing_lantern` identifier, then the red `✕ REJECTED` state, namespace `console_admission_0_1`, reason `unknown_evidence`. Show that the trusted answer, selected memory, and Content DNA are absent; the receipt records the rejection.
-
-**Spoken script:**
-
-> The third case references a schema-valid evidence identifier that the package never declared. Valid shape is still not package authority. Hees rejects the exact violated contract with `unknown_evidence`, again without turning rejected model text into a trusted response.
-
-### 2:15–2:40 — Architecture and the role of GPT-5.6
-
-**On screen:** Show the repository's Build Week authority-boundary diagram, then briefly show the Incan Console source and direct Hees profile boundary. If live-canary evidence has passed, include its public evidence link without showing a key. If not, label the adapter `OPTIONAL — NOT DEMONSTRATED`.
+**On screen:** Open the valid interaction. Show the untrusted proposal, the Hees-derived evaluation targets, separately role-bound observations, and the resulting Hees-classified findings. Keep the sections visually distinct.
 
 **Spoken script:**
 
-> hees.ai console itself is authored in Incan. It owns terminal rendering, transport, escaping, and the secret boundary, then calls the Incan-authored Hees profile directly. GPT-5.6 can supply strict structured proposals and observations in optional live mode, but Hees owns validation, finding classification, selected memory, provenance, and the terminal decision. A model never votes itself into authority.
+> A model now proposes inside that governed space. Training by Committee pressure-tests its relationships and synthesis through bounded evaluator roles. The evaluators do not vote and their scores are not authority. Hees defines what they must inspect, checks complete coverage, and classifies their observations under the profile's policy.
 
-### 2:40–2:50 — Lineage, impact, and quick start
+### 1:08–1:35 — The profile admits a supported result
 
-**On screen:** Show the frozen public repository, published native test-build link, and a short lineage card. End on **[FINALIZE BEFORE RECORDING: PUBLIC NO-REBUILD TEST-BUILD URL]**.
+**On screen:** Run the valid scenario from the frozen artifact. Show `✓ ADMITTED`, selected memory, Content DNA, and the receipt. Expand enough of the receipt to expose package, profile, decision, evidence, memory, and digest identities without lingering on raw JSON.
 
 **Spoken script:**
 
-> Hees and Incan predate this event. Codex with GPT-5.6 helped build this profile; human decisions set its authority boundary. Try the offline demo.
+> This proposal uses a declared action and reviewed, rights-allowed evidence. Hees admits it. The result carries the exact memory selected for the answer, Content DNA that binds those atoms to the visible response, and an export-safe receipt. The answer is no longer just model prose; it is the terminal product of an inspectable governance profile.
+
+### 1:35–1:55 — Unknown evidence cannot borrow authority
+
+**On screen:** Select `Unknown evidence`. Show the schema-valid but undeclared identifier, then `✕ REJECTED`, reason `unknown_evidence`, and the absence of an admitted answer, selected memory, and Content DNA.
+
+**Spoken script:**
+
+> Now the proposal cites an identifier with perfectly valid shape—but the profile never declared it. Hees rejects `unknown_evidence`. Good JSON cannot manufacture provenance, and rejected model text never becomes a trusted answer.
+
+### 1:55–2:13 — The model cannot invent an action
+
+**On screen:** Select `Undeclared action`. Show the proposed action beside the package's declared actions, then `✕ REJECTED` with `unknown_action` and its rejection receipt.
+
+**Spoken script:**
+
+> The same boundary applies to behaviour. The model proposes an action outside the profile, so Hees rejects `unknown_action` and records exactly why. The model can be creative. Its authority cannot be.
+
+### 2:13–2:32 — Replay and live are transports, not authorities
+
+**On screen:** Show the architecture page and trace the two inputs—saved replay and optional live GPT-5.6—into the single compiled Hees path. Briefly show Incan source. If a live canary has passed, show the verified `LIVE` run; otherwise keep the recorded product demo in `REPLAY` and label live mode as optional.
+
+**Spoken script:**
+
+> Replay and live mode are two ways to supply inputs, not two decision systems. Replay loads integrity-checked saved proposal and observation inputs. Live mode asks GPT-5.6 for the same bounded structures. Both are normalized into the same compiled Incan-authored Hees profile, and neither contains a stored or model-authored decision.
+
+### 2:32–2:45 — From research to a usable governed-AI tool
+
+**On screen:** Finish on the architecture hero, then the public repository and no-rebuild release link. End with `GPT-5.6 proposes. Hees decides.`
+
+**Spoken script:**
+
+> GPT helped Danny build Incan. During Build Week, Codex with GPT-5.6 helped turn his long-running Hees research into this usable public product in days. This profile proves the foundation. The destination is governed AI whose evidence, facts, provenance, rights, behaviour, and decisions can all be examined and assured. Try the offline release.
+
+## What the video must establish
+
+By the end of the video, a judge should understand that:
+
+- hees.ai console is a developer environment for creating and exercising reusable governance profiles, not merely an admission harness;
+- a profile binds evidence, reviewed memory, rights state, allowed actions, policy, evaluator requirements, and terminal artifacts into executable governance;
+- Training by Committee pressure-tests proposals without transferring authority to evaluator models;
+- Spectrum is the governed terminal decision boundary, Content DNA binds selected memory to an admitted result, and the receipt preserves an inspectable audit artifact;
+- offline replay and optional live GPT-5.6 normalize different input transports into the same compiled Hees path; and
+- the Build Week profile is a useful working slice of the larger evidence-to-assurance product direction.
 
 ## Recording and publication checks
 
-- Record the frozen release artifact or frozen hosted artifact, never a source checkout with local paths or development-only behavior.
-- Keep the final video below 2:50 and confirm clear English audio at normal playback speed.
+- Record the frozen release artifact, never a source checkout with local paths or development-only behaviour.
+- Keep the final cut below 2:50 and confirm clear English audio at normal playback speed.
+- Demonstrate the real candidate-profile workflow before running an interaction: `2` opens Evidence, `Space` unstages a record, `v` validates and shows the exact Hees failure while the active profile remains unchanged, and `r` resets the candidate.
+- Show one admitted result and both required adversarial cases: unknown evidence and undeclared action.
+- Keep `REPLAY` or `LIVE` visible throughout each run. Never splice replay output under a live label.
 - Use no copyrighted music, third-party logos, private browser chrome, account identifiers, notification banners, or unlicensed assets.
-- Keep `REPLAY` or `LIVE` visible throughout every run. Never splice replay output under a live label.
-- Do not display `OPENAI_API_KEY`, environment variables, request headers, raw provider metadata, hidden prompts, unrestricted rationale, personal data, local paths, issue drafts, or private repositories.
-- If the live canary has not passed with public evidence, demonstrate offline replay and describe the live adapter only as optional and not demonstrated.
-- Confirm every displayed reason, digest, artifact identity, and trust label against the frozen golden outputs after editing the video.
+- Do not display `OPENAI_API_KEY`, environment variables, request headers, hidden prompts, unrestricted rationale, personal data, local paths, issue drafts, or private repositories.
+- If the live canary has not passed, demonstrate replay and describe live only as an optional transport. Do not present quota status as a product limitation.
+- Confirm every displayed reason, digest, artifact identity, and trust label against the frozen outputs after editing the video.
 - Upload the approved final cut publicly to YouTube and verify it while signed out: **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]**.
 
 ## Screenshot shot list and captions
 
-All captures must come from the frozen release artifact. Use a clean terminal, neutral window chrome, legible font size, and no personal paths or secrets. Colour may reinforce state, but each screenshot must remain understandable in monochrome. Store final images only after the publication-boundary audit.
+All captures must come from the frozen release artifact. Use a clean terminal, neutral window chrome, legible font size, and no personal paths or secrets. Colour may reinforce state, but each screenshot must remain understandable in monochrome.
 
-| Shot | Required visible content | Draft caption | Final evidence |
+| Shot | Required visible content | Caption | Final evidence |
 | --- | --- | --- | --- |
-| 1. Product overview | `hees.ai console`, `console_profile_0_1`, `REPLAY`, fictional package, scenario keys, runner/schema identity | **hees.ai console's bounded Build Week profile runs in zero-credential offline replay mode and keeps the active profile, package, and runner identity visible.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND FROZEN COMMIT]** |
-| 2. Authority boundary | `UNTRUSTED PROPOSAL`, bounded observations, `HEES-CLASSIFIED NON-AUTHORITATIVE FINDINGS`, no terminal conflation | **Model proposals and evaluator observations remain separate from the findings Hees classifies under package-owned policy.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
-| 3. Admitted result | Valid scenario, `ADMITTED`, exact namespace/reason, selected memory, experimental Content DNA, receipt | **After the Incan-authored runner admits the declared action, the profile exposes selected canonical memory, experimental Content DNA, and a profile receipt.** | **[FINALIZE BEFORE RELEASE: IMAGE URL, EXACT VALUES, AND RUN EVIDENCE]** |
-| 4. Undeclared action | Scenario `2`, `REJECTED`, `console_admission_0_1`, `unknown_action`, absent trusted answer | **A schema-valid proposal cannot invent package authority: Hees rejects an undeclared action with the closed reason `unknown_action`.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
-| 5. Unknown evidence | Scenario `3`, proposal evidence `evidence_missing_lantern`, `REJECTED`, `console_admission_0_1`, `unknown_evidence`, absent selected memory and trusted answer | **A schema-valid identifier is not authority: Hees rejects evidence that the package never declared with the closed reason `unknown_evidence`.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
-| 6. No-rebuild access | Release asset or hosted sandbox start screen, supported platform, public test URL, no credential prompt | **Judges can run the frozen offline profile without rebuilding the project or supplying an API key.** | **[FINALIZE BEFORE RELEASE: IMAGE URL, ARTIFACT HASH, HOSTED/SMOKE TEST]** |
+| 1. Evidence workspace | `hees.ai console`, active profile, fictional source, review and rights state, memory atom identity | **Governance begins with evidence: the Console keeps source identity, reviewed memory, rights state, and profile membership inspectable before a model is asked to act.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND FROZEN COMMIT]** |
+| 2. Governance profile | Active and candidate identity, staged evidence and memory, declared actions, policy, Hees acceptance-probe result | **A governance profile turns reviewed material and policy into an executable boundary. In this first slice, candidate edits remain non-authoritative while a real Hees acceptance probe returns an admitted or rejected result for the shipped interaction.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND PROFILE-ACCEPTANCE EVIDENCE]** |
+| 3. Committee pressure test | Untrusted proposal, evaluation targets, observations, Hees-classified findings | **Training by Committee supplies bounded observations; Hees derives the targets, applies profile-owned policy, and retains terminal authority.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
+| 4. Admitted result | `ADMITTED`, selected memory, Content DNA, receipt | **An admitted result carries its selected governed memory, Content DNA, and export-safe receipt instead of leaving provenance implicit in model prose.** | **[FINALIZE BEFORE RELEASE: IMAGE URL, EXACT VALUES, AND RUN EVIDENCE]** |
+| 5. Unknown evidence | Undeclared evidence identifier, `REJECTED`, `unknown_evidence`, absent admitted artifacts | **A schema-valid identifier cannot borrow package authority: Hees rejects evidence the profile never declared.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
+| 6. Undeclared action | Proposed action, declared-action comparison, `REJECTED`, `unknown_action`, rejection receipt | **The model may propose beyond the profile, but it cannot grant itself permission to act.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
+| 7. No-rebuild access | Release asset or hosted start screen, supported platform, public test URL, no credential prompt | **Judges can explore the governed profile offline without rebuilding Incan or supplying an API key.** | **[FINALIZE BEFORE RELEASE: IMAGE URL, ARTIFACT HASH, AND SMOKE TEST]** |
 
 ## Video description draft
 
-> hees.ai console is a local-first developer tool that keeps model proposals, evaluator observations, policy classification, and terminal authority separate. This video demonstrates the bounded Build Week 2026 `console_profile_0_1` using original fictional content and offline replay.
+> **hees.ai console turns evidence, reviewed memory, policy, and authority into reusable governance profiles for AI.** This Build Week release demonstrates a fictional profile from evidence inspection through Training by Committee, governed interaction, Spectrum decision, selected memory, Content DNA, and receipt. GPT-5.6 may propose; the compiled Incan-authored Hees profile decides.
+>
+> Replay is the zero-credential judge path. It supplies integrity-checked saved inputs to the same compiled Hees authority path used by optional live mode; it does not replay a stored decision.
 >
 > Repository: **[FINALIZE BEFORE RELEASE: PUBLIC REPOSITORY URL]**<br>
 > Test it: **[FINALIZE BEFORE RELEASE: NO-REBUILD TEST URL]**<br>
 > Release and hashes: **[FINALIZE BEFORE RELEASE: RELEASE URL]**<br>
 > Testing instructions: **[FINALIZE BEFORE RELEASE: PUBLIC TESTING URL]**
->
-> Offline replay reruns the compiled Hees decision path over integrity-checked inputs. It does not prove live GPT provenance, semantic truth, source ownership, or full Draft RFC conformance. Optional live GPT-5.6 was not demonstrated because the July 19 canary reached the API but received `insufficient_quota`.
