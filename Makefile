@@ -26,7 +26,7 @@ LICENSE_CONFIG_ROOT := $(abspath tools/licenses)
 INCAN_RESOLVED := $(shell command -v "$(INCAN)" 2>/dev/null || printf '%s' "$(INCAN)")
 INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
 INCAN_PROVIDER_HOME := $(abspath $(if $(INCAN_HOME),$(INCAN_HOME),$(HOME)/.incan))
-CONSOLE_RUSTFLAGS := --remap-path-prefix=$(HOME)=/build-home --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(INCAN_PROVIDER_HOME)=/incan-provider-cache --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain $(if $(INCAN_TOOLCHAIN_CRATES_DIR),--remap-path-prefix=$(INCAN_TOOLCHAIN_CRATES_DIR)=/incan-toolchain-crates) $(if $(INCAN_STDLIB),--remap-path-prefix=$(INCAN_STDLIB)=/incan-stdlib)
+CONSOLE_RUSTFLAGS := --remap-path-prefix=$(HOME)=/toolchain-home --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(INCAN_PROVIDER_HOME)=/incan-provider-cache --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain $(if $(INCAN_TOOLCHAIN_CRATES_DIR),--remap-path-prefix=$(INCAN_TOOLCHAIN_CRATES_DIR)=/incan-toolchain-crates) $(if $(INCAN_STDLIB),--remap-path-prefix=$(INCAN_STDLIB)=/incan-stdlib)
 INCAN_REQUIRED_VERSION := incan 0.5.0-dev.21
 RELEASE_OUTPUT ?= $(abspath $(CONSOLE_ROOT)/target/release)
 RELEASE_PLATFORM ?=
