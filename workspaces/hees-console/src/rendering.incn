@@ -642,6 +642,15 @@ def styled_crimson(value: str) -> str:
     return f"{fixed_terminal_sequence(b"\x1b[38;5;203m")}{value}{fixed_terminal_sequence(b"\x1b[0m")}"
 
 
+pub def without_terminal_styles(value: str) -> str:
+    """Remove only the fixed colour sequences authored by the Console renderer."""
+
+    mut plain = value
+    for sequence in [b"\x1b[38;5;79m", b"\x1b[38;5;81m", b"\x1b[38;5;221m", b"\x1b[38;5;203m", b"\x1b[0m"]:
+        plain = plain.replace(fixed_terminal_sequence(sequence), "")
+    return plain
+
+
 def plain_rows(values: list[str]) -> list[StyledRow]:
     """Assign an explicit plain style without inspecting row content."""
 
@@ -746,6 +755,23 @@ def top_navigation_line(state: ConsoleState) -> str:
         ), top_section_label(4, "COMMITTEE", selected), top_section_label(5, "INTERACTIONS", selected), top_section_label(
             6,
             "DECISIONS",
+            selected,
+        ), top_section_label(7, "HELP", selected)],
+    )
+
+
+def compact_navigation_line(state: ConsoleState) -> str:
+    """Keep all seven destinations visible in terminals too narrow for the full workflow rail."""
+
+    selected = selected_top_section(state)
+    return "  ".join(
+        [top_section_label(1, "PROF", selected), top_section_label(2, "EVID", selected), top_section_label(
+            3,
+            "MEM",
+            selected,
+        ), top_section_label(4, "COMM", selected), top_section_label(5, "INT", selected), top_section_label(
+            6,
+            "DEC",
             selected,
         ), top_section_label(7, "HELP", selected)],
     )
@@ -1149,12 +1175,22 @@ def selected_atom(run: ConsoleRun, index: int) -> MemoryAtomProjection:
     return atoms[index]
 
 
+pub def source_text_for_display(value: str) -> str:
+    """Remove only one transport line ending while preserving every other source character."""
+
+    if value.endswith("\r\n"):
+        return value[:len(value) - 2]
+    if value.endswith("\n"):
+        return value[:len(value) - 1]
+    return value
+
+
 def source_text_for_atom(run: ConsoleRun, atom: MemoryAtomProjection) -> str:
     """Resolve the reviewed source text behind one fixed-profile memory atom."""
 
     for source in run.scenario.package.sources:
         if source.source_id == atom.source_id:
-            return source.text
+            return source_text_for_display(source.text)
     return "Source text unavailable."
 
 
@@ -1290,7 +1326,7 @@ def decision_center_lines(run: ConsoleRun) -> list[str]:
     lines.extend(
         ["", f"CONTENT DNA      {option_presence(run.result.content_dna_json)}", f"RECEIPT          {option_presence(
             run.result.receipt_json,
-        )}", "", "←→ switch Evidence / Memory / Receipt context"],
+        )}", "", "←→ switch Evidence / Memory / DNA / Receipt context"],
     )
     return lines
 
@@ -1329,7 +1365,7 @@ def workspace_right_rows(state: ConsoleState, run: ConsoleRun, total: int) -> li
     return candidate_status_rows(state, run)
 
 
-def compact_workflow_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
+def compact_workflow_lines(state: ConsoleState, run: ConsoleRun, total: int) -> list[str]:
     """Prioritize the selected task and its authority state in one compact pane."""
 
     package = run.scenario.package
@@ -1374,12 +1410,10 @@ def compact_workflow_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
             run.result.receipt_json,
         )}"]
     if state.surface == "decisions":
-        return ["DECISION WORKSPACE", f"Spectrum      {status_icon_label(run)}", f"reason        {run.result.spectrum.reason}", f"decision id   {bounded_text(
-            run.result.spectrum.decision_id,
-            82,
-        )}", "", f"memory        {len(run.result.selected_memory)} selected", f"Content DNA   {option_presence(
-            run.result.content_dna_json,
-        )}", f"receipt       {option_presence(run.result.receipt_json)}", "", "←→ inspect Evidence / Memory / Receipt"]
+        context = context_panel_lines(state, run, state.scenario_index, total)
+        mut lines = ["DECISION WORKSPACE", f"Spectrum      {status_icon_label(run)}", f"reason        {run.result.spectrum.reason}", context[0], "←→ inspect Evidence / Memory / DNA / Receipt"]
+        lines.extend(context[2:])
+        return lines
     return help_center_lines()
 
 
@@ -1446,8 +1480,8 @@ def compact_screen(state: ConsoleState, runs: list[ConsoleRun], columns: int, ro
     mut lines = [f"┌{horizontal_rule(columns - 2)}┐", framed_row(
         f"hees.ai console · COMPACT VIEW · {mode_label(run)} · {state.active_profile_id}",
         columns,
-    ), framed_row(top_navigation_line(state), columns), f"├{horizontal_rule(columns - 2)}┤"]
-    content = plain_rows(compact_workflow_lines(state, run))
+    ), framed_row(compact_navigation_line(state), columns), f"├{horizontal_rule(columns - 2)}┤"]
+    content = plain_rows(compact_workflow_lines(state, run, len(runs)))
     mut index = 0
     while index < body_height:
         mut value = StyledRow.Plain("")
@@ -1457,7 +1491,7 @@ def compact_screen(state: ConsoleState, runs: list[ConsoleRun], columns: int, ro
         index += 1
     lines.extend(
         [f"├{horizontal_rule(columns - 2)}┤", f"│ {styled_shortcuts_line(
-            "[1–7] destinations · [↑↓] select · [SPACE] stage · [v] probe · [r] reset · [q] quit",
+            "[1–7] go · [↑↓] select · [←→] context · [q] quit",
             columns - 4,
         )} │", f"└{horizontal_rule(columns - 2)}┘"],
     )

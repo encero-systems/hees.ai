@@ -91,7 +91,7 @@
     "finding_count": 6,
     "content_dna_present": true,
     "receipt_present": true,
-    "temporary_generated_rust_workaround": "known Incan Iterator.sum defect",
+    "temporary_generated_rust_workaround": "used after the diagnostic build resolved against a stale ambient Incan 0.4.0-rc3 stdlib source; not an Iterator.sum compiler defect",
     "release_evidence": false
   },
   "native_live_committee_observation": {
@@ -115,7 +115,7 @@
     ],
     "content_dna_present": true,
     "receipt_present": true,
-    "temporary_generated_rust_workaround": "known Incan Iterator.sum defect",
+    "temporary_generated_rust_workaround": "used after the diagnostic build resolved against a stale ambient Incan 0.4.0-rc3 stdlib source; not an Iterator.sum compiler defect",
     "release_binary_exercised": false
   },
   "limitations": [
@@ -124,7 +124,7 @@
     "The external-curl proposal observation supplies locally observed request and response hashes and usage; the native proposal and committee observations do not.",
     "The product adapter did not retain committee token usage or cost.",
     "Raw provider envelopes are not published.",
-    "The native live committee and diagnostic Hees verification used a temporary generated-Rust workaround."
+    "The native live committee and diagnostic Hees verification used a temporary generated-Rust workaround after resolving against a stale ambient Incan 0.4.0-rc3 stdlib source; coherent Incan 0.5.0-dev.21 verification later completed all nineteen provider-boundary tests without it."
   ],
   "redactions": [
     "No API key or authorization header.",

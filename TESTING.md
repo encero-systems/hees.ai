@@ -91,7 +91,7 @@ A hosted equivalent is not required once a native test build is published and re
 
 Live mode is optional for judges. It requires network access, an OpenAI API key with available quota, and an explicit selection that remains visibly labelled `LIVE`. Never paste a key into an issue, log, screenshot, fixture, command argument, or exported artifact.
 
-One complete live invocation is preflight-limited to one proposal call and at most eight sequential committee calls. Each request body is limited to 65,536 UTF-8 bytes, proposal output is limited to 2,048 tokens, observation output is limited to 512 tokens per call, each request has a configured 15-second timeout, and the adapter performs no retries. Nine calls therefore carry 135 seconds of aggregate configured timeout budget. This is not a global wall-clock ceiling because `ureq` 2.12.1 cannot interrupt DNS resolution. At the current published GPT-5.6 Sol rates, those source-level request and output ceilings imply a conservative upper bound of $3.14 for one invocation. Treat that number as an implementation-derived safety estimate rather than a provider billing guarantee, fund only the approved ceiling, and run exactly one canary unless a new budget is approved.
+One complete live invocation is preflight-limited to one proposal call and at most eight sequential committee calls. Each request body is limited to 65,536 UTF-8 bytes, proposal output is limited to 2,048 tokens, observation output is limited to 512 tokens per call, each request has a configured 15-second timeout, and the adapter performs no retries. Nine calls therefore carry 135 seconds of aggregate configured timeout budget. This is not a global wall-clock ceiling because `ureq` 2.12.1 cannot interrupt DNS resolution. Provider pricing is deliberately not encoded as a durable product claim; fund only an explicitly approved account ceiling and run a bounded canary unless a new budget is approved.
 
 1. Set `OPENAI_API_KEY` in the environment using your platform's secret-safe method.
 2. From the extracted archive, start `./hees-console --mode live --question "What order should I use for the Lantern Path cards?"`.
@@ -100,13 +100,13 @@ One complete live invocation is preflight-limited to one proposal call and at mo
 5. Confirm that provider refusal, timeout, rate limit, malformed structured output, or incomplete observation coverage produces a typed fail-closed state and never silently substitutes replay values under a live label.
 6. Remove the environment credential after the test.
 
-**Live network status:** a native provider-only diagnostic exercised the Incan credential loader, `ureq` HTTPS POST, accepted strict schema, product decoder, and typed proposal path successfully in 8.34 seconds, with no retry. It did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal. A second native diagnostic reused that proposal, preflighted exactly six targets, completed six sequential GPT-5.6 committee calls in 40.06 seconds with zero retries, decoded three relation and three synthesis observations, and passed the complete set through the real Hees profile. Hees classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process, retained no token-usage or cost record, and required a temporary generated-Rust workaround for the known Incan `Iterator.sum` defect. The native proposal-only call did not require that workaround. A combined proposal-plus-committee run from the frozen release binary remains unproven. The [sanitized local observation](submission/evidence/live-gpt56-proposal-2026-07-20.json) records the separate observations and their limitations. The video and primary judge path use offline replay.
+**Live network status:** a native provider-only diagnostic exercised the Incan credential loader, `ureq` HTTPS POST, accepted strict schema, product decoder, and typed proposal path successfully in 8.34 seconds, with no retry. It did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal. A second native diagnostic reused that proposal, preflighted exactly six targets, completed six sequential GPT-5.6 committee calls in 40.06 seconds with zero retries, decoded three relation and three synthesis observations, and passed the complete set through the real Hees profile. Hees classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process, retained no token-usage or cost record, and ran in a temporary generated harness rather than the frozen release binary. A coherent Incan `0.5.0-dev.21` compiler/source pairing completed all nineteen provider-boundary tests. A combined proposal-plus-committee run from the frozen release binary remains unproven. The [sanitized local observation](submission/evidence/live-gpt56-proposal-2026-07-20.json) records the separate observations and their limitations. The video and primary judge path use offline replay.
 
-The source defines nineteen provider-boundary tests for request construction, strict decoding, injected-transport composition, failure classification, budget preflight, duplicate-authority rejection, and fail-closed behavior. The last complete redesigned provider run executed seventeen; a complete nineteen-test run remains blocked by the current Incan compiler defect. The adapter is designed against the official [GPT-5.6 Sol model](https://developers.openai.com/api/docs/models/gpt-5.6-sol), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), and [API data controls](https://developers.openai.com/api/docs/guides/your-data) documentation.
+The source defines nineteen provider-boundary tests for request construction, strict decoding, injected-transport composition, failure classification, budget preflight, duplicate-authority rejection, and fail-closed behavior. The latest coherent Incan `0.5.0-dev.21` compiler/source verification completed all nineteen. The adapter is designed against the official [GPT-5.6 Sol model](https://developers.openai.com/api/docs/models/gpt-5.6-sol), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), and [API data controls](https://developers.openai.com/api/docs/guides/your-data) documentation.
 
 ## Source verification for contributors
 
-The current checked library remains Hees `0.0.1` and uses commit-pinned Incan `0.5.0-dev.19`:
+The current checked library remains Hees `0.0.1` and uses commit-pinned Incan `0.5.0-dev.21`:
 
 ```bash
 make ci
@@ -116,10 +116,10 @@ That command verifies formatting, the public library build, package and runtime 
 
 ```bash
 make console-test console-native-smoke \
-  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
+  INCAN=/path/to/incan-0.5.0-dev.21/bin/incan
 
 make console-release-candidate \
-  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan \
+  INCAN=/path/to/incan-0.5.0-dev.21/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 
 make console-release-lint console-release-set-test

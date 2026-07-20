@@ -7,8 +7,9 @@ Crossterm supplies only cross-platform raw-mode primitives. Incan owns byte-leve
 from rust::std::io import Read, Write, stdin, stdout
 from rust::std::string import String as RustString
 from rust::crossterm::terminal import disable_raw_mode, enable_raw_mode, size as terminal_size
+from std.environ import get_optional
 from evaluation import ConsoleRun, evaluate_offline_scenario
-from rendering import render_screen_for_size
+from rendering import render_screen_for_size, without_terminal_styles
 from replays import scenario_slugs
 from state import ConsoleState, apply_command, initial_inspector_state, initial_state, selected_scenario_slug
 
@@ -243,7 +244,12 @@ def draw_frame(state: ConsoleState, runs: list[ConsoleRun]) -> Result[None, str]
     """Replace the alternate-screen frame and report write or flush failure without a trailing newline."""
 
     columns, rows = terminal_dimensions()
-    frame = render_screen_for_size(state, runs, columns, rows).replace("\n", "\r\n")
+    mut frame = render_screen_for_size(state, runs, columns, rows)
+    match get_optional("NO_COLOR"):
+        Some(_) =>
+            frame = without_terminal_styles(frame)
+        None => pass
+    frame = frame.replace("\n", "\r\n")
     data = RustString.from(f"{clear_and_home()}{frame}").into_bytes()
     mut out = stdout()
     match out.write_all(data):

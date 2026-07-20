@@ -61,7 +61,7 @@ write_manifest() {
     wm_running_sha256=$8
     wm_date_epoch=$9
     cat >"$wm_destination" <<EOF
-{"schema_version":1,"product":{"name":"hees-console","version":"0.1.0"},"build":{"language":"Incan","profile":"release"},"platform":"$wm_platform","source":{"commit":"$wm_source_commit","date_epoch":$wm_date_epoch,"tree_state":"clean"},"toolchain":{"compiler":"incan","compiler_version":"0.5.0-dev.19","source_repository":"https://github.com/encero-systems/incan.git","source_commit":"7656195ba94a4fc309ee5ee83c9dd45a42800db0"},"dependencies":{"incan_lock_file":"incan.lock","incan_lock_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"guidance":{"running_file":"RUNNING.txt","running_sha256":"$wm_running_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$wm_notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$wm_third_party_sha256"},"artifact":{"name":"hees-console","sha256":"$wm_binary_sha256","size_bytes":$wm_binary_size}}
+{"schema_version":1,"product":{"name":"hees-console","version":"0.1.0"},"build":{"language":"Incan","profile":"release"},"platform":"$wm_platform","source":{"commit":"$wm_source_commit","date_epoch":$wm_date_epoch,"tree_state":"clean"},"toolchain":{"compiler":"incan","compiler_version":"0.5.0-dev.21","source_repository":"https://github.com/encero-systems/incan.git","source_commit":"66c69edae20745598effdecf40778bf53f9ecd67"},"dependencies":{"incan_lock_file":"incan.lock","incan_lock_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"guidance":{"running_file":"RUNNING.txt","running_sha256":"$wm_running_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$wm_notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$wm_third_party_sha256"},"artifact":{"name":"hees-console","sha256":"$wm_binary_sha256","size_bytes":$wm_binary_size}}
 EOF
 }
 
@@ -239,9 +239,9 @@ pass "draft release workflow verifies the complete aggregate checksum set"
 platform_contract="$SCRIPT_DIR/release-platforms.json"
 jq -e '
     .schema_version == 1 and
-    .incan_toolchain.version == "0.5.0-dev.19" and
+    .incan_toolchain.version == "0.5.0-dev.21" and
     .incan_toolchain.source_repository == "https://github.com/encero-systems/incan" and
-    .incan_toolchain.source_commit == "7656195ba94a4fc309ee5ee83c9dd45a42800db0" and
+    .incan_toolchain.source_commit == "66c69edae20745598effdecf40778bf53f9ecd67" and
     (.platforms | keys == ["linux-x86_64", "macos-aarch64", "macos-x86_64"]) and
     .platforms["linux-x86_64"] == {"runner":"ubuntu-24.04","system":"Linux","machine":"x86_64"} and
     .platforms["macos-aarch64"] == {"runner":"macos-15","system":"Darwin","machine":"aarch64"} and

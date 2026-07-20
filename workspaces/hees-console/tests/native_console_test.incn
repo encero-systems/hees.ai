@@ -24,7 +24,15 @@ from evaluation import (
 from live import evaluate_live_with_transports
 from main import cli_error, usage
 from crate.provider import GPT56_MODEL, ProviderFailure
-from rendering import bounded_text, render_headless, render_screen, render_screen_for_size, terminal_cell_width
+from rendering import (
+    bounded_text,
+    render_headless,
+    render_screen,
+    render_screen_for_size,
+    source_text_for_display,
+    terminal_cell_width,
+    without_terminal_styles,
+)
 from replays import embedded_inputs_are_non_terminal, load_offline_scenario
 from state import (
     apply_command,
@@ -727,6 +735,63 @@ def test_compact_workspace_keeps_the_decision_and_controls_visible() -> None:
     assert_eq(len(screen.split("\n")), 20)
 
 
+def test_compact_decisions_render_every_selected_governance_context() -> None:
+    """Make compact context navigation visibly inspect Evidence, Memory, Content DNA, and Receipt."""
+
+    runs = [assert_is_ok(evaluate_offline_scenario("valid"))]
+    mut state = apply_command(initial_state(), "show-decisions", [true])
+
+    receipt = render_screen_for_size(state, runs, 100, 20)
+    assert_eq(receipt.contains("[RECEIPT]"), true)
+    assert_eq(receipt.contains("RECEIPT  1 / 1"), true)
+    assert_eq(receipt.contains("Evidence / Memory / DNA / Receipt"), true)
+
+    state = apply_command(state, "previous-context", [true])
+    dna = render_screen_for_size(state, runs, 100, 20)
+    assert_eq(dna.contains("[DNA]"), true)
+    assert_eq(dna.contains("CONTENT DNA  present"), true)
+
+    state = apply_command(state, "previous-context", [true])
+    memory = render_screen_for_size(state, runs, 100, 20)
+    assert_eq(memory.contains("[MEMORY]"), true)
+    assert_eq(memory.contains("SELECTED MEMORY  1"), true)
+
+    state = apply_command(state, "previous-context", [true])
+    evidence = render_screen_for_size(state, runs, 100, 20)
+    assert_eq(evidence.contains("[EVIDENCE]"), true)
+    assert_eq(evidence.contains("PROPOSAL EVIDENCE  UNTRUSTED"), true)
+
+
+def test_source_text_display_omits_transport_newline_control_marker() -> None:
+    """Keep reviewed source text readable without mutating its fingerprinted package representation."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    state = apply_command(initial_state(), "show-evidence", [true])
+    screen = render_screen_for_size(state, [run], 160, 44)
+    assert_eq(screen.contains("source text"), true)
+    assert_eq(screen.contains("[ctrl]"), false)
+
+
+def test_source_text_display_preserves_non_newline_whitespace() -> None:
+    """Remove only the terminal transport newline without changing inspected evidence whitespace."""
+
+    assert_eq(source_text_for_display("  exact source  \n"), "  exact source  ")
+    assert_eq(source_text_for_display("\texact source\r\n"), "\texact source")
+    assert_eq(source_text_for_display(" exact source "), " exact source ")
+
+
+def test_terminal_style_removal_preserves_text_authority_labels() -> None:
+    """Support NO_COLOR without removing the visible words and symbols that carry authority."""
+
+    run = assert_is_ok(evaluate_offline_scenario("undeclared-action"))
+    state = apply_command(initial_state(), "show-interactions", [true])
+    styled = render_screen_for_size(state, [run], 160, 44)
+    plain = without_terminal_styles(styled)
+    assert_eq(plain.contains("\\u001b[38;5;"), false)
+    assert_eq(plain.contains("UNTRUSTED PROPOSAL  MODEL"), true)
+    assert_eq(plain.contains("✕ REJECTED"), true)
+
+
 def test_every_declared_viewport_has_exact_ansi_stripped_geometry() -> None:
     """Keep rows, borders, and compact destinations aligned at every supported viewport."""
 
@@ -734,9 +799,13 @@ def test_every_declared_viewport_has_exact_ansi_stripped_geometry() -> None:
     for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
         runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
     mut state = initial_state()
-    for columns, rows in [(160, 44), (140, 36), (120, 30), (100, 20)]:
+    for columns, rows in [(160, 44), (140, 36), (120, 30), (100, 20), (80, 24)]:
         screen = render_screen_for_size(state, runs, columns, rows)
         assert_eq(screen_has_exact_geometry(screen, columns, rows), true)
+    narrow = strip_terminal_styles(render_screen_for_size(state, runs, 80, 24))
+    assert_eq(narrow.contains("1 PROF"), true)
+    assert_eq(narrow.contains("7 HELP"), true)
+    assert_eq(narrow.contains("[q] quit"), true)
     state = apply_command(state, "show-evidence", [true, false, false, false, false])
     assert_eq(screen_has_exact_geometry(render_screen_for_size(state, runs, 160, 44), 160, 44), true)
     state = apply_command(state, "show-memory", [true, false, false, false, false])

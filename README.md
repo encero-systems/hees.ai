@@ -130,7 +130,7 @@ The implemented adapter uses the OpenAI Responses API with explicit model `gpt-5
 
 The only local credential surface is `OPENAI_API_KEY`, and the credential does not enter fixtures, process arguments, logs, screenshots, receipts, Content DNA, or exported traces.
 
-> **Live network status:** the native proposal path works in a provider-only diagnostic harness. It loaded the credential through the Incan product path, sent the request through native `ureq` HTTPS, received an accepted strict-schema response, and passed the product decoder and typed proposal path in 8.34 seconds, with no retry. That native observation did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal. A second bounded native diagnostic reused the recorded proposal, preflighted exactly six Hees-derived targets, completed six sequential live GPT-5.6 committee calls in 40.06 seconds with zero retries, decoded three relation and three synthesis observations, and passed them through the real Hees profile. Hees classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process and the product adapter did not retain its token usage or cost. It required a temporary generated-Rust workaround for the known Incan `Iterator.sum` defect; the native proposal-only call did not. A combined proposal-plus-committee run from the frozen release binary remains unproven. The source defines 19 provider-boundary tests; the last complete redesigned provider run executed 17, and a complete 19-test run remains a current compiler-gated verification item. See the [publication-safe local observation record](submission/evidence/live-gpt56-proposal-2026-07-20.json) for the separate observations and exact limitations. Offline replay remains the demonstrated judge and video path.
+> **Live network status:** the native proposal path works in a provider-only diagnostic harness. It loaded the credential through the Incan product path, sent the request through native `ureq` HTTPS, received an accepted strict-schema response, and passed the product decoder and typed proposal path in 8.34 seconds, with no retry. That native observation did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal. A second bounded native diagnostic reused the recorded proposal, preflighted exactly six Hees-derived targets, completed six sequential live GPT-5.6 committee calls in 40.06 seconds with zero retries, decoded three relation and three synthesis observations, and passed them through the real Hees profile. Hees classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process, retained no token-usage or cost record, and ran in a temporary generated harness rather than the frozen release binary. A coherent Incan `0.5.0-dev.21` compiler/source pairing completed all nineteen provider-boundary tests. A combined proposal-plus-committee run from the frozen release binary remains unproven. See the [publication-safe local observation record](submission/evidence/live-gpt56-proposal-2026-07-20.json) for the separate observations and exact limitations. Offline replay remains the demonstrated judge and video path.
 
 The relevant provider contracts follow the official [GPT-5.6 Sol model](https://developers.openai.com/api/docs/models/gpt-5.6-sol) and [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs) documentation.
 
@@ -141,7 +141,7 @@ The relevant provider contracts follow the official [GPT-5.6 Sol model](https://
 | Self-contained executable | An earlier immutable candidate executed successfully on macOS ARM64, macOS x86-64, and Linux x86-64; the redesigned final head requires a fresh matrix before those platforms become current release claims; **[FINALIZE BEFORE RELEASE: PUBLIC ASSET URLS, HASHES, AND MINIMUM SYSTEM REQUIREMENTS]** |
 | Publication state | Earlier native matrix artifacts are historical CI evidence; the current head has zero release artifacts and no signed or notarized public release |
 | Hosted equivalent | Not configured; any later hosted surface must run the same frozen executable in bounded, isolated, no-shell sessions |
-| Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.19`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
+| Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.21`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
 
 Unsupported platforms will be stated explicitly in the final release notes. Source portability is not evidence that a self-contained artifact works on a platform.
 
@@ -211,7 +211,7 @@ Not implemented by the checked `0.0.1` library:
 
 ### Toolchain
 
-The current branch requires Incan `0.5.0-dev.19` from merged source commit [`7656195ba94a4fc309ee5ee83c9dd45a42800db0`](https://github.com/encero-systems/incan/commit/7656195ba94a4fc309ee5ee83c9dd45a42800db0). Release tooling pins that source identity separately from the canonical root `incan.lock`. In one historical macOS environment, an immediate second lock generation was byte-identical and two clean strict locked library builds passed. That is fixed-point evidence for that environment, not portable reproducibility evidence. Current cross-platform locked verification is blocked because Incan's generated Rust ABI metadata is sensitive to cache and platform state, and Ubuntu rejects a lock produced from the same source inputs. A repaired portable lock, complete local gate, and current native release matrix remain publication gates. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
+The current branch requires Incan `0.5.0-dev.21` from merged source commit [`66c69edae20745598effdecf40778bf53f9ecd67`](https://github.com/encero-systems/incan/commit/66c69edae20745598effdecf40778bf53f9ecd67). Release tooling pins that source identity separately from the canonical root `incan.lock`. Publication still requires a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the final Hees head. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
 
 ```bash
 make ci INCAN=/path/to/incan
@@ -230,7 +230,7 @@ The current gate formats and builds the public library, runs the package and run
 The standalone Console has focused source and native smoke gates:
 
 ```bash
-make console-test console-native-smoke INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
+make console-test console-native-smoke INCAN=/path/to/incan-0.5.0-dev.21/bin/incan
 ```
 
 They compile the Incan-authored Console, run the native application and provider-boundary suites, build the native artifact, and execute all five headless replay smokes against the fictional profile corpus.
@@ -239,7 +239,7 @@ The separate release-candidate lane wraps that proof in a checked archive:
 
 ```bash
 make console-release-candidate \
-  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan \
+  INCAN=/path/to/incan-0.5.0-dev.21/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 ```
 

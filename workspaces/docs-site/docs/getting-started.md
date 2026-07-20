@@ -2,7 +2,7 @@
 
 ## Requirements
 
-The current branch requires Incan `0.5.0-dev.19` from merged source commit [`7656195ba94a4fc309ee5ee83c9dd45a42800db0`](https://github.com/encero-systems/incan/commit/7656195ba94a4fc309ee5ee83c9dd45a42800db0). Release tooling records that source identity separately from the canonical root `incan.lock`. In one historical macOS environment, an immediate second lock generation was byte-identical and two clean strict locked library builds passed. That proves a fixed point in that environment, not portable reproducibility. Current cross-platform locked verification is blocked because Incan's generated Rust ABI metadata is sensitive to cache and platform state, and Ubuntu rejects a lock produced from the same source inputs. A repaired portable lock, the complete local gate, and the current native release matrix remain publication evidence gates.
+The current branch requires Incan `0.5.0-dev.21` from merged source commit [`66c69edae20745598effdecf40778bf53f9ecd67`](https://github.com/encero-systems/incan/commit/66c69edae20745598effdecf40778bf53f9ecd67). Release tooling records that source identity separately from the canonical root `incan.lock`. Publication still requires a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the final Hees head.
 
 ## Verify the repository
 
@@ -35,7 +35,7 @@ The Console workspace uses only original fictional acceptance data. Its verifica
 
 ```bash
 make console-test console-native-smoke \
-  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
+  INCAN=/path/to/incan-0.5.0-dev.21/bin/incan
 ```
 
 This proves the bounded `console_profile_0_1` workflow without downloading or invoking a language model. Provider-facing and rendering modules never receive package-authoring, activation, or terminal authority.
@@ -45,7 +45,7 @@ This proves the bounded `console_profile_0_1` workflow without downloading or in
 Build the executable with the pinned Incan compiler, then start the zero-credential offline experience:
 
 ```bash
-make console-build INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
+make console-build INCAN=/path/to/incan-0.5.0-dev.21/bin/incan
 workspaces/hees-console/target/incan/.cargo-target/release/hees_console
 ```
 

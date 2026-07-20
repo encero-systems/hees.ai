@@ -54,11 +54,11 @@ jobs:
           workspaces/hees-console/packaging/release_candidate.sh
           prepare-incan
           --platform linux-x86_64
-          --destination "$RUNNER_TEMP/incan-0.5.0-dev.19"
+          --destination "$RUNNER_TEMP/incan-0.5.0-dev.21"
       - name: Audit the locked native license graph
         run: >-
           make console-license-audit
-          INCAN="$RUNNER_TEMP/incan-0.5.0-dev.19/bin/incan"
+          INCAN="$RUNNER_TEMP/incan-0.5.0-dev.21/bin/incan"
 
   build:
     needs: validate
@@ -93,7 +93,7 @@ jobs:
           git show-ref --verify --quiet refs/remotes/origin/main
           git merge-base --is-ancestor HEAD origin/main
           printf 'commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          printf 'INCAN_ROOT=%s\n' "$RUNNER_TEMP/incan-0.5.0-dev.19" >> "$GITHUB_ENV"
+          printf 'INCAN_ROOT=%s\n' "$RUNNER_TEMP/incan-0.5.0-dev.21" >> "$GITHUB_ENV"
           printf 'RELEASE_OUTPUT=%s\n' "$RUNNER_TEMP/hees-console-release" >> "$GITHUB_ENV"
       - name: Install Rust 1.93
         uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66 # 1.93.0

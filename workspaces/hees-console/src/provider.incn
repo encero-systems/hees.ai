@@ -877,7 +877,7 @@ pub def build_committee_calls(
         target = targets[index]
         if not target_matches_interaction(target, context, candidate_digest):
             return Err(ProviderFailure.InvalidInput)
-        # dev.19 moves both a direct model field and a reused local into `contains`; separate copies avoid a Rust move.
+        # The pinned compiler moves both a direct model field and a reused local into `contains`; separate copies avoid a Rust move.
         if target_ids.contains(f"{target.body.target_id}"):
             return Err(ProviderFailure.InvalidInput)
         target_ids.append(f"{target.body.target_id}")
@@ -1245,7 +1245,7 @@ pub def evaluate_committee_json_with_transport(
 def load_api_key() -> Result[str, ProviderFailure]:
     """Read only `OPENAI_API_KEY` and reject blank, oversized, or header-breaking values."""
 
-    # dev.19 emits an ambiguous `.into()` for a direct `str` passed to Rust's generic `env::var` boundary.
+    # The pinned compiler emits an ambiguous `.into()` for a direct `str` passed to Rust's generic `env::var` boundary.
     environment_name = f"{API_KEY_ENVIRONMENT}"
     match env_var(environment_name):
         Err(_) => return Err(ProviderFailure.MissingApiKey)
