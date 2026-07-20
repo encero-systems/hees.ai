@@ -90,9 +90,9 @@ validate_manifest() {
                 .source.tree_state == "clean" and
                 (.source.date_epoch | type == "number" and . >= 0) and
                 .toolchain.compiler == "incan" and
-                .toolchain.compiler_version == "0.5.0-dev.18" and
+                .toolchain.compiler_version == "0.5.0-dev.19" and
                 .toolchain.source_repository == "https://github.com/encero-systems/incan.git" and
-                .toolchain.source_commit == "79e7025bef547cd6eb79f08159630ec5998412d1" and
+                .toolchain.source_commit == "7d5fec3dca612cfc150f1d59b1a86a914b26e493" and
                 .dependencies.incan_lock_file == "incan.lock" and
                 (.dependencies.incan_lock_sha256 | test("^[0-9a-f]{64}$")) and
                 .notices.notice_file == "NOTICE" and

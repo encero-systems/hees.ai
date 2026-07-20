@@ -129,7 +129,7 @@ The relevant provider contracts follow the official [GPT-5.6 Sol model](https://
 | Self-contained executable | Exact-head candidates execute successfully on macOS ARM64, macOS x86-64, and Linux x86-64; **[FINALIZE BEFORE RELEASE: PUBLIC ASSET URLS, HASHES, AND MINIMUM SYSTEM REQUIREMENTS]** |
 | Publication state | Native matrix artifacts are short-lived CI evidence, not signed or notarized public releases |
 | Hosted equivalent | Not configured and not required when the published native test build remains available; any later hosted surface must run the same frozen executable in bounded, isolated, no-shell sessions |
-| Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.18`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
+| Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.19`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
 
 Unsupported platforms will be stated explicitly in the final release notes. Source portability is not evidence that a self-contained artifact works on a platform.
 
@@ -176,7 +176,7 @@ Implemented now:
 - deterministic relation and synthesis classification, checked structural-kernel delegation, and exact selected-memory freezing;
 - admitted-answer Content DNA, admitted receipts, and identity-safe rejection receipts with frozen canonical SHA-256 goldens;
 - an Incan-authored native Console application that owns terminal rendering, privacy-redacted headless output, deterministic replay, bounded trace projection, and optional live-provider composition while calling the Hees profile directly;
-- fifteen native application tests and fourteen provider-boundary tests, including injected end-to-end live composition without network access;
+- seventeen native application tests and fourteen provider-boundary tests, including injected end-to-end live composition without network access;
 - reproducible native release-candidate packaging with license, provenance, checksum, leakage, and extracted-archive smoke gates;
 - a checked `src/lib.incn` public surface; and
 - an external-consumer fixture and fictional external example.
@@ -195,7 +195,7 @@ Not implemented by the checked `0.0.1` library:
 
 ### Toolchain
 
-The library preview is locked and verified with Incan `0.5.0-dev.18` at source commit [`79e7025be`](https://github.com/encero-systems/incan/commit/79e7025bef547cd6eb79f08159630ec5998412d1). That commit contains the sibling-module metadata and validated-newtype decoding support required by this source tree. Make the resulting `incan` binary available on `PATH`, or pass it explicitly to Make:
+The library preview is locked and verified with Incan `0.5.0-dev.19` at source commit [`7d5fec3dc`](https://github.com/encero-systems/incan/commit/7d5fec3dca612cfc150f1d59b1a86a914b26e493). That commit contains the sibling-module metadata, validated-newtype decoding, and owned regex-match string boundaries required by this source tree. Make the resulting `incan` binary available on `PATH`, or pass it explicitly to Make:
 
 ```bash
 make ci INCAN=/path/to/incan
@@ -214,16 +214,16 @@ The current gate formats and builds the public library, runs the package and run
 The standalone Console has focused source and native smoke gates:
 
 ```bash
-make console-test console-native-smoke INCAN=/path/to/incan-0.5.0-dev.18/bin/incan
+make console-test console-native-smoke INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
 ```
 
-They compile the Incan-authored Console, run fifteen native application tests and fourteen provider-boundary tests, build the native artifact, and execute all five headless replay smokes against the fictional RFC 010 corpus.
+They compile the Incan-authored Console, run seventeen native application tests and fourteen provider-boundary tests, build the native artifact, and execute all five headless replay smokes against the fictional RFC 010 corpus.
 
 The separate release-candidate lane wraps that proof in a checked archive:
 
 ```bash
 make console-release-candidate \
-  INCAN=/path/to/incan-0.5.0-dev.18/bin/incan \
+  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 ```
 

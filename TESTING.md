@@ -87,7 +87,7 @@ The adapter's request construction, strict decoding, injected-transport composit
 
 ## Source verification for contributors
 
-The current checked library remains Hees `0.0.1` and uses commit-pinned Incan `0.5.0-dev.18`:
+The current checked library remains Hees `0.0.1` and uses commit-pinned Incan `0.5.0-dev.19`:
 
 ```bash
 make ci
@@ -97,10 +97,10 @@ That command verifies formatting, the public library build, package and runtime 
 
 ```bash
 make console-test console-native-smoke \
-  INCAN=/path/to/incan-0.5.0-dev.18/bin/incan
+  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
 
 make console-release-candidate \
-  INCAN=/path/to/incan-0.5.0-dev.18/bin/incan \
+  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 
 make console-release-lint console-release-set-test

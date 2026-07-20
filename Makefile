@@ -24,7 +24,7 @@ LICENSE_CONFIG_ROOT := $(abspath tools/licenses)
 INCAN_RESOLVED := $(shell command -v "$(INCAN)" 2>/dev/null || printf '%s' "$(INCAN)")
 INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
 CONSOLE_RUSTFLAGS := --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(HOME)=/build-home --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain
-INCAN_REQUIRED_VERSION := incan 0.5.0-dev.18
+INCAN_REQUIRED_VERSION := incan 0.5.0-dev.19
 RELEASE_OUTPUT ?= $(abspath $(CONSOLE_ROOT)/target/release)
 RELEASE_PLATFORM ?=
 SOURCE_COMMIT ?= $(shell git rev-parse HEAD)

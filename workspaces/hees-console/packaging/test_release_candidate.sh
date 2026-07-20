@@ -89,7 +89,7 @@ make_fake_incan() {
     mkdir -p "$destination/bin"
     {
         printf '%s\n' '#!/bin/sh'
-        printf '%s\n' 'printf "%s\\n" "incan 0.5.0-dev.18"'
+        printf '%s\n' 'printf "%s\\n" "incan 0.5.0-dev.19"'
     } >"$destination/bin/incan"
     chmod 755 "$destination/bin/incan"
 }
@@ -109,7 +109,7 @@ expect_failure \
 pass "current platform is accepted"
 
 fake_console="$TEST_ROOT/hees-console"
-fake_incan="$TEST_ROOT/incan-0.5.0-dev.18"
+fake_incan="$TEST_ROOT/incan-0.5.0-dev.19"
 fake_incan_lock="$TEST_ROOT/incan.lock"
 output="$TEST_ROOT/output"
 source_commit=$(git -C "$REPOSITORY_ROOT" rev-parse HEAD)
@@ -170,8 +170,8 @@ manifest="$output/hees-console-0.1.0-$platform.manifest.json"
 [ -f "$checksum" ] || fail "checksum was not produced"
 [ -f "$manifest" ] || fail "manifest sidecar was not produced"
 grep -F '"language":"Incan"' "$manifest" >/dev/null || fail "manifest does not identify Incan"
-grep -F '"compiler_version":"0.5.0-dev.18"' "$manifest" >/dev/null || fail "manifest does not pin Incan 0.5.0-dev.18"
-grep -F '"source_commit":"79e7025bef547cd6eb79f08159630ec5998412d1"' "$manifest" >/dev/null || fail "manifest does not pin the Incan source commit"
+grep -F '"compiler_version":"0.5.0-dev.19"' "$manifest" >/dev/null || fail "manifest does not pin Incan 0.5.0-dev.19"
+grep -F '"source_commit":"7d5fec3dca612cfc150f1d59b1a86a914b26e493"' "$manifest" >/dev/null || fail "manifest does not pin the Incan source commit"
 grep -F '"incan_lock_file":"incan.lock"' "$manifest" >/dev/null || fail "manifest does not identify the canonical workspace lock"
 grep -F "\"incan_lock_sha256\":\"$fake_incan_lock_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind the Console dependency lock"
 grep -F "\"notice_source\":\"repository_root\",\"notice_sha256\":\"$repository_notice_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind repository NOTICE provenance"

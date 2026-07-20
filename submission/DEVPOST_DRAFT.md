@@ -81,7 +81,7 @@ The same authority boundary is designed to serve deterministic offline replay an
 
 ## Technologies used
 
-- commit-pinned Incan `0.5.0-dev.18` and the Hees `0.0.1` structural-admission kernel;
+- commit-pinned Incan `0.5.0-dev.19` and the Hees `0.0.1` structural-admission kernel;
 - a compiled Incan-authored Build Week profile runner;
 - `crossterm` through explicit Incan interop for native terminal primitives;
 - `ureq` through explicit Incan interop for the fixed native HTTPS boundary;

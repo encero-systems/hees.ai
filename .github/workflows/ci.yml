@@ -35,7 +35,7 @@ jobs:
       - name: Build pinned Incan 0.5 development toolchain
         run: |
           set -euo pipefail
-          install_root="$RUNNER_TEMP/incan-0.5.0-dev.18"
+          install_root="$RUNNER_TEMP/incan-0.5.0-dev.19"
           workspaces/hees-console/packaging/release_candidate.sh \
             prepare-incan \
             --platform linux-x86_64 \

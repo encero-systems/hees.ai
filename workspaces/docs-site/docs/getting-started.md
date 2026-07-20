@@ -2,7 +2,7 @@
 
 ## Requirements
 
-Use Incan `0.5.0-dev.18` at source commit [`79e7025be`](https://github.com/encero-systems/incan/commit/79e7025bef547cd6eb79f08159630ec5998412d1). The canonical root `incan.lock` was generated with that exact compiler revision.
+Use Incan `0.5.0-dev.19` at source commit [`7d5fec3dc`](https://github.com/encero-systems/incan/commit/7d5fec3dca612cfc150f1d59b1a86a914b26e493). The canonical root `incan.lock` was generated with that exact compiler revision.
 
 ## Verify the repository
 
@@ -31,11 +31,11 @@ The test project under `workspaces/external-consumer/` compiles and tests this e
 
 ## Verify the initial console profile
 
-The Console workspace uses only original fictional acceptance data. Its current proof runs fifteen native application tests and fourteen provider-boundary tests, builds the native Incan executable, and reruns all five replay inputs through Hees:
+The Console workspace uses only original fictional acceptance data. Its current proof runs seventeen native application tests and fourteen provider-boundary tests, builds the native Incan executable, and reruns all five replay inputs through Hees:
 
 ```bash
 make console-test console-native-smoke \
-  INCAN=/path/to/incan-0.5.0-dev.18/bin/incan
+  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
 ```
 
 This proves the closed `console_profile_0_1` path. It does not download or invoke a language model, perform retrieval, or grant the provider-facing Console module admission authority.
@@ -45,7 +45,7 @@ This proves the closed `console_profile_0_1` path. It does not download or invok
 Build the executable with the pinned Incan compiler, then start the zero-credential offline experience:
 
 ```bash
-make console-build INCAN=/path/to/incan-0.5.0-dev.18/bin/incan
+make console-build INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
 workspaces/hees-console/target/incan/.cargo-target/release/hees_console
 ```
 
