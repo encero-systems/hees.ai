@@ -23,7 +23,8 @@ CONSOLE_GENERATED_LICENSE_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evi
 LICENSE_CONFIG_ROOT := $(abspath tools/licenses)
 INCAN_RESOLVED := $(shell command -v "$(INCAN)" 2>/dev/null || printf '%s' "$(INCAN)")
 INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
-CONSOLE_RUSTFLAGS := --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(HOME)=/build-home --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain
+INCAN_PROVIDER_HOME := $(abspath $(if $(INCAN_HOME),$(INCAN_HOME),$(HOME)/.incan))
+CONSOLE_RUSTFLAGS := --remap-path-prefix=$(INCAN_PROVIDER_HOME)=/incan-provider-cache --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(HOME)=/build-home --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain
 INCAN_REQUIRED_VERSION := incan 0.5.0-dev.19
 RELEASE_OUTPUT ?= $(abspath $(CONSOLE_ROOT)/target/release)
 RELEASE_PLATFORM ?=
@@ -81,8 +82,6 @@ console-native-smoke: console-build
 	$(CONSOLE_RELEASE_TOOL) smoke-binary --binary $(CONSOLE_BINARY)
 
 console-license-audit: console-build
-	install -m 644 LICENSE target/lib/LICENSE
-	install -m 644 LICENSE $(CONSOLE_GENERATED_ROOT)/LICENSE
 	$(CARGO_DENY) --manifest-path $(CONSOLE_GENERATED_ROOT)/Cargo.toml check --config $(LICENSE_CONFIG_ROOT)/deny.toml licenses
 	$(CARGO_ABOUT) generate $(LICENSE_CONFIG_ROOT)/third-party-licenses.hbs --config $(LICENSE_CONFIG_ROOT)/about.toml --manifest-path $(CONSOLE_GENERATED_ROOT)/Cargo.toml --locked --offline --fail --output-file $(CONSOLE_GENERATED_LICENSE_REPORT)
 	@test -s $(CONSOLE_GENERATED_LICENSE_REPORT)
@@ -103,7 +102,7 @@ console-release-lint:
 console-release-candidate: console-release-contract-test console-test console-native-smoke console-license-audit
 	@test -n "$(RELEASE_PLATFORM)" || { echo "RELEASE_PLATFORM is required" >&2; exit 1; }
 	$(CONSOLE_RELEASE_TOOL) validate-platform --platform "$(RELEASE_PLATFORM)"
-	THIRD_PARTY_LICENSES_SOURCE="$(CONSOLE_GENERATED_LICENSE_REPORT)" $(CONSOLE_RELEASE_TOOL) package --binary "$(CONSOLE_BINARY)" --platform "$(RELEASE_PLATFORM)" --output-directory "$(RELEASE_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --source-date-epoch "$(SOURCE_DATE_EPOCH)" --incan-root "$(INCAN_RELEASE_ROOT)" --incan-lock "$(CONSOLE_LOCK)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
-	$(CONSOLE_RELEASE_TOOL) smoke-archive --archive "$(RELEASE_OUTPUT)/hees-console-0.1.0-$(RELEASE_PLATFORM).tar.gz" --platform "$(RELEASE_PLATFORM)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)"
+	THIRD_PARTY_LICENSES_SOURCE="$(CONSOLE_GENERATED_LICENSE_REPORT)" $(CONSOLE_RELEASE_TOOL) package --binary "$(CONSOLE_BINARY)" --platform "$(RELEASE_PLATFORM)" --output-directory "$(RELEASE_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --source-date-epoch "$(SOURCE_DATE_EPOCH)" --incan-root "$(INCAN_RELEASE_ROOT)" --incan-lock "$(CONSOLE_LOCK)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)" --forbidden "$(INCAN_PROVIDER_HOME)"
+	$(CONSOLE_RELEASE_TOOL) smoke-archive --archive "$(RELEASE_OUTPUT)/hees-console-0.1.0-$(RELEASE_PLATFORM).tar.gz" --platform "$(RELEASE_PLATFORM)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)" --forbidden "$(INCAN_PROVIDER_HOME)"
 
 ci: fmt lib test consumer example boundary boundary-self-test docs console-test console-runner-build console-kernel-compatibility console-release-contract-test console-release-set-test
