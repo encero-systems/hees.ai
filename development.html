@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-007086af.js";
+            window.path_to_searchindex_js = "searchindex-ebba0582.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-4a161493.js"></script>
@@ -182,7 +182,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="development"><a class="header" href="#development">Development</a></h1>
-<p>Run the complete local gate with commit-pinned Incan <code>0.5.0-dev.19</code>:</p>
+<p>Run the complete local gate with commit-pinned Incan <code>0.5.0-dev.21</code>:</p>
 <pre><code class="language-bash">make ci INCAN=/path/to/incan
 </code></pre>
 <p>The default uses locked dependency resolution and permits a clean machine to populate Cargo’s cache. Once dependencies are present, <code>INCAN_FLAGS="--locked --offline"</code> provides an additional dependency-resolution check; the packaged replay executable itself is already network-independent.</p>
@@ -198,13 +198,13 @@
 </ul>
 <p>Changes to the initial console profile or application also require:</p>
 <pre><code class="language-bash">make console-test console-native-smoke \
-  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
+  INCAN=/path/to/incan-0.5.0-dev.21/bin/incan
 </code></pre>
 <p>Those gates compile the native Incan Console, run the direct profile and application suite, and execute all five offline scenarios through the real Hees profile. The domain JSON Schemas constrain provider-facing shape; profile authority and public reason selection remain inside the Hees profile.</p>
 <h2 id="release-candidate-archive"><a class="header" href="#release-candidate-archive">Release-candidate archive</a></h2>
 <p>Build a local candidate only with the pinned toolchain for the current native target:</p>
 <pre><code class="language-bash">make console-release-candidate \
-  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan \
+  INCAN=/path/to/incan-0.5.0-dev.21/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 </code></pre>
 <p>The candidate-platform registry is <code>workspaces/hees-console/packaging/release-platforms.json</code>. It pins the exact public Incan source commit, target architecture, and standard hosted runner for Linux x86_64, macOS ARM64, and macOS x86_64. Each lane builds that compiler commit natively, verifies its version, then builds Console. The command fails when the executing host does not match the selected target. Windows and Linux ARM64 are excluded until equivalent native lanes execute successfully.</p>
