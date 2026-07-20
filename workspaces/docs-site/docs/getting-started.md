@@ -2,7 +2,7 @@
 
 ## Requirements
 
-The current branch requires Incan `0.5.0-dev.21` from merged source commit [`66c69edae20745598effdecf40778bf53f9ecd67`](https://github.com/encero-systems/incan/commit/66c69edae20745598effdecf40778bf53f9ecd67). Release tooling records that source identity separately from the canonical root `incan.lock`. Publication still requires a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the final Hees head.
+The current branch requires Incan `0.5.0-dev.22` from merged source commit [`INCAN_DEV22_MERGED_SHA_PENDING`](https://github.com/encero-systems/incan/commit/INCAN_DEV22_MERGED_SHA_PENDING). Release tooling records that source identity separately from the canonical root `incan.lock`. Publication still requires a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the final Hees head.
 
 ## Verify the repository
 
@@ -35,7 +35,7 @@ The Console workspace uses only original fictional acceptance data. Its verifica
 
 ```bash
 make console-test console-native-smoke \
-  INCAN=/path/to/incan-0.5.0-dev.21/bin/incan
+  INCAN=/path/to/incan-0.5.0-dev.22/bin/incan
 ```
 
 This proves the bounded `console_profile_0_1` workflow without downloading or invoking a language model. Provider-facing and rendering modules never receive package-authoring, activation, or terminal authority.
@@ -45,7 +45,7 @@ This proves the bounded `console_profile_0_1` workflow without downloading or in
 Build the executable with the pinned Incan compiler, then start the zero-credential offline experience:
 
 ```bash
-make console-build INCAN=/path/to/incan-0.5.0-dev.21/bin/incan
+make console-build INCAN=/path/to/incan-0.5.0-dev.22/bin/incan
 workspaces/hees-console/target/incan/.cargo-target/release/hees_console
 ```
 

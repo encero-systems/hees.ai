@@ -845,7 +845,7 @@ def test_trace_is_separate_non_authoritative_and_redacts_interaction_content() -
 
     run = assert_is_ok(evaluate_offline_scenario("valid"))
     trace = run.trace.to_json()
-    assert_eq(CONSOLE_TOOLCHAIN_IDENTITY, "incan_0_5_0_dev_19")
+    assert_eq(CONSOLE_TOOLCHAIN_IDENTITY, "incan_0_5_0_dev_22")
     assert_eq(run.trace.toolchain_identity, CONSOLE_TOOLCHAIN_IDENTITY)
     assert_eq(trace.contains("incan_0_5_0_dev_18"), false)
     assert_eq(trace.contains("console_trace_0_1"), true)

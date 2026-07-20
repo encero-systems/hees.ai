@@ -148,7 +148,7 @@ The relevant provider contracts follow the official [GPT-5.6 Sol model](https://
 | Self-contained executable | An earlier immutable candidate executed successfully on macOS ARM64, macOS x86-64, and Linux x86-64; the redesigned final head requires a fresh matrix before those platforms become current release claims; **[FINALIZE BEFORE RELEASE: PUBLIC ASSET URLS, HASHES, AND MINIMUM SYSTEM REQUIREMENTS]** |
 | Publication state | Earlier native matrix artifacts are historical CI evidence; the current head has zero release artifacts and no signed or notarized public release |
 | Hosted equivalent | Not configured; any later hosted surface must run the same frozen executable in bounded, isolated, no-shell sessions |
-| Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.21`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
+| Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.22`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
 
 Unsupported platforms will be stated explicitly in the final release notes. Source portability is not evidence that a self-contained artifact works on a platform.
 
@@ -218,7 +218,7 @@ Not implemented by the checked `0.0.1` library:
 
 ### Toolchain
 
-The current branch requires Incan `0.5.0-dev.21` from merged source commit [`66c69edae20745598effdecf40778bf53f9ecd67`](https://github.com/encero-systems/incan/commit/66c69edae20745598effdecf40778bf53f9ecd67). Release tooling pins that source identity separately from the canonical root `incan.lock`. Publication still requires a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the final Hees head. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
+The current branch requires Incan `0.5.0-dev.22` from merged source commit [`INCAN_DEV22_MERGED_SHA_PENDING`](https://github.com/encero-systems/incan/commit/INCAN_DEV22_MERGED_SHA_PENDING). Release tooling pins that source identity separately from the canonical root `incan.lock`. Publication still requires a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the final Hees head. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
 
 ```bash
 make ci INCAN=/path/to/incan
@@ -237,7 +237,7 @@ The current gate formats and builds the public library, runs the package and run
 The standalone Console has focused source and native smoke gates:
 
 ```bash
-make console-test console-native-smoke INCAN=/path/to/incan-0.5.0-dev.21/bin/incan
+make console-test console-native-smoke INCAN=/path/to/incan-0.5.0-dev.22/bin/incan
 ```
 
 They compile the Incan-authored Console, run the native application and provider-boundary suites, build the native artifact, and execute all five headless replay smokes against the fictional profile corpus.
@@ -246,7 +246,7 @@ The separate release-candidate lane wraps that proof in a checked archive:
 
 ```bash
 make console-release-candidate \
-  INCAN=/path/to/incan-0.5.0-dev.21/bin/incan \
+  INCAN=/path/to/incan-0.5.0-dev.22/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 ```
 
