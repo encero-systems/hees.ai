@@ -676,6 +676,18 @@ def test_interaction_workspace_prioritizes_navigation_authority_and_readable_rec
     assert_eq(screen.contains("{\"body\""), false)
 
 
+def test_wide_interaction_wraps_the_complete_visible_response() -> None:
+    """Keep the model-visible response readable instead of clipping it at the pane boundary."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    state = apply_command(initial_state(), "show-interactions", [true])
+    screen = strip_terminal_styles(render_screen_for_size(state, [run], 160, 44))
+    assert_eq(screen.contains("visible response  Place the amber card first"), true)
+    assert_eq(screen.contains("green card third."), true)
+    assert_eq(screen.contains("and t~"), false)
+    assert_eq(screen_has_exact_geometry(screen, 160, 44), true)
+
+
 def test_live_single_run_receipt_uses_the_actual_collection_total() -> None:
     """Render one evaluated live interaction as receipt 1 of 1 rather than a replay-suite constant."""
 
@@ -733,6 +745,10 @@ def test_compact_workspace_keeps_the_decision_and_controls_visible() -> None:
     assert_eq(screen.contains("unknown_action"), true)
     assert_eq(strip_terminal_styles(screen).contains("[q] quit"), true)
     assert_eq(len(screen.split("\n")), 20)
+    responsive_compact = render_screen_for_size(state, runs, 128, 28)
+    assert_eq(responsive_compact.contains("COMPACT VIEW"), true)
+    assert_eq(responsive_compact.contains("HEES DECISION"), true)
+    assert_eq(screen_has_exact_geometry(responsive_compact, 128, 28), true)
 
 
 def test_compact_decisions_render_every_selected_governance_context() -> None:

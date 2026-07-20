@@ -856,7 +856,25 @@ def scenario_rail_rows(state: ConsoleState, runs: list[ConsoleRun]) -> list[Styl
     return rows
 
 
-def interaction_center_rows(run: ConsoleRun) -> list[StyledRow]:
+def visible_response_rows(run: ConsoleRun, content_width: int) -> list[StyledRow]:
+    """Wrap the model-visible response inside the actual centre-pane width."""
+
+    prefix = "visible response  "
+    prefix_width = terminal_cell_width(prefix)
+    mut available_width = content_width - prefix_width
+    if available_width < 1:
+        available_width = 1
+    wrapped = wrapped_text_lines(first_visible_unit(run), available_width, 220)
+    if len(wrapped) == 0:
+        return [StyledRow.Proposal(prefix)]
+    mut rows = [StyledRow.Proposal(f"{prefix}{wrapped[0]}")]
+    continuation = spaces(prefix_width)
+    for line in wrapped[1:]:
+        rows.append(StyledRow.Proposal(f"{continuation}{line}"))
+    return rows
+
+
+def interaction_center_rows(run: ConsoleRun, content_width: int) -> list[StyledRow]:
     """Render proposal, package support, and Hees authority with explicit typed row styles."""
 
     proposal = run.scenario.body.proposal
@@ -874,11 +892,15 @@ def interaction_center_rows(run: ConsoleRun) -> list[StyledRow]:
             proposal.package_revision,
             32,
         )}",
-    ), StyledRow.Proposal(f"visible response  {first_visible_unit(run)}"), StyledRow.Plain(""), StyledRow.Support(
-        "DECLARED SUPPORT  PACKAGE",
-    ), StyledRow.Support(f"declared actions  {run.scenario.package.action_count}"), StyledRow.Support(
-        f"support mappings  {len(proposal.support_mappings)}",
-    ), StyledRow.Support(f"selected memory  {len(run.result.selected_memory)}"), StyledRow.Plain("")]
+    )]
+    rows.extend(visible_response_rows(run, content_width))
+    rows.extend(
+        [StyledRow.Plain(""), StyledRow.Support("DECLARED SUPPORT  PACKAGE"), StyledRow.Support(
+            f"declared actions  {run.scenario.package.action_count}",
+        ), StyledRow.Support(f"support mappings  {len(proposal.support_mappings)}"), StyledRow.Support(
+            f"selected memory  {len(run.result.selected_memory)}",
+        ), StyledRow.Plain("")],
+    )
     rows.append(
         decision_row(
             "┌─ HEES DECISION ────────────────────────────────────────────────",
@@ -1331,7 +1353,7 @@ def decision_center_lines(run: ConsoleRun) -> list[str]:
     return lines
 
 
-def workspace_center_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRow]:
+def workspace_center_rows(state: ConsoleState, run: ConsoleRun, content_width: int) -> list[StyledRow]:
     """Select the task surface and assign row styles independently from dynamic content."""
 
     if state.surface == "profiles":
@@ -1343,7 +1365,7 @@ def workspace_center_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRo
     if state.surface == "committee":
         return heading_rows(committee_center_lines(run))
     if state.surface == "interactions":
-        return interaction_center_rows(run)
+        return interaction_center_rows(run, content_width)
     if state.surface == "decisions":
         mut rows = heading_rows(decision_center_lines(run))
         rows[2] = decision_row(f"SPECTRUM        {status_icon_label(run)}", run.result.spectrum.admitted)
@@ -1417,6 +1439,14 @@ def compact_workflow_lines(state: ConsoleState, run: ConsoleRun, total: int, con
     return help_center_lines()
 
 
+def workspace_center_width(columns: int, left_width: int, right_width: int) -> int:
+    """Return the single centre-pane width used for wrapping, rules, and row composition."""
+
+    if left_width == 0:
+        return columns - right_width - 7
+    return columns - left_width - right_width - 10
+
+
 def compose_workspace_rows(
     left: list[StyledRow],
     center: list[StyledRow],
@@ -1428,9 +1458,7 @@ def compose_workspace_rows(
     """Compose three bounded product panes into one deterministic terminal grid."""
 
     right_width = 46
-    mut center_width = columns - left_width - right_width - 10
-    if left_width == 0:
-        center_width = columns - right_width - 7
+    center_width = workspace_center_width(columns, left_width, right_width)
     mut result: list[str] = []
     mut row = 0
     while row < height:
@@ -1457,9 +1485,8 @@ def compose_workspace_rows(
 def workspace_rule(columns: int, left_width: int, right_width: int, junction: str) -> str:
     """Build one pane-aware rule whose junctions match every body border exactly."""
 
-    mut center_width = columns - left_width - right_width - 10
+    center_width = workspace_center_width(columns, left_width, right_width)
     if left_width == 0:
-        center_width = columns - right_width - 7
         return f"├{horizontal_rule(center_width + 2)}{junction}{horizontal_rule(right_width + 2)}┤"
     return f"├{horizontal_rule(left_width + 2)}{junction}{horizontal_rule(center_width + 2)}{junction}{horizontal_rule(
         right_width + 2,
@@ -1512,10 +1539,9 @@ def horizontal_rule(width: int) -> str:
 pub def render_screen_for_size(state: ConsoleState, runs: list[ConsoleRun], columns: int, rows: int) -> str:
     """Render an exact-height, exact-width evidence-first workspace for one terminal size."""
 
-    if columns < 128 or rows < 28:
+    if columns < 140 or rows < 36:
         return compact_screen(state, runs, columns, rows)
     run = selected_run(state, runs)
-    center = workspace_center_rows(state, run)
     mut left = workflow_rail_rows(state, run)
     if state.surface == "interactions":
         left = scenario_rail_rows(state, runs)
@@ -1524,6 +1550,8 @@ pub def render_screen_for_size(state: ConsoleState, runs: list[ConsoleRun], colu
     if state.sidebar_collapsed:
         left_width = 0
     right_width = 46
+    center_width = workspace_center_width(columns, left_width, right_width)
+    center = workspace_center_rows(state, run, center_width)
     body_height = rows - 7
     mut lines = [f"┌{horizontal_rule(columns - 2)}┐", framed_row(
         f"hees.ai console   ·   Governed AI Profile Studio   ·   {mode_label(run)}   ·   {state.active_profile_id}",
