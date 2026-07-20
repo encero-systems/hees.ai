@@ -40,7 +40,12 @@ jobs:
             prepare-incan \
             --platform linux-x86_64 \
             --destination "$install_root"
-          echo "INCAN_BIN=$install_root/bin/incan" >> "$GITHUB_ENV"
+          {
+            echo "INCAN_BIN=$install_root/bin/incan"
+            echo "INCAN_HOME=$RUNNER_TEMP/incan-home"
+            echo "INCAN_STDLIB=$install_root/source/crates/incan_stdlib/stdlib"
+            echo "INCAN_TOOLCHAIN_CRATES_DIR=$install_root/source/crates"
+          } >> "$GITHUB_ENV"
       - name: Install checksum-pinned mdBook 0.5.4
         env:
           MDBOOK_URL: https://github.com/rust-lang/mdBook/releases/download/v0.5.4/mdbook-v0.5.4-x86_64-unknown-linux-gnu.tar.gz
