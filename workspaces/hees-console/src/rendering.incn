@@ -826,7 +826,7 @@ def scenario_rail_rows(state: ConsoleState, runs: list[ConsoleRun]) -> list[Styl
         rows.append(decision_row(f"    {status_label(run)}", run.result.spectrum.admitted))
         rows.append(StyledRow.Plain(""))
     rows.append(StyledRow.Plain(f"{len(visible)} / {len(runs)} reviewed scenarios"))
-    rows.append(StyledRow.Plain("[↑↓] select  / search  [b] collapse"))
+    rows.append(StyledRow.Plain("[↑↓] select  [/] search"))
     return rows
 
 

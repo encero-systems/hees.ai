@@ -188,11 +188,11 @@ pub def scenario_title(slug: str) -> str:
     if slug == "undeclared-action":
         return "Undeclared action"
     if slug == "unknown-evidence":
-        return "Unknown evidence reference"
+        return "Unknown evidence"
     if slug == "unknown-memory":
-        return "Unknown memory reference"
+        return "Unknown memory"
     if slug == "non-admitted-memory":
-        return "Non-admitted memory reference"
+        return "Memory not admitted"
     return "Unknown scenario"
 
 
