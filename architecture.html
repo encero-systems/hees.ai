@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ebba0582.js";
+            window.path_to_searchindex_js = "searchindex-92adad25.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-4a161493.js"></script>
@@ -196,20 +196,24 @@
 </div>
 
 <h2 id="evidence-first-decision-last"><a class="header" href="#evidence-first-decision-last">Evidence first, decision last</a></h2>
-<pre><code class="language-text">source evidence -&gt; candidate memory atoms -&gt; reviewed memory atoms
-                                                        |
-                                                        v
-                             candidate governance profile
-                                                        |
-                                  Training by Committee observations
-                                                        |
-saved replay inputs ─┐                                  v
+<pre><code class="language-text">source evidence -&gt; candidate memory atoms
+                           |
+               authorized review + rights declaration
+                           |
+                           v
+                 reviewed memory atoms
+                           |
+              candidate governance profile
+                           |
+             Training by Committee observations
+                           |
+saved replay inputs ─┐     v
                     ├─&gt; compiled Hees profile -&gt; bounded Spectrum
-live model inputs ───┘                                  |
-                                                        v
-                         governed decision -&gt; selected memory
-                                                        |
-                                          Content DNA -&gt; receipt
+live model inputs ───┘     |
+                           v
+              governed decision -&gt; selected memory
+                           |
+                    Content DNA -&gt; receipt
 </code></pre>
 <p>The governance profile is the reusable product unit. It names the exact evidence catalog, reviewed memory, rights and review state, permitted actions, answer requirements, policy thresholds, evaluator roles, bounds, Spectrum behavior, terminal reasons, and receipt projection that apply to an interaction. A model may supply proposals and observations inside that space; it cannot write the space into existence.</p>
 <p>The Build Week Profile Studio makes that distinction executable. Evidence and memory can be staged or unstaged in a session-local candidate and sent through the shipped acceptance interaction at the real Hees boundary. The result keeps the stable public contract reason separate from the exact profile diagnostic; removing required evidence produces <code>invalid_package</code> and <code>invalid_package_atoms</code>. A rejected candidate probe cannot replace the shipped active profile. The <a href="governance-profiles.html">Governance profiles guide</a> explains the complete contract through the fictional Lantern Labs fields.</p>

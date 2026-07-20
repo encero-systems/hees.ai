@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ebba0582.js";
+            window.path_to_searchindex_js = "searchindex-92adad25.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-4a161493.js"></script>
@@ -223,24 +223,29 @@
 <p>The full-screen Console keeps profile declarations, candidate state, source evidence, reviewed memory, proposal, support mappings, Hees-derived verifier manifest, provider observations, Hees findings, Spectrum result, selected memory, Content DNA, receipt, and non-authoritative execution trace in separate surfaces. Direct question and source text appear only in the interactive surface; headless output redacts them by default.</p>
 <p>The optional live mode binds a question through Hees, sends a strict structured proposal request to the OpenAI Responses API, asks role-bound evaluators to inspect only the exact targets derived by Hees, and passes the normalized inputs through the same terminal profile. Replay supplies saved inputs rather than making provider calls. After transport-specific decoding, both modes enter identical validation, finding-classification, Spectrum, memory-selection, Content DNA, and receipt code. Live mode fails closed on missing credentials, provider failure, malformed output, excessive size or nesting, identity mismatch, and incomplete observation coverage; it never silently changes to replay while retaining a live label.</p>
 <h2 id="trust-boundary"><a class="header" href="#trust-boundary">Trust boundary</a></h2>
-<pre><code class="language-text">fictional evidence -&gt; candidate memory atoms -&gt; reviewed memory atoms
-                                                        |
-                                             governance profile
-                                                        |
-saved replay inputs ─┐                                  v
+<pre><code class="language-text">fictional evidence -&gt; candidate memory atoms
+                              |
+                  authorized review + rights declaration
+                              |
+                              v
+                    reviewed memory atoms
+                              |
+                     governance profile
+                              |
+saved replay inputs ─┐        v
                     ├─&gt; proposal + committee observations
-live GPT-5.6 inputs ─┘                                  |
-                                                        v
-                     compiled Incan-authored Hees profile
-               validation -&gt; findings -&gt; bounded Spectrum
-                                                        |
-                       governed terminal decision
-                            /                  \
-   ADMITTED + selected memory + Content DNA + receipt   REJECTED + exact reason
+live GPT-5.6 inputs ─┘        |
+                              v
+             compiled Incan-authored Hees profile
+       validation -&gt; findings -&gt; bounded Spectrum
+                              |
+                governed terminal decision
+                     /                  \
+ADMITTED + selected memory + Content DNA + receipt   REJECTED + exact reason
 </code></pre>
 <p>Console owns presentation, bounded provider transport, replay loading, and session-local candidate state. It calls the public Hees profile directly and does not reconstruct terminal authority from JSON. Hees owns profile validation, package, request, proposal, manifest, finding, policy, Spectrum, selected-memory, Content DNA, and receipt behavior.</p>
 <h2 id="run-offline"><a class="header" href="#run-offline">Run offline</a></h2>
-<p>The release archive contains one native executable plus the project license, notice, third-party license report, and release manifest. After extracting a supported archive, launch the Console without a compiler, package manager, source checkout, network connection, or API key:</p>
+<p>Once current-head assets are published, each release archive contains one native executable plus the project license, notice, third-party license report, and release manifest. The <a href="#current-release-gates">current release gates</a> distinguish verified source behavior from downloadable artifact availability. After extracting a supported archive, launch the Console without a compiler, package manager, source checkout, network connection, or API key:</p>
 <pre><code class="language-bash">./hees-console
 </code></pre>
 <p>Keys <code>1</code> through <code>7</code> open Profiles, Evidence, Memory, Committee, Interactions, Decisions, and Help. In Evidence or Memory, use <code>↑</code> and <code>↓</code> to select a record, <code>Space</code> to stage or unstage it in the candidate, <code>v</code> to validate through Hees, <code>a</code> to test the explicitly blocked activation boundary, and <code>r</code> to reset. In Interactions, use <code>↑</code> and <code>↓</code>, or <code>j</code> and <code>k</code>, to move through the admitted and adversarial scenarios. Press <code>b</code> to collapse or expand the item rail and <code>q</code> to quit.</p>
@@ -265,8 +270,7 @@ live GPT-5.6 inputs ─┘                                  |
 </code></pre>
 <p>The adapter uses model identifier <code>gpt-5.6-sol</code>, the provider-supported strict JSON Schema subset, low reasoning effort, bounded output tokens, a configured 15-second timeout per request, no tools, and sequential committee calls. Preflight permits one proposal call plus at most eight committee calls, so nine calls carry 135 seconds of aggregate configured timeout budget. That is not a global wall-clock ceiling because <code>ureq</code> 2.12.1 cannot interrupt DNS resolution. Each request body is limited to 65,536 UTF-8 bytes, and the adapter performs no retries. Provider availability is not required for offline replay.</p>
 <h3 id="live-provider-evidence"><a class="header" href="#live-provider-evidence">Live provider evidence</a></h3>
-<p>A native provider-only diagnostic exercised the Incan credential loader, <code>ureq</code> HTTPS POST, accepted strict schema, product decoder, and typed proposal path successfully in 8.34 seconds, with no retry. It did not record request or response hashes or usage. Separately, external <code>curl</code> submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal.</p>
-<p>A second native diagnostic reused the recorded proposal, preflighted exactly six Hees-derived targets, completed six sequential live GPT-5.6 committee calls in 40.06 seconds with zero retries, and decoded three relation and three synthesis observations. The real Hees profile classified six findings, selected <code>memory_lantern_sequence</code>, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process, retained no token-usage or cost record, and ran in a temporary generated harness rather than the frozen release binary. A coherent Incan <code>0.5.0-dev.21</code> compiler/source pairing completed all nineteen provider-boundary tests. The <a href="https://github.com/encero-systems/hees.ai/blob/main/submission/evidence/live-gpt56-proposal-2026-07-20.json">sanitized local observation</a> records the separate observations and their exact limitations. Together they prove the native proposal and live-committee paths separately, but not a combined run from the frozen release binary. The judge and video path remain offline replay.</p>
+<p>A native diagnostic verified the GPT-5.6 proposal leg; a six-call Training by Committee diagnostic then reused that recorded proposal and reached a real admitted Hees result. A combined run from the frozen release binary remains unproven, so offline replay is the judge and video path. The <a href="https://github.com/encero-systems/hees.ai/blob/main/submission/evidence/live-gpt56-proposal-2026-07-20.json">sanitized local observation</a> and <a href="https://github.com/encero-systems/hees.ai/blob/main/TESTING.md">repository testing guide</a> retain the exact timings, usage, harness boundary, and limitations.</p>
 <h2 id="what-this-release-provesand-where-it-leads"><a class="header" href="#what-this-release-provesand-where-it-leads">What this release proves—and where it leads</a></h2>
 <p>An admitted result proves that the frozen profile accepted the exact package, request, proposal, support mappings, complete observation set, package-owned finding policy, structural admission, selected-memory set, Content DNA construction, and receipt projection required by <code>console_profile_0_1</code>. The candidate workflow additionally proves that UI state cannot silently replace the active profile and that candidate changes reach a real Hees acceptance result with its stable public reason and exact profile diagnostic.</p>
 <p>This is the foundation for semantic and factual verification, source and claim provenance, rights assurance, conflict management, governed behavior, richer Spectrum adjudication, and durable reusable profiles. Those later assurance layers require deeper contracts and evaluators; this release establishes the authority graph, evidence eligibility, selected-memory boundary, Content DNA path, and receipt model on which they can build.</p>
@@ -556,20 +560,24 @@ incan run src/main.incn --locked
 </div>
 
 <h2 id="evidence-first-decision-last"><a class="header" href="#evidence-first-decision-last">Evidence first, decision last</a></h2>
-<pre><code class="language-text">source evidence -&gt; candidate memory atoms -&gt; reviewed memory atoms
-                                                        |
-                                                        v
-                             candidate governance profile
-                                                        |
-                                  Training by Committee observations
-                                                        |
-saved replay inputs ─┐                                  v
+<pre><code class="language-text">source evidence -&gt; candidate memory atoms
+                           |
+               authorized review + rights declaration
+                           |
+                           v
+                 reviewed memory atoms
+                           |
+              candidate governance profile
+                           |
+             Training by Committee observations
+                           |
+saved replay inputs ─┐     v
                     ├─&gt; compiled Hees profile -&gt; bounded Spectrum
-live model inputs ───┘                                  |
-                                                        v
-                         governed decision -&gt; selected memory
-                                                        |
-                                          Content DNA -&gt; receipt
+live model inputs ───┘     |
+                           v
+              governed decision -&gt; selected memory
+                           |
+                    Content DNA -&gt; receipt
 </code></pre>
 <p>The governance profile is the reusable product unit. It names the exact evidence catalog, reviewed memory, rights and review state, permitted actions, answer requirements, policy thresholds, evaluator roles, bounds, Spectrum behavior, terminal reasons, and receipt projection that apply to an interaction. A model may supply proposals and observations inside that space; it cannot write the space into existence.</p>
 <p>The Build Week Profile Studio makes that distinction executable. Evidence and memory can be staged or unstaged in a session-local candidate and sent through the shipped acceptance interaction at the real Hees boundary. The result keeps the stable public contract reason separate from the exact profile diagnostic; removing required evidence produces <code>invalid_package</code> and <code>invalid_package_atoms</code>. A rejected candidate probe cannot replace the shipped active profile. The <a href="#governance-profiles">Governance profiles guide</a> explains the complete contract through the fictional Lantern Labs fields.</p>
