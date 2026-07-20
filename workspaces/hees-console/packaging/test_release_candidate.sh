@@ -7,6 +7,7 @@ REPOSITORY_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/../../.." && pwd)
 RELEASE_TOOL="$SCRIPT_DIR/release_candidate.sh"
 TEST_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/hees-console-release-test.XXXXXX")
 PASS_COUNT=0
+export HEES_RELEASE_TEST_ROOT="$TEST_ROOT"
 
 cleanup() {
     rm -rf "$TEST_ROOT"
@@ -124,6 +125,26 @@ cp "$SCRIPT_DIR/THIRD_PARTY_LICENSES.md" "$third_party_licenses_source"
 printf '\nrelease-test-platform-report\n' >>"$third_party_licenses_source"
 export THIRD_PARTY_LICENSES_SOURCE="$third_party_licenses_source"
 third_party_licenses_sha256=$(sha256_file "$third_party_licenses_source")
+running_sha256=$(sha256_file "$SCRIPT_DIR/RUNNING.txt")
+
+expect_failure \
+    "source timestamp mismatch is rejected" \
+    "source_date_epoch_mismatch" \
+    env ALLOW_DIRTY_SOURCE=1 HEES_RELEASE_ALLOW_TEST_EXECUTABLE=1 \
+    "$RELEASE_TOOL" package \
+    --binary "$fake_console" \
+    --platform "$platform" \
+    --output-directory "$TEST_ROOT/timestamp-mismatch-output" \
+    --source-commit "$source_commit" \
+    --source-date-epoch 1 \
+    --incan-root "$fake_incan" \
+    --incan-lock "$fake_incan_lock"
+
+expect_failure \
+    "test executable bypass is path scoped" \
+    "test_executable_scope_invalid" \
+    env HEES_RELEASE_ALLOW_TEST_EXECUTABLE=1 \
+    "$RELEASE_TOOL" smoke-binary --binary /bin/sh
 
 expect_failure \
     "missing Console dependency lock is rejected" \
@@ -176,6 +197,7 @@ grep -F '"incan_lock_file":"incan.lock"' "$manifest" >/dev/null || fail "manifes
 grep -F "\"incan_lock_sha256\":\"$fake_incan_lock_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind the Console dependency lock"
 grep -F "\"notice_source\":\"repository_root\",\"notice_sha256\":\"$repository_notice_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind repository NOTICE provenance"
 grep -F "\"third_party_licenses_sha256\":\"$third_party_licenses_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind third-party license provenance"
+grep -F "\"running_file\":\"RUNNING.txt\",\"running_sha256\":\"$running_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind bundled run guidance"
 pass "native release archive and provenance are assembled"
 
 HEES_RELEASE_ALLOW_TEST_EXECUTABLE=1 \
@@ -193,14 +215,32 @@ for expected in \
     "$expected_root/" \
     "$expected_root/LICENSE" \
     "$expected_root/NOTICE" \
+    "$expected_root/RUNNING.txt" \
     "$expected_root/THIRD-PARTY-LICENSES.md" \
     "$expected_root/RELEASE-MANIFEST.json" \
     "$expected_root/hees-console"
 do
     grep -Fx "$expected" "$listing" >/dev/null || fail "archive is missing $expected"
 done
-[ "$(wc -l <"$listing" | tr -d ' ')" = 6 ] || fail "archive contains unexpected entries"
+[ "$(wc -l <"$listing" | tr -d ' ')" = 7 ] || fail "archive contains unexpected entries"
 pass "archive layout is exact"
+
+repeat_output="$TEST_ROOT/repeat-output"
+ALLOW_DIRTY_SOURCE=1 HEES_RELEASE_ALLOW_TEST_EXECUTABLE=1 \
+    "$RELEASE_TOOL" package \
+    --binary "$fake_console" \
+    --platform "$platform" \
+    --output-directory "$repeat_output" \
+    --source-commit "$source_commit" \
+    --source-date-epoch "$source_date_epoch" \
+    --incan-root "$fake_incan" \
+    --incan-lock "$fake_incan_lock" \
+    --forbidden "$REPOSITORY_ROOT" \
+    --forbidden "$HOME"
+cmp "$archive" "$repeat_output/hees-console-0.1.0-$platform.tar.gz" >/dev/null || fail "repeated archive is not deterministic"
+cmp "$checksum" "$repeat_output/hees-console-0.1.0-$platform.tar.gz.sha256" >/dev/null || fail "repeated checksum is not deterministic"
+cmp "$manifest" "$repeat_output/hees-console-0.1.0-$platform.manifest.json" >/dev/null || fail "repeated manifest is not deterministic"
+pass "repeated packaging is byte deterministic"
 
 leaking_console="$TEST_ROOT/leaking-console"
 leaking_output="$TEST_ROOT/leaking-output"
@@ -231,6 +271,38 @@ expect_failure \
     --binary "$credential_console" \
     --platform "$platform" \
     --output-directory "$credential_output" \
+    --source-commit "$source_commit" \
+    --source-date-epoch "$source_date_epoch" \
+    --incan-root "$fake_incan" \
+    --incan-lock "$fake_incan_lock"
+
+pattern_console="$TEST_ROOT/pattern-console"
+pattern_output="$TEST_ROOT/pattern-output"
+make_fake_console "$pattern_console" "sk-proj-abcdefghijklmnopqrstuvwxyz123456"
+expect_failure \
+    "credential-pattern leakage is rejected" \
+    "credential_pattern_leak" \
+    env ALLOW_DIRTY_SOURCE=1 HEES_RELEASE_ALLOW_TEST_EXECUTABLE=1 \
+    "$RELEASE_TOOL" package \
+    --binary "$pattern_console" \
+    --platform "$platform" \
+    --output-directory "$pattern_output" \
+    --source-commit "$source_commit" \
+    --source-date-epoch "$source_date_epoch" \
+    --incan-root "$fake_incan" \
+    --incan-lock "$fake_incan_lock"
+
+private_path_console="$TEST_ROOT/private-path-console"
+private_path_output="$TEST_ROOT/private-path-output"
+make_fake_console "$private_path_console" /build-home/Development/private-source
+expect_failure \
+    "remapped private path leakage is rejected" \
+    "private_path_pattern_leak" \
+    env ALLOW_DIRTY_SOURCE=1 HEES_RELEASE_ALLOW_TEST_EXECUTABLE=1 \
+    "$RELEASE_TOOL" package \
+    --binary "$private_path_console" \
+    --platform "$platform" \
+    --output-directory "$private_path_output" \
     --source-commit "$source_commit" \
     --source-date-epoch "$source_date_epoch" \
     --incan-root "$fake_incan" \

@@ -45,8 +45,11 @@ assert_native_executable() {
     fi
     if [ "${HEES_RELEASE_ALLOW_TEST_EXECUTABLE:-0}" = 1 ]; then
         [ -n "${HEES_RELEASE_TEST_ROOT:-}" ] || fail "test_executable_scope_missing"
-        case "$native_binary" in
-            "$HEES_RELEASE_TEST_ROOT"/*) return ;;
+        [ ! -L "$native_binary" ] || fail "test_executable_scope_invalid"
+        native_directory=$(CDPATH='' cd -- "$(dirname -- "$native_binary")" 2>/dev/null && pwd -P) || fail "test_executable_scope_invalid"
+        test_root=$(CDPATH='' cd -- "$HEES_RELEASE_TEST_ROOT" 2>/dev/null && pwd -P) || fail "test_executable_scope_invalid"
+        case "$native_directory/$(basename -- "$native_binary")" in
+            "$test_root"/*) return ;;
             *) fail "test_executable_scope_invalid" ;;
         esac
     fi
@@ -72,12 +75,13 @@ validate_manifest() {
         '
             length == 1 and
             (.[0] |
-                keys == ["artifact", "build", "dependencies", "notices", "platform", "product", "schema_version", "source", "toolchain"] and
+                keys == ["artifact", "build", "dependencies", "guidance", "notices", "platform", "product", "schema_version", "source", "toolchain"] and
                 (.product | keys == ["name", "version"]) and
                 (.build | keys == ["language", "profile"]) and
                 (.source | keys == ["commit", "date_epoch", "tree_state"]) and
                 (.toolchain | keys == ["compiler", "compiler_version", "source_commit", "source_repository"]) and
                 (.dependencies | keys == ["incan_lock_file", "incan_lock_sha256"]) and
+                (.guidance | keys == ["running_file", "running_sha256"]) and
                 (.notices | keys == ["notice_file", "notice_sha256", "notice_source", "third_party_licenses_file", "third_party_licenses_sha256"]) and
                 (.artifact | keys == ["name", "sha256", "size_bytes"]) and
                 .schema_version == 1 and
@@ -95,6 +99,8 @@ validate_manifest() {
                 .toolchain.source_commit == "7d5fec3dca612cfc150f1d59b1a86a914b26e493" and
                 .dependencies.incan_lock_file == "incan.lock" and
                 (.dependencies.incan_lock_sha256 | test("^[0-9a-f]{64}$")) and
+                .guidance.running_file == "RUNNING.txt" and
+                (.guidance.running_sha256 | test("^[0-9a-f]{64}$")) and
                 .notices.notice_file == "NOTICE" and
                 .notices.notice_source == "repository_root" and
                 (.notices.notice_sha256 | test("^[0-9a-f]{64}$")) and
@@ -119,13 +125,14 @@ validate_archive_layout() {
         "$bundle/" \
         "$bundle/LICENSE" \
         "$bundle/NOTICE" \
+        "$bundle/RUNNING.txt" \
         "$bundle/RELEASE-MANIFEST.json" \
         "$bundle/THIRD-PARTY-LICENSES.md" \
         "$bundle/hees-console"
     do
         grep -Fx "$expected" "$listing" >/dev/null || fail "archive_layout_invalid_$platform"
     done
-    [ "$(wc -l <"$listing" | tr -d ' ')" = 6 ] || fail "archive_layout_invalid_$platform"
+    [ "$(wc -l <"$listing" | tr -d ' ')" = 7 ] || fail "archive_layout_invalid_$platform"
 }
 
 validate_platform_set() {
@@ -154,9 +161,10 @@ validate_platform_set() {
     tar -xzf "$archive" -C "$extract_root" || fail "archive_extract_failed_$platform"
     bundle="$extract_root/$base"
     [ -d "$bundle" ] || fail "bundle_missing_$platform"
-    [ "$(find "$bundle" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')" = 5 ] || fail "bundle_file_set_invalid_$platform"
+    [ "$(find "$bundle" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')" = 6 ] || fail "bundle_file_set_invalid_$platform"
     [ -s "$bundle/LICENSE" ] || fail "license_missing_$platform"
     [ -s "$bundle/NOTICE" ] || fail "notice_missing_$platform"
+    [ -s "$bundle/RUNNING.txt" ] || fail "running_instructions_missing_$platform"
     [ -s "$bundle/THIRD-PARTY-LICENSES.md" ] || fail "third_party_licenses_missing_$platform"
     assert_native_executable "$bundle/hees-console" "$platform"
     internal_manifest="$bundle/RELEASE-MANIFEST.json"
@@ -164,6 +172,7 @@ validate_platform_set() {
     [ "$(sha256_file "$bundle/hees-console")" = "$(jq -r '.artifact.sha256' "$manifest")" ] || fail "manifest_binary_hash_mismatch_$platform"
     [ "$(file_size "$bundle/hees-console")" = "$(jq -r '.artifact.size_bytes' "$manifest")" ] || fail "manifest_binary_size_mismatch_$platform"
     [ "$(sha256_file "$bundle/NOTICE")" = "$(jq -r '.notices.notice_sha256' "$manifest")" ] || fail "manifest_notice_hash_mismatch_$platform"
+    [ "$(sha256_file "$bundle/RUNNING.txt")" = "$(jq -r '.guidance.running_sha256' "$manifest")" ] || fail "manifest_running_hash_mismatch_$platform"
     [ "$(sha256_file "$bundle/THIRD-PARTY-LICENSES.md")" = "$(jq -r '.notices.third_party_licenses_sha256' "$manifest")" ] || fail "manifest_third_party_hash_mismatch_$platform"
 }
 
@@ -207,6 +216,19 @@ validate_release_set() {
     validate_platform_set "$directory" linux-x86_64 "$source_commit" "$scratch"
     validate_platform_set "$directory" macos-aarch64 "$source_commit" "$scratch"
     validate_platform_set "$directory" macos-x86_64 "$source_commit" "$scratch"
+    baseline_manifest="$directory/$PRODUCT_NAME-$PRODUCT_VERSION-linux-x86_64.manifest.json"
+    baseline_epoch=$(jq -r '.source.date_epoch' "$baseline_manifest")
+    baseline_lock=$(jq -r '.dependencies.incan_lock_sha256' "$baseline_manifest")
+    baseline_notice=$(jq -r '.notices.notice_sha256' "$baseline_manifest")
+    baseline_running=$(jq -r '.guidance.running_sha256' "$baseline_manifest")
+    for platform in macos-aarch64 macos-x86_64
+    do
+        manifest="$directory/$PRODUCT_NAME-$PRODUCT_VERSION-$platform.manifest.json"
+        [ "$(jq -r '.source.date_epoch' "$manifest")" = "$baseline_epoch" ] || fail "release_set_source_date_mismatch"
+        [ "$(jq -r '.dependencies.incan_lock_sha256' "$manifest")" = "$baseline_lock" ] || fail "release_set_lock_mismatch"
+        [ "$(jq -r '.notices.notice_sha256' "$manifest")" = "$baseline_notice" ] || fail "release_set_notice_mismatch"
+        [ "$(jq -r '.guidance.running_sha256' "$manifest")" = "$baseline_running" ] || fail "release_set_running_mismatch"
+    done
     rm -rf "$scratch"
     trap - EXIT HUP INT TERM
 }

@@ -58,8 +58,10 @@ write_manifest() {
     wm_binary_size=$5
     wm_notice_sha256=$6
     wm_third_party_sha256=$7
+    wm_running_sha256=$8
+    wm_date_epoch=$9
     cat >"$wm_destination" <<EOF
-{"schema_version":1,"product":{"name":"hees-console","version":"0.1.0"},"build":{"language":"Incan","profile":"release"},"platform":"$wm_platform","source":{"commit":"$wm_source_commit","date_epoch":1,"tree_state":"clean"},"toolchain":{"compiler":"incan","compiler_version":"0.5.0-dev.19","source_repository":"https://github.com/encero-systems/incan.git","source_commit":"7d5fec3dca612cfc150f1d59b1a86a914b26e493"},"dependencies":{"incan_lock_file":"incan.lock","incan_lock_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$wm_notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$wm_third_party_sha256"},"artifact":{"name":"hees-console","sha256":"$wm_binary_sha256","size_bytes":$wm_binary_size}}
+{"schema_version":1,"product":{"name":"hees-console","version":"0.1.0"},"build":{"language":"Incan","profile":"release"},"platform":"$wm_platform","source":{"commit":"$wm_source_commit","date_epoch":$wm_date_epoch,"tree_state":"clean"},"toolchain":{"compiler":"incan","compiler_version":"0.5.0-dev.19","source_repository":"https://github.com/encero-systems/incan.git","source_commit":"7d5fec3dca612cfc150f1d59b1a86a914b26e493"},"dependencies":{"incan_lock_file":"incan.lock","incan_lock_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"guidance":{"running_file":"RUNNING.txt","running_sha256":"$wm_running_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$wm_notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$wm_third_party_sha256"},"artifact":{"name":"hees-console","sha256":"$wm_binary_sha256","size_bytes":$wm_binary_size}}
 EOF
 }
 
@@ -67,12 +69,14 @@ make_platform_set() {
     destination=$1
     platform=$2
     source_commit=$3
+    date_epoch=${4:-1}
     base="hees-console-0.1.0-$platform"
     scratch=$(mktemp -d "$TEST_ROOT/build-$platform.XXXXXX")
     bundle="$scratch/$base"
     mkdir -p "$bundle" "$destination"
     printf '%s\n' license >"$bundle/LICENSE"
     printf '%s\n' notice >"$bundle/NOTICE"
+    printf '%s\n' running >"$bundle/RUNNING.txt"
     printf '%s\n' third-party >"$bundle/THIRD-PARTY-LICENSES.md"
     printf '%s\n' executable >"$bundle/hees-console"
     chmod 755 "$bundle/hees-console"
@@ -83,7 +87,9 @@ make_platform_set() {
         "$(sha256_file "$bundle/hees-console")" \
         "$(wc -c <"$bundle/hees-console" | tr -d ' ')" \
         "$(sha256_file "$bundle/NOTICE")" \
-        "$(sha256_file "$bundle/THIRD-PARTY-LICENSES.md")"
+        "$(sha256_file "$bundle/THIRD-PARTY-LICENSES.md")" \
+        "$(sha256_file "$bundle/RUNNING.txt")" \
+        "$date_epoch"
     cp "$bundle/RELEASE-MANIFEST.json" "$destination/$base.manifest.json"
     tar -czf "$destination/$base.tar.gz" -C "$scratch" "$base"
     printf '%s  %s\n' "$(sha256_file "$destination/$base.tar.gz")" "$base.tar.gz" >"$destination/$base.tar.gz.sha256"
@@ -123,6 +129,16 @@ expect_failure \
     "manifest_contract_invalid_linux-x86_64" \
     "$VALIDATOR" --directory "$mismatch" --source-commit "$SOURCE_COMMIT" --tag "$RELEASE_TAG"
 
+date_mismatch="$TEST_ROOT/date-mismatch"
+mkdir -p "$date_mismatch"
+make_platform_set "$date_mismatch" linux-x86_64 "$SOURCE_COMMIT" 1
+make_platform_set "$date_mismatch" macos-aarch64 "$SOURCE_COMMIT" 2
+make_platform_set "$date_mismatch" macos-x86_64 "$SOURCE_COMMIT" 1
+expect_failure \
+    "cross-platform source date mismatch is rejected" \
+    "release_set_source_date_mismatch" \
+    "$VALIDATOR" --directory "$date_mismatch" --source-commit "$SOURCE_COMMIT" --tag "$RELEASE_TAG"
+
 corrupt="$TEST_ROOT/corrupt"
 cp -R "$valid" "$corrupt"
 printf '%s\n' corruption >>"$corrupt/hees-console-0.1.0-macos-aarch64.tar.gz"
@@ -147,6 +163,23 @@ expect_failure \
     "manifest-bound executable mismatch is rejected" \
     "manifest_binary_hash_mismatch_linux-x86_64" \
     "$VALIDATOR" --directory "$content_mismatch" --source-commit "$SOURCE_COMMIT" --tag "$RELEASE_TAG"
+
+guidance_mismatch="$TEST_ROOT/guidance-mismatch"
+cp -R "$valid" "$guidance_mismatch"
+guidance_scratch=$(mktemp -d "$TEST_ROOT/guidance-mismatch-build.XXXXXX")
+tar -xzf "$guidance_mismatch/hees-console-0.1.0-macos-aarch64.tar.gz" -C "$guidance_scratch"
+printf '%s\n' tampered >>"$guidance_scratch/hees-console-0.1.0-macos-aarch64/RUNNING.txt"
+tar -czf "$guidance_mismatch/hees-console-0.1.0-macos-aarch64.tar.gz" \
+    -C "$guidance_scratch" \
+    hees-console-0.1.0-macos-aarch64
+printf '%s  %s\n' \
+    "$(sha256_file "$guidance_mismatch/hees-console-0.1.0-macos-aarch64.tar.gz")" \
+    hees-console-0.1.0-macos-aarch64.tar.gz \
+    >"$guidance_mismatch/hees-console-0.1.0-macos-aarch64.tar.gz.sha256"
+expect_failure \
+    "manifest-bound run guidance mismatch is rejected" \
+    "manifest_running_hash_mismatch_macos-aarch64" \
+    "$VALIDATOR" --directory "$guidance_mismatch" --source-commit "$SOURCE_COMMIT" --tag "$RELEASE_TAG"
 
 sidecar="$TEST_ROOT/sidecar-mismatch"
 cp -R "$valid" "$sidecar"
@@ -198,5 +231,30 @@ if grep -Fq 'HEES_RELEASE_ALLOW_TEST_EXECUTABLE' "$workflow"; then
     fail "draft release workflow bypasses native executable validation"
 fi
 pass "draft release workflow preserves publication authority"
+
+grep -Fq 'sha256sum --check --strict SHA256SUMS' "$workflow" || fail "draft release workflow does not verify aggregate checksums"
+grep -Fq "test \"\$(wc -l < SHA256SUMS | tr -d ' ')\" = 9" "$workflow" || fail "draft release workflow does not bind aggregate checksum count"
+pass "draft release workflow verifies the complete aggregate checksum set"
+
+platform_contract="$SCRIPT_DIR/release-platforms.json"
+jq -e '
+    .schema_version == 1 and
+    .incan_toolchain.version == "0.5.0-dev.19" and
+    .incan_toolchain.source_repository == "https://github.com/encero-systems/incan" and
+    .incan_toolchain.source_commit == "7d5fec3dca612cfc150f1d59b1a86a914b26e493" and
+    (.platforms | keys == ["linux-x86_64", "macos-aarch64", "macos-x86_64"]) and
+    .platforms["linux-x86_64"] == {"runner":"ubuntu-24.04","system":"Linux","machine":"x86_64"} and
+    .platforms["macos-aarch64"] == {"runner":"macos-15","system":"Darwin","machine":"aarch64"} and
+    .platforms["macos-x86_64"] == {"runner":"macos-15-intel","system":"Darwin","machine":"x86_64"}
+' "$platform_contract" >/dev/null || fail "release platform contract is inconsistent"
+candidate_workflow="$REPOSITORY_ROOT/.github/workflows/console-release-candidate.yml"
+if grep -Eq 'HEES_RELEASE_ALLOW_TEST_EXECUTABLE|ALLOW_DIRTY_SOURCE' "$candidate_workflow"; then
+    fail "candidate workflow bypasses native or clean-source validation"
+fi
+for platform in linux-x86_64 macos-aarch64 macos-x86_64
+do
+    grep -Fq -- "- platform: $platform" "$candidate_workflow" || fail "candidate workflow omits $platform"
+done
+pass "release platform contract matches the candidate matrix"
 
 printf '1..%s\n' "$PASS_COUNT"

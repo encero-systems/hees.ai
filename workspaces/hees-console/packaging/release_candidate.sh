@@ -96,7 +96,29 @@ file_size() {
     wc -c <"$1" | tr -d ' '
 }
 
+canonical_file_path() {
+    canonical_directory=$(CDPATH='' cd -- "$(dirname -- "$1")" 2>/dev/null && pwd -P) || fail "path_unavailable"
+    printf '%s/%s\n' "$canonical_directory" "$(basename -- "$1")"
+}
+
+assert_test_path_scope() {
+    [ ! -L "$1" ] || fail "test_executable_scope_invalid"
+    test_path=$(canonical_file_path "$1")
+    [ -n "${HEES_RELEASE_TEST_ROOT:-}" ] || fail "test_executable_scope_missing"
+    test_root=$(CDPATH='' cd -- "$HEES_RELEASE_TEST_ROOT" 2>/dev/null && pwd -P) || fail "test_executable_scope_invalid"
+    case "$test_path" in
+        "$test_root"/*) ;;
+        *) fail "test_executable_scope_invalid" ;;
+    esac
+}
+
 make_temp_directory() {
+    if [ "${HEES_RELEASE_ALLOW_TEST_EXECUTABLE:-0}" = 1 ]; then
+        [ -n "${HEES_RELEASE_TEST_ROOT:-}" ] || fail "test_executable_scope_missing"
+        test_root=$(CDPATH='' cd -- "$HEES_RELEASE_TEST_ROOT" 2>/dev/null && pwd -P) || fail "test_executable_scope_invalid"
+        mktemp -d "$test_root/release.XXXXXX"
+        return
+    fi
     mktemp -d "${TMPDIR:-/tmp}/hees-console-release.XXXXXX"
 }
 
@@ -108,7 +130,8 @@ create_deterministic_tar() {
     tar_version=$(tar --version 2>/dev/null) || fail "archive_tool_unavailable"
     case "$tar_version" in
         *"GNU tar"*)
-            tar \
+            COPYFILE_DISABLE=1 LC_ALL=C tar \
+                --format=ustar \
                 --sort=name \
                 --owner=0 \
                 --group=0 \
@@ -119,7 +142,8 @@ create_deterministic_tar() {
                 "$bundle_name" || fail "archive_create_failed"
             ;;
         *)
-            tar \
+            COPYFILE_DISABLE=1 LC_ALL=C tar \
+                --format=ustar \
                 --uid 0 \
                 --gid 0 \
                 --uname root \
@@ -135,6 +159,44 @@ assert_safe_source_commit() {
     printf '%s\n' "$1" | grep -Eq '^[0-9a-f]{40}$' || fail "invalid_source_commit"
     head_commit=$(git -C "$REPOSITORY_ROOT" rev-parse HEAD 2>/dev/null) || fail "source_git_unavailable"
     [ "$head_commit" = "$1" ] || fail "source_commit_mismatch"
+}
+
+assert_source_date_epoch() {
+    source_commit=$1
+    source_date_epoch=$2
+    printf '%s\n' "$source_date_epoch" | grep -Eq '^[0-9]{1,12}$' || fail "invalid_source_date_epoch"
+    expected_epoch=$(git -C "$REPOSITORY_ROOT" show -s --format=%ct "$source_commit" 2>/dev/null) || fail "source_git_unavailable"
+    [ "$source_date_epoch" = "$expected_epoch" ] || fail "source_date_epoch_mismatch"
+}
+
+assert_incan_provenance() {
+    incan_root=$1
+    incan_binary="$incan_root/bin/incan"
+    [ -x "$incan_binary" ] || fail "incan_binary_missing"
+    [ "$("$incan_binary" --version 2>/dev/null)" = "incan $INCAN_VERSION" ] || fail "incan_version_mismatch"
+    if [ "${HEES_RELEASE_ALLOW_TEST_EXECUTABLE:-0}" = 1 ]; then
+        assert_test_path_scope "$incan_binary"
+        return
+    fi
+    [ -d "$incan_root/source/.git" ] || fail "incan_source_missing"
+    incan_commit=$(git -C "$incan_root/source" rev-parse HEAD 2>/dev/null) || fail "incan_source_unavailable"
+    [ "$incan_commit" = "$INCAN_SOURCE_COMMIT" ] || fail "incan_source_commit_mismatch"
+    incan_status=$(git -C "$incan_root/source" status --porcelain=v1 --untracked-files=no 2>/dev/null) || fail "incan_source_unavailable"
+    [ -z "$incan_status" ] || fail "incan_source_dirty"
+    [ -L "$incan_binary" ] || fail "incan_binary_provenance_missing"
+    [ "$(readlink "$incan_binary" 2>/dev/null)" = "../source/target/release/incan" ] || fail "incan_binary_provenance_mismatch"
+}
+
+assert_incan_lock_provenance() {
+    incan_lock=$1
+    if [ ! -f "$incan_lock" ] || [ ! -s "$incan_lock" ]; then
+        fail "incan_lock_missing"
+    fi
+    if [ "${HEES_RELEASE_ALLOW_TEST_EXECUTABLE:-0}" = 1 ]; then
+        assert_test_path_scope "$incan_lock"
+        return
+    fi
+    [ "$(canonical_file_path "$incan_lock")" = "$REPOSITORY_ROOT/incan.lock" ] || fail "incan_lock_provenance_mismatch"
 }
 
 source_tree_state() {
@@ -164,6 +226,7 @@ assert_native_executable() {
         fail "binary_not_executable"
     fi
     if [ "${HEES_RELEASE_ALLOW_TEST_EXECUTABLE:-0}" = 1 ]; then
+        assert_test_path_scope "$binary"
         return
     fi
     command -v file >/dev/null 2>&1 || fail "binary_format_unavailable"
@@ -207,7 +270,7 @@ scan_forbidden_paths() {
     while IFS= read -r forbidden
     do
         [ -n "$forbidden" ] || continue
-        for bundled_file in "$bundle/LICENSE" "$bundle/NOTICE" "$bundle/THIRD-PARTY-LICENSES.md" "$bundle/RELEASE-MANIFEST.json"
+        for bundled_file in "$bundle/LICENSE" "$bundle/NOTICE" "$bundle/RUNNING.txt" "$bundle/THIRD-PARTY-LICENSES.md" "$bundle/RELEASE-MANIFEST.json"
         do
             if grep -F -- "$forbidden" "$bundled_file" >/dev/null 2>&1; then
                 fail "forbidden_path_leak"
@@ -234,7 +297,7 @@ scan_credential_values() {
     do
         credential_value=$(printenv "$credential_name" 2>/dev/null || :)
         [ -n "$credential_value" ] || continue
-        for bundled_file in "$bundle/LICENSE" "$bundle/NOTICE" "$bundle/THIRD-PARTY-LICENSES.md" "$bundle/RELEASE-MANIFEST.json"
+        for bundled_file in "$bundle/LICENSE" "$bundle/NOTICE" "$bundle/RUNNING.txt" "$bundle/THIRD-PARTY-LICENSES.md" "$bundle/RELEASE-MANIFEST.json"
         do
             if grep -F -- "$credential_value" "$bundled_file" >/dev/null 2>&1; then
                 fail "credential_value_leak"
@@ -242,6 +305,46 @@ scan_credential_values() {
         done
         if grep -F -- "$credential_value" "$binary_strings" >/dev/null 2>&1; then
             fail "credential_value_leak"
+        fi
+    done
+}
+
+scan_credential_patterns() {
+    bundle=$1
+    binary_strings=$2
+    for bundled_file in \
+        "$bundle/LICENSE" \
+        "$bundle/NOTICE" \
+        "$bundle/RUNNING.txt" \
+        "$bundle/THIRD-PARTY-LICENSES.md" \
+        "$bundle/RELEASE-MANIFEST.json" \
+        "$binary_strings"
+    do
+        if LC_ALL=C grep -E \
+            '(-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,})' \
+            "$bundled_file" >/dev/null 2>&1; then
+            fail "credential_pattern_leak"
+        fi
+    done
+}
+
+scan_private_path_patterns() {
+    bundle=$1
+    binary_strings=$2
+    slash=/
+    users_directory=Users
+    home_directory=home
+    private_path_pattern="(${slash}${users_directory}${slash}|${slash}${home_directory}${slash}[^/[:space:]]+${slash}|[A-Za-z]:[\\\\/]+${users_directory}[\\\\/]|/build-home(/|$))"
+    for bundled_file in \
+        "$bundle/LICENSE" \
+        "$bundle/NOTICE" \
+        "$bundle/RUNNING.txt" \
+        "$bundle/THIRD-PARTY-LICENSES.md" \
+        "$bundle/RELEASE-MANIFEST.json" \
+        "$binary_strings"
+    do
+        if LC_ALL=C grep -E "$private_path_pattern" "$bundled_file" >/dev/null 2>&1; then
+            fail "private_path_pattern_leak"
         fi
     done
 }
@@ -259,14 +362,15 @@ audit_bundle() {
         [ -f "$entry" ] || fail "bundle_non_file"
         relative=${entry#"$bundle"/}
         case "$relative" in
-            LICENSE | NOTICE | THIRD-PARTY-LICENSES.md | RELEASE-MANIFEST.json | hees-console) ;;
+            LICENSE | NOTICE | RUNNING.txt | THIRD-PARTY-LICENSES.md | RELEASE-MANIFEST.json | hees-console) ;;
             *) fail "bundle_unexpected_entry" ;;
         esac
         count=$((count + 1))
     done <"$scratch/bundle-entries"
-    [ "$count" -eq 5 ] || fail "bundle_incomplete"
+    [ "$count" -eq 6 ] || fail "bundle_incomplete"
     [ -s "$bundle/LICENSE" ] || fail "license_missing"
     [ -s "$bundle/NOTICE" ] || fail "notice_missing"
+    [ -s "$bundle/RUNNING.txt" ] || fail "running_instructions_missing"
     [ -s "$bundle/THIRD-PARTY-LICENSES.md" ] || fail "third_party_licenses_missing"
     [ -s "$bundle/RELEASE-MANIFEST.json" ] || fail "manifest_missing"
     assert_native_executable "$bundle/hees-console" "$platform"
@@ -282,6 +386,8 @@ audit_bundle() {
     strings "$bundle/hees-console" >"$binary_strings" 2>/dev/null || fail "binary_strings_failed"
     scan_forbidden_paths "$bundle" "$scratch/forbidden-paths" "$binary_strings"
     scan_credential_values "$bundle" "$binary_strings"
+    scan_credential_patterns "$bundle" "$binary_strings"
+    scan_private_path_patterns "$bundle" "$binary_strings"
 }
 
 write_manifest() {
@@ -295,8 +401,9 @@ write_manifest() {
     incan_lock_sha256=$8
     notice_sha256=$9
     third_party_licenses_sha256=${10}
+    running_sha256=${11}
     cat >"$destination" <<EOF
-{"schema_version":1,"product":{"name":"$PRODUCT_NAME","version":"$PRODUCT_VERSION"},"build":{"language":"Incan","profile":"release"},"platform":"$platform","source":{"commit":"$source_commit","date_epoch":$source_date_epoch,"tree_state":"$tree_state"},"toolchain":{"compiler":"incan","compiler_version":"$INCAN_VERSION","source_repository":"$INCAN_SOURCE_REPOSITORY","source_commit":"$INCAN_SOURCE_COMMIT"},"dependencies":{"incan_lock_file":"incan.lock","incan_lock_sha256":"$incan_lock_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$third_party_licenses_sha256"},"artifact":{"name":"hees-console","sha256":"$binary_sha256","size_bytes":$binary_size}}
+{"schema_version":1,"product":{"name":"$PRODUCT_NAME","version":"$PRODUCT_VERSION"},"build":{"language":"Incan","profile":"release"},"platform":"$platform","source":{"commit":"$source_commit","date_epoch":$source_date_epoch,"tree_state":"$tree_state"},"toolchain":{"compiler":"incan","compiler_version":"$INCAN_VERSION","source_repository":"$INCAN_SOURCE_REPOSITORY","source_commit":"$INCAN_SOURCE_COMMIT"},"dependencies":{"incan_lock_file":"incan.lock","incan_lock_sha256":"$incan_lock_sha256"},"guidance":{"running_file":"RUNNING.txt","running_sha256":"$running_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$third_party_licenses_sha256"},"artifact":{"name":"hees-console","sha256":"$binary_sha256","size_bytes":$binary_size}}
 EOF
 }
 
@@ -370,12 +477,9 @@ package_release() {
     validate_platform "$platform"
     assert_native_executable "$binary" "$platform"
     assert_safe_source_commit "$source_commit"
-    printf '%s\n' "$source_date_epoch" | grep -Eq '^[0-9]{1,12}$' || fail "invalid_source_date_epoch"
-    [ -x "$incan_root/bin/incan" ] || fail "incan_binary_missing"
-    [ "$("$incan_root/bin/incan" --version 2>/dev/null)" = "incan $INCAN_VERSION" ] || fail "incan_version_mismatch"
-    if [ ! -f "$incan_lock" ] || [ ! -s "$incan_lock" ]; then
-        fail "incan_lock_missing"
-    fi
+    assert_source_date_epoch "$source_commit" "$source_date_epoch"
+    assert_incan_provenance "$incan_root"
+    assert_incan_lock_provenance "$incan_lock"
     if [ -z "$THIRD_PARTY_LICENSES_SOURCE" ] || [ ! -f "$THIRD_PARTY_LICENSES_SOURCE" ] || [ ! -s "$THIRD_PARTY_LICENSES_SOURCE" ]; then
         fail "third_party_licenses_missing"
     fi
@@ -399,12 +503,14 @@ package_release() {
     install -m 755 "$binary" "$bundle/hees-console"
     install -m 644 "$REPOSITORY_ROOT/LICENSE" "$bundle/LICENSE"
     install -m 644 "$REPOSITORY_ROOT/NOTICE" "$bundle/NOTICE"
+    install -m 644 "$SCRIPT_DIR/RUNNING.txt" "$bundle/RUNNING.txt"
     install -m 644 "$THIRD_PARTY_LICENSES_SOURCE" "$bundle/THIRD-PARTY-LICENSES.md"
     binary_sha256=$(sha256_file "$bundle/hees-console")
     binary_size=$(file_size "$bundle/hees-console")
     incan_lock_sha256=$(sha256_file "$incan_lock")
     notice_sha256=$(sha256_file "$bundle/NOTICE")
     third_party_licenses_sha256=$(sha256_file "$bundle/THIRD-PARTY-LICENSES.md")
+    running_sha256=$(sha256_file "$bundle/RUNNING.txt")
     write_manifest \
         "$bundle/RELEASE-MANIFEST.json" \
         "$platform" \
@@ -415,7 +521,8 @@ package_release() {
         "$binary_size" \
         "$incan_lock_sha256" \
         "$notice_sha256" \
-        "$third_party_licenses_sha256"
+        "$third_party_licenses_sha256" \
+        "$running_sha256"
     chmod 644 "$bundle/RELEASE-MANIFEST.json"
     audit_bundle "$bundle" "$scratch" "$platform"
     set_file_mtime "$source_date_epoch" \
@@ -423,6 +530,7 @@ package_release() {
         "$bundle/hees-console" \
         "$bundle/LICENSE" \
         "$bundle/NOTICE" \
+        "$bundle/RUNNING.txt" \
         "$bundle/THIRD-PARTY-LICENSES.md" \
         "$bundle/RELEASE-MANIFEST.json"
     cp "$bundle/RELEASE-MANIFEST.json" "$sidecar_manifest"
@@ -464,6 +572,7 @@ smoke_archive() {
             "$bundle_name/" | \
             "$bundle_name/LICENSE" | \
             "$bundle_name/NOTICE" | \
+            "$bundle_name/RUNNING.txt" | \
             "$bundle_name/THIRD-PARTY-LICENSES.md" | \
             "$bundle_name/RELEASE-MANIFEST.json" | \
             "$bundle_name/hees-console") ;;
@@ -471,7 +580,7 @@ smoke_archive() {
         esac
         entry_count=$((entry_count + 1))
     done <"$scratch/archive-entries"
-    [ "$entry_count" -eq 6 ] || fail "archive_incomplete"
+    [ "$entry_count" -eq 7 ] || fail "archive_incomplete"
     tar -xzf "$archive" -C "$scratch" || fail "archive_extract_failed"
     bundle="$scratch/$bundle_name"
     audit_bundle "$bundle" "$scratch" "$platform"
