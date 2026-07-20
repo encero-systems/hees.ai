@@ -12,6 +12,7 @@ from pub::hees_ai import (
     SynthesisObservation,
     bind_console_request_json,
     compile_console_package_candidate,
+    console_package_candidate_diagnostic,
     console_package_artifact_identity_is_valid,
     digest_id_type_text,
     evidence_id_text,
@@ -20,7 +21,6 @@ from pub::hees_ai import (
     plan_console_manifest_json,
     plan_console_provider_context_json,
     proposal_id_text,
-    validate_console_package,
 )
 from std.json import JsonValue
 from std.serde import json
@@ -472,7 +472,7 @@ pub def probe_candidate_scenario(evidence_ids: list[str], memory_ids: list[str])
     candidate_identity_valid = console_package_artifact_identity_is_valid(package)
     if not candidate_identity_valid:
         return Err("candidate_identity_invalid")
-    package_validation = validate_console_package(package)
+    package_diagnostic = console_package_candidate_diagnostic(package)
     source = evaluate_console_profile_json(
         package,
         inputs.request,
@@ -482,8 +482,8 @@ pub def probe_candidate_scenario(evidence_ids: list[str], memory_ids: list[str])
     )
     result = CompleteProfileProjection.from_json(source).map_err((_error) => f"candidate_probe_projection_failed")?
     mut diagnostic = result.spectrum.reason
-    if not package_validation.valid and len(package_validation.errors) > 0:
-        diagnostic = package_validation.errors[0]
+    if package_diagnostic != "ok":
+        diagnostic = package_diagnostic
     return Ok(
         CandidateScenarioProbe(
             admitted=result.spectrum.admitted,

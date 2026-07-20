@@ -273,6 +273,17 @@ pub def validate_console_package(package: ConsolePackage) -> ProfileValidation:
     return validate_fixed_package_identity(package)
 
 
+pub def console_package_candidate_diagnostic(package: ConsolePackage) -> str:
+    """Return one bounded diagnostic for a compiled, non-authoritative package candidate."""
+
+    validation = validate_console_package(package)
+    if validation.valid:
+        return "ok"
+    if len(validation.errors) > 0:
+        return validation.errors[0]
+    return validation.reason
+
+
 pub def classify_relation(policy: ConsolePolicy, support_bps: int, contradiction_bps: int, unresolved_bps: int) -> str:
     """Classify a relation score triple in the profile's fail-closed precedence."""
     if contradiction_bps > policy.max_contradiction_bps:

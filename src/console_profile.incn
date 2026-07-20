@@ -33,4 +33,4 @@ pub from crate.console_profile_planning import (
     plan_console_manifest_json,
     plan_console_provider_context_json,
 )
-pub from crate.console_profile_validation import validate_console_package
+pub from crate.console_profile_validation import console_package_candidate_diagnostic, validate_console_package

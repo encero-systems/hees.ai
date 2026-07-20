@@ -1260,21 +1260,24 @@ def load_api_key() -> Result[str, ProviderFailure]:
             return Ok(key)
 
 
-def provider_timeout_duration() -> Duration:
+def provider_timeout_duration() -> Result[Duration, ProviderFailure]:
     """Convert the single provider timeout constant for the Rust transport boundary."""
 
     timeout_seconds: Option[u64] = PROVIDER_TIMEOUT_SECONDS.try_resize()
-    return Duration.from_secs(timeout_seconds.unwrap())
+    match timeout_seconds:
+        Some(seconds) => return Ok(Duration.from_secs(seconds))
+        None => return Err(ProviderFailure.Unavailable)
 
 
 def send_https(api_key: str, request_body: str) -> Result[str, ProviderFailure]:
     """Send one bounded request to the fixed endpoint and redact every transport failure."""
 
+    timeout = provider_timeout_duration()?
     result = post(RESPONSES_ENDPOINT)
         .set("Authorization", f"Bearer {api_key}")
         .set("Content-Type", "application/json")
         .set("Accept", "application/json")
-        .timeout(provider_timeout_duration())
+        .timeout(timeout)
         .send_string(request_body)
     match result:
         Err(_) => return Err(ProviderFailure.Unavailable)

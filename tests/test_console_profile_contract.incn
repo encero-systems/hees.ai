@@ -52,6 +52,7 @@ from crate.console_profile_planning import (
 from crate.console_profile_validation import (
     classify_relation,
     classify_synthesis,
+    console_package_candidate_diagnostic,
     validate_console_package,
     validate_console_proposal,
     validate_request_binding,
@@ -241,6 +242,7 @@ def test_candidate_compilation_rebinds_integrity_before_semantic_validation() ->
     assert_eq(validation.valid, false)
     assert_eq(validation.reason, "invalid_package")
     assert_eq(validation.errors, ["invalid_package_atoms"])
+    assert_eq(console_package_candidate_diagnostic(candidate), "invalid_package_atoms")
 
 
 def test_optional_support_evidence_absence_reaches_visible_unit_validation() -> None:
