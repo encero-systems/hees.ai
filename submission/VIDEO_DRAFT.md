@@ -18,7 +18,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> Most AI tools begin with a prompt and end with model output. hees.ai console begins with evidence. It makes reusable governance profiles the unit of development, binding reviewed memory, rights, actions, policy and evaluation before a model contributes.
+> Most AI tools begin with a prompt and end with model output. hees.ai console begins with evidence. It lets a developer decide which reviewed material an AI may use and which actions it may take, then makes that authority reusable as a governance profile.
 
 ### 0:20–0:50 — Evidence becomes an executable governance profile
 
@@ -42,7 +42,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> Here the proposal uses a declared action, allowed evidence and reviewed memory. Bounded Spectrum resolves the classified findings, and Hees admits the result. The Console exposes the selected atom. Content DNA binds that memory to the visible answer; the receipt records evidence, policy, identities and the terminal decision.
+> Here the proposal uses a declared action, allowed evidence and reviewed memory. Spectrum is Hees's bounded policy operation. Selected memory shows the approved support actually used. Content DNA binds that support to the visible answer, and the receipt records the decision.
 
 ### 1:38–1:56 — Unknown evidence cannot borrow authority
 
@@ -66,7 +66,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> This video uses zero-credential replay: untrusted inputs, not stored decisions, rerun through compiled Hees. Judges run it offline without rebuilding Incan. Live GPT-5.6 proposal and committee calls were verified separately. Transport supplies inputs; the profile remains authority.
+> Replay reruns integrity-checked inputs through the same compiled Hees authority offline, so judges need no key or Incan build. Live GPT-5.6 is optional: it supplies proposals and observations, but never permission. Its proposal and committee calls were verified separately.
 
 ### 2:32–2:50 — From research to a usable governed-AI tool
 

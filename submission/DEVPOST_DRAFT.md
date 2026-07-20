@@ -21,7 +21,7 @@ The available categories are Developer Tools, Apps for Your Life, Work and Produ
 
 ## Short description
 
-hees.ai console is the evidence-first development environment for governed AI. Its permanent workflow helps developers turn sources into candidate memory, review and govern those atoms, and assemble reusable profiles that declare rights, actions, policy and evaluator roles. This Build Week release delivers a bounded native Incan Profile Studio over fictional evidence: developers inspect supplied evidence and memory, stage or unstage a session-local candidate, validate it through Hees, pressure-test proposals through Training by Committee, and inspect Spectrum, selected memory, Content DNA and receipts. GPT-5.6 proposes. Hees decides.
+hees.ai console is the evidence-first development environment for governed AI. Its product direction helps developers turn sources into candidate memory, govern those atoms, and assemble reusable profiles that declare rights, actions, policy and evaluator roles. This Build Week release delivers the working bounded slice: a native Incan Profile Studio over supplied fictional evidence where developers inspect evidence and memory, stage or unstage a session-local candidate, validate it through Hees, pressure-test proposals through Training by Committee, and inspect Spectrum, selected memory, Content DNA and receipts. GPT-5.6 proposes. Hees decides.
 
 ## The problem
 
@@ -40,7 +40,7 @@ hees.ai console changes the unit of AI development from **a prompt** to **a gove
 
 ## The product
 
-The permanent hees.ai console workflow is evidence-first:
+The working release begins with a supplied fictional evidence package and a session-local candidate. It proves the governed path from inspectable evidence through profile validation, pressure testing, decision, Content DNA, and receipt. The evidence-first workflow below is the permanent product direction this bounded slice makes tangible; general intake, durable authoring, and profile activation remain future work.
 
 1. Load and inspect source evidence.
 2. Turn bounded source spans into candidate memory atoms without treating model suggestions as reviewed material.
@@ -123,7 +123,7 @@ This separation lets developers use model evaluators to challenge material and p
 
 Governed AI should not depend on hoping that a system prompt survives contact with a model. A reusable profile gives developers a testable object that can move across providers and environments while preserving declared evidence, memory eligibility, behavior, policy, and terminal authority.
 
-The Build Week release proves a practical foundation: native profile and evidence exploration, real candidate-state validation, deterministic happy and adversarial runs, provider-neutral pressure testing, selected-memory attribution through Content DNA, receipts, and offline no-rebuild replay through the actual Hees implementation.
+The Build Week release proves a practical foundation: native profile and evidence exploration, real candidate-state validation, deterministic happy and adversarial runs, provider-neutral pressure testing, selected-memory attribution through Content DNA, receipts, and offline no-rebuild replay through the actual Hees implementation. Its visible refusals demonstrate the concrete boundary: a well-formed model proposal still cannot borrow evidence or action authority that the profile never granted.
 
 The product direction builds from this foundation toward semantic and factual assurance, source and claim provenance, rights assurance, conflict management, richer Spectrum adjudication, governed behavior envelopes, durable IncQL-DB-backed workspaces, and reusable profiles across domains and languages. The current slice does not pretend that journey is complete; it demonstrates why the architecture can support it.
 
