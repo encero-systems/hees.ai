@@ -78,21 +78,25 @@ The package also contains `memory_public_ranking_draft`, with review state `pend
 ## How it works
 
 ```text
-evidence -> candidate memory atoms -> reviewed memory atoms
-                                                    |
-                                                    v
-                         reusable governance profile
-                                                    |
-saved replay inputs ─┐                              v
+evidence -> candidate memory atoms
+                    |
+        authorized review + rights declaration
+                    |
+                    v
+          reviewed memory atoms
+                    |
+          reusable governance profile
+                    |
+saved replay inputs ─┐
                     ├─> proposal -> Training by Committee observations
-live GPT-5.6 inputs ─┘                              |
-                                                    v
-                  compiled Incan-authored Hees profile
-              validation -> findings -> bounded Spectrum
-                                                    |
-                       governed terminal decision
-                                                    |
-               selected memory -> Content DNA -> receipt
+live GPT-5.6 inputs ─┘                    |
+                                         v
+                         compiled Incan-authored Hees profile
+                     validation -> findings -> bounded Spectrum
+                                         |
+                              governed terminal decision
+                                         |
+                      selected memory -> Content DNA -> receipt
 ```
 
 Replay and live mode are transports into one authority path. Replay fixtures contain integrity-checked requests, proposals, bounded observations, and schema identities. They do not contain findings, a Spectrum result, selected memory, Content DNA, or a receipt. Optional live mode obtains the same classes of bounded input from GPT-5.6. After transport-specific decoding, both invoke the same validation, manifest derivation, finding classification, Spectrum operation, memory selection, Content DNA construction, and receipt code.

@@ -12,20 +12,24 @@
 ## Evidence first, decision last
 
 ```text
-source evidence -> candidate memory atoms -> reviewed memory atoms
-                                                        |
-                                                        v
-                             candidate governance profile
-                                                        |
-                                  Training by Committee observations
-                                                        |
-saved replay inputs ─┐                                  v
+source evidence -> candidate memory atoms
+                           |
+               authorized review + rights declaration
+                           |
+                           v
+                 reviewed memory atoms
+                           |
+              candidate governance profile
+                           |
+             Training by Committee observations
+                           |
+saved replay inputs ─┐     v
                     ├─> compiled Hees profile -> bounded Spectrum
-live model inputs ───┘                                  |
-                                                        v
-                         governed decision -> selected memory
-                                                        |
-                                          Content DNA -> receipt
+live model inputs ───┘     |
+                           v
+              governed decision -> selected memory
+                           |
+                    Content DNA -> receipt
 ```
 
 The governance profile is the reusable product unit. It names the exact evidence catalog, reviewed memory, rights and review state, permitted actions, answer requirements, policy thresholds, evaluator roles, bounds, Spectrum behavior, terminal reasons, and receipt projection that apply to an interaction. A model may supply proposals and observations inside that space; it cannot write the space into existence.

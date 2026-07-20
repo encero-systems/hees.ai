@@ -57,22 +57,29 @@ This first Profile Studio is deliberately session-local. It does not ingest arbi
 #### Evidence-to-decision authority path
 
 ```text
-fictional evidence -> candidate memory atoms -> reviewed memory atoms
-                                                        |
-                                                        v
-                         candidate profile -> Hees acceptance probe
-                                                        |
-                                          shipped active profile
-                                                        |
-saved replay inputs ─┐                                  v
+fictional evidence -> candidate memory atoms
+                              |
+                  authorized review + rights declaration
+                              |
+                              v
+                    reviewed memory atoms
+                              |
+             candidate profile -> Hees acceptance probe
+                              |
+                  validation result only
+                    (never activates)
+
+                    shipped active profile
+                              |
+saved replay inputs ─┐        v
                     ├─> proposal + committee observations
-live GPT-5.6 inputs ─┘                                  |
-                                                        v
-                 validation -> findings -> bounded Spectrum -> decision
-                                                        |
-                       governed run -> selected memory -> Content DNA + receipt
-                                            or
-                               REJECTED + exact contract reason
+live GPT-5.6 inputs ─┘        |
+                              v
+        validation -> findings -> bounded Spectrum -> decision
+                              |
+           governed run -> selected memory -> Content DNA + receipt
+                                or
+                    REJECTED + exact contract reason
 ```
 
 Console owns native presentation, bounded transport, input bounds, and session-local candidate state in Incan. It calls the public Incan-authored Hees profile directly and cannot fabricate or reinterpret the result. Replay stores proposal and observation inputs plus integrity metadata, not findings or a terminal decision. Optional live mode obtains the same classes of bounded input from GPT-5.6. Both reach identical validation, finding classification, Spectrum, memory-selection, Content DNA, and receipt code after transport normalization.
@@ -130,7 +137,7 @@ The implemented adapter uses the OpenAI Responses API with explicit model `gpt-5
 
 The only local credential surface is `OPENAI_API_KEY`, and the credential does not enter fixtures, process arguments, logs, screenshots, receipts, Content DNA, or exported traces.
 
-> **Live network status:** the native proposal path works in a provider-only diagnostic harness. It loaded the credential through the Incan product path, sent the request through native `ureq` HTTPS, received an accepted strict-schema response, and passed the product decoder and typed proposal path in 8.34 seconds, with no retry. That native observation did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal. A second bounded native diagnostic reused the recorded proposal, preflighted exactly six Hees-derived targets, completed six sequential live GPT-5.6 committee calls in 40.06 seconds with zero retries, decoded three relation and three synthesis observations, and passed them through the real Hees profile. Hees classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process, retained no token-usage or cost record, and ran in a temporary generated harness rather than the frozen release binary. A coherent Incan `0.5.0-dev.21` compiler/source pairing completed all nineteen provider-boundary tests. A combined proposal-plus-committee run from the frozen release binary remains unproven. See the [publication-safe local observation record](submission/evidence/live-gpt56-proposal-2026-07-20.json) for the separate observations and exact limitations. Offline replay remains the demonstrated judge and video path.
+> **Live network status:** a native diagnostic verified the GPT-5.6 proposal leg; a six-call Training by Committee diagnostic then reused that recorded proposal and reached a real admitted Hees result. A combined run from the frozen release binary remains unproven, so offline replay is the demonstrated judge and video path. The [publication-safe local observation](submission/evidence/live-gpt56-proposal-2026-07-20.json) and [testing guide](TESTING.md) retain the exact timings, usage, harness boundary, and limitations.
 
 The relevant provider contracts follow the official [GPT-5.6 Sol model](https://developers.openai.com/api/docs/models/gpt-5.6-sol) and [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs) documentation.
 

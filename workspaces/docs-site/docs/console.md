@@ -30,27 +30,32 @@ The optional live mode binds a question through Hees, sends a strict structured 
 ## Trust boundary
 
 ```text
-fictional evidence -> candidate memory atoms -> reviewed memory atoms
-                                                        |
-                                             governance profile
-                                                        |
-saved replay inputs ─┐                                  v
+fictional evidence -> candidate memory atoms
+                              |
+                  authorized review + rights declaration
+                              |
+                              v
+                    reviewed memory atoms
+                              |
+                     governance profile
+                              |
+saved replay inputs ─┐        v
                     ├─> proposal + committee observations
-live GPT-5.6 inputs ─┘                                  |
-                                                        v
-                     compiled Incan-authored Hees profile
-               validation -> findings -> bounded Spectrum
-                                                        |
-                       governed terminal decision
-                            /                  \
-   ADMITTED + selected memory + Content DNA + receipt   REJECTED + exact reason
+live GPT-5.6 inputs ─┘        |
+                              v
+             compiled Incan-authored Hees profile
+       validation -> findings -> bounded Spectrum
+                              |
+                governed terminal decision
+                     /                  \
+ADMITTED + selected memory + Content DNA + receipt   REJECTED + exact reason
 ```
 
 Console owns presentation, bounded provider transport, replay loading, and session-local candidate state. It calls the public Hees profile directly and does not reconstruct terminal authority from JSON. Hees owns profile validation, package, request, proposal, manifest, finding, policy, Spectrum, selected-memory, Content DNA, and receipt behavior.
 
 ## Run offline
 
-The release archive contains one native executable plus the project license, notice, third-party license report, and release manifest. After extracting a supported archive, launch the Console without a compiler, package manager, source checkout, network connection, or API key:
+Once current-head assets are published, each release archive contains one native executable plus the project license, notice, third-party license report, and release manifest. The [current release gates](console-profile-0-1.md#current-release-gates) distinguish verified source behavior from downloadable artifact availability. After extracting a supported archive, launch the Console without a compiler, package manager, source checkout, network connection, or API key:
 
 ```bash
 ./hees-console
@@ -89,9 +94,7 @@ The adapter uses model identifier `gpt-5.6-sol`, the provider-supported strict J
 
 ### Live provider evidence
 
-A native provider-only diagnostic exercised the Incan credential loader, `ureq` HTTPS POST, accepted strict schema, product decoder, and typed proposal path successfully in 8.34 seconds, with no retry. It did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal.
-
-A second native diagnostic reused the recorded proposal, preflighted exactly six Hees-derived targets, completed six sequential live GPT-5.6 committee calls in 40.06 seconds with zero retries, and decoded three relation and three synthesis observations. The real Hees profile classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process, retained no token-usage or cost record, and ran in a temporary generated harness rather than the frozen release binary. A coherent Incan `0.5.0-dev.21` compiler/source pairing completed all nineteen provider-boundary tests. The [sanitized local observation](https://github.com/encero-systems/hees.ai/blob/main/submission/evidence/live-gpt56-proposal-2026-07-20.json) records the separate observations and their exact limitations. Together they prove the native proposal and live-committee paths separately, but not a combined run from the frozen release binary. The judge and video path remain offline replay.
+A native diagnostic verified the GPT-5.6 proposal leg; a six-call Training by Committee diagnostic then reused that recorded proposal and reached a real admitted Hees result. A combined run from the frozen release binary remains unproven, so offline replay is the judge and video path. The [sanitized local observation](https://github.com/encero-systems/hees.ai/blob/main/submission/evidence/live-gpt56-proposal-2026-07-20.json) and [repository testing guide](https://github.com/encero-systems/hees.ai/blob/main/TESTING.md) retain the exact timings, usage, harness boundary, and limitations.
 
 ## What this release proves—and where it leads
 
