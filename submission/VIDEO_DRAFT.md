@@ -18,7 +18,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> The hard part of governed AI is not getting a model to answer. It is deciding what the model is allowed to know, claim, and do. hees.ai console is built around reusable governance profiles. In this first release, I can inspect supplied evidence and memory, modify a session-local candidate, validate it through Hees, and inspect every decision and artifact it governs.
+> AI governance should begin before the prompt. hees.ai console lets developers build reusable profiles that define the evidence, memory, rights, actions, policy and evaluation a model must operate within—and then inspect every decision that follows.
 
 ### 0:18–0:48 — Evidence becomes an executable governance profile
 
@@ -26,7 +26,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> Governance starts here, with evidence. This fictional source is bound to a reviewed memory atom with explicit identity and package-declared provenance, review, rights, and authority. I can unstage it from a session-local candidate and rerun the shipped acceptance interaction. Hees rejects the incomplete package with the stable reason `invalid_package` and pinpoints the failed atom invariant as `invalid_package_atoms`; the active profile remains untouched. Resetting the candidate restores an admitted probe result. This is the beginning of the permanent Console workflow for creating, validating, comparing, and evolving reusable governance profiles.
+> A profile starts with evidence. This source is bound to a memory atom the package marks reviewed and rights-allowed, with explicit provenance and authority. When I remove it from the candidate and validate, Hees rejects the incomplete package and names the failed atom invariant. The active profile remains untouched. Resetting restores the valid candidate. The permanent workflow is edit, validate, compare, then activate only through authority.
 
 ### 0:48–1:08 — Training by Committee pressure-tests the proposal
 
@@ -34,7 +34,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> A model now proposes inside that governed space. Training by Committee pressure-tests its relationships and synthesis through bounded evaluator roles. The evaluators do not vote and their scores are not authority. Hees defines what they must inspect, checks complete coverage, and classifies their observations under the profile's policy.
+> GPT-5.6 proposes inside the profile. Training by Committee asks bounded evaluator roles to challenge its evidence relationships and answer coverage. They do not vote. Hees defines the targets, verifies complete coverage and classifies their observations under profile-owned policy.
 
 ### 1:08–1:35 — The profile admits a supported result
 
@@ -42,7 +42,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> This proposal uses a declared action and reviewed, rights-allowed evidence. Hees admits it. The result carries the exact memory selected for the answer, Content DNA that binds those atoms to the visible response, and an export-safe receipt. The answer is no longer just model prose; it is the terminal product of an inspectable governance profile.
+> The proposal uses a declared action and evidence the package marks reviewed and rights-allowed, so Hees admits it. The Console exposes the exact memory selected for the answer. Content DNA binds those atoms to the visible result, and the receipt records the profile, evidence, policy and terminal decision. The model produced prose; the profile produced an inspectable governed outcome.
 
 ### 1:35–1:55 — Unknown evidence cannot borrow authority
 
@@ -50,7 +50,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> Now the proposal cites an identifier with perfectly valid shape—but the profile never declared it. Hees rejects `unknown_evidence`. Good JSON cannot manufacture provenance, and rejected model text never becomes a trusted answer.
+> This proposal cites a well-formed identifier the profile never declared. Hees rejects `unknown_evidence`. Valid JSON cannot create provenance, rights or authority, and rejected model text never becomes an admitted answer.
 
 ### 1:55–2:13 — The model cannot invent an action
 
@@ -58,7 +58,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> The same boundary applies to behaviour. The model proposes an action outside the profile, so Hees rejects `unknown_action` and records exactly why. The model can be creative. Its authority cannot be.
+> Now the model requests an action outside the profile. Hees rejects `unknown_action` and emits a rejection receipt. Models may propose creatively; they cannot grant themselves permission.
 
 ### 2:13–2:32 — Replay and live are transports, not authorities
 
@@ -66,7 +66,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> Replay and live are transports, not authorities. This recording uses replay. Separately, the native Incan provider path loaded the credential, called GPT-5.6, and decoded a typed proposal successfully. A second native diagnostic reused that recorded proposal and completed six live committee calls: three relation observations and three synthesis observations. Hees classified six findings, selected the supporting memory, created Content DNA and a receipt, and admitted the result. That diagnostic retained call count and elapsed time, not usage, and used a temporary generated-Rust workaround for a known compiler defect. The final combined run from the frozen release binary remains to be verified.
+> Replay supplies saved untrusted inputs; live asks GPT. Neither transport stores or decides the outcome. Both enter the same compiled Hees path. This demo uses replay. Native proposal and committee calls were verified separately; the combined frozen-binary live run remains pending.
 
 ### 2:32–2:45 — From research to a usable governed-AI tool
 
@@ -74,7 +74,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 **Spoken script:**
 
-> GPT helped Danny build Incan. During Build Week, Codex with GPT-5.6 helped turn his long-running Hees research into this usable public product in days. This profile proves the foundation. The destination is governed AI whose evidence, facts, provenance, rights, behaviour, and decisions can all be examined and assured. Try the offline release.
+> GPT helped Danny build Incan over time. During Build Week, Codex with GPT-5.6 accelerated long-running Hees research into this usable public product in days. Incan powers Hees. Hees decides.
 
 ## What the video must establish
 

@@ -6,7 +6,7 @@ The model proposes. Hees decides.
 
 ## hees.ai console
 
-hees.ai console is the terminal-first, local-first development environment for governed AI. It begins before the prompt: developers explore evidence, curate governed memory, create and validate reusable profiles, pressure-test material through Training by Committee, run live or saved interactions, and inspect the resulting Spectrum decision, Content DNA, receipt, and trace.
+hees.ai console is the terminal-first, local-first development environment for governed AI. Its north-star workflow begins before the prompt: developers explore evidence, curate governed memory, create and validate reusable profiles, pressure-test material through Training by Committee, run live or saved interactions, and inspect Spectrum, selected memory, Content DNA, receipts and trace. The current bounded release implements the session-local profile and evidence slice described below.
 
 The Console is provider-neutral and domain-neutral. Models may propose content, candidate atoms, and bounded evaluator observations. They do not grant review or rights state, declare actions or policy, classify their own observations, select admitted memory, construct Content DNA, or issue a terminal decision.
 
