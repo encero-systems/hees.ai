@@ -1,6 +1,6 @@
 # hees.ai console Devpost draft
 
-> **Finalization gate:** Replace every remaining final-evidence field after the release audit. The product description below is written for the submission form; the evidence fields are not claims until populated.
+> **Operator gate:** Copy this draft into Devpost only after the tagged release audit. Replace the plain operator instructions below with observed external values; do not add unsupported claims to the submission.
 
 ## Submission metadata
 
@@ -10,10 +10,10 @@
 | Tagline | GPT-5.6 proposes. Hees decides. |
 | Category | Developer Tools |
 | Entrant | Danny Meijer, individual |
-| Repository | [Hees.ai](https://github.com/encero-systems/hees.ai); **[FINALIZE BEFORE RELEASE: FROZEN REVISION URL]** |
-| Try it | **[FINALIZE BEFORE RELEASE: NO-REBUILD RELEASE URL]** |
-| Video | **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]** |
-| License | [Apache-2.0](https://github.com/encero-systems/hees.ai/blob/main/LICENSE); **[FINALIZE BEFORE RELEASE: THIRD-PARTY NOTICE URL]** |
+| Repository | [Hees.ai](https://github.com/encero-systems/hees.ai/tree/hees-console-v0.1.0), at the tagged release revision |
+| Try it | [Published `hees-console-v0.1.0` release](https://github.com/encero-systems/hees.ai/releases/tag/hees-console-v0.1.0) |
+| Video | Add the approved public YouTube URL after upload and signed-out verification. |
+| License | [Apache-2.0](https://github.com/encero-systems/hees.ai/blob/hees-console-v0.1.0/LICENSE); third-party notices ship with each platform archive. |
 
 ### Why Developer Tools
 
@@ -56,7 +56,7 @@ The Build Week release makes that workflow tangible with a fictional Lantern Lab
 
 After profile work, the same Console runs one admitted and four adversarial interactions. It keeps `UNTRUSTED PROPOSAL`, evaluator observations, `HEES-CLASSIFIED FINDINGS`, terminal decision, selected memory, Content DNA, receipt, and trace visually separate.
 
-**Frozen product evidence:** **[FINALIZE BEFORE RELEASE: RELEASE, SCREENSHOTS, VIDEO TIMECODES, AND PROFILE-VALIDATION RUN]**.
+**Product evidence:** Link the published release, capture set, recorded demonstration timecodes, and profile-validation run from the same tagged revision when preparing the Devpost form.
 
 ## What a governance profile declares
 
@@ -141,7 +141,7 @@ hees.ai console is a native, keyboard-first Incan product rather than a chat tra
 
 Wide terminals use a framed three-pane workspace with one source of truth for widths, wrapping, and borders. Compact terminals switch to deterministic full-width destinations rather than squeezing unreadable columns. Text and symbols carry every authority state without depending on colour.
 
-**Design evidence:** **[FINALIZE BEFORE RELEASE: FROZEN WIDE, COMPACT, PROFILE, EVIDENCE, ADMITTED, REJECTED, AND MONOCHROME CAPTURES]**.
+**Design evidence:** Attach wide, compact, Profile, Evidence, admitted, rejected, and monochrome captures from the tagged release artifact to the Devpost gallery.
 
 ## Technical implementation
 
@@ -156,7 +156,7 @@ Wide terminals use a framed three-pane workspace with one source of truth for wi
 - bounded `gpt-5.6-sol` Responses API adapter for optional live proposals and evaluator observations; and
 - native tests, Hees profile tests, provider-boundary tests, public-consumer checks, packaging gates, and extracted-archive smoke tests.
 
-**Frozen verification:** **[FINALIZE BEFORE RELEASE: EXACT TEST COUNTS, LOCAL GATE RECORD, SOURCE REVISION, RELEASE HASHES, AND PUBLIC EVIDENCE LINKS]**.
+**Verification:** Link the exact tagged source revision, release checksums and manifests, CI runs, and clean extracted-archive smoke evidence from the published release.
 
 ## How Codex and GPT-5.6 were used
 
@@ -168,14 +168,14 @@ Danny remained the decision-maker. He defined the evidence-first product directi
 
 At runtime, GPT-5.6 has a narrower role. It may produce bounded proposal and evaluator-observation inputs. It cannot set review or rights state, declare package authority, classify findings, select memory, construct Content DNA, or issue the decision and receipt.
 
-**Build Week evidence:** **[FINALIZE BEFORE RELEASE: DATED COMMIT RANGE, PRS, CODEX TASK EVIDENCE, AND `/feedback` SESSION ID]**.
+**Build Week evidence:** Cite the dated public pull requests and task evidence, then enter the account-bound Codex `/feedback` Session ID in the Devpost field after it is generated.
 
 ## Try it
 
-The primary judge path is the unsigned native offline release. It requires no Incan compiler, source checkout, account, API key, or network connection after download.
+The primary judge path is the native offline release. It requires no Incan compiler, source checkout, account, API key, or network connection after download. macOS artifacts are not Developer ID-signed and not notarized; linker ad-hoc signing may exist solely for local execution and conveys no publisher identity.
 
-1. Download **[FINALIZE BEFORE RELEASE: SUPPORTED-PLATFORM RELEASE URL]**.
-2. Verify **[FINALIZE BEFORE RELEASE: ASSET NAME AND SHA-256]**.
+1. Download the archive for the judge's platform from the [published `hees-console-v0.1.0` release](https://github.com/encero-systems/hees.ai/releases/tag/hees-console-v0.1.0).
+2. Verify it against that release's `SHA256SUMS` asset and the selected platform manifest.
 3. Extract the archive and launch `./hees-console`.
 4. Open Evidence with `2`, unstage a record with `Space`, and validate with `v`. Confirm that Hees rejects the incomplete candidate with public reason `invalid_package` and exact diagnostic `invalid_package_atoms` while the active profile remains unchanged.
 5. Reset with `r`, validate again, and inspect the restored candidate in Profiles with `1`.
@@ -183,7 +183,7 @@ The primary judge path is the unsigned native offline release. It requires no In
 7. Open Decisions with `6` and inspect selected memory, Content DNA, and the receipt.
 8. Run the unknown-evidence and undeclared-action scenarios and confirm their exact rejection reasons.
 
-Complete platform, unsigned macOS, expected-result, and troubleshooting instructions live in [TESTING.md](../TESTING.md).
+Complete platform, macOS signing posture, expected-result, and troubleshooting instructions live in [TESTING.md](../TESTING.md).
 
 ## Current slice and product direction
 
@@ -195,7 +195,7 @@ Complete platform, unsigned macOS, expected-result, and troubleshooting instruct
 | Bounded Training by Committee proposal pressure test | Richer provider-neutral pressure testing across evidence, atoms, prompts, packages, and policy |
 | Limited Spectrum operation, Content DNA, and profile receipt | Complete generalized Spectrum, Content DNA, response-lifecycle, and receipt contracts |
 | Offline replay plus optional live GPT-5.6 transport | Additional remote and local model adapters using the same profile authority boundary |
-| Historical pre-redesign candidates on Linux x86-64, macOS Apple Silicon, and macOS Intel; the current head has zero release artifacts | Current unsigned builds, then signed, notarized, additional-platform, and optional hosted distribution |
+| Historical pre-redesign candidates on Linux x86-64, macOS Apple Silicon, and macOS Intel | Platforms listed in the tagged Release after extracted no-rebuild smoke; macOS builds are not Developer ID-signed and not notarized, and linker ad-hoc signing conveys no publisher identity |
 
 Optional live GPT-5.6 was verified in two bounded native diagnostics: one proposal call, followed separately by six committee calls using that proposal and a real Hees admission with six classified findings, selected memory, Content DNA and a receipt. These were separate diagnostics, not one frozen-binary run. The judge path therefore remains offline replay, which stores integrity-checked inputs—not decisions—and reruns the compiled Hees authority path. The [sanitized local observation](evidence/live-gpt56-proposal-2026-07-20.json) preserves the exact evidence and limitations.
 
@@ -203,11 +203,11 @@ Optional live GPT-5.6 was verified in two bounded native diagnostics: one propos
 
 | Criterion | Evidence |
 | --- | --- |
-| Technological Implementation | Native Incan application, real Hees acceptance probe and terminal authority, replay/live transport normalization, strict contracts, adversarial scenarios, extracted native release **[FINALIZE BEFORE RELEASE: LINKS]** |
-| Design | Evidence-first navigation, working candidate-profile action, explicit authority hierarchy, responsive native TUI, no-rebuild judge path **[FINALIZE BEFORE RELEASE: SCREENSHOTS AND VIDEO TIMECODES]** |
-| Potential Impact | Reusable governance profiles make evidence, rights, policy, model behavior, and decisions testable across providers **[FINALIZE BEFORE RELEASE: PRODUCT DEMO LINK]** |
-| Quality of the Idea | Training by Committee remains non-authoritative; Spectrum, selected memory, Content DNA, and receipts remain Hees-owned; replay reruns authority instead of storing it **[FINALIZE BEFORE RELEASE: ARCHITECTURE AND RUN LINKS]** |
+| Technological Implementation | Native Incan application, real Hees acceptance probe and terminal authority, replay/live transport normalization, strict contracts, adversarial scenarios, and extracted native release evidence |
+| Design | Evidence-first navigation, working candidate-profile action, explicit authority hierarchy, responsive native TUI, no-rebuild judge path, and recorded captures |
+| Potential Impact | Reusable governance profiles make evidence, rights, policy, model behavior, and decisions testable across providers; demonstrate this through the profile flow in the video. |
+| Quality of the Idea | Training by Committee remains non-authoritative; Spectrum, selected memory, Content DNA, and receipts remain Hees-owned; link the architecture page and tagged run evidence. |
 
 ## Public links
 
-The final public URL set is maintained in [FINALIZATION_CHECKLIST.md](FINALIZATION_CHECKLIST.md). No placeholder may be pasted into the submission form.
+Use [FINALIZATION_CHECKLIST.md](FINALIZATION_CHECKLIST.md) to complete the release audit, then paste only observed public URLs and values into the Devpost form.

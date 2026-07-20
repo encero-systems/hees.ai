@@ -2,7 +2,7 @@
 
 ## Requirements
 
-The current branch requires Incan `0.5.0-dev.22` from merged source commit [`INCAN_DEV22_MERGED_SHA_PENDING`](https://github.com/encero-systems/incan/commit/INCAN_DEV22_MERGED_SHA_PENDING). Release tooling records that source identity separately from the canonical root `incan.lock`. Publication still requires a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the final Hees head.
+The current branch requires Incan `0.5.0-dev.22` from merged source commit [`INCAN_DEV22_MERGED_SHA_PENDING`](https://github.com/encero-systems/incan/commit/INCAN_DEV22_MERGED_SHA_PENDING). Release tooling records that source identity separately from the canonical root `incan.lock`. The release workflow fails closed unless it obtains a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the tagged Hees head.
 
 ## Verify the repository
 

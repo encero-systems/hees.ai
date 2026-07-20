@@ -1,22 +1,21 @@
 # Testing hees.ai console
 
-This is the judge and reviewer test plan for hees.ai console `0.1.0` and its Build Week 2026 `console_profile_0_1` release. The primary flow begins with evidence, memory atoms, and a candidate-profile acceptance probe, then continues through Training by Committee, a bounded Spectrum evaluation, the governed interaction, Content DNA, and receipt. Every field labelled `FINALIZE BEFORE RELEASE` must be replaced with verified public evidence before these instructions become the final judge path.
+This is the judge and reviewer test plan for hees.ai console `0.1.0` and its Build Week 2026 `console_profile_0_1` release. The primary flow begins with evidence, memory atoms, and a candidate-profile acceptance probe, then continues through Training by Committee, a bounded Spectrum evaluation, the governed interaction, Content DNA, and receipt. The published release and its assets, rather than this source document, carry the mutable platform, hash, and provenance evidence.
 
 ## Fastest path: published offline test build
 
-The Build Week profile archive runs without an Incan compiler, package manager, source checkout, network connection, or API key. An earlier immutable candidate passed on macOS ARM64, macOS x86-64, and Linux x86-64, but the redesigned final head still requires a fresh three-platform matrix and published audited archives. The following fields are release blockers, not current download instructions.
+The Build Week profile archive runs without an Incan compiler, package manager, source checkout, network connection, or API key. An earlier immutable candidate passed on macOS ARM64, macOS x86-64, and Linux x86-64. An archive is judge-facing only when the published `hees-console-v0.1.0` Release contains a tested artifact for that platform; the following table is the verification route for that artifact.
 
 ### 1. Download and verify
 
-| Field | Verified release value |
+| Field | Where to verify it |
 | --- | --- |
-| Supported platform and architecture | **[FINALIZE BEFORE RELEASE: PLATFORM AND ARCHITECTURE]** |
-| Release tag | **[FINALIZE BEFORE RELEASE: `hees-console-v0.1.0` RELEASE URL]** |
-| Artifact name | **[FINALIZE BEFORE RELEASE: EXACT ASSET NAME]** |
-| Artifact URL | **[FINALIZE BEFORE RELEASE: IMMUTABLE ASSET URL]** |
-| SHA-256 | **[FINALIZE BEFORE RELEASE: EXACT LOWERCASE SHA-256]** |
-| Build provenance | **[FINALIZE BEFORE RELEASE: PROVENANCE URL]** |
-| Dependency licenses | **[FINALIZE BEFORE RELEASE: LICENSE REPORT URL]** |
+| Supported platform and architecture | The notes attached to the published [`hees-console-v0.1.0` release](https://github.com/encero-systems/hees.ai/releases/tag/hees-console-v0.1.0) |
+| Release tag | [`hees-console-v0.1.0`](https://github.com/encero-systems/hees.ai/releases/tag/hees-console-v0.1.0) |
+| Artifact name and URL | The release assets for the selected platform |
+| SHA-256 | The release `SHA256SUMS` asset |
+| Build provenance | The selected platform's release manifest |
+| Dependency licenses | The selected platform's generated third-party notices |
 
 Download the artifact and verify it using the exact platform command:
 
@@ -63,7 +62,7 @@ The equivalent workflow is available in Memory with `3`. Candidate changes are i
 | `↓` three times | Unknown memory | `REJECTED` / `console_admission_0_1` / `unknown_memory` | The untrusted proposal remains inspectable, but no trusted answer, selected memory, or Content DNA appears |
 | `↓` four times | Known but non-admitted memory | `REJECTED` / `console_admission_0_1` / `memory_not_admitted` | The package-owned memory exists but cannot be selected into a trusted answer |
 
-Replay fixtures do not store terminal results. They contain bounded request, proposal, and observation inputs plus schema and integrity identities. After replay decoding, those inputs enter the same compiled Hees validation, finding-classification, Spectrum, selected-memory, Content DNA, and receipt path used after live-provider decoding. To establish that the real runner executed, compare the displayed runner identity and receipt or Content DNA values with **[FINALIZE BEFORE RELEASE: RELEASE GOLDEN OUTPUT AND RUNNER-INTEGRITY TEST URL]**. A replay digest proves saved-input integrity, not GPT provenance.
+Replay fixtures do not store terminal results. They contain bounded request, proposal, and observation inputs plus schema and integrity identities. After replay decoding, those inputs enter the same compiled Hees validation, finding-classification, Spectrum, selected-memory, Content DNA, and receipt path used after live-provider decoding. To establish that the real runner executed, compare the displayed runner identity and receipt or Content DNA values with the golden-output and runner-integrity evidence linked by the published release notes. A replay digest proves saved-input integrity, not GPT provenance.
 
 ### 5. Inspect the trust boundary
 
@@ -85,7 +84,7 @@ The following checks establish the complete evidence-to-decision boundary:
 
 A hosted equivalent is not required once a native test build is published and remains free and unrestricted through the judging period. If one is supplied, it must invoke the same frozen executable, expose the Console directly rather than an unrestricted shell, isolate sessions, avoid persisting judge input, and remain available through August 5, 2026 at 17:00 PDT.
 
-**Hosted equivalent:** not configured. The current head has no release artifact, so neither path is presently judgeable without a source build. Before submission, publish and verify the frozen native test build or replace this field with a verified hosted URL, availability window, frozen artifact identity, and isolation result.
+**Hosted equivalent:** not configured. The judge path is the published native test build. A judge should use it only when the `hees-console-v0.1.0` Release supplies a tested archive for the required platform; any future hosted equivalent must declare its availability window, frozen artifact identity, and isolation result.
 
 ## Optional live GPT-5.6 test
 
@@ -139,7 +138,7 @@ Before publication, bind the release evidence to the exact tagged commit: record
 | Deterministic structural and policy admission with `admit` and `reject` | Semantic and factual verification, source and claim provenance, rights assurance, repair, clarification, and escalation |
 | Profile-specific Spectrum operation, Content DNA, and receipt | Complete generalized Spectrum, Content DNA, response-lifecycle, and governance-receipt contracts |
 | Integrity-checked offline saved inputs plus optional live GPT-5.6 transport | Additional remote and local provider adapters normalized into the same profile authority path |
-| Historical pre-redesign candidates on macOS ARM64, macOS x86-64, and Linux x86-64; the current head has zero release artifacts | Current and additional platforms only after each published artifact passes extracted no-rebuild smoke |
+| Historical pre-redesign candidates on macOS ARM64, macOS x86-64, and Linux x86-64 | A platform is judge-facing only when its `hees-console-v0.1.0` Release artifact passes extracted no-rebuild smoke and carries its checksum, manifest, and notices |
 
 ## Troubleshooting without weakening the boundary
 

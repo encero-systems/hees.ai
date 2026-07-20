@@ -8,24 +8,24 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 
 | Submission claim or requirement | Public evidence needed | Final link or value |
 | --- | --- | --- |
-| Public licensed repository | Repository at frozen revision; Apache-2.0 license; third-party notices | [Hees.ai](https://github.com/encero-systems/hees.ai), [Apache-2.0 license](https://github.com/encero-systems/hees.ai/blob/main/LICENSE); **[FINALIZE BEFORE RELEASE: FROZEN COMMIT AND THIRD-PARTY NOTICE URLS]** |
-| Meaningful Build Week extension | Dated July 13–21 commit range and public implementation/review PRs that distinguish prior work | **[FINALIZE BEFORE RELEASE: COMMIT RANGE AND PR URLS]** |
-| Codex collaboration | Timestamped Codex evidence, dated commits, and README lineage | **[FINALIZE BEFORE RELEASE: CODEX EVIDENCE AND README URLS]** |
-| Majority core-functionality task | Codex `/feedback` Session ID | **[MANUAL INPUT REQUIRED: SESSION ID]** |
-| Working Incan-authored decision path | Runner source, generated artifact identity, integration tests, and valid/adversarial run evidence | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, CI, AND RUN URLS]** |
-| Working Profile Studio | Evidence and memory staging, real Hees candidate acceptance probe, separate public reason and exact profile diagnostic, blocked activation, reset, and active-profile preservation | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, SCREENSHOT, AND VIDEO TIMECODE]** |
-| Explained profile contract | Public field-level Lantern Labs package/profile guide with ownership and validation path | **[FINALIZE BEFORE RELEASE: GOVERNANCE PROFILE DOCUMENTATION URL]** |
-| Bounded Training by Committee slice | Target derivation, complete observation coverage, Hees classification, and authority-negative tests | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, AND RUN URLS]** |
+| Public licensed repository | Repository at frozen revision; Apache-2.0 license; third-party notices | Confirm the release tag points to the merged `main` revision; link its Release assets and archive notices in the submission form. |
+| Meaningful Build Week extension | Dated July 13–21 commit range and public implementation/review PRs that distinguish prior work | Cite [RFC foundation PR #10](https://github.com/encero-systems/hees.ai/pull/10), [Console RFC PR #15](https://github.com/encero-systems/hees.ai/pull/15), and [implementation PR #17](https://github.com/encero-systems/hees.ai/pull/17), then record the observed commit range privately. |
+| Codex collaboration | Timestamped Codex evidence, dated commits, and README lineage | Cite the public implementation record and the Build Week lineage; add the `/feedback` Session ID only in Devpost. |
+| Majority core-functionality task | Codex `/feedback` Session ID | Danny runs `/feedback` in the core task and enters the resulting account-bound Session ID in Devpost. |
+| Working Incan-authored decision path | Runner source, generated artifact identity, integration tests, and valid/adversarial run evidence | Verify the tagged source, CI, golden runs, and release artifact agree before recording. |
+| Working Profile Studio | Evidence and memory staging, real Hees candidate acceptance probe, separate public reason and exact profile diagnostic, blocked activation, reset, and active-profile preservation | Capture and record this flow from the tagged artifact; retain run evidence in the private submission ledger. |
+| Explained profile contract | Public field-level Lantern Labs package/profile guide with ownership and validation path | [Governance profiles guide](../workspaces/docs-site/docs/governance-profiles.md) and published documentation site. |
+| Bounded Training by Committee slice | Target derivation, complete observation coverage, Hees classification, and authority-negative tests | Verify tagged-source tests and a matching recorded run before recording. |
 | Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` adapter reaching the same runner, with model/configuration identity and public result | [Sanitized local observation](evidence/live-gpt56-proposal-2026-07-20.json): the native proposal path passed separately in 8.34 seconds; a six-call native live committee completed in 40.06 seconds with zero retries and reached an admitted real-Hees result; the combined frozen release-binary path remains unproven |
-| No-rebuild judge path | Hosted sandbox or functioning test build, supported platforms, clean-system smoke test, access window | **[FINALIZE BEFORE RELEASE: TEST URL, PLATFORM MATRIX, SMOKE TEST, AND DATES]** |
-| Release integrity | Tag, immutable commit, asset names, SHA-256 values, provenance, dependency licenses | **[FINALIZE BEFORE RELEASE: RELEASE, HASH, PROVENANCE, AND LICENSE URLS]** |
-| Product behavior | Frozen golden outputs for valid action, undeclared action, and scenario `3` unknown evidence | **[FINALIZE BEFORE RELEASE: GOLDENS, TESTS, AND RUN URLS]** |
-| Product design | Frozen screenshots, narrow and monochrome checks, terminal-escaping tests | **[FINALIZE BEFORE RELEASE: IMAGE AND TEST URLS]** |
-| Public demo video | Approved public YouTube video under three minutes with clear English audio | **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]** |
-| Testing instructions | Public `TESTING.md` at the frozen revision with exact judge steps | **[FINALIZE BEFORE RELEASE: TESTING URL]** |
-| Public documentation | Locally built mdBook published from a clean `gh-pages` branch before merge; the current pull-request workflow builds documentation but deliberately does not deploy it | Current site: [encero-systems.github.io/hees.ai](https://encero-systems.github.io/hees.ai/), published from source commit [`fb3bbb1`](https://github.com/encero-systems/hees.ai/commit/fb3bbb1b8e292a944125493d9a3c85b69ea36a68) at Pages head `0e87fbb9fb29290ac8a4c1107e115a26fdd24101`; final-head republish and signed-out verification remain pending |
-| Green release gates | CI at the frozen commit, artifact smoke tests, publication-boundary audit | **[FINALIZE BEFORE RELEASE: CI, ARTIFACT, AND AUDIT URLS]** |
-| Devpost entry | Submitted project page containing the approved fields and links | **[MANUAL INPUT REQUIRED AFTER SUBMISSION: DEVPOST PROJECT URL]** |
+| No-rebuild judge path | Hosted sandbox or functioning test build, supported platforms, clean-system smoke test, access window | Publish a tested archive in the `hees-console-v0.1.0` Release and verify extracted replay smoke on every claimed platform. |
+| Release integrity | Tag, immutable commit, asset names, SHA-256 values, provenance, dependency licenses | Verify the published Release's tag, `SHA256SUMS`, manifests, provenance, and notices against the tagged source. |
+| Product behavior | Frozen golden outputs for valid action, undeclared action, and scenario `3` unknown evidence | Verify golden tests and recorded release-binary runs agree before publication. |
+| Product design | Frozen screenshots, narrow and monochrome checks, terminal-escaping tests | Capture from the tagged artifact and attach the selected images to Devpost. |
+| Public demo video | Approved public YouTube video under three minutes with clear English audio | Danny uploads it after artifact validation and verifies it while signed out. |
+| Testing instructions | Public `TESTING.md` at the frozen revision with exact judge steps | Link the tagged version of [TESTING.md](../TESTING.md) from Devpost. |
+| Public documentation | Locally built mdBook published from a clean `gh-pages` branch | Stage the documentation from the tagged source, record `SOURCE_COMMIT` in the generated site, and verify it while signed out. |
+| Green release gates | CI at the frozen commit, artifact smoke tests, publication-boundary audit | Record the observed CI and release workflow URLs in the private submission ledger. |
+| Devpost entry | Submitted project page containing the approved fields and links | Danny creates the entry in his individual account after every external link is verified. |
 
 ## Freeze gates before recording
 
@@ -81,12 +81,12 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 These are the only account-bound or personal actions reserved for Danny. The repository work should prepare everything else for direct review.
 
 1. Confirm personal eligibility, ownership, and that the financial or preferential-support exclusions do not apply. Entrant type is already fixed as Danny Meijer, individual.
-2. Run Codex `/feedback` in the task where the majority of core functionality was built and supply **[MANUAL INPUT REQUIRED: SESSION ID]**.
+2. Run Codex `/feedback` in the task where the majority of core functionality was built and enter the resulting Session ID in Devpost.
 3. Approve the frozen title, tagline, Developer Tools category, current-slice/product-direction language, screenshot set, and final spoken script.
-4. After approving and merging PR #17, create the exact `hees-console-v0.1.0` tag on a commit contained in `main`, verify every unsigned Linux x86-64, macOS Apple Silicon, and macOS Intel asset and hash, and manually publish the approved Release. Signing and notarization are unavailable for this submission and must not be implied.
-5. Record or approve the final release-candidate demo, upload it publicly to YouTube, verify it while signed out, and supply **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]**.
+4. After approving and merging PR #17, create the exact `hees-console-v0.1.0` tag on a commit contained in `main`, verify every Linux x86-64, macOS Apple Silicon, and macOS Intel asset and hash, and manually publish the approved Release. macOS artifacts are not Developer ID-signed and not notarized; linker ad-hoc signing may exist solely for local execution and conveys no publisher identity.
+5. Record or approve the final release-candidate demo, upload it publicly to YouTube, and verify it while signed out.
 6. Confirm the no-rebuild test path and its free availability through the end of judging, including any account-bound hosting control.
-7. Review the final Devpost draft in Danny's individual entrant account, submit before the official deadline, verify the public project page while signed out, and supply **[MANUAL INPUT REQUIRED: DEVPOST PROJECT URL AND SUBMISSION CONFIRMATION]**.
+7. Review the final Devpost draft in Danny's individual entrant account, submit before the official deadline, and verify the public project page while signed out.
 
 ## Final publication-boundary scan
 
@@ -96,6 +96,6 @@ Before release and again before submission, search the frozen repository, histor
 - absolute or home-directory paths, usernames, device names, private URLs, and private repository references;
 - proprietary product names, client material, private corpora, downloaded models, unpublished research, hidden prompts, and chain-of-thought;
 - unsupported claims that this release is submitted, production-ready, live-verified, or already provides complete semantic, factual, provenance, rights, or generalized Spectrum/RFC assurance; and
-- placeholder markers including `FINALIZE`, `MANUAL INPUT`, `TODO`, `TBD`, and example domains or hashes presented as final values.
+- placeholder markers, unfinished notes, and example domains or hashes presented as final values.
 
 Any finding is a release blocker until it is removed, replaced with verified public evidence, or explicitly narrowed in the final copy.

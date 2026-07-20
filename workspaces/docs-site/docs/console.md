@@ -55,7 +55,7 @@ Console owns presentation, bounded provider transport, replay loading, and sessi
 
 ## Run offline
 
-Once current-head assets are published, each release archive contains one native executable plus the project license, notice, third-party license report, and release manifest. The [current release gates](console-profile-0-1.md#current-release-gates) distinguish verified source behavior from downloadable artifact availability. After extracting a supported archive, launch the Console without a compiler, package manager, source checkout, network connection, or API key:
+Each published tagged release archive contains one native executable plus the project license, notice, third-party license report, and release manifest. The [current release gates](console-profile-0-1.md#current-release-gates) distinguish verified source behavior from downloadable artifact availability. After extracting a supported archive, launch the Console without a compiler, package manager, source checkout, network connection, or API key:
 
 ```bash
 ./hees-console
@@ -94,7 +94,7 @@ The adapter uses model identifier `gpt-5.6-sol`, the provider-supported strict J
 
 ### Live provider evidence
 
-A native diagnostic verified the GPT-5.6 proposal leg; a six-call Training by Committee diagnostic then reused that recorded proposal and reached a real admitted Hees result. A combined run from the frozen release binary remains unproven, so offline replay is the judge and video path. The [sanitized local observation](https://github.com/encero-systems/hees.ai/blob/main/submission/evidence/live-gpt56-proposal-2026-07-20.json) and [repository testing guide](https://github.com/encero-systems/hees.ai/blob/main/TESTING.md) retain the exact timings, usage, harness boundary, and limitations.
+A native diagnostic verified the GPT-5.6 proposal leg; a six-call Training by Committee diagnostic then reused that recorded proposal and reached a real admitted Hees result. A combined run from the frozen release binary remains unproven, so offline replay is the judge and video path. The [sanitized local observation](https://github.com/encero-systems/hees.ai/blob/hees-console-v0.1.0/submission/evidence/live-gpt56-proposal-2026-07-20.json) and [repository testing guide](https://github.com/encero-systems/hees.ai/blob/hees-console-v0.1.0/TESTING.md) retain the exact timings, usage, harness boundary, and limitations.
 
 ## What this release proves—and where it leads
 

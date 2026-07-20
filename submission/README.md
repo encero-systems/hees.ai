@@ -16,12 +16,12 @@ The submission pack was reconciled against the [OpenAI Build Week Official Rules
 
 The permanent hees.ai console is the terminal-first, local-first environment for creating, validating, running, replaying, and inspecting reusable governance profiles. The event entry is the working `console_profile_0_1` slice: a session-local Profile Studio over fictional evidence, a Hees-owned candidate acceptance probe, Training by Committee, governed interactions, a bounded Spectrum operation, Content DNA, and receipts. The submission should make the permanent outcome credible through this real slice without implying that general ingestion, durable profile authoring, or complete assurance already ship.
 
-Two placeholder forms are deliberate release controls:
+This pack separates two kinds of material:
 
-- **`FINALIZE BEFORE RELEASE`** identifies a claim that needs frozen, publicly inspectable evidence before it can appear as achieved.
-- **`MANUAL INPUT REQUIRED`** identifies an account-bound or personal field that Danny must provide or approve.
+- source-controlled scripts and copy describe stable product behavior, release routes, and the operator sequence; and
+- mutable evidence is created only after a tagged build completes: Release assets and checksums, Actions runs, generated Pages metadata, screenshots, a public video, the Devpost project URL, and the account-bound Codex `/feedback` Session ID.
 
-No placeholder is evidence. None may remain in the submitted Devpost form, public video description, release notes, or judge instructions. If evidence is missing at freeze, remove or narrow the affected claim instead of converting the placeholder into unsupported prose.
+Do not invent either kind of evidence. If a release artifact or external link is absent at freeze, remove or narrow the corresponding Devpost or video claim rather than presenting a planned value as achieved.
 
 ## Production boundary
 

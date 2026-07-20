@@ -86,10 +86,10 @@ Console owns native presentation, bounded transport, input bounds, and session-l
 
 #### Judge quick start
 
-The no-rebuild judge path below was proven against a historical pre-redesign candidate: it required no Incan compiler, package manager, source checkout, network connection, or API key. It is not yet a current-head release claim. Public download steps remain intentionally incomplete until fresh current-source test-build assets are published.
+The no-rebuild judge path below was proven against a historical pre-redesign candidate: it required no Incan compiler, package manager, source checkout, network connection, or API key. The current release becomes available only when the `hees-console-v0.1.0` GitHub Release is published with a tested archive for the judge's platform.
 
-1. Download the self-contained archive for **[FINALIZE BEFORE RELEASE: VERIFIED PUBLIC ARTIFACT PLATFORM]** from **[FINALIZE BEFORE RELEASE: RELEASE ASSET URL]**.
-2. Compare the downloaded file's SHA-256 digest with **[FINALIZE BEFORE RELEASE: RELEASE ASSET SHA-256]**.
+1. Open the [`hees-console-v0.1.0` release](https://github.com/encero-systems/hees.ai/releases/tag/hees-console-v0.1.0) and choose an archive whose platform is listed in that release's notes.
+2. Compare the archive's SHA-256 digest with the published `SHA256SUMS` asset from the same release. The per-platform manifest records the archive's source identity, executable digest, and third-party notices.
 3. Extract the archive and launch `./hees-console`. Offline replay is the zero-credential default.
 4. Press `2` to open Evidence. Select a record with `↑` or `↓`, press `Space` to unstage it from the session-local candidate, and press `v` to validate. Confirm that Hees rejects the incomplete candidate while the shipped active profile remains unchanged.
 5. Press `r` to reset the candidate and `v` to validate it again. Press `1` to compare the restored candidate with the active profile.
@@ -145,8 +145,8 @@ The relevant provider contracts follow the official [GPT-5.6 Sol model](https://
 
 | Surface | Status |
 | --- | --- |
-| Self-contained executable | An earlier immutable candidate executed successfully on macOS ARM64, macOS x86-64, and Linux x86-64; the redesigned final head requires a fresh matrix before those platforms become current release claims; **[FINALIZE BEFORE RELEASE: PUBLIC ASSET URLS, HASHES, AND MINIMUM SYSTEM REQUIREMENTS]** |
-| Publication state | Earlier native matrix artifacts are historical CI evidence; the current head has zero release artifacts and no signed or notarized public release |
+| Self-contained executable | The tagged release publishes an archive only after its native lane completes extracted offline-replay smoke. The release notes name every supported platform, architecture, minimum system requirement, artifact, and digest. Earlier candidates are historical development evidence only. |
+| Publication state | The `hees-console-v0.1.0` release is the authoritative source for current artifacts. It is not a claim that an unpublished tag or draft release is available to judges. |
 | Hosted equivalent | Not configured; any later hosted surface must run the same frozen executable in bounded, isolated, no-shell sessions |
 | Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.22`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
 
@@ -170,16 +170,14 @@ Report vulnerabilities through the private process in [SECURITY.md](SECURITY.md)
 
 #### Release evidence
 
-The Build Week lineage, Codex collaboration, rules checklist, and evidence ledger live in [BUILD_WEEK.md](BUILD_WEEK.md). The Devpost copy, video script, screenshot plan, and finalization controls live in the [submission pack](submission/README.md); those production drafts are not release or submission evidence. Before release, the following placeholders must be replaced with public evidence:
+The Build Week lineage, Codex collaboration, rules checklist, and evidence ledger live in [BUILD_WEEK.md](BUILD_WEEK.md). The Devpost copy, video script, screenshot plan, and operator controls live in the [submission pack](submission/README.md); they are production material rather than release evidence. The immutable release record is deliberately split across its stable containers:
 
-- release tag and immutable source commit: **[FINALIZE BEFORE RELEASE: TAG AND COMMIT]**;
-- public repository and implementation pull request: [Hees.ai](https://github.com/encero-systems/hees.ai) and [PR #17](https://github.com/encero-systems/hees.ai/pull/17);
-- green CI and artifact smoke tests: **[FINALIZE BEFORE RELEASE: CI AND TEST URLS]**;
-- release artifacts, provenance, and SHA-256 values: **[FINALIZE BEFORE RELEASE: RELEASE URL, PROVENANCE URL, AND HASHES]**;
-- hosted equivalent, only if one is claimed: **[FINALIZE BEFORE RELEASE: HOSTED URL AND DATES, OR REMOVE THIS OPTIONAL CLAIM]**;
-- live GPT-5.6 status: a native provider-only diagnostic exercised the Incan credential loader, `ureq` HTTPS transport, strict schema, decoder, and typed proposal path successfully in 8.34 seconds; a separate native diagnostic completed six sequential live committee calls in 40.06 seconds with zero retries and reached an admitted real-Hees result with six findings, selected memory, Content DNA, and a receipt; the final combined release-binary path remains unverified; see the [sanitized local observation](submission/evidence/live-gpt56-proposal-2026-07-20.json);
-- screenshots and public demonstration video: **[FINALIZE BEFORE RELEASE: SCREENSHOT AND VIDEO URLS]**; and
-- majority-core-functionality Codex `/feedback` Session ID: **[MANUAL INPUT REQUIRED BEFORE SUBMISSION: CODEX SESSION ID]**.
+- the [`hees-console-v0.1.0` release](https://github.com/encero-systems/hees.ai/releases/tag/hees-console-v0.1.0) carries tested archives, manifests, checksums, notices, and the tagged source identity;
+- GitHub Actions records the exact CI and native-matrix runs that built those artifacts;
+- the documentation site records the generated `SOURCE_COMMIT` for its publication; and
+- the submission operator supplies the account-bound YouTube, Devpost, and Codex `/feedback` details in the final submission form, not in the tagged source tree.
+
+The live GPT-5.6 status is intentionally narrower: a native provider-only diagnostic exercised the Incan credential loader, `ureq` HTTPS transport, strict schema, decoder, and typed proposal path successfully in 8.34 seconds; a separate native diagnostic completed six sequential live committee calls in 40.06 seconds with zero retries and reached an admitted real-Hees result with six findings, selected memory, Content DNA, and a receipt; the final combined release-binary path remains unverified; see the [sanitized local observation](submission/evidence/live-gpt56-proposal-2026-07-20.json).
 
 #### How GPT and Codex contributed
 
@@ -218,7 +216,7 @@ Not implemented by the checked `0.0.1` library:
 
 ### Toolchain
 
-The current branch requires Incan `0.5.0-dev.22` from merged source commit [`INCAN_DEV22_MERGED_SHA_PENDING`](https://github.com/encero-systems/incan/commit/INCAN_DEV22_MERGED_SHA_PENDING). Release tooling pins that source identity separately from the canonical root `incan.lock`. Publication still requires a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the final Hees head. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
+The current branch requires Incan `0.5.0-dev.22` from merged source commit [`INCAN_DEV22_MERGED_SHA_PENDING`](https://github.com/encero-systems/incan/commit/INCAN_DEV22_MERGED_SHA_PENDING). Release tooling pins that source identity separately from the canonical root `incan.lock`. The release workflow fails closed unless it obtains a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the tagged Hees head. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
 
 ```bash
 make ci INCAN=/path/to/incan
@@ -254,7 +252,7 @@ The command is intentionally not a release publisher. It builds and audits the n
 
 The pinned registry contains candidate lanes for Linux x86_64, macOS ARM64, and macOS x86_64. Each lane builds the exact Incan source commit natively before compiling and smoke-testing Console; no mutable compiler branch or preinstalled toolchain is trusted. Windows and Linux ARM64 remain unsupported until equivalent native lanes execute successfully. The selected standard runner labels come from the current [GitHub-hosted runner reference](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
 
-Release-candidate archives are not identity-signed or notarized. macOS tooling may apply ad-hoc signatures needed for local execution, but those signatures establish no publisher identity. The workflow has read-only repository permission and uploads short-lived Actions artifacts only; it does not create a GitHub release, sign an artifact, or publish the stable no-rebuild test-build links above. Archive metadata is deterministic for fixed bundle inputs, while bit-for-bit reproducibility of native compiler output is not claimed.
+Release-candidate archives are not Developer ID-signed and not notarized; linker ad-hoc signing may exist solely for local execution and conveys no publisher identity. The workflow has read-only repository permission and uploads short-lived Actions artifacts only; it does not create a GitHub release, sign an artifact, or publish the stable no-rebuild test-build links above. Archive metadata is deterministic for fixed bundle inputs, while bit-for-bit reproducibility of native compiler output is not claimed.
 
 ### External package descriptor
 

@@ -98,7 +98,7 @@ By the end of the video, a judge should understand that:
 - Do not display `OPENAI_API_KEY`, environment variables, request headers, hidden prompts, unrestricted rationale, personal data, local paths, issue drafts, or private repositories.
 - Record the product demonstration in replay. State that a provider-only native Incan diagnostic exercised credential loading, `ureq` HTTPS, strict schema, and typed proposal decoding. State separately that a temporary generated harness completed six live committee calls and reached an admitted real-Hees result. Do not present the separate diagnostics as one combined frozen release-binary run.
 - Confirm every displayed reason, digest, artifact identity, and trust label against the frozen outputs after editing the video.
-- Upload the approved final cut publicly to YouTube and verify it while signed out: **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]**.
+- Upload the approved final cut publicly to YouTube and verify it while signed out. Paste that observed URL into the Devpost form and final video description.
 
 ## Screenshot shot list and captions
 
@@ -106,13 +106,13 @@ All captures must come from the frozen release artifact. Use a clean terminal, n
 
 | Shot | Required visible content | Caption | Final evidence |
 | --- | --- | --- | --- |
-| 1. Evidence workspace | `hees.ai console`, active profile, fictional source, review and rights state, memory atom identity | **Governance begins with evidence: the Console keeps source identity, reviewed memory, rights state, and profile membership inspectable before a model is asked to act.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND FROZEN COMMIT]** |
-| 2. Governance profile | Active and candidate identity, staged evidence and memory, declared actions, policy, Hees acceptance-probe result | **A governance profile turns reviewed material and policy into an executable boundary. In this first slice, candidate edits remain non-authoritative while a real Hees acceptance probe returns an admitted or rejected result for the shipped interaction.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND PROFILE-ACCEPTANCE EVIDENCE]** |
-| 3. Committee pressure test | Untrusted proposal, evaluation targets, observations, Hees-classified findings | **Training by Committee supplies bounded observations; Hees derives the targets, applies profile-owned policy, and retains terminal authority.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
-| 4. Admitted result | `ADMITTED`, selected memory, Content DNA, receipt | **An admitted result carries its selected governed memory, Content DNA, and export-safe receipt instead of leaving provenance implicit in model prose.** | **[FINALIZE BEFORE RELEASE: IMAGE URL, EXACT VALUES, AND RUN EVIDENCE]** |
-| 5. Unknown evidence | Undeclared evidence identifier, `REJECTED`, `unknown_evidence`, absent admitted artifacts | **A schema-valid identifier cannot borrow package authority: Hees rejects evidence the profile never declared.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
-| 6. Undeclared action | Proposed action, declared-action comparison, `REJECTED`, `unknown_action`, rejection receipt | **The model may propose beyond the profile, but it cannot grant itself permission to act.** | **[FINALIZE BEFORE RELEASE: IMAGE URL AND GOLDEN TEST]** |
-| 7. No-rebuild access | Release asset or hosted start screen, supported platform, public test URL, no credential prompt | **Judges can explore the governed profile offline without rebuilding Incan or supplying an API key.** | **[FINALIZE BEFORE RELEASE: IMAGE URL, ARTIFACT HASH, AND SMOKE TEST]** |
+| 1. Evidence workspace | `hees.ai console`, active profile, fictional source, review and rights state, memory atom identity | **Governance begins with evidence: the Console keeps source identity, reviewed memory, rights state, and profile membership inspectable before a model is asked to act.** | Capture from the tagged artifact; retain the matching source revision and profile-validation evidence in the private submission ledger. |
+| 2. Governance profile | Active and candidate identity, staged evidence and memory, declared actions, policy, Hees acceptance-probe result | **A governance profile turns reviewed material and policy into an executable boundary. In this first slice, candidate edits remain non-authoritative while a real Hees acceptance probe returns an admitted or rejected result for the shipped interaction.** | Capture from the tagged artifact; retain the matching source revision and profile-validation evidence in the private submission ledger. |
+| 3. Committee pressure test | Untrusted proposal, evaluation targets, observations, Hees-classified findings | **Training by Committee supplies bounded observations; Hees derives the targets, applies profile-owned policy, and retains terminal authority.** | Capture from the tagged artifact and cross-check the corresponding golden test. |
+| 4. Admitted result | `ADMITTED`, selected memory, Content DNA, receipt | **An admitted result carries its selected governed memory, Content DNA, and export-safe receipt instead of leaving provenance implicit in model prose.** | Capture exact visible values from the tagged artifact and retain the matching run evidence. |
+| 5. Unknown evidence | Undeclared evidence identifier, `REJECTED`, `unknown_evidence`, absent admitted artifacts | **A schema-valid identifier cannot borrow package authority: Hees rejects evidence the profile never declared.** | Capture from the tagged artifact and cross-check the corresponding golden test. |
+| 6. Undeclared action | Proposed action, declared-action comparison, `REJECTED`, `unknown_action`, rejection receipt | **The model may propose beyond the profile, but it cannot grant itself permission to act.** | Capture from the tagged artifact and cross-check the corresponding golden test. |
+| 7. No-rebuild access | Release asset or hosted start screen, supported platform, public test URL, no credential prompt | **Judges can explore the governed profile offline without rebuilding Incan or supplying an API key.** | Capture after the Release is public; preserve the release checksum and extracted-smoke evidence in the private submission ledger. |
 
 ## Video description draft
 
@@ -120,7 +120,7 @@ All captures must come from the frozen release artifact. Use a clean terminal, n
 >
 > Replay is the zero-credential judge path. It supplies integrity-checked saved inputs to the same compiled Hees authority path used by optional live mode; it does not replay a stored decision. Separately, a provider-only native Incan diagnostic called GPT-5.6 and passed typed proposal decoding. A temporary generated harness then reused that recorded proposal, completed three relation and three synthesis calls, and reached an admitted real-Hees result with six classified findings, selected memory, Content DNA, and a receipt. It retained call count and elapsed time rather than usage. The final combined frozen release-binary path remains unverified.
 >
-> Repository: **[FINALIZE BEFORE RELEASE: PUBLIC REPOSITORY URL]**<br>
-> Test it: **[FINALIZE BEFORE RELEASE: NO-REBUILD TEST URL]**<br>
-> Release and hashes: **[FINALIZE BEFORE RELEASE: RELEASE URL]**<br>
-> Testing instructions: **[FINALIZE BEFORE RELEASE: PUBLIC TESTING URL]**
+> Repository: https://github.com/encero-systems/hees.ai<br>
+> Test it: use the published `hees-console-v0.1.0` release artifact for your platform<br>
+> Release and hashes: https://github.com/encero-systems/hees.ai/releases/tag/hees-console-v0.1.0<br>
+> Testing instructions: https://github.com/encero-systems/hees.ai/blob/hees-console-v0.1.0/TESTING.md
