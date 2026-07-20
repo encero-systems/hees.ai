@@ -1,6 +1,6 @@
 # hees.ai console video and screenshot plan
 
-> **Freeze gate:** Record only from the audited release artifact after every final-evidence placeholder below has been replaced. The target runtime is **2:45**, leaving fifteen seconds below the official three-minute limit.
+> **Freeze gate:** Record only from the audited release artifact after every final-evidence placeholder below has been replaced. The target runtime is **2:50**, leaving ten seconds below the official three-minute limit.
 
 ## Product story
 
@@ -12,69 +12,69 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 ## Timed storyboard and spoken script
 
-### 0:00–0:18 — Govern the system before the answer
+### 0:00–0:20 — Govern the system before the answer
 
 **On screen:** Begin inside `hees.ai console`, not on a title card. Keep `REPLAY` and `console_profile_0_1` visible. Move from `Profiles` to `Evidence` so the audience immediately sees that the product begins before a model response.
 
 **Spoken script:**
 
-> AI governance should begin before the prompt. hees.ai console lets developers build reusable profiles that define the evidence, memory, rights, actions, policy and evaluation a model must operate within—and then inspect every decision that follows.
+> Most AI tools begin with a prompt and end with model output. hees.ai console begins with evidence. It makes reusable governance profiles the unit of development, binding reviewed memory, rights, actions, policy and evaluation before a model contributes.
 
-### 0:18–0:48 — Evidence becomes an executable governance profile
+### 0:20–0:50 — Evidence becomes an executable governance profile
 
 **On screen:** Open `Evidence` with `2`, select one fictional source, and show its source-safe identity, fingerprint, UTF-8 span, language, review state, rights state, authority, provenance digest, and associated memory atom. Press `Space` to unstage the Lantern evidence from the candidate profile, then press `v` to rerun the shipped acceptance interaction through the real Incan-authored Hees boundary. Hold on `REJECTED`, stable public reason `invalid_package`, and exact profile diagnostic `invalid_package_atoms` while the shipped active profile remains unchanged. Press `r` to reset the candidate and `v` to show the restored `ADMITTED` probe result. Briefly open `Profiles` with `1` to show the active-versus-candidate distinction, declared actions, evidence and memory set, and policy.
 
 **Spoken script:**
 
-> A profile starts with evidence. This source is bound to a memory atom the package marks reviewed and rights-allowed, with explicit provenance and authority. When I remove it from the candidate and validate, Hees rejects the incomplete package and names the failed atom invariant. The active profile remains untouched. Resetting restores the valid candidate. The permanent workflow is edit, validate, compare, then activate only through authority.
+> This Build Week slice uses supplied fictional evidence. Each source is tied to a memory atom with an exact span, provenance, review and rights state. I remove one atom and probe the candidate through real Incan-authored Hees. Hees rejects it without changing active authority. Resetting restores the shipped candidate; the same probe admits it.
 
-### 0:48–1:08 — Training by Committee pressure-tests the proposal
+### 0:50–1:10 — Training by Committee pressure-tests the proposal
 
-**On screen:** Open the valid interaction. Show the untrusted proposal, the Hees-derived evaluation targets, separately role-bound observations, and the resulting Hees-classified findings. Keep the sections visually distinct.
-
-**Spoken script:**
-
-> GPT-5.6 proposes inside the profile. Training by Committee asks bounded evaluator roles to challenge its evidence relationships and answer coverage. They do not vote. Hees defines the targets, verifies complete coverage and classifies their observations under profile-owned policy.
-
-### 1:08–1:35 — The profile admits a supported result
-
-**On screen:** Run the valid scenario from the frozen artifact. Show `✓ ADMITTED`, selected memory, Content DNA, and the receipt. Expand enough of the receipt to expose package, profile, decision, evidence, memory, and digest identities without lingering on raw JSON.
+**On screen:** Open the valid interaction. Show the untrusted replay proposal, the Hees-derived evaluation targets, separately role-bound observations, and the resulting Hees-classified findings. Keep the sections visually distinct.
 
 **Spoken script:**
 
-> The proposal uses a declared action and evidence the package marks reviewed and rights-allowed, so Hees admits it. The Console exposes the exact memory selected for the answer. Content DNA binds those atoms to the visible result, and the receipt records the profile, evidence, policy and terminal decision. The model produced prose; the profile produced an inspectable governed outcome.
+> This replay carries an untrusted proposal and bounded committee observations. Training by Committee pressure-tests evidence links and answer coverage. They are not votes: Hees derives every target, checks complete coverage and classifies each finding under profile policy.
 
-### 1:35–1:55 — Unknown evidence cannot borrow authority
+### 1:10–1:38 — The profile admits a supported result
+
+**On screen:** Open the valid interaction, then its decision. Show `✓ ADMITTED`, the bounded Spectrum result, selected memory, Content DNA, and the receipt. Expand enough of the receipt to expose package, profile, decision, evidence, memory, and digest identities without lingering on raw JSON.
+
+**Spoken script:**
+
+> Here the proposal uses a declared action, allowed evidence and reviewed memory. Bounded Spectrum resolves the classified findings, and Hees admits the result. The Console exposes the selected atom. Content DNA binds that memory to the visible answer; the receipt records evidence, policy, identities and the terminal decision.
+
+### 1:38–1:56 — Unknown evidence cannot borrow authority
 
 **On screen:** Select `Unknown evidence`. Show the schema-valid but undeclared identifier, then `✕ REJECTED`, reason `unknown_evidence`, and the absence of an admitted answer, selected memory, and Content DNA.
 
 **Spoken script:**
 
-> This proposal cites a well-formed identifier the profile never declared. Hees rejects `unknown_evidence`. Valid JSON cannot create provenance, rights or authority, and rejected model text never becomes an admitted answer.
+> This proposal cites a valid-looking evidence identifier the profile never declared. Hees rejects unknown evidence. Structured output can constrain shape; it cannot manufacture provenance, rights or authority.
 
-### 1:55–2:13 — The model cannot invent an action
+### 1:56–2:14 — The model cannot invent an action
 
 **On screen:** Select `Undeclared action`. Show the proposed action beside the package's declared actions, then `✕ REJECTED` with `unknown_action` and its rejection receipt.
 
 **Spoken script:**
 
-> Now the model requests an action outside the profile. Hees rejects `unknown_action` and emits a rejection receipt. Models may propose creatively; they cannot grant themselves permission.
+> Another proposal asks to assign a grade—an action outside the profile. Hees rejects unknown action and records why. The model may propose; it cannot grant itself permission.
 
-### 2:13–2:32 — Replay and live are transports, not authorities
+### 2:14–2:32 — Replay and live are transports, not authorities
 
 **On screen:** Show the architecture page and trace saved replay and the optional live GPT-5.6 adapter into the single compiled Hees path. Keep the recorded product demonstration in `REPLAY`. Briefly show Incan source. Do not depict or imply that one frozen release binary performed the separately verified proposal and live-committee diagnostics as a combined run.
 
 **Spoken script:**
 
-> Replay supplies saved untrusted inputs; live asks GPT. Neither transport stores or decides the outcome. Both enter the same compiled Hees path. This demo uses replay. Native proposal and committee calls were verified separately; the combined frozen-binary live run remains pending.
+> This video uses zero-credential replay: untrusted inputs, not stored decisions, rerun through compiled Hees. Judges run it offline without rebuilding Incan. Live GPT-5.6 proposal and committee calls were verified separately. Transport supplies inputs; the profile remains authority.
 
-### 2:32–2:45 — From research to a usable governed-AI tool
+### 2:32–2:50 — From research to a usable governed-AI tool
 
 **On screen:** Finish on the architecture hero, then the public repository and no-rebuild release link. End with `GPT-5.6 proposes. Hees decides.`
 
 **Spoken script:**
 
-> GPT helped Danny build Incan over time. During Build Week, Codex with GPT-5.6 accelerated long-running Hees research into this usable public product in days. Incan powers Hees. Hees decides.
+> Incan and Hees predate Build Week: long-running, human-directed work with GPT assistance. During Build Week, Codex with GPT-5.6 helped Danny turn that research into this native public product, tests and release path—in days. GPT-5.6 proposes. Hees decides.
 
 ## What the video must establish
 
@@ -90,13 +90,13 @@ By the end of the video, a judge should understand that:
 ## Recording and publication checks
 
 - Record the frozen release artifact, never a source checkout with local paths or development-only behaviour.
-- Keep the final cut below 2:50 and confirm clear English audio at normal playback speed.
+- Keep the final cut at or below 2:50 and confirm clear English audio at normal playback speed.
 - Demonstrate the real candidate-profile workflow before running an interaction: `2` opens Evidence, `Space` unstages a record, `v` validates and shows public reason `invalid_package` separately from exact diagnostic `invalid_package_atoms` while the active profile remains unchanged, and `r` resets the candidate.
 - Show one admitted result and both required adversarial cases: unknown evidence and undeclared action.
 - Keep `REPLAY` or `LIVE` visible throughout each run. Never splice replay output under a live label.
 - Use no copyrighted music, third-party logos, private browser chrome, account identifiers, notification banners, or unlicensed assets.
 - Do not display `OPENAI_API_KEY`, environment variables, request headers, hidden prompts, unrestricted rationale, personal data, local paths, issue drafts, or private repositories.
-- Record the product demonstration in replay. State that a provider-only native Incan diagnostic exercised credential loading, `ureq` HTTPS, strict schema, and typed proposal decoding. State separately that a diagnostic generated harness completed six live committee calls and reached an admitted real-Hees result using the temporary workaround. Do not present those separate diagnostics as one combined frozen release-binary run.
+- Record the product demonstration in replay. State that a provider-only native Incan diagnostic exercised credential loading, `ureq` HTTPS, strict schema, and typed proposal decoding. State separately that a temporary generated harness completed six live committee calls and reached an admitted real-Hees result. Do not present the separate diagnostics as one combined frozen release-binary run.
 - Confirm every displayed reason, digest, artifact identity, and trust label against the frozen outputs after editing the video.
 - Upload the approved final cut publicly to YouTube and verify it while signed out: **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]**.
 
@@ -118,7 +118,7 @@ All captures must come from the frozen release artifact. Use a clean terminal, n
 
 > **hees.ai console turns evidence, reviewed memory, policy, and authority into reusable governance profiles for AI.** This Build Week release demonstrates a fictional profile from evidence inspection through Training by Committee, governed interaction, Spectrum decision, selected memory, Content DNA, and receipt. GPT-5.6 may propose; the compiled Incan-authored Hees profile decides.
 >
-> Replay is the zero-credential judge path. It supplies integrity-checked saved inputs to the same compiled Hees authority path used by optional live mode; it does not replay a stored decision. Separately, a provider-only native Incan diagnostic called GPT-5.6 and passed typed proposal decoding. A second native diagnostic reused that recorded proposal, completed three relation and three synthesis calls, and reached an admitted real-Hees result with six classified findings, selected memory, Content DNA, and a receipt. It retained call count and elapsed time rather than usage and used a temporary generated-Rust workaround for a known compiler defect. The final combined frozen release-binary path remains unverified.
+> Replay is the zero-credential judge path. It supplies integrity-checked saved inputs to the same compiled Hees authority path used by optional live mode; it does not replay a stored decision. Separately, a provider-only native Incan diagnostic called GPT-5.6 and passed typed proposal decoding. A temporary generated harness then reused that recorded proposal, completed three relation and three synthesis calls, and reached an admitted real-Hees result with six classified findings, selected memory, Content DNA, and a receipt. It retained call count and elapsed time rather than usage. The final combined frozen release-binary path remains unverified.
 >
 > Repository: **[FINALIZE BEFORE RELEASE: PUBLIC REPOSITORY URL]**<br>
 > Test it: **[FINALIZE BEFORE RELEASE: NO-REBUILD TEST URL]**<br>

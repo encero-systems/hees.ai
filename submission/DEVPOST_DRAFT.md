@@ -105,7 +105,7 @@ The Console owns native terminal interaction, bounded transport, secret isolatio
 
 Training by Committee is governed pressure testing, not provider voting or model-weight training. Hees derives the exact relation, contradiction, and synthesis targets from the package, request, and proposal. Provider-neutral evaluator roles return bounded observations against those targets. Hees verifies identity and complete coverage, interprets the scores through profile-owned thresholds, and produces the findings used by Spectrum.
 
-This separation lets developers use multiple models to challenge material and proposals without granting those models the right to approve themselves.
+This separation lets developers use model evaluators to challenge material and proposals without granting those evaluators the right to approve themselves. The provider-neutral design can extend to multiple models; this release's live adapter is pinned to `gpt-5.6-sol`.
 
 ## The demonstrated interactions
 
@@ -193,7 +193,7 @@ Complete platform, unsigned macOS, expected-result, and troubleshooting instruct
 | Offline replay plus optional live GPT-5.6 transport | Additional remote and local model adapters using the same profile authority boundary |
 | Historical pre-redesign candidates on Linux x86-64, macOS Apple Silicon, and macOS Intel; the current head has zero release artifacts | Current unsigned builds, then signed, notarized, additional-platform, and optional hosted distribution |
 
-Live GPT-5.6 was verified in two bounded native diagnostics: the proposal path completed once in 8.34 seconds, and a separate six-call committee path completed in 40.06 seconds with zero retries and reached a real Hees `ADMITTED` result with six findings, selected memory, Content DNA and a receipt. The committee reused the earlier proposal, retained no token-usage record and required a temporary generated-Rust workaround. A combined proposal-plus-committee run from the frozen release binary remains unproven, so judges use integrity-checked offline replay through the same post-transport Hees authority path. The [sanitized observation](evidence/live-gpt56-proposal-2026-07-20.json) preserves the complete evidence and limitations.
+Optional live GPT-5.6 was verified in two bounded native diagnostics: one proposal call, followed separately by six committee calls using that proposal and a real Hees admission with six classified findings, selected memory, Content DNA and a receipt. These were separate diagnostics, not one frozen-binary run. The judge path therefore remains offline replay, which stores integrity-checked inputs—not decisions—and reruns the compiled Hees authority path. The [sanitized local observation](evidence/live-gpt56-proposal-2026-07-20.json) preserves the exact evidence and limitations.
 
 ## Judging-criteria map
 
