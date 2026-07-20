@@ -214,31 +214,44 @@ def terminal_dimensions() -> Tuple[int, int]:
             return (int(columns), int(rows))
 
 
-def enter_terminal_screen() -> None:
+def write_terminal_sequence(value: str) -> Result[None, str]:
+    """Write and flush one application-owned terminal sequence without adding a newline."""
+
+    data = RustString.from(value).into_bytes()
+    mut out = stdout()
+    match out.write_all(data):
+        Err(_) => return Err("terminal_write_failed")
+        Ok(_) =>
+            match out.flush():
+                Err(_) => return Err("terminal_flush_failed")
+                Ok(_) => return Ok(None)
+
+
+def enter_terminal_screen() -> Result[None, str]:
     """Enter the alternate screen and hide the cursor with fixed ANSI controls."""
 
-    println(terminal_sequence(b"\x1b[?1049h\x1b[?25l"))
+    return write_terminal_sequence(terminal_sequence(b"\x1b[?1049h\x1b[?25l"))
 
 
-def leave_terminal_screen() -> None:
+def leave_terminal_screen() -> Result[None, str]:
     """Restore the cursor and leave the alternate screen with fixed ANSI controls."""
 
-    println(terminal_sequence(b"\x1b[?25h\x1b[?1049l"))
+    return write_terminal_sequence(terminal_sequence(b"\x1b[?25h\x1b[?1049l"))
 
 
-def draw_frame(state: ConsoleState, runs: list[ConsoleRun]) -> None:
-    """Replace the alternate-screen frame without printing a scrolling trailing newline."""
+def draw_frame(state: ConsoleState, runs: list[ConsoleRun]) -> Result[None, str]:
+    """Replace the alternate-screen frame and report write or flush failure without a trailing newline."""
 
     columns, rows = terminal_dimensions()
     frame = render_screen_for_size(state, runs, columns, rows).replace("\n", "\r\n")
     data = RustString.from(f"{clear_and_home()}{frame}").into_bytes()
     mut out = stdout()
     match out.write_all(data):
-        Err(_) => return
-        Ok(_) => pass
-    match out.flush():
-        Err(_) => return
-        Ok(_) => return
+        Err(_) => return Err("terminal_write_failed")
+        Ok(_) =>
+            match out.flush():
+                Err(_) => return Err("terminal_flush_failed")
+                Ok(_) => return Ok(None)
 
 
 def live_safe_command(command: str) -> str:
@@ -264,9 +277,18 @@ def run_screen(initial_state: ConsoleState, initial_runs: list[ConsoleRun], allo
     runs = initial_runs
     states = admitted_states(runs)
     enable_raw_mode().map_err((_error) => f"terminal_raw_mode_failed")?
-    enter_terminal_screen()
-    draw_frame(state, runs)
     mut failure: Option[str] = None
+    match enter_terminal_screen():
+        Err(code) =>
+            failure = Some(code)
+            state.running = false
+        Ok(_) => pass
+    if state.running:
+        match draw_frame(state, runs):
+            Err(code) =>
+                failure = Some(code)
+                state.running = false
+            Ok(_) => pass
     while state.running:
         match read_command(state):
             Err(code) =>
@@ -278,14 +300,28 @@ def run_screen(initial_state: ConsoleState, initial_runs: list[ConsoleRun], allo
                     selected_command = live_safe_command(selected_command)
                 state = apply_command(state, selected_command, states)
                 if state.running:
-                    draw_frame(state, runs)
-    leave_terminal_screen()
-    match disable_raw_mode():
-        Err(_) => return Err("terminal_restore_failed")
-        Ok(_) =>
+                    match draw_frame(state, runs):
+                        Err(code) =>
+                            failure = Some(code)
+                            state.running = false
+                        Ok(_) => pass
+    match leave_terminal_screen():
+        Err(code) =>
             match failure:
-                Some(code) => return Err(code)
-                None => return Ok(None)
+                Some(_) => pass
+                None =>
+                    failure = Some(code)
+        Ok(_) => pass
+    match disable_raw_mode():
+        Err(_) =>
+            match failure:
+                Some(_) => pass
+                None =>
+                    failure = Some("terminal_restore_failed")
+        Ok(_) => pass
+    match failure:
+        Some(code) => return Err(code)
+        None => return Ok(None)
 
 
 pub def run_interactive(initial_slug: str) -> Result[None, str]:

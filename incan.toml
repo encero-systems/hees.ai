@@ -31,4 +31,6 @@ hees_ai = { path = "." }
 
 [workspace.rust-dependencies]
 crossterm = "0.29"
+unicode-width = "0.2"
+unicode-segmentation = "=1.12.0"
 ureq = { version = "2.12", features = ["tls"] }

@@ -1,6 +1,6 @@
 """Deterministic browser, filter, navigation, and inspector state for hees.ai console."""
 
-from evaluation import probe_candidate_compatibility
+from evaluation import probe_candidate_scenario
 from replays import scenario_slugs, scenario_tags, scenario_title
 
 const SURFACE_PROFILES: str = "profiles"
@@ -391,7 +391,7 @@ def toggled_identity(values: list[str], target: str) -> list[str]:
 
 
 def invalidate_candidate_probe(state: ConsoleState) -> ConsoleState:
-    """Mark a locally edited candidate as requiring a fresh compatibility probe."""
+    """Mark a locally edited candidate as requiring a fresh shipped-scenario probe."""
 
     mut next = state
     next.candidate_probe_state = f"not_checked"
@@ -433,18 +433,18 @@ def toggle_candidate_item(state: ConsoleState) -> ConsoleState:
 
 
 def probe_candidate_state(state: ConsoleState) -> ConsoleState:
-    """Probe the current session candidate through the shipped profile's real Hees path."""
+    """Run the current candidate through the shipped acceptance scenario and real Hees path."""
 
     mut next = state
-    match probe_candidate_compatibility(next.candidate_evidence_ids, next.candidate_memory_ids):
+    match probe_candidate_scenario(next.candidate_evidence_ids, next.candidate_memory_ids):
         Err(reason) =>
             next.candidate_probe_state = f"probe_error"
             next.candidate_probe_reason = reason
         Ok(probe) =>
-            if probe.valid:
-                next.candidate_probe_state = f"compatible"
+            if probe.admitted:
+                next.candidate_probe_state = f"probe_admitted"
             else:
-                next.candidate_probe_state = f"incompatible"
+                next.candidate_probe_state = f"probe_rejected"
             next.candidate_probe_reason = probe.reason
     next.candidate_activation_state = f"not_attempted"
     return next
@@ -462,7 +462,7 @@ def reset_candidate_state(state: ConsoleState) -> ConsoleState:
 
 
 pub def apply_command(state: ConsoleState, command: str, admitted_states: list[bool]) -> ConsoleState:
-    """Apply one terminal command, invoking Hees only for the explicit compatibility probe."""
+    """Apply one terminal command, invoking Hees only for the explicit shipped-scenario probe."""
 
     if state.focus == FOCUS_SEARCH:
         return apply_search_command(state, command, admitted_states)

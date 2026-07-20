@@ -39,6 +39,7 @@ const LIVE_PLAN_CONTRACT: str = "console_live_question_plan_0_1"
 const PROPOSAL_RESULT_CONTRACT: str = "console_provider_proposal_result_0_1"
 const COMMITTEE_RESULT_CONTRACT: str = "console_provider_committee_result_0_1"
 const CONSOLE_PROFILE: str = "console_profile_0_1"
+pub const CONSOLE_TOOLCHAIN_IDENTITY: str = "incan_0_5_0_dev_19"
 
 
 @derive(Clone, json)
@@ -266,10 +267,10 @@ pub model MemoryAtomProjection:
 
 
 @derive(Clone)
-pub model CandidateCompatibilityProbe:
-    """Result of probing one fixed-profile candidate against the public Hees boundary."""
+pub model CandidateScenarioProbe:
+    """Result of running one candidate through the shipped acceptance scenario and public Hees boundary."""
 
-    pub valid: bool
+    pub admitted: bool
     pub reason: str
     pub retained_atom_count: int
 
@@ -439,11 +440,8 @@ def package_inspection(package: ConsolePackage) -> Result[PackageInspectionProje
     )
 
 
-pub def probe_candidate_compatibility(
-    evidence_ids: list[str],
-    memory_ids: list[str],
-) -> Result[CandidateCompatibilityProbe, str]:
-    """Probe whether one session candidate preserves the shipped profile's real Hees path."""
+pub def probe_candidate_scenario(evidence_ids: list[str], memory_ids: list[str]) -> Result[CandidateScenarioProbe, str]:
+    """Run the shipped valid scenario with one session candidate through the real Hees path."""
 
     scenario = load_offline_scenario("valid")?
     inputs = decode_authority_input(scenario)?
@@ -469,8 +467,8 @@ pub def probe_candidate_compatibility(
     )
     result = CompleteProfileProjection.from_json(source).map_err((_error) => f"candidate_probe_projection_failed")?
     return Ok(
-        CandidateCompatibilityProbe(
-            valid=result.spectrum.admitted,
+        CandidateScenarioProbe(
+            admitted=result.spectrum.admitted,
             reason=result.spectrum.reason,
             retained_atom_count=retained_atom_count,
         ),
@@ -524,29 +522,25 @@ def trace_provider_id(mode: str) -> str:
 def trace_projection(interaction: ConsoleInteraction, result: CompleteProfileProjection) -> ConsoleTraceProjection:
     """Project bounded operator identities without creating or altering authority."""
 
-    mut relation_ids: list[str] = []
-    mut synthesis_ids: list[str] = []
-    mut finding_ids: list[str] = []
+    relation_ids = [observation.observation_id for observation in interaction.body.relation_observations]
+    synthesis_ids = [observation.observation_id for observation in interaction.body.synthesis_observations]
+    finding_ids = [finding.finding_id for finding in result.findings]
     mut model_fingerprints: list[str] = []
     mut prompt_fingerprints: list[str] = []
     mut configuration_fingerprints: list[str] = []
     for observation in interaction.body.relation_observations:
-        relation_ids.append(observation.observation_id)
         model_fingerprints = unique_append(model_fingerprints, observation.model_fingerprint)
         prompt_fingerprints = unique_append(prompt_fingerprints, observation.prompt_fingerprint)
         configuration_fingerprints = unique_append(configuration_fingerprints, observation.configuration_fingerprint)
     for observation in interaction.body.synthesis_observations:
-        synthesis_ids.append(observation.observation_id)
         model_fingerprints = unique_append(model_fingerprints, observation.model_fingerprint)
         prompt_fingerprints = unique_append(prompt_fingerprints, observation.prompt_fingerprint)
         configuration_fingerprints = unique_append(configuration_fingerprints, observation.configuration_fingerprint)
-    for finding in result.findings:
-        finding_ids.append(finding.finding_id)
     return ConsoleTraceProjection(
         contract_version="console_trace_0_1",
         profile_id="console_profile_0_1",
         build_identity="hees_console_0_1_0",
-        toolchain_identity="incan_0_5_0_dev_18",
+        toolchain_identity=CONSOLE_TOOLCHAIN_IDENTITY,
         runner_identity="hees_0_0_1_console_profile_0_1",
         mode=interaction.mode,
         input_id=interaction.input_id,

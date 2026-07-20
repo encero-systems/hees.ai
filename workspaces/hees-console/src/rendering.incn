@@ -6,16 +6,10 @@ All provider- or package-derived strings pass through one finite sanitizer befor
 
 from evaluation import ConsoleRun, FindingProjection, MemoryAtomProjection
 from replays import ProposalProjection, RelationObservationProjection, SynthesisObservationProjection, scenario_tags
-from state import (
-    ConsoleState,
-    available_tags,
-    inspector_names,
-    selected_inspector_name,
-    selected_tag_name,
-    visible_scenario_indexes,
-)
+from state import ConsoleState, selected_tag_name, visible_scenario_indexes
 from rust::std::string import String as RustString
-from std.regex import Regex
+from rust::unicode_segmentation import UnicodeSegmentation
+from rust::unicode_width import UnicodeWidthStr
 
 const MAX_TEXT_CHARACTERS: int = 240
 const MAX_JSON_CHARACTERS: int = 1200
@@ -23,70 +17,95 @@ const MAX_INSPECTOR_ITEMS: int = 8
 const PROFILE_LABEL: str = "BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1"
 
 
-def is_c1_terminal_control(value: str) -> bool:
-    """Recognize one C1 control from its two UTF-8 bytes."""
+enum StyledRow:
+    """One row whose colour authority is fixed before dynamic text is rendered."""
 
-    bytes = RustString.from(value).into_bytes()
+    Plain(str)
+    Heading(str)
+    Authority(str)
+    Candidate(str)
+    Proposal(str)
+    Support(str)
+    Admitted(str)
+    Rejected(str)
+
+
+def is_terminal_control(character: str) -> bool:
+    """Recognize C0, delete, and C1 controls from one Unicode scalar's UTF-8 bytes."""
+
+    bytes = RustString.as_bytes(character)
+    if len(bytes) == 1:
+        return bytes[0] < 32 or bytes[0] == 127
     return len(bytes) == 2 and bytes[0] == 194 and bytes[1] >= 128 and bytes[1] <= 159
 
 
-def replace_terminal_controls(value: str) -> str:
-    """Replace every C0, delete, and C1 control without disturbing adjacent text."""
+def is_bidi_control(character: str) -> bool:
+    """Recognize invisible directional controls that can visually reorder authority-bearing text."""
 
-    clean = match Regex("[\\x00-\\x1F\\x7F]"):
-        Err(_) => return ""
-        Ok(pattern) => pattern.replace_all(value, " ")
-
-    mut sanitized: list[str] = []
-    for character in f"{clean}":
-        if is_c1_terminal_control(character):
-            sanitized.append(" ")
-        else:
-            sanitized.append(character)
-    return "".join(sanitized)
-
-
-def is_supported_terminal_cell(character: str) -> bool:
-    """Admit ASCII or one application-owned glyph with a fixed one-cell Console contract."""
-
-    bytes = RustString.from(character).into_bytes()
-    if len(bytes) == 1 and bytes[0] >= 32 and bytes[0] <= 126:
+    bytes = RustString.as_bytes(character)
+    if len(bytes) == 2 and bytes[0] == 216 and bytes[1] == 156:
         return true
-    return "·–—…←↑→↓≤≥⌕─│┌┐└┘├┤┬┴○✓✕".contains(character)
+    if len(bytes) != 3:
+        return false
+    if bytes[0] == 226 and bytes[1] == 128:
+        return bytes[2] == 142 or bytes[2] == 143 or bytes[2] >= 170 and bytes[2] <= 174
+    return bytes[0] == 226 and bytes[1] == 129 and bytes[2] >= 166 and bytes[2] <= 169
 
 
-def normalize_terminal_cells(value: str) -> str:
-    """
-    Fail closed when the runtime cannot prove one Unicode scalar occupies one terminal cell.
+def escape_terminal_hazards(value: str) -> str:
+    """Preserve printable Unicode while making control and bidi hazards visibly explicit."""
 
-    Incan does not yet expose a wcwidth-equivalent primitive. Dynamic wide glyphs, combining marks and bidi controls
-    therefore become an ASCII question mark before geometry is calculated. The whitelist contains only application-owned
-    glyphs used by the fixed Console chrome.
-    """
-
-    mut normalized: list[str] = []
-    for character in replace_terminal_controls(value):
-        if is_supported_terminal_cell(character):
-            normalized.append(character)
+    mut safe: list[str] = []
+    for character in value:
+        if is_terminal_control(character):
+            safe.append("[ctrl]")
+        elif is_bidi_control(character):
+            safe.append("[bidi]")
         else:
-            normalized.append("?")
-    return "".join(normalized)
+            safe.append(character)
+    return "".join(safe)
+
+
+pub def terminal_cell_width(value: str) -> int:
+    """Measure rendered terminal cells through the narrow unicode-width Rust interop boundary."""
+
+    return int(UnicodeWidthStr.width(RustString.as_str(value)))
+
+
+def terminal_graphemes(value: str) -> list[str]:
+    """Split printable text at extended grapheme boundaries through a narrow Rust interop boundary."""
+
+    mut result: list[str] = []
+    for grapheme in UnicodeSegmentation.graphemes(RustString.as_str(value), true):
+        result.append(f"{grapheme}")
+    return result
+
+
+def clip_to_terminal_cells(value: str, width: int) -> str:
+    """Return the longest grapheme-safe prefix whose complete rendered width fits the column."""
+
+    if width <= 0:
+        return ""
+    mut result = ""
+    for grapheme in terminal_graphemes(value):
+        candidate = f"{result}{grapheme}"
+        if terminal_cell_width(candidate) > width:
+            break
+        result = candidate
+    return result
 
 
 pub def bounded_text(value: str, limit: int) -> str:
-    """Normalize uncertain terminal widths and cap one untrusted value by visible cell count."""
+    """Escape terminal hazards and cap one untrusted value by measured display cells."""
 
     if limit <= 0:
         return ""
-    clean = normalize_terminal_cells(value)
-    mut characters: list[str] = []
-    for character in clean:
-        if len(characters) >= limit:
-            if limit == 1:
-                return "~"
-            return "".join(characters[0:limit - 1]) + "~"
-        characters.append(character)
-    return "".join(characters)
+    clean = escape_terminal_hazards(value)
+    if terminal_cell_width(clean) <= limit:
+        return clean
+    if limit == 1:
+        return "~"
+    return f"{clip_to_terminal_cells(clean, limit - 1)}~"
 
 
 def status_label(run: ConsoleRun) -> str:
@@ -111,28 +130,6 @@ def fixed_terminal_sequence(value: bytes) -> str:
     match RustString.from_utf8(value):
         Err(_) => return ""
         Ok(value) => return value
-
-
-def styled_status_text(value: str, admitted: bool) -> str:
-    """Apply the fixed green/red status vocabulary to already-trusted state text."""
-
-    mut prefix = fixed_terminal_sequence(b"\x1b[1;31m")
-    if admitted:
-        prefix = fixed_terminal_sequence(b"\x1b[1;32m")
-    return f"{prefix}{value}{fixed_terminal_sequence(b"\x1b[0m")}"
-
-
-def styled_status_label(run: ConsoleRun) -> str:
-    """Render one interactive status with both icon and fixed colour."""
-
-    return styled_status_text(status_icon_label(run), run.result.spectrum.admitted)
-
-
-def styled_status_cell(run: ConsoleRun, width: int) -> str:
-    """Style a padded status cell without counting ANSI bytes as visible width."""
-
-    label = padded_column(status_icon_label(run), width)
-    return styled_status_text(label, run.result.spectrum.admitted)
 
 
 def option_presence(value: Option[str]) -> str:
@@ -256,10 +253,8 @@ def support_lines(proposal: ProposalProjection) -> list[str]:
 def premise_ids(run: ConsoleRun, target_index: int) -> str:
     """Project one manifest target's ordered memory identifiers for display."""
 
-    mut identifiers: list[str] = []
     target = run.result.manifest[target_index]
-    for premise in target.body.premises:
-        identifiers.append(premise.memory_id)
+    identifiers = [premise.memory_id for premise in target.body.premises]
     return bounded_identifiers(identifiers)
 
 
@@ -471,36 +466,6 @@ pub def render_headless(run: ConsoleRun) -> str:
     return "\n".join(lines)
 
 
-def inspector_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
-    """Select one full-screen inspector without changing evaluated data."""
-
-    if state.inspector_index == 0:
-        return package_lines(run)
-    if state.inspector_index == 1:
-        return source_lines(run, true)
-    if state.inspector_index == 2:
-        return atom_comparison_lines()
-    if state.inspector_index == 3:
-        return proposal_lines(run.scenario.body.proposal)
-    if state.inspector_index == 4:
-        return support_lines(run.scenario.body.proposal)
-    if state.inspector_index == 5:
-        return manifest_lines(run)
-    if state.inspector_index == 6:
-        return observation_lines(run)
-    if state.inspector_index == 7:
-        return finding_lines(run)
-    if state.inspector_index == 8:
-        return spectrum_lines(run)
-    if state.inspector_index == 9:
-        return memory_lines(run)
-    if state.inspector_index == 10:
-        return content_dna_lines(run, true)
-    if state.inspector_index == 11:
-        return receipt_lines(run, true)
-    return trace_lines(run)
-
-
 def spaces(count: int) -> str:
     """Return a small fixed-width padding string without terminal controls."""
 
@@ -512,34 +477,45 @@ def spaces(count: int) -> str:
     return result
 
 
-def terminal_characters(value: str) -> list[str]:
-    """Materialize Unicode characters because string comprehensions currently lower as list iteration."""
-
-    mut result: list[str] = []
-    for character in value:
-        result.append(character)
-    return result
-
-
 def clip_column(value: str, width: int) -> str:
     """Clip one presentation value to a fixed terminal column."""
 
     if width <= 0:
         return ""
-    characters = terminal_characters(normalize_terminal_cells(value))
-    if len(characters) <= width:
-        return "".join(characters)
-    return "".join(characters[0:width - 1]) + "~"
+    return bounded_text(value, width)
 
 
 def padded_column(value: str, width: int) -> str:
     """Clip and right-pad one fixed terminal column."""
 
     clipped = clip_column(value, width)
-    character_count = len(terminal_characters(clipped))
-    if character_count >= width:
+    visible_width = terminal_cell_width(clipped)
+    if visible_width >= width:
         return clipped
-    return f"{clipped}{spaces(width - character_count)}"
+    return f"{clipped}{spaces(width - visible_width)}"
+
+
+def split_terminal_width(value: str, width: int) -> list[str]:
+    """Split one hazard-free token into measured terminal-width segments without breaking graphemes."""
+
+    if width <= 0:
+        return []
+    mut result: list[str] = []
+    mut segment = ""
+    for grapheme in terminal_graphemes(value):
+        candidate = f"{segment}{grapheme}"
+        if terminal_cell_width(candidate) > width:
+            if segment != "":
+                result.append(segment)
+            segment = grapheme
+            if terminal_cell_width(segment) > width:
+                result.append("~")
+                segment = f""
+        else:
+            segment = candidate
+    if segment != "":
+        result.append(segment)
+    return result
 
 
 def wrapped_text_lines(value: str, width: int, limit: int) -> list[str]:
@@ -555,21 +531,15 @@ def wrapped_text_lines(value: str, width: int, limit: int) -> list[str]:
     for word in source.split(" "):
         if word == "":
             continue
-        word_characters = terminal_characters(word)
-        if len(word_characters) > width:
+        word_width = terminal_cell_width(word)
+        if word_width > width:
             if line != "":
                 lines.append(line)
                 line = f""
-            mut offset = 0
-            while offset < len(word_characters):
-                mut end = offset + width
-                if end > len(word_characters):
-                    end = len(word_characters)
-                lines.append("".join(word_characters[offset:end]))
-                offset = end
+            lines.extend(split_terminal_width(word, width))
         elif line == "":
             line = word
-        elif len(terminal_characters(line)) + 1 + len(word_characters) <= width:
+        elif terminal_cell_width(f"{line} {word}") <= width:
             line = f"{line} {word}"
         else:
             lines.append(line)
@@ -621,25 +591,6 @@ def selected_tags_label(state: ConsoleState) -> str:
     return ", ".join(state.selected_tags)
 
 
-def search_control_lines(state: ConsoleState) -> list[str]:
-    """Render free text and tag checkboxes as one integrated control."""
-
-    mut query = state.search_query
-    if query == "":
-        query = f"type to filter"
-    mut lines = [f"SEARCH + TAGS [/]  {bounded_text(query, 64)}  ·  {selected_tags_label(state)}"]
-    if state.focus != "search":
-        return lines
-    lines.append("  Type to search · ↑/↓ choose tag · tab check/uncheck · enter apply · ctrl-u clear")
-    for index, tag in enumerate(available_tags()):
-        mut marker = " "
-        if index == state.tag_index:
-            marker = f">"
-        tag_selected = state.selected_tags.contains(f"{tag}")
-        lines.append(f"  {marker} {checkbox(tag_selected)} {tag}")
-    return lines
-
-
 def status_control_lines(state: ConsoleState) -> list[str]:
     """Render filtering and ordering under the Status table-column header."""
 
@@ -658,104 +609,6 @@ def status_control_lines(state: ConsoleState) -> list[str]:
     lines.append(f"  {admitted_marker} {checkbox(state.show_admitted)} ADMITTED")
     lines.append(f"  {rejected_marker} {checkbox(state.show_rejected)} REJECTED")
     lines.append(f"  {order_marker} sort: {status_order_label(state)}")
-    return lines
-
-
-def interaction_browser_lines(state: ConsoleState, runs: list[ConsoleRun]) -> list[str]:
-    """Render evaluated offline interactions with column-owned status and integrated tag search."""
-
-    states = admitted_states(runs)
-    visible = visible_scenario_indexes(state, states)
-    mut lines = ["INTERACTIONS", "Every status below is recomputed by the real Hees path; tags are navigation metadata only."]
-    lines.extend(search_control_lines(state))
-    lines.append("")
-    scenario_heading = padded_column("Scenario", 31)
-    status_heading = padded_column(f"Status [s] · {status_order_label(state)}", 32)
-    lines.append(f"   {scenario_heading} {status_heading} Tags")
-    lines.append(
-        "   ─────────────────────────────── ──────────────────────────────── ─────────────────────────",
-    )
-    if len(visible) == 0:
-        lines.append("   No interactions match the active search, tag, and status filters.")
-    for index in visible:
-        run = runs[index]
-        mut marker = " "
-        if index == state.scenario_index:
-            marker = f">"
-        lines.append(
-            f" {marker} {padded_column(run.scenario.title, 31)} {styled_status_cell(run, 32)} {bounded_identifiers(
-                scenario_tags(run.scenario.slug),
-            )}",
-        )
-    lines.extend(status_control_lines(state))
-    lines.append("")
-    lines.append("↑/↓ or j/k select · enter inspect · 1–6 destinations · / search + tags · s status")
-    return lines
-
-
-def navigation_lines(state: ConsoleState) -> list[str]:
-    """Render the interaction and inspector navigation as an expandable or compact rail."""
-
-    mut lines: list[str] = []
-    mut interaction_marker = " "
-    if state.surface == "interactions":
-        interaction_marker = f">"
-    if state.sidebar_collapsed:
-        lines.append("NAV")
-        lines.append(f"{interaction_marker} 0")
-        for index, _name in enumerate(inspector_names()):
-            mut marker = " "
-            if state.surface == "inspector" and index == state.inspector_index:
-                marker = f">"
-            lines.append(f"{marker} {index + 1}")
-        return lines
-    lines.append("NAVIGATION")
-    lines.append(f"{interaction_marker} INTERACTIONS")
-    for index, name in enumerate(inspector_names()):
-        mut marker = " "
-        if state.surface == "inspector" and index == state.inspector_index:
-            marker = f">"
-        lines.append(f"{marker} {bounded_text(name, 19)}")
-    return lines
-
-
-def compose_navigation(state: ConsoleState, content: list[str]) -> list[str]:
-    """Compose the collapsible navigation rail and selected product surface."""
-
-    navigation = navigation_lines(state)
-    mut width = 22
-    if state.sidebar_collapsed:
-        width = 5
-    mut result: list[str] = []
-    mut row = 0
-    mut rows = len(navigation)
-    if len(content) > rows:
-        rows = len(content)
-    while row < rows:
-        mut left = ""
-        mut right = ""
-        if row < len(navigation):
-            left = navigation[row]
-        if row < len(content):
-            right = content[row]
-        result.append(f"{padded_column(left, width)} │ {right}")
-        row += 1
-    return result
-
-
-def inspector_surface_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
-    """Render the selected evaluated interaction and one authority-separated inspector."""
-
-    mut lines = [f"INSPECTOR  {state.inspector_index + 1}/{len(inspector_names())}  {selected_inspector_name(state)}", f"SCENARIO  {bounded_text(
-        run.scenario.slug,
-        64,
-    )}  ·  {bounded_text(run.scenario.title, 96)}", f"QUESTION  {bounded_text(
-        run.scenario.body.request.question,
-        MAX_TEXT_CHARACTERS,
-    )}", f"STATE  {styled_status_label(run)}  ·  reason={bounded_text(run.result.spectrum.reason, 128)}", "────────────────────────────────────────────────────────────────────────────────"]
-    lines.extend(inspector_lines(state, run))
-    lines.append("")
-    lines.append("←/→ or h/l inspector · ↑/↓ or k/j scenario · g interactions · b collapse nav · q quit")
     return lines
 
 
@@ -789,21 +642,60 @@ def styled_crimson(value: str) -> str:
     return f"{fixed_terminal_sequence(b"\x1b[38;5;203m")}{value}{fixed_terminal_sequence(b"\x1b[0m")}"
 
 
-def palette_line(value: str, admitted: bool) -> str:
-    """Colour trusted workspace vocabulary after fixed-width layout is complete."""
+def plain_rows(values: list[str]) -> list[StyledRow]:
+    """Assign an explicit plain style without inspecting row content."""
 
-    if value.contains("UNTRUSTED PROPOSAL"):
-        return styled_amber(value)
-    if value.contains("DECLARED SUPPORT") or value.contains("CONTEXT  EVIDENCE"):
-        return styled_cyan(value)
-    if value.contains("HEES DECISION"):
-        if admitted:
-            return styled_jade(value)
-        return styled_crimson(value)
-    mut result = value
-    result = result.replace("ADMITTED", styled_jade("ADMITTED"))
-    result = result.replace("REJECTED", styled_crimson("REJECTED"))
-    return result
+    return [StyledRow.Plain(value) for value in values]
+
+
+def decision_row(value: str, admitted: bool) -> StyledRow:
+    """Assign terminal-decision colour from the typed Hees result only."""
+
+    if admitted:
+        return StyledRow.Admitted(value)
+    return StyledRow.Rejected(value)
+
+
+def probe_row(value: str, state: ConsoleState) -> StyledRow:
+    """Assign probe colour from the typed candidate state, never from rendered text."""
+
+    if state.candidate_probe_state == "probe_admitted":
+        return StyledRow.Admitted(value)
+    if state.candidate_probe_state == "probe_rejected" or state.candidate_probe_state == "probe_error":
+        return StyledRow.Rejected(value)
+    return StyledRow.Candidate(value)
+
+
+def activation_row(value: str, state: ConsoleState) -> StyledRow:
+    """Assign activation colour from the typed candidate state."""
+
+    if state.candidate_activation_state == "blocked_requires_authority_api":
+        return StyledRow.Rejected(value)
+    return StyledRow.Candidate(value)
+
+
+def heading_rows(values: list[str]) -> list[StyledRow]:
+    """Style the declared first row as a section heading without inspecting content."""
+
+    if len(values) == 0:
+        return []
+    mut rows = [StyledRow.Heading(values[0])]
+    rows.extend([StyledRow.Plain(value) for value in values[1:]])
+    return rows
+
+
+def render_styled_row(row: StyledRow, width: int) -> str:
+    """Pad one typed row before applying its fixed style."""
+
+    match row:
+        StyledRow.Plain(value) => return padded_column(value, width)
+        StyledRow.Heading(value) => return styled_cyan(padded_column(value, width))
+        StyledRow.Authority(value) => return styled_jade(padded_column(value, width))
+        StyledRow.Candidate(value) => return styled_amber(padded_column(value, width))
+        StyledRow.Proposal(value) => return styled_amber(padded_column(value, width))
+        StyledRow.Support(value) => return styled_cyan(padded_column(value, width))
+        StyledRow.Admitted(value) => return styled_jade(padded_column(value, width))
+        StyledRow.Rejected(value) => return styled_crimson(padded_column(value, width))
 
 
 def mode_label(run: ConsoleRun) -> str:
@@ -870,6 +762,15 @@ def styled_top_navigation(state: ConsoleState, columns: int) -> str:
     return navigation.replace(selected_label, styled_selected_label)
 
 
+def styled_shortcuts_line(value: str, columns: int) -> str:
+    """Style fixed application-owned keycaps after layout without interpreting dynamic text."""
+
+    mut rendered = padded_column(value, columns)
+    for keycap in ["[1–7]", "[↑↓]", "[SPACE]", "[v]", "[r]", "[←→]", "[b]", "[q]"]:
+        rendered = rendered.replace(keycap, styled_jade(keycap))
+    return rendered
+
+
 def first_visible_unit(run: ConsoleRun) -> str:
     """Return the first bounded model-visible unit without inventing response text."""
 
@@ -895,7 +796,7 @@ def decision_detail_lines(run: ConsoleRun) -> list[str]:
     return [f"Hees returned the terminal reason {bounded_text(reason, 96)}."]
 
 
-def scenario_rail_lines(state: ConsoleState, runs: list[ConsoleRun]) -> list[str]:
+def scenario_rail_rows(state: ConsoleState, runs: list[ConsoleRun]) -> list[StyledRow]:
     """Render scenario discovery, filtering cues, and terminal outcomes in one rail."""
 
     mut query = state.search_query
@@ -903,73 +804,86 @@ def scenario_rail_lines(state: ConsoleState, runs: list[ConsoleRun]) -> list[str
         query = f"Search interactions…"
     states = admitted_states(runs)
     visible = visible_scenario_indexes(state, states)
-    mut lines = ["INTERACTIONS", f"⌕ {bounded_text(query, 22)}  [/]", f"tags  {bounded_text(
-        selected_tags_label(state),
-        22,
-    )}", f"status [s]  {status_order_label(state)}", ""]
+    mut rows = [StyledRow.Heading("INTERACTIONS"), StyledRow.Plain(f"⌕ {bounded_text(query, 22)}  [/]"), StyledRow.Plain(
+        f"tags  {bounded_text(selected_tags_label(state), 22)}",
+    ), StyledRow.Plain(f"status [s]  {status_order_label(state)}"), StyledRow.Plain("")]
     if state.focus == "search":
-        lines.append(f"tag focus  {selected_tag_name(state)}")
-        lines.append("tab toggle · enter apply")
-        lines.append("")
+        rows.append(StyledRow.Support(f"tag focus  {selected_tag_name(state)}"))
+        rows.append(StyledRow.Plain("tab toggle · enter apply"))
+        rows.append(StyledRow.Plain(""))
     elif state.focus == "status":
-        lines.extend(status_control_lines(state))
-        lines.append("")
+        rows.extend(heading_rows(status_control_lines(state)))
+        rows.append(StyledRow.Plain(""))
     if len(visible) == 0:
-        lines.append("No matching scenarios.")
+        rows.append(StyledRow.Candidate("No matching scenarios."))
     for index in visible:
         run = runs[index]
-        mut marker = " "
         if index == state.scenario_index:
-            marker = f">"
-        lines.append(f"{marker} {index + 1}  {bounded_text(run.scenario.title, 23)}")
-        lines.append(f"    {bounded_text(run.scenario.slug, 24)}")
-        lines.append(f"    {status_label(run)}")
-        lines.append("")
-    lines.append(f"{len(visible)} / {len(runs)} reviewed scenarios")
-    lines.append("↑↓ select  / search  b collapse")
-    return lines
+            rows.append(StyledRow.Authority(f"▶ {index + 1}  {bounded_text(run.scenario.title, 23)}"))
+        else:
+            rows.append(StyledRow.Plain(f"  {index + 1}  {bounded_text(run.scenario.title, 23)}"))
+        rows.append(StyledRow.Plain(f"    {bounded_text(run.scenario.slug, 24)}"))
+        rows.append(decision_row(f"    {status_label(run)}", run.result.spectrum.admitted))
+        rows.append(StyledRow.Plain(""))
+    rows.append(StyledRow.Plain(f"{len(visible)} / {len(runs)} reviewed scenarios"))
+    rows.append(StyledRow.Plain("[↑↓] select  / search  [b] collapse"))
+    return rows
 
 
-def interaction_center_lines(run: ConsoleRun) -> list[str]:
-    """Render the proposal-versus-authority path as the visual centre of the product."""
+def interaction_center_rows(run: ConsoleRun) -> list[StyledRow]:
+    """Render proposal, package support, and Hees authority with explicit typed row styles."""
 
     proposal = run.scenario.body.proposal
-    mut lines = [f"INTERACTION  {bounded_text(run.scenario.slug, 48)}", f"STATE  {status_icon_label(run)}", "────────────────────────────────────────────────────────────────", "QUESTION", bounded_text(
-        run.scenario.body.request.question,
-        220,
-    ), "", "UNTRUSTED PROPOSAL  MODEL", f"action            {bounded_text(proposal.action_id, 96)}", f"evidence          [{bounded_identifiers(
-        proposal.evidence_ids,
-    )}]", f"package           {bounded_text(proposal.package_id, 80)} · revision {bounded_text(
-        proposal.package_revision,
-        32,
-    )}", f"visible response  {first_visible_unit(run)}", "", "DECLARED SUPPORT  PACKAGE", f"declared actions  {run.scenario.package.action_count}", f"support mappings  {len(
-        proposal.support_mappings,
-    )}", f"selected memory  {len(run.result.selected_memory)}", "", "┌─ HEES DECISION ────────────────────────────────────────────────", f"│  {status_icon_label(
-        run,
-    )}", f"│  REASON  {bounded_text(run.result.spectrum.reason, 96)}"]
-    for detail in decision_detail_lines(run):
-        lines.append(f"│  {detail}")
-    lines.append("│  EFFECT  No external action is executed by this session.")
-    lines.append(
-        "└────────────────────────────────────────────────────────────────",
+    mut rows = [StyledRow.Plain(f"INTERACTION  {bounded_text(run.scenario.slug, 48)}"), decision_row(
+        f"STATE  {status_icon_label(run)}",
+        run.result.spectrum.admitted,
+    ), StyledRow.Plain(
+        "────────────────────────────────────────────────────────────────",
+    ), StyledRow.Plain("QUESTION"), StyledRow.Plain(bounded_text(run.scenario.body.request.question, 220)), StyledRow.Plain(
+        "",
+    ), StyledRow.Proposal("UNTRUSTED PROPOSAL  MODEL"), StyledRow.Proposal(
+        f"action            {bounded_text(proposal.action_id, 96)}",
+    ), StyledRow.Proposal(f"evidence          [{bounded_identifiers(proposal.evidence_ids)}]"), StyledRow.Proposal(
+        f"package           {bounded_text(proposal.package_id, 80)} · revision {bounded_text(
+            proposal.package_revision,
+            32,
+        )}",
+    ), StyledRow.Proposal(f"visible response  {first_visible_unit(run)}"), StyledRow.Plain(""), StyledRow.Support(
+        "DECLARED SUPPORT  PACKAGE",
+    ), StyledRow.Support(f"declared actions  {run.scenario.package.action_count}"), StyledRow.Support(
+        f"support mappings  {len(proposal.support_mappings)}",
+    ), StyledRow.Support(f"selected memory  {len(run.result.selected_memory)}"), StyledRow.Plain("")]
+    rows.append(
+        decision_row(
+            "┌─ HEES DECISION ────────────────────────────────────────────────",
+            run.result.spectrum.admitted,
+        ),
     )
-    lines.append("")
-    lines.append("AUTHORITY  MODEL proposes · HEES decides · ARTIFACT records")
-    return lines
+    rows.append(decision_row(f"│  {status_icon_label(run)}", run.result.spectrum.admitted))
+    rows.append(
+        decision_row(f"│  REASON  {bounded_text(run.result.spectrum.reason, 96)}", run.result.spectrum.admitted),
+    )
+    for detail in decision_detail_lines(run):
+        rows.append(decision_row(f"│  {detail}", run.result.spectrum.admitted))
+    rows.append(
+        decision_row("│  EFFECT  No external action is executed by this session.", run.result.spectrum.admitted),
+    )
+    rows.append(
+        decision_row(
+            "└────────────────────────────────────────────────────────────────",
+            run.result.spectrum.admitted,
+        ),
+    )
+    rows.append(StyledRow.Plain(""))
+    rows.append(StyledRow.Plain("AUTHORITY  MODEL proposes · HEES decides · ARTIFACT records"))
+    return rows
 
 
 def wrapped_identity_lines(label: str, value: str) -> list[str]:
     """Wrap one long identity across predictable inspector rows without raw JSON."""
 
-    clean = bounded_text(value, 128)
-    if len(clean) <= 38:
-        return [label, f"  {clean}"]
-    mut lines = [label, f"  {clean[0:38]}"]
-    if len(clean) <= 76:
-        lines.append(f"  {clean[38:len(clean)]}")
-        return lines
-    lines.append(f"  {clean[38:76]}")
-    lines.append(f"  {clean[76:len(clean)]}")
+    mut lines = [label]
+    lines.extend([f"  {line}" for line in wrapped_text_lines(value, 38, 128)])
     return lines
 
 
@@ -1072,30 +986,19 @@ def context_panel_lines(state: ConsoleState, run: ConsoleRun, scenario_index: in
     return lines
 
 
-def detail_center_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
-    """Render a selected deep inspector inside the same stable workspace shell."""
-
-    mut lines = [f"{selected_inspector_name(state)}", f"SCENARIO  {bounded_text(run.scenario.slug, 64)}", f"QUESTION  {bounded_text(
-        run.scenario.body.request.question,
-        180,
-    )}", f"STATE  {status_icon_label(run)}", "────────────────────────────────────────────────────────────────"]
-    lines.extend(inspector_lines(state, run))
-    return lines
-
-
 def help_center_lines() -> list[str]:
     """Render exact keyboard help for the evidence-first product workflow."""
 
-    return ["HELP", "────────────────────────────────────────────────────────────", "1  Profiles", "2  Evidence", "3  Memory", "4  Committee", "5  Interactions", "6  Decisions", "7  Help", "", "↑ / ↓   Select evidence, memory, or interaction", "← / →   Change decision context", "Space   Stage or unstage selected evidence or memory", "v       Run the fixed-profile Hees compatibility probe", "r       Reset candidate to the shipped profile", "a       Attempt activation; this bounded profile refuses it", "/       Search interactions and tags", "s       Filter or sort interactions by terminal status", "b       Collapse or expand the workflow rail", "q       Quit", "", "Colour never carries authority alone. Every state has text and a symbol."]
+    return ["HELP", "────────────────────────────────────────────────────────────", "1  Profiles", "2  Evidence", "3  Memory", "4  Committee", "5  Interactions", "6  Decisions", "7  Help", "", "↑ / ↓   Select evidence, memory, or interaction", "← / →   Change decision context", "Space   Stage or unstage selected evidence or memory", "v       Run the shipped-scenario Hees probe", "r       Reset candidate to the shipped profile", "a       Attempt activation; this bounded profile refuses it", "/       Search interactions and tags", "s       Filter or sort interactions by terminal status", "b       Collapse or expand the workflow rail", "q       Quit", "", "Colour never carries authority alone. Every state has text and a symbol."]
 
 
 def probe_label(state: ConsoleState) -> str:
-    """Pair candidate compatibility state with a non-colour-dependent symbol."""
+    """Name the exact shipped-scenario result without generalizing it to package compatibility."""
 
-    if state.candidate_probe_state == "compatible":
-        return "✓ COMPATIBLE"
-    if state.candidate_probe_state == "incompatible":
-        return "✕ INCOMPATIBLE"
+    if state.candidate_probe_state == "probe_admitted":
+        return "✓ PROBE ADMITTED"
+    if state.candidate_probe_state == "probe_rejected":
+        return "✕ PROBE REJECTED"
     if state.candidate_probe_state == "probe_error":
         return "! PROBE ERROR"
     return "○ NOT CHECKED"
@@ -1117,78 +1020,110 @@ def staged_marker(staged: bool) -> str:
     return "[ ]"
 
 
-def workflow_rail_lines(state: ConsoleState) -> list[str]:
+def workflow_rail_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRow]:
     """Render the permanent profile-to-decision workflow and candidate authority state."""
 
     destinations = [("profiles", "1  PROFILES"), ("evidence", "2  EVIDENCE"), ("memory", "3  MEMORY"), ("committee", "4  COMMITTEE"), ("interactions", "5  INTERACTIONS"), ("decisions", "6  DECISIONS"), ("help", "7  HELP")]
-    mut lines = ["GOVERNANCE WORKFLOW"]
+    mut rows = [StyledRow.Heading("GOVERNANCE WORKFLOW")]
     for surface, label in destinations:
-        mut marker = " "
         if state.surface == surface:
-            marker = f">"
-        lines.append(f"{marker} {label}")
-    lines.extend(
-        ["", "ACTIVE AUTHORITY", f"  {state.active_profile_id}", "  shipped · unchanged", "", "CANDIDATE DRAFT", f"  evidence  {len(
-            state.candidate_evidence_ids,
-        )} / 4", f"  memory    {len(state.candidate_memory_ids)} / 4", f"  {probe_label(state)}", "  candidate only · not active", f"  {activation_label(
+            rows.append(StyledRow.Authority(f"▶ {label}"))
+        else:
+            rows.append(StyledRow.Plain(f"  {label}"))
+    rows.extend(
+        [StyledRow.Plain(""), StyledRow.Authority("ACTIVE AUTHORITY"), StyledRow.Authority(
+            f"  {state.active_profile_id}",
+        ), StyledRow.Plain("  package-owned · unchanged"), StyledRow.Plain(""), StyledRow.Candidate("CANDIDATE DRAFT"), StyledRow.Candidate(
+            f"  evidence  {len(state.candidate_evidence_ids)} / {len(run.scenario.package.atoms)}",
+        ), StyledRow.Candidate(f"  memory    {len(state.candidate_memory_ids)} / {len(run.scenario.package.atoms)}"), probe_row(
+            f"  {probe_label(state)}",
             state,
-        )}", "", "v probe · r reset", "space stage · a activate", "b collapse rail · q quit"],
+        ), StyledRow.Candidate("  candidate only · not active"), activation_row(f"  {activation_label(state)}", state), StyledRow.Plain(
+            "",
+        ), StyledRow.Plain("[v] probe · [r] reset"), StyledRow.Plain("[SPACE] stage · a activate"), StyledRow.Plain(
+            "[b] collapse rail · [q] quit",
+        )],
     )
-    return lines
+    return rows
 
 
-def profile_center_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
+def profile_center_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRow]:
     """Render the fixed package as an explicit reusable governance-profile contract."""
 
     package = run.scenario.package
-    mut lines = ["PROFILE STUDIO", "────────────────────────────────────────────────────────────", "ACTIVE PROFILE  PACKAGE-OWNED AUTHORITY", f"profile          {package.profile_id}", f"package          {package.package_id}", f"domain           {package.domain_id}", f"revision         {package.package_revision}", f"contract         {package.contract_version}", "", "CANDIDATE DRAFT  SESSION LOCAL", f"evidence staged  {len(
-        state.candidate_evidence_ids,
-    )} / {len(package.atoms)}", f"memory staged    {len(state.candidate_memory_ids)} / {len(package.atoms)}", f"compatibility    {probe_label(
+    mut rows = [StyledRow.Heading("PROFILE STUDIO"), StyledRow.Plain(
+        "────────────────────────────────────────────────────────────",
+    ), StyledRow.Authority("ACTIVE PROFILE  PACKAGE-OWNED AUTHORITY"), StyledRow.Authority(
+        f"profile          {package.profile_id}",
+    ), StyledRow.Authority(f"package          {package.package_id}"), StyledRow.Plain(
+        f"domain           {package.domain_id}",
+    ), StyledRow.Plain(f"revision         {package.package_revision}"), StyledRow.Plain(
+        f"contract         {package.contract_version}",
+    ), StyledRow.Plain(""), StyledRow.Candidate("CANDIDATE DRAFT  SESSION LOCAL"), StyledRow.Candidate(
+        f"evidence staged  {len(state.candidate_evidence_ids)} / {len(package.atoms)}",
+    ), StyledRow.Candidate(f"memory staged    {len(state.candidate_memory_ids)} / {len(package.atoms)}"), probe_row(
+        f"probe result     {probe_label(state)}",
         state,
-    )}", f"probe reason     {state.candidate_probe_reason}", f"activation       {activation_label(state)}", "candidate        candidate only — not active", "", "DECLARED ACTIONS"]
+    ), probe_row(f"probe reason     {state.candidate_probe_reason}", state), activation_row(
+        f"activation       {activation_label(state)}",
+        state,
+    ), StyledRow.Candidate("candidate        candidate only — not active"), StyledRow.Plain(""), StyledRow.Heading(
+        "DECLARED ACTIONS",
+    )]
     for action in package.actions:
         mut evidence = "optional"
         if action.evidence_required:
             evidence = f"required"
-        lines.append(f"  {action.action_id} · evidence {evidence}")
-    lines.append("")
-    lines.append("ANSWER REQUIREMENTS")
+        rows.append(StyledRow.Authority(f"  {action.action_id} · evidence {evidence}"))
+    rows.append(StyledRow.Plain(""))
+    rows.append(StyledRow.Heading("ANSWER REQUIREMENTS"))
     for requirement in package.requirements:
-        lines.append(f"  {requirement.requirement_id}")
-        lines.extend([f"    {line}" for line in wrapped_text_lines(requirement.description, 54, 180)])
-    lines.extend(
-        ["", "POLICY THRESHOLDS", f"  support ≥ {package.policy.min_support_bps} bps · contradiction ≤ {package.policy.max_contradiction_bps} bps", f"  coverage ≥ {package.policy.min_coverage_bps} bps · gap ≤ {package.policy.max_gap_bps} bps", "", "v RUN HEES COMPATIBILITY PROBE  ·  r RESET  ·  a ATTEMPT ACTIVATION"],
+        rows.append(StyledRow.Authority(f"  {requirement.requirement_id}"))
+        rows.extend([StyledRow.Plain(f"    {line}") for line in wrapped_text_lines(requirement.description, 54, 180)])
+    rows.extend(
+        [StyledRow.Plain(""), StyledRow.Heading("POLICY THRESHOLDS"), StyledRow.Authority(
+            f"  support ≥ {package.policy.min_support_bps} bps · contradiction ≤ {package.policy.max_contradiction_bps} bps",
+        ), StyledRow.Authority(
+            f"  coverage ≥ {package.policy.min_coverage_bps} bps · gap ≤ {package.policy.max_gap_bps} bps",
+        ), StyledRow.Plain(""), StyledRow.Plain(
+            "[v] RUN SHIPPED-SCENARIO PROBE  ·  [r] RESET  ·  a ATTEMPT ACTIVATION",
+        )],
     )
-    return lines
+    return rows
 
 
-def candidate_status_lines(state: ConsoleState) -> list[str]:
+def candidate_status_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRow]:
     """Explain active versus candidate state without pretending to persist or activate a draft."""
 
-    mut lines = ["CANDIDATE PROFILE", "──────────────────────────────────────", f"compatibility {probe_label(
+    mut rows = [StyledRow.Candidate("CANDIDATE PROFILE"), StyledRow.Plain(
+        "──────────────────────────────────────",
+    ), probe_row(f"probe result  {probe_label(state)}", state), probe_row(
+        f"probe reason  {state.candidate_probe_reason}",
         state,
-    )}", f"probe reason  {state.candidate_probe_reason}", f"evidence      {len(state.candidate_evidence_ids)} / 4 staged", f"memory        {len(
-        state.candidate_memory_ids,
-    )} / 4 staged", "", "AUTHORITY", f"active        {state.active_profile_id}", "candidate     candidate only — not active", f"activation    {activation_label(
-        state,
-    )}", ""]
-    lines.extend(
-        wrapped_text_lines(
-            "This is a real compatibility probe through the shipped profile's compiled Hees path, not a general package validator.",
+    ), StyledRow.Candidate(
+        f"evidence      {len(state.candidate_evidence_ids)} / {len(run.scenario.package.atoms)} staged",
+    ), StyledRow.Candidate(f"memory        {len(state.candidate_memory_ids)} / {len(run.scenario.package.atoms)} staged"), StyledRow.Plain(
+        "",
+    ), StyledRow.Heading("AUTHORITY"), StyledRow.Authority(f"active        {state.active_profile_id}"), StyledRow.Candidate(
+        "candidate     candidate only — not active",
+    ), activation_row(f"activation    {activation_label(state)}", state), StyledRow.Plain("")]
+    rows.extend(
+        [StyledRow.Plain(line) for line in wrapped_text_lines(
+            "This runs one shipped acceptance scenario through the compiled Hees path. It is not a general package validator.",
             44,
             180,
-        ),
+        )],
     )
-    lines.append("")
-    lines.extend(
-        wrapped_text_lines(
+    rows.append(StyledRow.Plain(""))
+    rows.extend(
+        [StyledRow.Plain(line) for line in wrapped_text_lines(
             "Activation is intentionally unavailable until Hees exposes a safe profile-activation authority API.",
             44,
             160,
-        ),
+        )],
     )
-    lines.extend(["", "v probe · r reset · a test activation"])
-    return lines
+    rows.extend([StyledRow.Plain(""), StyledRow.Plain("[v] probe · [r] reset · a test activation")])
+    return rows
 
 
 def selected_atom(run: ConsoleRun, index: int) -> MemoryAtomProjection:
@@ -1324,9 +1259,7 @@ def decision_center_lines(run: ConsoleRun) -> list[str]:
         lines.append(f"  {atom.memory_id} ← {atom.evidence_id}")
     if len(run.result.selected_memory) == 0:
         lines.append("  none entered the terminal result")
-    mut selected_ids: list[str] = []
-    for atom in run.result.selected_memory:
-        selected_ids.append(atom.memory_id)
+    selected_ids = [atom.memory_id for atom in run.result.selected_memory]
     lines.extend(["", "NOT SELECTED THIS RESULT"])
     for atom in run.scenario.package.atoms:
         if not selected_ids.contains(f"{atom.memory_id}"):
@@ -1339,34 +1272,38 @@ def decision_center_lines(run: ConsoleRun) -> list[str]:
     return lines
 
 
-def workspace_center_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
-    """Select the primary task surface for the current workflow destination."""
+def workspace_center_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRow]:
+    """Select the task surface and assign row styles independently from dynamic content."""
 
     if state.surface == "profiles":
-        return profile_center_lines(state, run)
+        return profile_center_rows(state, run)
     if state.surface == "evidence":
-        return evidence_center_lines(state, run)
+        return heading_rows(evidence_center_lines(state, run))
     if state.surface == "memory":
-        return memory_center_lines(state, run)
+        return heading_rows(memory_center_lines(state, run))
     if state.surface == "committee":
-        return committee_center_lines(run)
+        return heading_rows(committee_center_lines(run))
     if state.surface == "interactions":
-        return interaction_center_lines(run)
+        return interaction_center_rows(run)
     if state.surface == "decisions":
-        return decision_center_lines(run)
-    return help_center_lines()
+        mut rows = heading_rows(decision_center_lines(run))
+        rows[2] = decision_row(f"SPECTRUM        {status_icon_label(run)}", run.result.spectrum.admitted)
+        return rows
+    return heading_rows(help_center_lines())
 
 
-def workspace_right_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
+def workspace_right_rows(state: ConsoleState, run: ConsoleRun, total: int) -> list[StyledRow]:
     """Select the authority and artifact context appropriate to the primary surface."""
 
     if state.surface == "committee":
-        return committee_status_lines(run)
+        return heading_rows(committee_status_lines(run))
     if state.surface == "interactions" or state.surface == "decisions":
-        return context_panel_lines(state, run, state.scenario_index, 5)
+        return heading_rows(context_panel_lines(state, run, state.scenario_index, total))
     if state.surface == "help":
-        return ["AUTHORITY LEGEND", "──────────────────────────────────────", "MODEL      proposes", "PACKAGE    declares", "COMMITTEE  observes", "HEES       validates and decides", "ARTIFACT   records", "", "REPLAY reruns the same compiled profile without a provider call."]
-    return candidate_status_lines(state)
+        return heading_rows(
+            ["AUTHORITY LEGEND", "──────────────────────────────────────", "MODEL      proposes", "PACKAGE    declares", "COMMITTEE  observes", "HEES       validates and decides", "ARTIFACT   records", "", "REPLAY reruns the same compiled profile without a provider call."],
+        )
+    return candidate_status_rows(state, run)
 
 
 def compact_workflow_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
@@ -1374,7 +1311,7 @@ def compact_workflow_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
 
     package = run.scenario.package
     if state.surface == "profiles":
-        return ["PROFILE STUDIO", f"active        {state.active_profile_id}", "candidate     session local · not active", f"compatibility {probe_label(
+        return ["PROFILE STUDIO", f"active        {state.active_profile_id}", "candidate     session local · not active", f"probe result  {probe_label(
             state,
         )}", f"probe reason  {state.candidate_probe_reason}", f"evidence      {len(state.candidate_evidence_ids)} / {len(
             package.atoms,
@@ -1424,13 +1361,12 @@ def compact_workflow_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
 
 
 def compose_workspace_rows(
-    left: list[str],
-    center: list[str],
-    right: list[str],
+    left: list[StyledRow],
+    center: list[StyledRow],
+    right: list[StyledRow],
     columns: int,
     height: int,
     left_width: int,
-    admitted: bool,
 ) -> list[str]:
     """Compose three bounded product panes into one deterministic terminal grid."""
 
@@ -1441,22 +1377,22 @@ def compose_workspace_rows(
     mut result: list[str] = []
     mut row = 0
     while row < height:
-        mut left_value = ""
-        mut center_value = ""
-        mut right_value = ""
+        mut left_value = StyledRow.Plain("")
+        mut center_value = StyledRow.Plain("")
+        mut right_value = StyledRow.Plain("")
         if row < len(left):
             left_value = left[row]
         if row < len(center):
             center_value = center[row]
         if row < len(right):
             right_value = right[row]
-        left_value = palette_line(padded_column(left_value, left_width), admitted)
-        center_value = palette_line(padded_column(center_value, center_width), admitted)
-        right_value = palette_line(padded_column(right_value, right_width), admitted)
+        left_rendered = render_styled_row(left_value, left_width)
+        center_rendered = render_styled_row(center_value, center_width)
+        right_rendered = render_styled_row(right_value, right_width)
         if left_width == 0:
-            result.append(f"│ {center_value} │ {right_value} │")
+            result.append(f"│ {center_rendered} │ {right_rendered} │")
         else:
-            result.append(f"│ {left_value} │ {center_value} │ {right_value} │")
+            result.append(f"│ {left_rendered} │ {center_rendered} │ {right_rendered} │")
         row += 1
     return result
 
@@ -1488,19 +1424,19 @@ def compact_screen(state: ConsoleState, runs: list[ConsoleRun], columns: int, ro
         f"hees.ai console · COMPACT VIEW · {mode_label(run)} · {state.active_profile_id}",
         columns,
     ), framed_row(top_navigation_line(state), columns), f"├{horizontal_rule(columns - 2)}┤"]
-    content = compact_workflow_lines(state, run)
+    content = plain_rows(compact_workflow_lines(state, run))
     mut index = 0
     while index < body_height:
-        mut value = ""
+        mut value = StyledRow.Plain("")
         if index < len(content):
             value = content[index]
-        lines.append(palette_line(framed_row(value, columns), run.result.spectrum.admitted))
+        lines.append(f"│ {render_styled_row(value, columns - 4)} │")
         index += 1
     lines.extend(
-        [f"├{horizontal_rule(columns - 2)}┤", framed_row(
-            "1–7 destinations · ↑↓ select · SPACE stage · v probe · r reset · q quit",
-            columns,
-        ), f"└{horizontal_rule(columns - 2)}┘"],
+        [f"├{horizontal_rule(columns - 2)}┤", f"│ {styled_shortcuts_line(
+            "[1–7] destinations · [↑↓] select · [SPACE] stage · [v] probe · [r] reset · [q] quit",
+            columns - 4,
+        )} │", f"└{horizontal_rule(columns - 2)}┘"],
     )
     return "\n".join(lines)
 
@@ -1522,11 +1458,11 @@ pub def render_screen_for_size(state: ConsoleState, runs: list[ConsoleRun], colu
     if columns < 128 or rows < 28:
         return compact_screen(state, runs, columns, rows)
     run = selected_run(state, runs)
-    center = workspace_center_lines(state, run)
-    mut left = workflow_rail_lines(state)
+    center = workspace_center_rows(state, run)
+    mut left = workflow_rail_rows(state, run)
     if state.surface == "interactions":
-        left = scenario_rail_lines(state, runs)
-    right = workspace_right_lines(state, run)
+        left = scenario_rail_rows(state, runs)
+    right = workspace_right_rows(state, run, len(runs))
     mut left_width = 30
     if state.sidebar_collapsed:
         left_width = 0
@@ -1536,13 +1472,11 @@ pub def render_screen_for_size(state: ConsoleState, runs: list[ConsoleRun], colu
         f"hees.ai console   ·   Governed AI Profile Studio   ·   {mode_label(run)}   ·   {state.active_profile_id}",
         columns,
     ), f"│ {styled_top_navigation(state, columns - 4)} │", workspace_rule(columns, left_width, right_width, "┬")]
+    lines.extend(compose_workspace_rows(left, center, right, columns, body_height, left_width))
     lines.extend(
-        compose_workspace_rows(left, center, right, columns, body_height, left_width, run.result.spectrum.admitted),
-    )
-    lines.extend(
-        [workspace_rule(columns, left_width, right_width, "┴"), framed_row(
-            "1–7 destinations · ↑↓ select · SPACE stage · v probe · r reset · ←→ context · b collapse · q quit",
-            columns,
-        ), f"└{horizontal_rule(columns - 2)}┘"],
+        [workspace_rule(columns, left_width, right_width, "┴"), f"│ {styled_shortcuts_line(
+            "[1–7] destinations · [↑↓] select · [SPACE] stage · [v] probe · [r] reset · [←→] context · [b] collapse · [q] quit",
+            columns - 4,
+        )} │", f"└{horizontal_rule(columns - 2)}┘"],
     )
     return "\n".join(lines)
