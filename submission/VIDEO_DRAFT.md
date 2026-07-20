@@ -14,7 +14,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 ### 0:00–0:20 — Govern the system before the answer
 
-**On screen:** Begin inside `hees.ai console`, not on a title card. Keep `REPLAY` and `console_profile_0_1` visible. Move from `Profiles` to `Evidence` so the audience immediately sees that the product begins before a model response.
+**On screen:** Begin inside `hees.ai console` on `Evidence`, not on a title card, with `REPLAY` and `console_profile_0_1` visible. Inspect a fictional source, then open `Profiles` to show how reviewed evidence and memory become the active-versus-candidate governance profile.
 
 **Spoken script:**
 
