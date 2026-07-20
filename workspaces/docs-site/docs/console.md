@@ -85,7 +85,13 @@ Live mode is explicit and requires `OPENAI_API_KEY`. The key is read only from t
 )
 ```
 
-The adapter uses model identifier `gpt-5.6-sol`, strict JSON Schema structured outputs, low reasoning effort, bounded output tokens, a fifteen-second per-call timeout, no tools, and sequential committee calls. Preflight permits one proposal call plus at most eight committee calls, so one invocation can make at most nine calls and run for at most 135 seconds. Each request body is limited to 65,536 UTF-8 bytes, and the adapter performs no retries. Provider availability is not required for offline replay.
+The adapter uses model identifier `gpt-5.6-sol`, the provider-supported strict JSON Schema subset, low reasoning effort, bounded output tokens, a configured 15-second timeout per request, no tools, and sequential committee calls. Preflight permits one proposal call plus at most eight committee calls, so nine calls carry 135 seconds of aggregate configured timeout budget. That is not a global wall-clock ceiling because `ureq` 2.12.1 cannot interrupt DNS resolution. Each request body is limited to 65,536 UTF-8 bytes, and the adapter performs no retries. Provider availability is not required for offline replay.
+
+### Live provider evidence
+
+A native provider-only diagnostic exercised the Incan credential loader, `ureq` HTTPS POST, accepted strict schema, product decoder, and typed proposal path successfully in 8.34 seconds, with no retry. It did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal.
+
+A second native diagnostic reused the recorded proposal, preflighted exactly six Hees-derived targets, completed six sequential live GPT-5.6 committee calls in 40.06 seconds with zero retries, and decoded three relation and three synthesis observations. The real Hees profile classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process, retained no token-usage or cost record, and required a temporary generated-Rust workaround for the known Incan `Iterator.sum` defect; the native provider-only call did not. The [sanitized local observation](https://github.com/encero-systems/hees.ai/blob/main/submission/evidence/live-gpt56-proposal-2026-07-20.json) records the separate observations and their exact limitations. Together they prove the native proposal and live-committee paths separately, but not a combined run from the frozen release binary. The judge and video path remain offline replay.
 
 ## What this release proves—and where it leads
 

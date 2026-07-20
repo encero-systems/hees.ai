@@ -24,6 +24,12 @@ from pub::hees_ai import (
     support_claim_id,
     unit_id,
 )
+from crate.evaluation import (
+    evaluate_live_sources,
+    live_context_plan_json,
+    plan_live_manifest_from_json,
+    plan_live_question_json,
+)
 from crate.provider import (
     GPT56_MODEL,
     MAX_COMMITTEE_CALLS,
@@ -40,6 +46,7 @@ from crate.provider import (
     ProviderFailure,
     build_committee_calls,
     build_proposal_call,
+    classify_provider_http_status,
     decode_proposal_response,
     decode_relation_response,
     decode_synthesis_response,
@@ -220,6 +227,32 @@ def fixture_transport(_request_body: str) -> Result[str, ProviderFailure]:
     """Return the valid proposal fixture without touching the network."""
 
     return Ok(response_with_output(read_text(fixture_path("proposals/valid_lantern.json"))))
+
+
+def duplicate_evidence_transport(request_body: str) -> Result[str, ProviderFailure]:
+    """Return one request-bound proposal whose evidence list contains a duplicate."""
+
+    body = JsonValue.parse(request_body).map_err((_error) => ProviderFailure.InvalidInput)?
+    inputs = require_array(body, "input")
+    content = require_array(inputs[0], "content")
+    context = JsonValue.parse(require_str(content[0], "text")).map_err((_error) => ProviderFailure.InvalidInput)?
+    request = require(context, "request")
+    mut proposal = JsonValue
+        .parse(read_text(fixture_path("proposals/valid_lantern.json")))
+        .map_err((_error) => ProviderFailure.InvalidInput)?
+    proposal
+        .set("request_id", JsonValue.str(require_str(request, "request_id")))
+        .map_err((_error) => ProviderFailure.InvalidInput)?
+    proposal
+        .set("request_digest", JsonValue.str(require_str(request, "request_digest")))
+        .map_err((_error) => ProviderFailure.InvalidInput)?
+    proposal
+        .set(
+            "evidence_ids",
+            JsonValue.array([JsonValue.str("evidence_lantern_path"), JsonValue.str("evidence_lantern_path")]),
+        )
+        .map_err((_error) => ProviderFailure.InvalidInput)?
+    return Ok(response_with_output(proposal.to_json().map_err((_error) => ProviderFailure.InvalidInput)?))
 
 
 def unavailable_transport(_request_body: str) -> Result[str, ProviderFailure]:
@@ -432,6 +465,7 @@ def test_proposal_request_is_the_exact_closed_responses_operation() -> None:
     assert_eq(require_str(text_format, "name"), "console_proposal_provider_0_1")
     assert_eq(require_bool(text_format, "strict"), true)
     schema = require(text_format, "schema")
+    assert_eq(call.request_body.contains("uniqueItems"), false)
     assert_object_is_openai_strict(schema)
     visible_items = require(require(require(schema, "properties"), "visible_units"), "items")
     support_items = require(require(require(schema, "properties"), "support_mappings"), "items")
@@ -488,7 +522,7 @@ def test_propose_with_transport_is_deterministic_and_network_free() -> None:
 
 @serial
 def test_complete_injected_interaction_uses_exactly_one_proposal_and_eight_committee_calls() -> None:
-    """Exercise the production preflight and both injected transports under the nine-call ceiling."""
+    """Exercise the production preflight and both injected transports under the nine-call cap."""
 
     injected_transport_calls = 0
     context_source = context_plan()
@@ -546,6 +580,19 @@ def test_provider_errors_are_stable_and_redacted() -> None:
     assert_eq(error.value().contains("Bearer"), false)
 
 
+def test_live_http_failures_are_typed_without_exposing_response_detail() -> None:
+    """Distinguish actionable HTTP classes while retaining only closed failure codes."""
+
+    assert_eq(classify_provider_http_status(400).value(), "provider_request_rejected")
+    assert_eq(classify_provider_http_status(401).value(), "provider_authentication_failed")
+    assert_eq(classify_provider_http_status(403).value(), "provider_permission_denied")
+    assert_eq(classify_provider_http_status(404).value(), "provider_request_rejected")
+    assert_eq(classify_provider_http_status(422).value(), "provider_request_rejected")
+    assert_eq(classify_provider_http_status(429).value(), "provider_rate_limited")
+    assert_eq(classify_provider_http_status(500).value(), "provider_http_failure")
+    assert_eq(classify_provider_http_status(503).value(), "provider_http_failure")
+
+
 def test_malformed_extra_output_fields_fail_closed() -> None:
     """Reject non-schema fields such as rationale before typed proposal decoding."""
 
@@ -601,6 +648,7 @@ def test_maximum_committee_shape_and_live_budget_are_both_exact() -> None:
     assert_eq(MAX_LIVE_PROVIDER_CALLS, 1 + MAX_LIVE_COMMITTEE_CALLS)
     assert_eq(OBSERVATION_OUTPUT_TOKENS, 512)
     assert_eq(MAX_PROVIDER_REQUEST_BYTES, 65_536)
+    assert_eq(PROVIDER_TIMEOUT_SECONDS, 15)
     assert_eq(PROVIDER_TIMEOUT_SECONDS * MAX_COMMITTEE_CALLS, 330)
     assert_eq(PROVIDER_TIMEOUT_SECONDS * MAX_LIVE_COMMITTEE_CALLS, 120)
     assert_eq(PROVIDER_TIMEOUT_SECONDS * MAX_LIVE_PROVIDER_CALLS, 135)
@@ -647,6 +695,32 @@ def test_empty_manifest_skips_the_non_authoritative_committee() -> None:
     assert_eq(len(calls), 0)
     invalid = assert_is_err(build_committee_calls(context_plan(), load_proposal(), manifest_plan_json([], true)))
     assert_eq(invalid.value(), "provider_invalid_input")
+
+
+@serial
+def test_provider_decoded_duplicate_evidence_reaches_hees_without_committee_calls() -> None:
+    """Leave provider-permitted duplicates to the real Hees structural authority boundary."""
+
+    injected_transport_calls = 0
+    live_plan = assert_is_ok(plan_live_question_json("What order should I use for the Lantern Path cards?"))
+    context_source = assert_is_ok(live_context_plan_json(live_plan))
+    proposal_source = assert_is_ok(propose_json_with_transport(context_source, duplicate_evidence_transport))
+    manifest_source = assert_is_ok(plan_live_manifest_from_json(live_plan, proposal_source))
+    manifest = assert_is_ok(JsonValue.parse(manifest_source))
+    assert_eq(require_bool(manifest, "plannable"), false)
+    assert_eq(len(require_array(manifest, "targets")), 0)
+    committee_source = assert_is_ok(
+        evaluate_committee_json_with_transport(
+            context_source,
+            proposal_source,
+            manifest_source,
+            counting_interaction_transport,
+        ),
+    )
+    assert_eq(injected_transport_calls, 0)
+    run = assert_is_ok(evaluate_live_sources(live_plan, proposal_source, committee_source))
+    assert_eq(run.result.spectrum.admitted, false)
+    assert_eq(run.result.spectrum.reason, "duplicate_evidence_reference")
 
 
 def test_committee_rejects_cross_interaction_proposals_and_targets() -> None:

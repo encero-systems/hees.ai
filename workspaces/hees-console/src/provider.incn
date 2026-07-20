@@ -8,15 +8,16 @@ to Hees with no committee observations so the terminal boundary can return the e
 
 Live committee calls are intentionally sequential in the current Console profile. Generic planning can represent 22
 targets, but one optional live interaction is frozen to one proposal and at most eight committee calls. Every prepared
-request body is at most 64 KiB. With the direct `ureq` edge's 15-second timeout, the complete live interaction therefore
-has a nine-call and 135-second ceiling before any retry policy, which this boundary intentionally does not provide.
+request body is at most 64 KiB. The direct `ureq` edge configures 15 seconds per request, so nine calls carry 135 seconds
+of aggregate configured timeout budget. That is not a global wall-clock deadline: `ureq` 2.12.1 cannot interrupt DNS
+resolution, and this boundary intentionally provides no retries.
 """
 
 from rust::std::string import String as RustString
 from rust::std::env import var as env_var
 from rust::std::io import Read
 from rust::std::time import Duration
-from rust::ureq import post
+from rust::ureq import Error as UreqError, post
 from std.encoding.hex import hexlify
 from std.hash import sha256
 from std.json import JsonValue
@@ -72,6 +73,12 @@ pub enum ProviderFailure(str):
     MissingApiKey = "provider_missing_api_key"
     InvalidInput = "provider_invalid_input"
     InputTooLarge = "provider_input_too_large"
+    AuthenticationFailed = "provider_authentication_failed"
+    PermissionDenied = "provider_permission_denied"
+    RateLimited = "provider_rate_limited"
+    RequestRejected = "provider_request_rejected"
+    HttpFailure = "provider_http_failure"
+    TransportFailure = "provider_transport_failure"
     Unavailable = "provider_unavailable"
     ResponseTooLarge = "provider_response_too_large"
     MalformedOutput = "provider_malformed_output"
@@ -446,13 +453,11 @@ def integer_schema(minimum: int, maximum: int) -> JsonValue:
     )
 
 
-def array_schema(items: JsonValue, minimum: int, maximum: int, unique: bool) -> JsonValue:
+def array_schema(items: JsonValue, minimum: int, maximum: int) -> JsonValue:
     """Construct a bounded JSON array schema."""
 
     return JsonValue.object(
-        {"type": JsonValue.str("array"), "minItems": JsonValue.int(minimum), "maxItems": JsonValue.int(maximum), "uniqueItems": JsonValue.bool(
-            unique,
-        ), "items": items},
+        {"type": JsonValue.str("array"), "minItems": JsonValue.int(minimum), "maxItems": JsonValue.int(maximum), "items": items},
     )
 
 
@@ -482,7 +487,6 @@ def proposal_output_schema() -> JsonValue:
             identifier_schema(),
             1,
             4,
-            true,
         )},
     )
     support_mapping = closed_object_schema(
@@ -490,7 +494,6 @@ def proposal_output_schema() -> JsonValue:
             identifier_schema(),
             1,
             4,
-            true,
         )},
     )
     return closed_object_schema(
@@ -500,13 +503,7 @@ def proposal_output_schema() -> JsonValue:
             identifier_schema(),
             1,
             8,
-            true,
-        ), "visible_units": array_schema(visible_unit, 1, 8, true), "support_mappings": array_schema(
-            support_mapping,
-            1,
-            8,
-            true,
-        )},
+        ), "visible_units": array_schema(visible_unit, 1, 8), "support_mappings": array_schema(support_mapping, 1, 8)},
     )
 
 
@@ -1269,8 +1266,22 @@ def provider_timeout_duration() -> Result[Duration, ProviderFailure]:
         None => return Err(ProviderFailure.Unavailable)
 
 
+pub def classify_provider_http_status(status: u16) -> ProviderFailure:
+    """Map one HTTP failure status to a closed category without retaining its response body."""
+
+    if status == 401:
+        return ProviderFailure.AuthenticationFailed
+    if status == 403:
+        return ProviderFailure.PermissionDenied
+    if status == 429:
+        return ProviderFailure.RateLimited
+    if status >= 400 and status < 500:
+        return ProviderFailure.RequestRejected
+    return ProviderFailure.HttpFailure
+
+
 def send_https(api_key: str, request_body: str) -> Result[str, ProviderFailure]:
-    """Send one bounded request to the fixed endpoint and redact every transport failure."""
+    """Send one bounded request to the fixed endpoint and return only closed redacted failure categories."""
 
     timeout = provider_timeout_duration()?
     result = post(RESPONSES_ENDPOINT)
@@ -1280,12 +1291,13 @@ def send_https(api_key: str, request_body: str) -> Result[str, ProviderFailure]:
         .timeout(timeout)
         .send_string(request_body)
     match result:
-        Err(_) => return Err(ProviderFailure.Unavailable)
+        Err(UreqError.Status(status, _response)) => return Err(classify_provider_http_status(status))
+        Err(_) => return Err(ProviderFailure.TransportFailure)
         Ok(response) =>
             mut body: bytes = b""
             reader = response.into_reader()
             match reader.take(MAX_PROVIDER_ENVELOPE_BYTES + 1).read_to_end(body):
-                Err(_) => return Err(ProviderFailure.Unavailable)
+                Err(_) => return Err(ProviderFailure.TransportFailure)
                 Ok(_) =>
                     if len(body) > MAX_PROVIDER_ENVELOPE_BYTES:
                         return Err(ProviderFailure.ResponseTooLarge)

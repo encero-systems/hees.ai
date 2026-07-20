@@ -79,7 +79,7 @@ Console owns native presentation, bounded transport, input bounds, and session-l
 
 #### Judge quick start
 
-The local release candidate supports an offline path that requires no Incan compiler, package manager, source checkout, network connection, or API key. Public download steps remain intentionally incomplete until the stable test-build assets are published.
+The no-rebuild judge path below was proven against a historical pre-redesign candidate: it required no Incan compiler, package manager, source checkout, network connection, or API key. It is not yet a current-head release claim. Public download steps remain intentionally incomplete until fresh current-source test-build assets are published.
 
 1. Download the self-contained archive for **[FINALIZE BEFORE RELEASE: VERIFIED PUBLIC ARTIFACT PLATFORM]** from **[FINALIZE BEFORE RELEASE: RELEASE ASSET URL]**.
 2. Compare the downloaded file's SHA-256 digest with **[FINALIZE BEFORE RELEASE: RELEASE ASSET SHA-256]**.
@@ -126,11 +126,11 @@ Replay is the zero-credential default transport. Its fixtures contain determinis
 
 ##### Optional live GPT-5.6
 
-The implemented adapter uses the OpenAI Responses API with explicit model `gpt-5.6-sol`, strict JSON Schema structured outputs, bounded reasoning effort and output tokens, timeouts, and no tool access. It returns the same classes of proposal and evaluator-observation input that replay supplies. After transport-specific decoding, live and replay invoke the same compiled validation, findings, Spectrum, memory-selection, Content DNA, and receipt path. Live preflight permits one proposal and at most eight sequential committee calls, every request body is limited to 65,536 UTF-8 bytes, and the adapter performs no retries. Live mode never silently falls back to replay while retaining a live label.
+The implemented adapter uses the OpenAI Responses API with explicit model `gpt-5.6-sol`, the provider-supported strict JSON Schema subset, bounded reasoning effort and output tokens, a configured 15-second timeout per request, and no tool access. It returns the same classes of proposal and evaluator-observation input that replay supplies. After transport-specific decoding, live and replay invoke the same compiled validation, findings, Spectrum, memory-selection, Content DNA, and receipt path. Live preflight permits one proposal and at most eight sequential committee calls, every request body is limited to 65,536 UTF-8 bytes, and the adapter performs no retries. Nine calls therefore carry 135 seconds of aggregate configured timeout budget. That is not a global wall-clock ceiling because `ureq` 2.12.1 cannot interrupt DNS resolution. Live mode never silently falls back to replay while retaining a live label.
 
 The only local credential surface is `OPENAI_API_KEY`, and the credential does not enter fixtures, process arguments, logs, screenshots, receipts, Content DNA, or exported traces.
 
-> **Live network status:** implemented and provider-boundary tested, but not demonstrated end to end. After an earlier quota-blocked attempt, the single funded and approved no-retry canary failed closed at its first proposal call with typed state `provider_unavailable`. It returned no structured proposal, made no committee calls, and did not reach a live Hees decision. No retry was attempted. Seventeen provider-boundary tests cover exact request construction, strict decoding, injected-transport composition, the nine-call live ceiling, request-size rejection, and fail-closed behavior, but they are not a substitute for a successful network demonstration. Offline replay is the demonstrated judge and video path.
+> **Live network status:** the native proposal path works in a provider-only diagnostic harness. It loaded the credential through the Incan product path, sent the request through native `ureq` HTTPS, received an accepted strict-schema response, and passed the product decoder and typed proposal path in 8.34 seconds, with no retry. That native observation did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal. A second bounded native diagnostic reused the recorded proposal, preflighted exactly six Hees-derived targets, completed six sequential live GPT-5.6 committee calls in 40.06 seconds with zero retries, decoded three relation and three synthesis observations, and passed them through the real Hees profile. Hees classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process and the product adapter did not retain its token usage or cost. It required a temporary generated-Rust workaround for the known Incan `Iterator.sum` defect; the native proposal-only call did not. A combined proposal-plus-committee run from the frozen release binary remains unproven. The source defines 19 provider-boundary tests; the last complete redesigned provider run executed 17, and a complete 19-test run remains a current compiler-gated verification item. See the [publication-safe local observation record](submission/evidence/live-gpt56-proposal-2026-07-20.json) for the separate observations and exact limitations. Offline replay remains the demonstrated judge and video path.
 
 The relevant provider contracts follow the official [GPT-5.6 Sol model](https://developers.openai.com/api/docs/models/gpt-5.6-sol) and [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs) documentation.
 
@@ -139,8 +139,8 @@ The relevant provider contracts follow the official [GPT-5.6 Sol model](https://
 | Surface | Status |
 | --- | --- |
 | Self-contained executable | An earlier immutable candidate executed successfully on macOS ARM64, macOS x86-64, and Linux x86-64; the redesigned final head requires a fresh matrix before those platforms become current release claims; **[FINALIZE BEFORE RELEASE: PUBLIC ASSET URLS, HASHES, AND MINIMUM SYSTEM REQUIREMENTS]** |
-| Publication state | Native matrix artifacts are short-lived CI evidence, not signed or notarized public releases |
-| Hosted equivalent | Not configured and not required when the published native test build remains available; any later hosted surface must run the same frozen executable in bounded, isolated, no-shell sessions |
+| Publication state | Earlier native matrix artifacts are historical CI evidence; the current head has zero release artifacts and no signed or notarized public release |
+| Hosted equivalent | Not configured; any later hosted surface must run the same frozen executable in bounded, isolated, no-shell sessions |
 | Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.19`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
 
 Unsupported platforms will be stated explicitly in the final release notes. Source portability is not evidence that a self-contained artifact works on a platform.
@@ -170,7 +170,7 @@ The Build Week lineage, Codex collaboration, rules checklist, and evidence ledge
 - green CI and artifact smoke tests: **[FINALIZE BEFORE RELEASE: CI AND TEST URLS]**;
 - release artifacts, provenance, and SHA-256 values: **[FINALIZE BEFORE RELEASE: RELEASE URL, PROVENANCE URL, AND HASHES]**;
 - hosted equivalent, only if one is claimed: **[FINALIZE BEFORE RELEASE: HOSTED URL AND DATES, OR REMOVE THIS OPTIONAL CLAIM]**;
-- live GPT-5.6 status: implemented and provider-boundary tested, but not demonstrated end to end after the single approved canary failed closed with `provider_unavailable` before returning a proposal;
+- live GPT-5.6 status: a native provider-only diagnostic exercised the Incan credential loader, `ureq` HTTPS transport, strict schema, decoder, and typed proposal path successfully in 8.34 seconds; a separate native diagnostic completed six sequential live committee calls in 40.06 seconds with zero retries and reached an admitted real-Hees result with six findings, selected memory, Content DNA, and a receipt; the final combined release-binary path remains unverified; see the [sanitized local observation](submission/evidence/live-gpt56-proposal-2026-07-20.json);
 - screenshots and public demonstration video: **[FINALIZE BEFORE RELEASE: SCREENSHOT AND VIDEO URLS]**; and
 - majority-core-functionality Codex `/feedback` Session ID: **[MANUAL INPUT REQUIRED BEFORE SUBMISSION: CODEX SESSION ID]**.
 
@@ -211,7 +211,7 @@ Not implemented by the checked `0.0.1` library:
 
 ### Toolchain
 
-The current branch requires Incan `0.5.0-dev.19` from merged source commit [`7656195ba94a4fc309ee5ee83c9dd45a42800db0`](https://github.com/encero-systems/incan/commit/7656195ba94a4fc309ee5ee83c9dd45a42800db0). Release tooling pins that source identity separately from the canonical root `incan.lock`. The lock was generated by that exact compiler, an immediate second generation was byte-identical, and two clean strict locked library builds passed. The complete local gate and native release matrix remain publication evidence gates. Make that exact `incan` binary available on `PATH`, or pass it explicitly to Make:
+The current branch requires Incan `0.5.0-dev.19` from merged source commit [`7656195ba94a4fc309ee5ee83c9dd45a42800db0`](https://github.com/encero-systems/incan/commit/7656195ba94a4fc309ee5ee83c9dd45a42800db0). Release tooling pins that source identity separately from the canonical root `incan.lock`. In one historical macOS environment, an immediate second lock generation was byte-identical and two clean strict locked library builds passed. That is fixed-point evidence for that environment, not portable reproducibility evidence. Current cross-platform locked verification is blocked because Incan's generated Rust ABI metadata is sensitive to cache and platform state, and Ubuntu rejects a lock produced from the same source inputs. A repaired portable lock, complete local gate, and current native release matrix remain publication gates. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
 
 ```bash
 make ci INCAN=/path/to/incan

@@ -1,0 +1,134 @@
+{
+  "evidence_contract": "hees_console_live_proposal_observation_0_1",
+  "evidence_scope": "separate native proposal, external proposal, native live committee, and diagnostic Hees observations",
+  "observed_date": "2026-07-20",
+  "observation_timestamp_local": "2026-07-20T16:14:41+02:00",
+  "observation_timestamp_basis": "local diagnostic proposal artifact creation time",
+  "base_source_commit": "fb3bbb1b8e292a944125493d9a3c85b69ea36a68",
+  "model": "gpt-5.6-sol",
+  "external_transport_observation": {
+    "request_construction": "product_generated",
+    "submission": "external_curl",
+    "http_status": 200,
+    "elapsed_seconds": 8.365784,
+    "request_sha256": "cec3096135cb8961073b39debd62be0b4071d779d31a99258e3e4b5c1ec5a14a",
+    "response_sha256": "7815758a477a28fff41effd7cb02dfe48f802217c1484f3fe097e35a96f92b18",
+    "hashes_observation": "locally_observed_raw_envelope_hashes",
+    "raw_request_published": false,
+    "raw_response_published": false,
+    "usage": {
+      "input_tokens": 1073,
+      "output_tokens": 427,
+      "reasoning_tokens": 112,
+      "total_tokens": 1500
+    },
+    "retry_count": 0,
+    "live_committee_calls": 0
+  },
+  "native_product_transport_observation": {
+    "source_basis": "fb3bbb1b8e292a944125493d9a3c85b69ea36a68 plus provider strict-schema uniqueItems removal",
+    "harness": "precompiled_provider_only_diagnostic",
+    "credential_loader_exercised": true,
+    "native_ureq_send_https_exercised": true,
+    "strict_schema_accepted": true,
+    "product_decoder": "passed",
+    "typed_proposal_path": "passed",
+    "elapsed_seconds_rounded": 8.34,
+    "retry_count": 0,
+    "live_committee_calls": 0,
+    "request_sha256_observed": false,
+    "response_sha256_observed": false,
+    "usage_observed": false,
+    "iterator_sum_workaround_used": false,
+    "release_binary_exercised": false
+  },
+  "product_verification": {
+    "response_shape_accepted": true,
+    "proposal_decoder": "passed",
+    "proposal": {
+      "action_id": "explain_lesson",
+      "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+      "contract_version": "console_proposal_0_1",
+      "domain_id": "fictional_lesson_support",
+      "evidence_ids": [
+        "evidence_lantern_path"
+      ],
+      "package_id": "lantern_labs",
+      "package_revision": "1.0.0",
+      "profile_id": "console_profile_0_1",
+      "proposal_id": "proposal_lantern_safety_signal",
+      "request_digest": "sha256:b9e2efffc7915c66a859eb1f1490378b4877d04712c2a67e2ee213ab7dc08d9b",
+      "request_id": "request_live_console",
+      "support_mappings": [
+        {
+          "evidence_ids": [
+            "evidence_lantern_path"
+          ],
+          "memory_id": "memory_lantern_sequence",
+          "support_claim_id": "claim_lantern_safety_sequence",
+          "unit_id": "unit_lantern_safety_signal"
+        }
+      ],
+      "visible_units": [
+        {
+          "requirement_ids": [
+            "explain_sequence",
+            "ground_in_lesson"
+          ],
+          "text": "The Lantern Lab safety signal is the three-card sequence: place an amber card, then a blue card, then a green card before testing the route. Check that order against the lesson’s three-card example.",
+          "unit_id": "unit_lantern_safety_signal"
+        }
+      ]
+    }
+  },
+  "diagnostic_hees_verification": {
+    "committee_transport": "deterministic_injected",
+    "real_hees_profile_exercised": true,
+    "decision": "admitted",
+    "selected_memory_ids": [
+      "memory_lantern_sequence"
+    ],
+    "finding_count": 6,
+    "content_dna_present": true,
+    "receipt_present": true,
+    "temporary_generated_rust_workaround": "known Incan Iterator.sum defect",
+    "release_evidence": false
+  },
+  "native_live_committee_observation": {
+    "observation_date": "2026-07-20",
+    "proposal_source": "previously_recorded_paid_gpt56_proposal",
+    "proposal_call_repeated_in_process": false,
+    "harness": "diagnostic_generated_harness",
+    "preflight_target_count": 6,
+    "committee_calls": 6,
+    "calls_sequential": true,
+    "elapsed_seconds_rounded": 40.06,
+    "retry_count": 0,
+    "relation_observations": 3,
+    "synthesis_observations": 3,
+    "usage_observed": false,
+    "real_hees_profile_exercised": true,
+    "finding_count": 6,
+    "decision": "admitted",
+    "selected_memory_ids": [
+      "memory_lantern_sequence"
+    ],
+    "content_dna_present": true,
+    "receipt_present": true,
+    "temporary_generated_rust_workaround": "known Incan Iterator.sum defect",
+    "release_binary_exercised": false
+  },
+  "limitations": [
+    "The native proposal and native live committee were proven in separate diagnostics; no single process repeated the proposal call and then completed the committee.",
+    "No current-head release artifact was exercised.",
+    "The external-curl proposal observation supplies locally observed request and response hashes and usage; the native proposal and committee observations do not.",
+    "The product adapter did not retain committee token usage or cost.",
+    "Raw provider envelopes are not published.",
+    "The native live committee and diagnostic Hees verification used a temporary generated-Rust workaround."
+  ],
+  "redactions": [
+    "No API key or authorization header.",
+    "No hidden prompt or raw reasoning.",
+    "No response identifier or private path."
+  ]
+}

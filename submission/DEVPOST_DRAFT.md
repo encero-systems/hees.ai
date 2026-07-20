@@ -97,7 +97,7 @@ live GPT-5.6 inputs ─┘                              |
 
 Replay and live mode are transports into one authority path. Replay fixtures contain integrity-checked requests, proposals, bounded observations, and schema identities. They do not contain findings, a Spectrum result, selected memory, Content DNA, or a receipt. Optional live mode obtains the same classes of bounded input from GPT-5.6. After transport-specific decoding, both invoke the same validation, manifest derivation, finding classification, Spectrum operation, memory selection, Content DNA construction, and receipt code.
 
-One live invocation is preflight-limited to one proposal call plus at most eight sequential committee calls: at most nine calls and 135 seconds with no retries. Every provider request body is limited to 65,536 UTF-8 bytes. These limits constrain the optional transport; they do not transfer governance authority to the provider.
+One live invocation is preflight-limited to one proposal call plus at most eight sequential committee calls. Each request has a configured 15-second timeout, so nine calls carry 135 seconds of aggregate configured timeout budget, with no retries. This is not a global wall-clock ceiling because `ureq` 2.12.1 cannot interrupt DNS resolution. Every provider request body is limited to 65,536 UTF-8 bytes. These limits constrain the optional transport; they do not transfer governance authority to the provider.
 
 The Console owns native terminal interaction, bounded transport, secret isolation, escaping, and session state. It calls the public Incan-authored Hees profile directly. Presentation code cannot reconstruct or reinterpret terminal authority.
 
@@ -144,7 +144,7 @@ Wide terminals use a framed three-pane workspace with one source of truth for wi
 - native hees.ai console application authored in Incan;
 - commit-pinned Incan compiler and lockfile;
 - direct call into the public Incan-authored Hees profile;
-- strict typed contracts and JSON Schema Draft 2020-12 provider edges;
+- strict typed repository contracts, with the OpenAI-supported strict JSON Schema subset at the provider edge;
 - SHA-256 identities across package, request, proposal, targets, observations, replay inputs, Content DNA, and receipts;
 - `crossterm` through explicit Incan interop for native terminal primitives;
 - `ureq` through explicit Incan interop for the optional HTTPS boundary;
@@ -191,9 +191,9 @@ Complete platform, unsigned macOS, expected-result, and troubleshooting instruct
 | Bounded Training by Committee proposal pressure test | Richer provider-neutral pressure testing across evidence, atoms, prompts, packages, and policy |
 | Limited Spectrum operation, Content DNA, and profile receipt | Complete generalized Spectrum, Content DNA, response-lifecycle, and receipt contracts |
 | Offline replay plus optional live GPT-5.6 transport | Additional remote and local model adapters using the same profile authority boundary |
-| Unsigned Linux x86-64, macOS Apple Silicon, and macOS Intel test builds | Signed, notarized, additional-platform, and optional hosted distribution |
+| Historical pre-redesign candidates on Linux x86-64, macOS Apple Silicon, and macOS Intel; the current head has zero release artifacts | Current unsigned builds, then signed, notarized, additional-platform, and optional hosted distribution |
 
-Optional live GPT-5.6 is implemented but is not demonstrated in this submission. The single approved network canary failed closed at its first provider call with `provider_unavailable`; no retry was attempted. Judges use offline replay, which supplies integrity-checked saved inputs to the same post-transport Hees path.
+A native provider-only diagnostic exercised the Incan credential loader, `ureq` HTTPS POST, accepted strict schema, product decoder, and typed proposal path successfully in 8.34 seconds, with no retry. It did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal. A second native diagnostic reused that proposal, preflighted exactly six Hees-derived targets, completed six sequential live GPT-5.6 committee calls in 40.06 seconds with zero retries, and decoded three relation and three synthesis observations. The real Hees profile classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process, retained no token-usage or cost record, and required a temporary generated-Rust workaround for the known Incan `Iterator.sum` defect. The native proposal-only call did not require that workaround. A combined proposal-plus-committee run from the frozen release binary remains unproven. The [sanitized local observation](evidence/live-gpt56-proposal-2026-07-20.json) records the separate observations and their limitations. Judges use offline replay, which supplies integrity-checked saved inputs to the same post-transport Hees path.
 
 ## Judging-criteria map
 

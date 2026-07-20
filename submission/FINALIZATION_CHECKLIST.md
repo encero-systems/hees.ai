@@ -2,7 +2,7 @@
 
 This checklist was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 19, 2026. The rules can change and remain authoritative. Recheck them on the day of submission.
 
-Nothing in this document confirms that hees.ai console has been released, hosted, recorded, submitted, or demonstrated end to end in live GPT-5.6 mode. Placeholders are blockers, not evidence.
+Nothing in this document confirms that hees.ai console has been released, hosted, recorded, submitted, or exercised through one combined live GPT-5.6 run from a frozen release binary. The native proposal and six-call live committee paths were observed in separate diagnostics and are recorded with their exact transport and compiler limitations; placeholders remain blockers, not evidence.
 
 ## Public link and evidence matrix
 
@@ -16,14 +16,14 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 | Working Profile Studio | Evidence and memory staging, real Hees candidate acceptance probe, separate public reason and exact profile diagnostic, blocked activation, reset, and active-profile preservation | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, SCREENSHOT, AND VIDEO TIMECODE]** |
 | Explained profile contract | Public field-level Lantern Labs package/profile guide with ownership and validation path | **[FINALIZE BEFORE RELEASE: GOVERNANCE PROFILE DOCUMENTATION URL]** |
 | Bounded Training by Committee slice | Target derivation, complete observation coverage, Hees classification, and authority-negative tests | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, AND RUN URLS]** |
-| Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` adapter reaching the same runner, with model/configuration identity and public result | Implemented and provider-boundary tested, but not demonstrated end to end: the single funded no-retry canary failed closed at its first provider call with `provider_unavailable`, returned no proposal, and made no committee calls |
+| Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` adapter reaching the same runner, with model/configuration identity and public result | [Sanitized local observation](evidence/live-gpt56-proposal-2026-07-20.json): the native proposal path passed separately in 8.34 seconds; a six-call native live committee completed in 40.06 seconds with zero retries and reached an admitted real-Hees result; the combined frozen release-binary path remains unproven |
 | No-rebuild judge path | Hosted sandbox or functioning test build, supported platforms, clean-system smoke test, access window | **[FINALIZE BEFORE RELEASE: TEST URL, PLATFORM MATRIX, SMOKE TEST, AND DATES]** |
 | Release integrity | Tag, immutable commit, asset names, SHA-256 values, provenance, dependency licenses | **[FINALIZE BEFORE RELEASE: RELEASE, HASH, PROVENANCE, AND LICENSE URLS]** |
 | Product behavior | Frozen golden outputs for valid action, undeclared action, and scenario `3` unknown evidence | **[FINALIZE BEFORE RELEASE: GOLDENS, TESTS, AND RUN URLS]** |
 | Product design | Frozen screenshots, narrow and monochrome checks, terminal-escaping tests | **[FINALIZE BEFORE RELEASE: IMAGE AND TEST URLS]** |
 | Public demo video | Approved public YouTube video under three minutes with clear English audio | **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]** |
 | Testing instructions | Public `TESTING.md` at the frozen revision with exact judge steps | **[FINALIZE BEFORE RELEASE: TESTING URL]** |
-| Public documentation | Locally built mdBook published from a clean `gh-pages` branch before merge; the current pull-request workflow builds documentation but deliberately does not deploy it | **[FINALIZE BEFORE RELEASE: PUBLIC DOCS URL AND PUBLISHED COMMIT]** |
+| Public documentation | Locally built mdBook published from a clean `gh-pages` branch before merge; the current pull-request workflow builds documentation but deliberately does not deploy it | Current site: [encero-systems.github.io/hees.ai](https://encero-systems.github.io/hees.ai/), published from source commit [`fb3bbb1`](https://github.com/encero-systems/hees.ai/commit/fb3bbb1b8e292a944125493d9a3c85b69ea36a68) at Pages head `0e87fbb9fb29290ac8a4c1107e115a26fdd24101`; final-head republish and signed-out verification remain pending |
 | Green release gates | CI at the frozen commit, artifact smoke tests, publication-boundary audit | **[FINALIZE BEFORE RELEASE: CI, ARTIFACT, AND AUDIT URLS]** |
 | Devpost entry | Submitted project page containing the approved fields and links | **[MANUAL INPUT REQUIRED AFTER SUBMISSION: DEVPOST PROJECT URL]** |
 
@@ -36,7 +36,7 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 - [ ] Scenario `3` is frozen as `Unknown evidence reference`, namespace `console_admission_0_1`, public reason `unknown_evidence`, with a golden output and test link.
 - [ ] The release artifact has passed a clean-system, no-rebuild smoke test on every claimed platform.
 - [ ] The functioning test build remains free and unrestricted through August 5, 2026 at 17:00 PDT. If a hosted equivalent is also claimed, it invokes the frozen artifact, exposes no unrestricted shell, and isolates sessions.
-- [ ] Every live claim is narrowed to an implemented, provider-boundary-tested optional adapter that was not demonstrated end to end, and the video uses replay only.
+- [ ] Every live claim distinguishes the separately proven native proposal and six-call live-committee diagnostics from the unverified combined frozen release-binary path; the video uses replay for the product demonstration.
 - [ ] CI, artifact hashes, provenance, dependency notices, supported platforms, and release links all identify the same frozen commit.
 - [ ] The mdBook was built locally, scanned for private values and placeholders, published to `gh-pages` without relying on Actions, and verified while signed out.
 - [ ] Screenshots and video surfaces contain no credentials, personal data, personal paths, private repositories, private packages, hidden prompts, raw provider metadata, unrestricted rationale, or unrelated work.

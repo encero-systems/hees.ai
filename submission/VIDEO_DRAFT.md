@@ -62,11 +62,11 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 ### 2:13–2:32 — Replay and live are transports, not authorities
 
-**On screen:** Show the architecture page and trace saved replay and the optional live GPT-5.6 adapter into the single compiled Hees path. Keep the recorded demonstration in `REPLAY`. Briefly show Incan source. Do not depict or imply a verified live run.
+**On screen:** Show the architecture page and trace saved replay and the optional live GPT-5.6 adapter into the single compiled Hees path. Keep the recorded product demonstration in `REPLAY`. Briefly show Incan source. Do not depict or imply that one frozen release binary performed the separately verified proposal and live-committee diagnostics as a combined run.
 
 **Spoken script:**
 
-> Replay and live are transports, not authorities. This recording uses replay: integrity-checked saved proposal and observation inputs containing no stored Hees decision. The optional live adapter is designed to supply the same bounded structures. After decoding, both enter the same compiled Incan-authored Hees path.
+> Replay and live are transports, not authorities. This recording uses replay. Separately, the native Incan provider path loaded the credential, called GPT-5.6, and decoded a typed proposal successfully. A second native diagnostic reused that recorded proposal and completed six live committee calls: three relation observations and three synthesis observations. Hees classified six findings, selected the supporting memory, created Content DNA and a receipt, and admitted the result. That diagnostic retained call count and elapsed time, not usage, and used a temporary generated-Rust workaround for a known compiler defect. The final combined run from the frozen release binary remains to be verified.
 
 ### 2:32–2:45 — From research to a usable governed-AI tool
 
@@ -96,7 +96,7 @@ By the end of the video, a judge should understand that:
 - Keep `REPLAY` or `LIVE` visible throughout each run. Never splice replay output under a live label.
 - Use no copyrighted music, third-party logos, private browser chrome, account identifiers, notification banners, or unlicensed assets.
 - Do not display `OPENAI_API_KEY`, environment variables, request headers, hidden prompts, unrestricted rationale, personal data, local paths, issue drafts, or private repositories.
-- Record the product demonstration in replay. Describe live only as an implemented, provider-boundary-tested optional transport that has not been demonstrated end to end.
+- Record the product demonstration in replay. State that a provider-only native Incan diagnostic exercised credential loading, `ureq` HTTPS, strict schema, and typed proposal decoding. State separately that a diagnostic generated harness completed six live committee calls and reached an admitted real-Hees result using the temporary workaround. Do not present those separate diagnostics as one combined frozen release-binary run.
 - Confirm every displayed reason, digest, artifact identity, and trust label against the frozen outputs after editing the video.
 - Upload the approved final cut publicly to YouTube and verify it while signed out: **[MANUAL INPUT REQUIRED: PUBLIC YOUTUBE URL]**.
 
@@ -118,7 +118,7 @@ All captures must come from the frozen release artifact. Use a clean terminal, n
 
 > **hees.ai console turns evidence, reviewed memory, policy, and authority into reusable governance profiles for AI.** This Build Week release demonstrates a fictional profile from evidence inspection through Training by Committee, governed interaction, Spectrum decision, selected memory, Content DNA, and receipt. GPT-5.6 may propose; the compiled Incan-authored Hees profile decides.
 >
-> Replay is the zero-credential judge path. It supplies integrity-checked saved inputs to the same compiled Hees authority path used by optional live mode; it does not replay a stored decision.
+> Replay is the zero-credential judge path. It supplies integrity-checked saved inputs to the same compiled Hees authority path used by optional live mode; it does not replay a stored decision. Separately, a provider-only native Incan diagnostic called GPT-5.6 and passed typed proposal decoding. A second native diagnostic reused that recorded proposal, completed three relation and three synthesis calls, and reached an admitted real-Hees result with six classified findings, selected memory, Content DNA, and a receipt. It retained call count and elapsed time rather than usage and used a temporary generated-Rust workaround for a known compiler defect. The final combined frozen release-binary path remains unverified.
 >
 > Repository: **[FINALIZE BEFORE RELEASE: PUBLIC REPOSITORY URL]**<br>
 > Test it: **[FINALIZE BEFORE RELEASE: NO-REBUILD TEST URL]**<br>
