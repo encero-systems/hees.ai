@@ -32,6 +32,8 @@ from crate.console_profile import (
     evaluate_console_profile,
 )
 from crate.console_profile_identity import (
+    compile_console_package_candidate,
+    console_package_artifact_identity_is_valid,
     digest_canonical_json,
     digest_atom_provenance,
     digest_package_artifact,
@@ -223,6 +225,22 @@ def test_frozen_package_request_and_proposal_validate_in_incan() -> None:
     assert_eq(digest_package_artifact(package), package.artifact_digest)
     assert_eq(validate_request_binding(request).valid, true)
     assert_eq(validate_console_proposal(package, request, proposal).valid, true)
+
+
+def test_candidate_compilation_rebinds_integrity_before_semantic_validation() -> None:
+    """Give a reduced candidate a new valid identity before reporting its exact shape failure."""
+
+    mut package = assert_is_ok(load_package())
+    baseline_artifact_digest = package.artifact_digest
+    package.atoms = package.atoms[1:]
+    candidate = compile_console_package_candidate(package)
+    validation = validate_console_package(candidate)
+
+    assert_eq(candidate.artifact_digest == baseline_artifact_digest, false)
+    assert_eq(console_package_artifact_identity_is_valid(candidate), true)
+    assert_eq(validation.valid, false)
+    assert_eq(validation.reason, "invalid_package")
+    assert_eq(validation.errors, ["invalid_package_atoms"])
 
 
 def test_optional_support_evidence_absence_reaches_visible_unit_validation() -> None:

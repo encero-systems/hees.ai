@@ -1012,6 +1012,16 @@ def activation_label(state: ConsoleState) -> str:
     return "○ NOT ATTEMPTED"
 
 
+def candidate_identity_label(state: ConsoleState) -> str:
+    """Report candidate artifact integrity only after a completed Hees probe."""
+
+    if state.candidate_identity_valid:
+        return "verified"
+    if state.candidate_probe_state == "probe_error":
+        return "unavailable"
+    return "not checked"
+
+
 def staged_marker(staged: bool) -> str:
     """Render session staging without implying package approval."""
 
@@ -1064,12 +1074,14 @@ def profile_center_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRow]
     ), StyledRow.Candidate(f"memory staged    {len(state.candidate_memory_ids)} / {len(package.atoms)}"), probe_row(
         f"probe result     {probe_label(state)}",
         state,
-    ), probe_row(f"probe reason     {state.candidate_probe_reason}", state), activation_row(
-        f"activation       {activation_label(state)}",
+    ), probe_row(f"probe reason     {state.candidate_probe_reason}", state), probe_row(
+        f"Hees diagnostic {state.candidate_probe_diagnostic}",
         state,
-    ), StyledRow.Candidate("candidate        candidate only — not active"), StyledRow.Plain(""), StyledRow.Heading(
-        "DECLARED ACTIONS",
-    )]
+    ), StyledRow.Candidate(f"artifact identity {candidate_identity_label(state)}"), StyledRow.Candidate(
+        f"candidate digest  {bounded_text(state.candidate_artifact_digest, 38)}",
+    ), activation_row(f"activation       {activation_label(state)}", state), StyledRow.Candidate(
+        "candidate        candidate only — not active",
+    ), StyledRow.Plain(""), StyledRow.Heading("DECLARED ACTIONS")]
     for action in package.actions:
         mut evidence = "optional"
         if action.evidence_required:
@@ -1100,6 +1112,8 @@ def candidate_status_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRo
     ), probe_row(f"probe result  {probe_label(state)}", state), probe_row(
         f"probe reason  {state.candidate_probe_reason}",
         state,
+    ), probe_row(f"Hees diagnostic  {state.candidate_probe_diagnostic}", state), StyledRow.Candidate(
+        f"identity      {candidate_identity_label(state)}",
     ), StyledRow.Candidate(
         f"evidence      {len(state.candidate_evidence_ids)} / {len(run.scenario.package.atoms)} staged",
     ), StyledRow.Candidate(f"memory        {len(state.candidate_memory_ids)} / {len(run.scenario.package.atoms)} staged"), StyledRow.Plain(
@@ -1168,7 +1182,10 @@ def evidence_center_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
         lines.append(f"    {atom.evidence_kind} · review {atom.review_state} · rights {atom.rights_state}")
     atom = selected_atom(run, state.evidence_index)
     lines.extend(
-        ["", "SELECTED EVIDENCE", f"identity         {atom.evidence_id}", f"source           {atom.source_ref}", f"language         {atom.language}", f"review           {atom.review_state} · revision {atom.review_revision}", f"source rights    {source_rights_for_atom(
+        ["", "SELECTED EVIDENCE", f"identity         {atom.evidence_id}", f"source id        {atom.source_id}", f"source ref       {atom.source_ref}", f"fingerprint      {bounded_text(
+            atom.source_fingerprint,
+            58,
+        )}", f"declared span    {atom.source_span.start_utf8_byte}..{atom.source_span.end_utf8_byte} UTF-8 bytes", f"language         {atom.language}", f"review           {atom.review_state} · revision {atom.review_revision}", f"source rights    {source_rights_for_atom(
             run,
             atom,
         )}", f"atom rights      {atom.rights_state}", f"authority        {atom.authority_class}", f"provenance       {bounded_text(
@@ -1198,7 +1215,13 @@ def memory_center_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
         lines.append(f"    evidence {atom.evidence_id} · {atom.review_state} · {atom.rights_state}")
     atom = selected_atom(run, state.memory_index)
     lines.extend(
-        ["", "SELECTED MEMORY ATOM", f"identity         {atom.memory_id}", f"evidence         {atom.evidence_id}", f"source           {atom.source_ref}", f"review           {atom.review_state} · revision {atom.review_revision}", f"rights           {atom.rights_state}", f"kind             {atom.evidence_kind}", "claim"],
+        ["", "SELECTED MEMORY ATOM", f"identity         {atom.memory_id}", f"evidence         {atom.evidence_id}", f"source id        {atom.source_id}", f"source ref       {atom.source_ref}", f"fingerprint      {bounded_text(
+            atom.source_fingerprint,
+            58,
+        )}", f"declared span    {atom.source_span.start_utf8_byte}..{atom.source_span.end_utf8_byte} UTF-8 bytes", f"language         {atom.language}", f"review           {atom.review_state} · revision {atom.review_revision}", f"rights           {atom.rights_state}", f"authority        {atom.authority_class}", f"provenance       {bounded_text(
+            atom.provenance_digest,
+            58,
+        )}", f"kind             {atom.evidence_kind}", "claim"],
     )
     lines.extend([f"  {line}" for line in wrapped_text_lines(atom.claim, 56, MAX_TEXT_CHARACTERS)])
     lines.append("guidance")
@@ -1313,16 +1336,16 @@ def compact_workflow_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
     if state.surface == "profiles":
         return ["PROFILE STUDIO", f"active        {state.active_profile_id}", "candidate     session local · not active", f"probe result  {probe_label(
             state,
-        )}", f"probe reason  {state.candidate_probe_reason}", f"evidence      {len(state.candidate_evidence_ids)} / {len(
-            package.atoms,
-        )} staged", f"memory        {len(state.candidate_memory_ids)} / {len(package.atoms)} staged", f"activation    {activation_label(
+        )}", f"probe reason  {state.candidate_probe_reason}", f"diagnostic    {state.candidate_probe_diagnostic}", f"identity      {candidate_identity_label(
             state,
-        )}", "", f"package       {package.package_id} · {package.package_revision}", f"actions       {package.action_count}", f"requirements  {package.requirement_count}", f"policy        support ≥ {package.policy.min_support_bps} bps", "v probe · r reset · a test activation"]
+        )}", f"evidence      {len(state.candidate_evidence_ids)} / {len(package.atoms)} staged", f"memory        {len(
+            state.candidate_memory_ids,
+        )} / {len(package.atoms)} staged", f"activation    {activation_label(state)}", "", f"package       {package.package_id} · {package.package_revision}", f"actions       {package.action_count}", f"requirements  {package.requirement_count}", f"policy        support ≥ {package.policy.min_support_bps} bps", "v probe · r reset · a test activation"]
     if state.surface == "evidence":
         atom = selected_atom(run, state.evidence_index)
         mut lines = [f"EVIDENCE  {state.evidence_index + 1} / {len(package.atoms)}", f"{staged_marker(
             state.candidate_evidence_ids.contains(f"{atom.evidence_id}"),
-        )} {atom.evidence_id}", f"source       {atom.source_ref}", f"review       {atom.review_state}", f"rights       {atom.rights_state}", f"kind         {atom.evidence_kind}", "", "CLAIM"]
+        )} {atom.evidence_id}", f"source id    {atom.source_id}", f"source ref   {atom.source_ref}", f"span         {atom.source_span.start_utf8_byte}..{atom.source_span.end_utf8_byte}", f"language     {atom.language}", f"review       {atom.review_state}", f"rights       {atom.rights_state}", f"kind         {atom.evidence_kind}", "", "CLAIM"]
         lines.extend(wrapped_text_lines(atom.claim, 82, MAX_TEXT_CHARACTERS))
         lines.append("↑↓ select · SPACE stage · v probe")
         return lines
@@ -1330,7 +1353,7 @@ def compact_workflow_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
         atom = selected_atom(run, state.memory_index)
         mut lines = [f"MEMORY  {state.memory_index + 1} / {len(package.atoms)}", f"{staged_marker(
             state.candidate_memory_ids.contains(f"{atom.memory_id}"),
-        )} {atom.memory_id}", f"evidence     {atom.evidence_id}", f"review       {atom.review_state}", f"rights       {atom.rights_state}", "", "CLAIM"]
+        )} {atom.memory_id}", f"evidence     {atom.evidence_id}", f"source id    {atom.source_id}", f"source ref   {atom.source_ref}", f"span         {atom.source_span.start_utf8_byte}..{atom.source_span.end_utf8_byte}", f"language     {atom.language}", f"review       {atom.review_state}", f"rights       {atom.rights_state}", f"authority    {atom.authority_class}", "", "CLAIM"]
         lines.extend(wrapped_text_lines(atom.claim, 82, MAX_TEXT_CHARACTERS))
         lines.append("↑↓ select · SPACE stage · v probe")
         return lines

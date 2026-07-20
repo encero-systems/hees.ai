@@ -127,6 +127,29 @@ pub def digest_atom_provenance(package: ConsolePackage, atom: ConsoleAtom) -> Di
     return digest_serialized_json(projection.to_json())
 
 
+pub def compile_console_package_candidate(package: ConsolePackage) -> ConsolePackage:
+    """Bind a session candidate to its own artifact and atom-provenance identities."""
+
+    mut candidate = package
+    candidate.artifact_digest = digest_package_artifact(candidate)
+    for index in range(len(candidate.atoms)):
+        mut atom = candidate.atoms[index]
+        atom.provenance_digest = digest_atom_provenance(candidate, atom)
+        candidate.atoms[index] = atom
+    return candidate
+
+
+pub def console_package_artifact_identity_is_valid(package: ConsolePackage) -> bool:
+    """Check only package and atom digest integrity, without claiming semantic validity or activation."""
+
+    if digest_package_artifact(package) != package.artifact_digest:
+        return false
+    for atom in package.atoms:
+        if digest_atom_provenance(package, atom) != atom.provenance_digest:
+            return false
+    return true
+
+
 pub def digest_request_binding(request: ConsoleRequestBinding) -> DigestIdType:
     """Bind the exact request identifier and question without normalization."""
 

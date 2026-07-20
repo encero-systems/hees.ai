@@ -7,6 +7,10 @@ identity, validation, and model modules retain their separate responsibilities b
 
 pub from crate.console_profile_artifacts import evaluate_console_profile_json, evaluate_console_profile_with_artifacts
 pub from crate.console_profile_evaluation import evaluate_console_profile
+pub from crate.console_profile_identity import (
+    compile_console_package_candidate,
+    console_package_artifact_identity_is_valid,
+)
 pub from crate.console_profile_models import (
     ConsoleAction,
     ConsoleAtom,
@@ -16,6 +20,7 @@ pub from crate.console_profile_models import (
     ConsoleRequestBinding,
     ConsoleRequirement,
     ConsoleSource,
+    ProfileValidation,
     RelationObservation,
     SourceSpan,
     SupportMapping,
@@ -28,3 +33,4 @@ pub from crate.console_profile_planning import (
     plan_console_manifest_json,
     plan_console_provider_context_json,
 )
+pub from crate.console_profile_validation import validate_console_package

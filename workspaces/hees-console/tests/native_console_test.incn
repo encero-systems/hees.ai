@@ -19,6 +19,7 @@ from evaluation import (
     evaluate_offline_scenario,
     live_context_plan_json,
     plan_live_question_json,
+    probe_candidate_scenario,
 )
 from live import evaluate_live_with_transports
 from main import cli_error, usage
@@ -389,9 +390,16 @@ def test_default_demo_probes_missing_lantern_evidence_without_replacing_active_a
     state = apply_command(state, "probe-candidate", states)
     assert_eq(state.candidate_probe_state, "probe_rejected")
     assert_eq(state.candidate_probe_reason, "invalid_package")
+    assert_eq(state.candidate_probe_diagnostic, "invalid_package_atoms")
+    assert_eq(state.candidate_identity_valid, true)
+    assert_eq(state.candidate_artifact_digest.starts_with("sha256:"), true)
+    probe = assert_is_ok(probe_candidate_scenario(state.candidate_evidence_ids, state.candidate_memory_ids))
+    assert_eq(probe.baseline_artifact_digest == probe.candidate_artifact_digest, false)
+    assert_eq(probe.candidate_identity_valid, true)
+    assert_eq(probe.diagnostic, "invalid_package_atoms")
     assert_eq(
         render_screen_for_size(state, [assert_is_ok(evaluate_offline_scenario("valid"))], 160, 44).contains(
-            "✕ PROBE REJECTED",
+            "invalid_package_atoms",
         ),
         true,
     )
@@ -587,6 +595,10 @@ def test_profile_studio_exposes_evidence_memory_committee_and_result_value() -> 
     evidence = render_screen_for_size(state, runs, 160, 44)
     assert_eq(evidence.contains("SELECTED EVIDENCE"), true)
     assert_eq(evidence.contains("source rights"), true)
+    assert_eq(evidence.contains("source id"), true)
+    assert_eq(evidence.contains("fingerprint"), true)
+    assert_eq(evidence.contains("declared span"), true)
+    assert_eq(evidence.contains("language"), true)
     assert_eq(evidence.contains("source text"), true)
     assert_eq(evidence.contains("evidence_public_ranking_draft"), true)
     assert_eq(evidence.contains("pending · rights denied"), true)
@@ -594,6 +606,12 @@ def test_profile_studio_exposes_evidence_memory_committee_and_result_value() -> 
     state = apply_command(state, "show-memory", states)
     memory = render_screen_for_size(state, runs, 160, 44)
     assert_eq(memory.contains("SELECTED MEMORY ATOM"), true)
+    assert_eq(memory.contains("source id"), true)
+    assert_eq(memory.contains("fingerprint"), true)
+    assert_eq(memory.contains("declared span"), true)
+    assert_eq(memory.contains("language"), true)
+    assert_eq(memory.contains("authority"), true)
+    assert_eq(memory.contains("provenance"), true)
     assert_eq(memory.contains("memory_public_ranking_draft"), true)
     assert_eq(memory.contains("guidance"), true)
 

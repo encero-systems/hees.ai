@@ -42,6 +42,9 @@ pub model ConsoleState:
     pub candidate_memory_ids: list[str]
     pub candidate_probe_state: str
     pub candidate_probe_reason: str
+    pub candidate_probe_diagnostic: str
+    pub candidate_artifact_digest: str
+    pub candidate_identity_valid: bool
     pub candidate_activation_state: str
     pub evidence_index: int
     pub memory_index: int
@@ -104,6 +107,9 @@ pub def initial_state() -> ConsoleState:
         candidate_memory_ids=candidate_memory_catalog(),
         candidate_probe_state="not_checked",
         candidate_probe_reason="not_checked",
+        candidate_probe_diagnostic="not_checked",
+        candidate_artifact_digest="not_compiled",
+        candidate_identity_valid=false,
         candidate_activation_state="not_attempted",
         evidence_index=0,
         memory_index=0,
@@ -396,6 +402,9 @@ def invalidate_candidate_probe(state: ConsoleState) -> ConsoleState:
     mut next = state
     next.candidate_probe_state = f"not_checked"
     next.candidate_probe_reason = f"not_checked"
+    next.candidate_probe_diagnostic = f"not_checked"
+    next.candidate_artifact_digest = f"not_compiled"
+    next.candidate_identity_valid = false
     next.candidate_activation_state = f"not_attempted"
     return next
 
@@ -439,13 +448,19 @@ def probe_candidate_state(state: ConsoleState) -> ConsoleState:
     match probe_candidate_scenario(next.candidate_evidence_ids, next.candidate_memory_ids):
         Err(reason) =>
             next.candidate_probe_state = f"probe_error"
+            next.candidate_probe_diagnostic = f"{reason}"
             next.candidate_probe_reason = reason
+            next.candidate_artifact_digest = f"not_compiled"
+            next.candidate_identity_valid = false
         Ok(probe) =>
             if probe.admitted:
                 next.candidate_probe_state = f"probe_admitted"
             else:
                 next.candidate_probe_state = f"probe_rejected"
             next.candidate_probe_reason = probe.reason
+            next.candidate_probe_diagnostic = probe.diagnostic
+            next.candidate_artifact_digest = probe.candidate_artifact_digest
+            next.candidate_identity_valid = probe.candidate_identity_valid
     next.candidate_activation_state = f"not_attempted"
     return next
 

@@ -11,12 +11,16 @@ from pub::hees_ai import (
     RelationObservation,
     SynthesisObservation,
     bind_console_request_json,
+    compile_console_package_candidate,
+    console_package_artifact_identity_is_valid,
+    digest_id_type_text,
     evidence_id_text,
     evaluate_console_profile_json,
     memory_id_text,
     plan_console_manifest_json,
     plan_console_provider_context_json,
     proposal_id_text,
+    validate_console_package,
 )
 from std.json import JsonValue
 from std.serde import json
@@ -272,7 +276,11 @@ pub model CandidateScenarioProbe:
 
     pub admitted: bool
     pub reason: str
+    pub diagnostic: str
     pub retained_atom_count: int
+    pub baseline_artifact_digest: str
+    pub candidate_artifact_digest: str
+    pub candidate_identity_valid: bool
 
 
 @derive(Clone, json)
@@ -446,6 +454,7 @@ pub def probe_candidate_scenario(evidence_ids: list[str], memory_ids: list[str])
     scenario = load_offline_scenario("valid")?
     inputs = decode_authority_input(scenario)?
     mut package = inputs.package
+    baseline_artifact_digest = digest_id_type_text(package.artifact_digest)
     package_evidence_ids = [evidence_id_text(atom.evidence_id) for atom in package.atoms]
     package_memory_ids = [memory_id_text(atom.memory_id) for atom in package.atoms]
     for evidence_id in evidence_ids:
@@ -458,6 +467,12 @@ pub def probe_candidate_scenario(evidence_ids: list[str], memory_ids: list[str])
         evidence_id_text(atom.evidence_id),
     )]
     retained_atom_count = len(package.atoms)
+    package = compile_console_package_candidate(package)
+    candidate_artifact_digest = digest_id_type_text(package.artifact_digest)
+    candidate_identity_valid = console_package_artifact_identity_is_valid(package)
+    if not candidate_identity_valid:
+        return Err("candidate_identity_invalid")
+    package_validation = validate_console_package(package)
     source = evaluate_console_profile_json(
         package,
         inputs.request,
@@ -466,11 +481,18 @@ pub def probe_candidate_scenario(evidence_ids: list[str], memory_ids: list[str])
         inputs.synthesis_observations,
     )
     result = CompleteProfileProjection.from_json(source).map_err((_error) => f"candidate_probe_projection_failed")?
+    mut diagnostic = result.spectrum.reason
+    if not package_validation.valid and len(package_validation.errors) > 0:
+        diagnostic = package_validation.errors[0]
     return Ok(
         CandidateScenarioProbe(
             admitted=result.spectrum.admitted,
             reason=result.spectrum.reason,
+            diagnostic=diagnostic,
             retained_atom_count=retained_atom_count,
+            baseline_artifact_digest=baseline_artifact_digest,
+            candidate_artifact_digest=candidate_artifact_digest,
+            candidate_identity_valid=candidate_identity_valid,
         ),
     )
 
