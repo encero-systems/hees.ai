@@ -22,11 +22,11 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 ### 0:18–0:48 — Evidence becomes an executable governance profile
 
-**On screen:** Open `Evidence` with `2`, select one fictional source, and show its source-safe identity, review state, rights state, and associated memory atom. Press `Space` to unstage the Lantern evidence from the candidate profile, then press `v` to rerun the shipped acceptance interaction through the real Incan-authored Hees boundary. Hold on `REJECTED` and public reason `invalid_package` while the shipped active profile remains unchanged. Press `r` to reset the candidate and `v` to show the restored `ADMITTED` probe result. Briefly open `Profiles` with `1` to show the active-versus-candidate distinction, declared actions, evidence and memory set, and policy.
+**On screen:** Open `Evidence` with `2`, select one fictional source, and show its source-safe identity, fingerprint, UTF-8 span, language, review state, rights state, authority, provenance digest, and associated memory atom. Press `Space` to unstage the Lantern evidence from the candidate profile, then press `v` to rerun the shipped acceptance interaction through the real Incan-authored Hees boundary. Hold on `REJECTED`, stable public reason `invalid_package`, and exact profile diagnostic `invalid_package_atoms` while the shipped active profile remains unchanged. Press `r` to reset the candidate and `v` to show the restored `ADMITTED` probe result. Briefly open `Profiles` with `1` to show the active-versus-candidate distinction, declared actions, evidence and memory set, and policy.
 
 **Spoken script:**
 
-> Governance starts here, with evidence. This fictional source is bound to a reviewed memory atom with explicit identity and rights state. I can unstage it from a session-local candidate and rerun the shipped acceptance interaction. Hees rejects that probe with an exact reason; the active profile remains untouched. Resetting the candidate restores an admitted probe result. This is the beginning of the permanent Console workflow for creating, validating, comparing, and evolving reusable governance profiles.
+> Governance starts here, with evidence. This fictional source is bound to a reviewed memory atom with explicit identity, provenance, rights, and authority. I can unstage it from a session-local candidate and rerun the shipped acceptance interaction. Hees rejects the incomplete package with the stable reason `invalid_package` and pinpoints the failed atom invariant as `invalid_package_atoms`; the active profile remains untouched. Resetting the candidate restores an admitted probe result. This is the beginning of the permanent Console workflow for creating, validating, comparing, and evolving reusable governance profiles.
 
 ### 0:48–1:08 — Training by Committee pressure-tests the proposal
 
@@ -91,7 +91,7 @@ By the end of the video, a judge should understand that:
 
 - Record the frozen release artifact, never a source checkout with local paths or development-only behaviour.
 - Keep the final cut below 2:50 and confirm clear English audio at normal playback speed.
-- Demonstrate the real candidate-profile workflow before running an interaction: `2` opens Evidence, `Space` unstages a record, `v` validates and shows the exact Hees failure while the active profile remains unchanged, and `r` resets the candidate.
+- Demonstrate the real candidate-profile workflow before running an interaction: `2` opens Evidence, `Space` unstages a record, `v` validates and shows public reason `invalid_package` separately from exact diagnostic `invalid_package_atoms` while the active profile remains unchanged, and `r` resets the candidate.
 - Show one admitted result and both required adversarial cases: unknown evidence and undeclared action.
 - Keep `REPLAY` or `LIVE` visible throughout each run. Never splice replay output under a live label.
 - Use no copyrighted music, third-party logos, private browser chrome, account identifiers, notification banners, or unlicensed assets.

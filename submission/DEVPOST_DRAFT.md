@@ -52,7 +52,7 @@ The permanent hees.ai console workflow is evidence-first:
 8. Inspect the proposal, observations, Hees findings, Spectrum result, selected memory, Content DNA, receipt, and trace.
 9. Compare, replay, and export bounded evidence without turning historical output into current authority.
 
-The Build Week release makes that workflow tangible with a fictional Lantern Labs Profile Studio. Developers can browse the supplied sources and reviewed memory, stage or unstage material in a session-local candidate, rerun the shipped acceptance interaction against that candidate through the real Hees-owned boundary, and reset it. Candidate activation remains explicitly blocked because this first public profile does not yet expose a safe activation-authority API. The active shipped profile cannot be silently replaced by UI state.
+The Build Week release makes that workflow tangible with a fictional Lantern Labs Profile Studio. Developers can browse the supplied sources and reviewed memory with their identity, provenance, review, rights, and authority metadata; stage or unstage material in a session-local candidate; rerun the shipped acceptance interaction against that candidate through the real Hees-owned boundary; and reset it. A missing required atom returns stable public reason `invalid_package` plus exact profile diagnostic `invalid_package_atoms`. Candidate activation remains explicitly blocked because this first public profile does not yet expose a safe activation-authority API. The active shipped profile cannot be silently replaced by UI state.
 
 After profile work, the same Console runs one admitted and four adversarial interactions. It keeps `UNTRUSTED PROPOSAL`, evaluator observations, `HEES-CLASSIFIED FINDINGS`, terminal decision, selected memory, Content DNA, receipt, and trace visually separate.
 
@@ -173,7 +173,7 @@ The primary judge path is the unsigned native offline release. It requires no In
 1. Download **[FINALIZE BEFORE RELEASE: SUPPORTED-PLATFORM RELEASE URL]**.
 2. Verify **[FINALIZE BEFORE RELEASE: ASSET NAME AND SHA-256]**.
 3. Extract the archive and launch `./hees-console`.
-4. Open Evidence with `2`, unstage a record with `Space`, and validate with `v`. Confirm that Hees rejects the incomplete candidate while the active profile remains unchanged.
+4. Open Evidence with `2`, unstage a record with `Space`, and validate with `v`. Confirm that Hees rejects the incomplete candidate with public reason `invalid_package` and exact diagnostic `invalid_package_atoms` while the active profile remains unchanged.
 5. Reset with `r`, validate again, and inspect the restored candidate in Profiles with `1`.
 6. Open Interactions with `5` and run the admitted scenario.
 7. Open Decisions with `6` and inspect selected memory, Content DNA, and the receipt.

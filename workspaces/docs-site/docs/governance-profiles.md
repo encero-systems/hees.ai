@@ -79,11 +79,11 @@ The release exposes working candidate-profile controls rather than static future
 | `3` | Open Memory. |
 | `↑` / `↓` | Select an evidence record or memory atom. |
 | `Space` | Stage or unstage the selected record in the candidate profile. |
-| `v` | Rerun the shipped acceptance interaction through the Incan-authored Hees boundary and display its exact public reason. |
+| `v` | Rerun the shipped acceptance interaction through the Incan-authored Hees boundary and display its stable public reason plus exact profile diagnostic. |
 | `a` | Attempt activation; the current profile keeps the candidate non-active and explains the missing authority seam. |
 | `r` | Reset the session-local candidate to the shipped reviewed profile. |
 
-For the clearest demonstration, open Evidence, unstage one record, and validate. Hees rejects the incomplete candidate while the shipped active profile remains unchanged. Reset and validate again to restore the valid candidate. No action persists a package to disk, silently repairs a profile, or promotes candidate state into runtime authority.
+For the clearest demonstration, open Evidence, unstage one record, and validate. Hees rejects the incomplete candidate with stable public reason `invalid_package` and exact profile diagnostic `invalid_package_atoms` while the shipped active profile remains unchanged. Reset and validate again to restore the valid candidate. No action persists a package to disk, silently repairs a profile, or promotes candidate state into runtime authority.
 
 ## Who may decide what
 

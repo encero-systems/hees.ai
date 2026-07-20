@@ -13,7 +13,7 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 | Codex collaboration | Timestamped Codex evidence, dated commits, and README lineage | **[FINALIZE BEFORE RELEASE: CODEX EVIDENCE AND README URLS]** |
 | Majority core-functionality task | Codex `/feedback` Session ID | **[MANUAL INPUT REQUIRED: SESSION ID]** |
 | Working Incan-authored decision path | Runner source, generated artifact identity, integration tests, and valid/adversarial run evidence | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, CI, AND RUN URLS]** |
-| Working Profile Studio | Evidence and memory staging, real Hees candidate acceptance probe, blocked activation, reset, and active-profile preservation | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, SCREENSHOT, AND VIDEO TIMECODE]** |
+| Working Profile Studio | Evidence and memory staging, real Hees candidate acceptance probe, separate public reason and exact profile diagnostic, blocked activation, reset, and active-profile preservation | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, SCREENSHOT, AND VIDEO TIMECODE]** |
 | Explained profile contract | Public field-level Lantern Labs package/profile guide with ownership and validation path | **[FINALIZE BEFORE RELEASE: GOVERNANCE PROFILE DOCUMENTATION URL]** |
 | Bounded Training by Committee slice | Target derivation, complete observation coverage, Hees classification, and authority-negative tests | **[FINALIZE BEFORE RELEASE: SOURCE, TEST, AND RUN URLS]** |
 | Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` canary reaching the same runner, with model/configuration identity and public result | `NOT VERIFIED` on July 19: API reached, HTTP 429 `insufficient_quota`; retain this limitation unless a later public canary passes |

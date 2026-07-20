@@ -30,7 +30,7 @@ live model inputs ───┘                                  |
 
 The governance profile is the reusable product unit. It names the exact evidence catalog, reviewed memory, rights and review state, permitted actions, answer requirements, policy thresholds, evaluator roles, bounds, Spectrum behavior, terminal reasons, and receipt projection that apply to an interaction. A model may supply proposals and observations inside that space; it cannot write the space into existence.
 
-The Build Week Profile Studio makes that distinction executable. Evidence and memory can be staged or unstaged in a session-local candidate and sent through the shipped acceptance interaction at the real Hees boundary. A rejected candidate probe cannot replace the shipped active profile. The [Governance profiles guide](governance-profiles.md) explains the complete contract through the fictional Lantern Labs fields.
+The Build Week Profile Studio makes that distinction executable. Evidence and memory can be staged or unstaged in a session-local candidate and sent through the shipped acceptance interaction at the real Hees boundary. The result keeps the stable public contract reason separate from the exact profile diagnostic; removing required evidence produces `invalid_package` and `invalid_package_atoms`. A rejected candidate probe cannot replace the shipped active profile. The [Governance profiles guide](governance-profiles.md) explains the complete contract through the fictional Lantern Labs fields.
 
 ## One boundary, three distinct roles
 

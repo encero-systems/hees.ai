@@ -46,7 +46,7 @@ The first judge action establishes that the Console is a governed-AI development
 2. Use `↑` or `↓` to select a reviewed, rights-allowed evidence record and inspect its source identity, fingerprint, language, source span, review state, rights state, memory identity, and provenance digest.
 3. Press `Space` to unstage the selected record from the session-local candidate profile.
 4. Press `v` to rerun the shipped acceptance interaction against the candidate through the real Incan-authored Hees boundary.
-5. Confirm that the candidate probe returns `REJECTED` with Hees's exact public reason while the shipped active profile remains unchanged.
+5. Confirm that the candidate probe returns `REJECTED` with stable public reason `invalid_package` and exact profile diagnostic `invalid_package_atoms` while the shipped active profile remains unchanged.
 6. Press `a` and confirm that activation remains blocked as `candidate only — not active`; this release does not let UI state bypass a missing activation-authority API.
 7. Press `r` to reset the candidate to the shipped reviewed profile, then press `v` and confirm the restored valid result.
 8. Press `1` to inspect the active and candidate profile identities, declared actions, requirements, policy, staged evidence, staged memory, and validation state.
@@ -70,7 +70,7 @@ Replay fixtures do not store terminal results. They contain bounded request, pro
 The following checks establish the complete evidence-to-decision boundary:
 
 - The Profiles, Evidence, and Memory workspaces distinguish shipped active state from the session-local candidate.
-- Staging changes affect only the candidate; `v` invokes the real Hees acceptance probe and `a` cannot grant activation authority.
+- Staging changes affect only the candidate; `v` invokes the real Hees acceptance probe, exposes public reason `invalid_package` separately from profile diagnostic `invalid_package_atoms`, and `a` cannot grant activation authority.
 - `UNTRUSTED PROPOSAL` is visually and textually separate from `ADMITTED` or `REJECTED`.
 - Relation and synthesis observations contain bounded integer scores, while the resulting classifications are shown as `HEES-CLASSIFIED NON-AUTHORITATIVE FINDINGS`.
 - Training by Committee presents separately role-bound observations as proposal pressure tests; Hees validates complete coverage, classifies the findings, and decides without a provider-majority vote.

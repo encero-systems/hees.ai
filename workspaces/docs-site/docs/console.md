@@ -19,7 +19,7 @@ The native workspace follows the product's governed-development sequence:
 5. **Interactions** keeps replay or live input and the untrusted proposal visibly separate from the decision.
 6. **Decisions** exposes Spectrum, selected memory, Content DNA, receipt, and trace. Discarded-memory comparison belongs to the permanent product direction rather than this bounded terminal projection.
 
-In Evidence or Memory, a developer can stage or unstage a supported record in the candidate with `Space`, rerun the shipped acceptance interaction through the real Hees-owned boundary with `v`, and reset with `r`. `a` demonstrates the authority boundary by leaving the candidate explicitly `candidate only — not active`; the current public profile does not expose a safe activation API, so UI state cannot replace the shipped active profile.
+In Evidence or Memory, a developer can stage or unstage a supported record in the candidate with `Space`, rerun the shipped acceptance interaction through the real Hees-owned boundary with `v`, and reset with `r`. Candidate validation keeps the stable contract reason separate from the profile-specific diagnostic: removing required evidence returns `invalid_package` and `invalid_package_atoms`. `a` demonstrates the authority boundary by leaving the candidate explicitly `candidate only — not active`; the current public profile does not expose a safe activation API, so UI state cannot replace the shipped active profile.
 
 Offline replay is the zero-credential default transport. Each shipped replay contains an exact request binding, untrusted proposal, bounded observations, schema identities, and an integrity digest. It contains no stored decision, finding, selected memory, Content DNA, or receipt. Every replay invokes the real Hees profile again.
 
@@ -89,7 +89,7 @@ The adapter uses model identifier `gpt-5.6-sol`, strict JSON Schema structured o
 
 ## What this release proves—and where it leads
 
-An admitted result proves that the frozen profile accepted the exact package, request, proposal, support mappings, complete observation set, package-owned finding policy, structural admission, selected-memory set, Content DNA construction, and receipt projection required by `console_profile_0_1`. The candidate workflow additionally proves that UI state cannot silently replace the active profile and that candidate changes reach a real Hees acceptance result with its exact public reason.
+An admitted result proves that the frozen profile accepted the exact package, request, proposal, support mappings, complete observation set, package-owned finding policy, structural admission, selected-memory set, Content DNA construction, and receipt projection required by `console_profile_0_1`. The candidate workflow additionally proves that UI state cannot silently replace the active profile and that candidate changes reach a real Hees acceptance result with its stable public reason and exact profile diagnostic.
 
 This is the foundation for semantic and factual verification, source and claim provenance, rights assurance, conflict management, governed behavior, richer Spectrum adjudication, and durable reusable profiles. Those later assurance layers require deeper contracts and evaluators; this release establishes the authority graph, evidence eligibility, selected-memory boundary, Content DNA path, and receipt model on which they can build.
 

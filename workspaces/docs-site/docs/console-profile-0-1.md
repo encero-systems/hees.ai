@@ -4,7 +4,7 @@
 
 ## Profile Studio contract
 
-The release exposes one shipped active profile and one session-local candidate derived from it. Evidence and memory records may be staged or unstaged in the candidate, and `v` reruns the shipped acceptance interaction against that candidate through the real Incan-authored Hees boundary. Candidate activation remains blocked as `candidate only — not active` because the public profile does not yet expose a safe activation-authority API. `r` resets the candidate to the shipped profile. No candidate change persists after exit or alters the active profile used by governed interactions.
+The release exposes one shipped active profile and one session-local candidate derived from it. Evidence and memory records may be staged or unstaged in the candidate, and `v` reruns the shipped acceptance interaction against that candidate through the real Incan-authored Hees boundary. Candidate validation exposes the stable public reason separately from the exact profile diagnostic; removing required evidence returns `invalid_package` and `invalid_package_atoms`. Candidate activation remains blocked as `candidate only — not active` because the public profile does not yet expose a safe activation-authority API. `r` resets the candidate to the shipped profile. No candidate change persists after exit or alters the active profile used by governed interactions.
 
 ## Enforced ceilings
 
@@ -56,7 +56,7 @@ The following measurements were recorded on 2026-07-19 from clean source commit 
 | Largest shipped replay JSON | 13,325 bytes |
 | All five shipped replay JSON files | 22,276 bytes |
 
-The historical measured archive packages the executable, Apache-2.0 project license, repository notice, that platform build's generated third-party license report, and exact release manifest. Its release-candidate gate rebuilt the native Console, ran 17 native tests and 14 provider tests, audited dependency licenses, checked for source-path and active credential leakage, verified the archive checksum and layout, extracted it into a clean temporary directory, and reran all five offline scenarios without an Incan compiler, source checkout, package manager, network service, or API key. The redesigned source currently has 17 provider-boundary tests; the final three-platform release must record the frozen native count and refresh the complete release-gate results from its audited artifacts.
+The historical measured archive packages the executable, Apache-2.0 project license, repository notice, that platform build's generated third-party license report, and exact release manifest. Its release-candidate gate rebuilt the native Console, ran 17 native tests and 14 provider tests, audited dependency licenses, checked for source-path and active credential leakage, verified the archive checksum and layout, extracted it into a clean temporary directory, and reran all five offline scenarios without an Incan compiler, source checkout, package manager, network service, or API key. The redesigned source currently passes 47 Hees authority and contract tests, 27 native Console tests, and 17 provider-boundary tests. The final three-platform release must rerun those frozen suites and refresh the complete release-gate results from its audited artifacts.
 
 The timing measurement used Hyperfine `--shell=none` with five warm-up runs and fifty measured fresh processes. It is a warm filesystem-cache result and does not claim cold-boot latency. Peak resident memory came from macOS `/usr/bin/time -l`; the maximum is reported rather than the mean.
 

@@ -44,7 +44,7 @@ Training by Committee is the provider-neutral workflow for pressure-testing cand
 
 - **Profiles:** compare the shipped active profile with a session-local candidate, inspect its actions, requirements, policy, evidence, memory, and validation state.
 - **Evidence and memory:** browse exact source identities, provenance, review and rights state; stage or unstage supported material in the candidate.
-- **Real Hees acceptance probe:** run candidate changes through the shipped Incan-authored acceptance interaction. The probe returns `ADMITTED` or `REJECTED` with Hees's exact public reason; candidate state remains `candidate only — not active` and cannot replace the shipped profile.
+- **Real Hees acceptance probe:** run candidate changes through the shipped Incan-authored acceptance interaction. The probe returns `ADMITTED` or `REJECTED` with Hees's stable public reason and its exact profile diagnostic; for example, removing required evidence produces public reason `invalid_package` and diagnostic `invalid_package_atoms`. Candidate state remains `candidate only — not active` and cannot replace the shipped profile.
 - **Training by Committee:** inspect Hees-derived relation, contradiction, and synthesis targets, bounded evaluator observations, and the findings Hees classifies under profile-owned thresholds.
 - **Governed interactions:** run one admitted and four adversarial scenarios through the active profile.
 - **Terminal artifacts:** inspect the Spectrum result, selected memory, Content DNA, receipt, and non-authoritative trace.
@@ -106,7 +106,7 @@ See [TESTING.md](TESTING.md) for the complete judge path, expected trust labels,
 | `7` | Keyboard and authority help |
 | `↑` / `↓` or `k` / `j` | Previous or next visible record or interaction |
 | `Space` | Stage or unstage selected Evidence or Memory in the candidate profile |
-| `v` | Run the candidate through the shipped Hees acceptance probe and show its exact public reason |
+| `v` | Run the candidate through the shipped Hees acceptance probe and show its stable public reason plus exact profile diagnostic |
 | `a` | Attempt candidate activation; this profile keeps it explicitly non-active |
 | `r` | Reset the session-local candidate to the shipped reviewed profile |
 | `tab` | Move to the next contextual tab or control |
@@ -116,7 +116,7 @@ See [TESTING.md](TESTING.md) for the complete judge path, expected trust labels,
 | `b` | Collapse or expand the interaction rail |
 | `q` | Quit |
 
-Profile edits are candidate state only. `v` reruns the shipped acceptance interaction through the real Hees boundary; rendering code cannot turn a probe result into admission. `a` cannot promote the candidate because this profile does not yet expose a safe activation-authority API. While search has focus, type to filter, use `↑` and `↓` to highlight a tag, use `tab` to check or uncheck it, and use `ctrl-u` to clear the query. Interactive states use symbols and explicit text as complete signals, so authority remains legible without colour.
+Profile edits are candidate state only. `v` reruns the shipped acceptance interaction through the real Hees boundary; rendering code cannot turn a probe result into admission. Candidate rejection keeps the stable public reason separate from the profile-specific diagnostic, so `invalid_package` remains the contract reason while `invalid_package_atoms` identifies the exact failed invariant. `a` cannot promote the candidate because this profile does not yet expose a safe activation-authority API. While search has focus, type to filter, use `↑` and `↓` to highlight a tag, use `tab` to check or uncheck it, and use `ctrl-u` to clear the query. Interactive states use symbols and explicit text as complete signals, so authority remains legible without colour.
 
 #### Modes
 
