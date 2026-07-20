@@ -1,0 +1,862 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>hees.ai documentation</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Checked contracts and developer guidance for the Incan-first Hees governance runtime">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/hees-46bb4b5d.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-007086af.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-4a161493.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">hees.ai documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/encero-systems/hees.ai" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="hees"><a class="header" href="#hees">Hees</a></h1>
+<p>Hees is an Incan-first governed-intelligence runtime. It turns evidence, reviewed memory, declared authority, policy, and evaluator requirements into executable governance profiles, then produces inspectable terminal decisions with selected memory, Content DNA, and receipts.</p>
+<blockquote>
+<p><strong>The model proposes. Hees decides.</strong></p>
+</blockquote>
+<h2 id="the-profile-is-the-unit-of-governed-ai-development"><a class="header" href="#the-profile-is-the-unit-of-governed-ai-development">The profile is the unit of governed AI development</a></h2>
+<p>A governance profile exists before a model runs. It declares:</p>
+<ul>
+<li>which source evidence and reviewed memory are eligible;</li>
+<li>who owns review, rights, provenance, and authority state;</li>
+<li>which actions and answer requirements exist;</li>
+<li>how bounded evaluator observations become Hees findings;</li>
+<li>which Spectrum behavior and terminal reasons apply; and</li>
+<li>how selected memory, Content DNA, receipts, replay, and export behave.</li>
+</ul>
+<p>This shifts governance from an after-the-fact output filter into an executable development artifact that can be inspected, tested, replayed, and eventually reused across models and domains.</p>
+<h2 id="what-the-current-release-makes-tangible"><a class="header" href="#what-the-current-release-makes-tangible">What the current release makes tangible</a></h2>
+<p>The native <code>console_profile_0_1</code> release provides a session-local Profile Studio over original fictional evidence, real candidate-profile validation through Hees, one admitted and four adversarial interactions, bounded Training by Committee, a profile-specific Spectrum operation, selected memory, Content DNA, receipts, offline replay, and an optional live GPT-5.6 transport.</p>
+<p>The underlying <code>0.0.1</code> library remains smaller: it supplies checked package and proposal contracts, fail-closed structural admission, deterministic finding classification, selected-memory finality, and terminal artifact construction for the bounded profile.</p>
+<p>Together they establish a meaningful foundation for the larger direction: semantic and factual verification, source and claim provenance, rights assurance, conflict management, governed behavior, richer Spectrum adjudication, durable IncQL-DB workspaces, and reusable cross-domain profiles.</p>
+<p>Start with <a href="#governance-profiles">Governance profiles</a> for the product model and worked fictional contract, continue with <a href="#heesai-console">hees.ai console</a> for the executable workflow, and use <a href="#contracts">Contracts</a> as the checked library reference.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="heesai-console"><a class="header" href="#heesai-console">hees.ai console</a></h1>
+<p>hees.ai console is the terminal-first, local-first development environment for governed AI. It begins with evidence and ends with an inspectable decision: developers create and validate reusable governance profiles, pressure-test material and proposals through Training by Committee, run live or saved interactions, and inspect Spectrum, selected memory, Content DNA, receipts, and traces.</p>
+<p>The product is provider-neutral and domain-neutral. A Console profile declares the exact evidence, memory, rights, actions, requirements, policy, evaluator roles, bounds, terminal behavior, and artifacts available in one governed context.</p>
+<p>The current executable implements <code>console_profile_0_1</code> over one original fictional lesson-support package. It provides a bounded session-local Profile Studio plus the complete interaction path; the fixture and optional provider do not define the permanent product.</p>
+<blockquote>
+<p><strong>GPT-5.6 proposes. Hees decides.</strong> This line describes the optional live adapter in the initial profile. GPT-5.6 supplies structured, untrusted proposals and non-authoritative observations; the Incan-authored Hees profile validates the complete interaction and selects the terminal result.</p>
+</blockquote>
+<h2 id="what-the-current-profile-does"><a class="header" href="#what-the-current-profile-does">What the current profile does</a></h2>
+<p>The native workspace follows the product’s governed-development sequence:</p>
+<ol>
+<li><strong>Profiles</strong> shows the shipped active profile beside the session-local candidate, including actions, requirements, policy, staged evidence and memory, and validation state.</li>
+<li><strong>Evidence</strong> exposes the fictional source and evidence catalog with exact identity, fingerprint, language, source span, review, rights, and provenance state.</li>
+<li><strong>Memory</strong> distinguishes reviewed atoms from known but non-admitted material.</li>
+<li><strong>Committee</strong> shows Hees-derived targets, bounded observations, Hees-classified findings, and profile-owned policy effects.</li>
+<li><strong>Interactions</strong> keeps replay or live input and the untrusted proposal visibly separate from the decision.</li>
+<li><strong>Decisions</strong> exposes Spectrum, selected memory, Content DNA, receipt, and trace. Discarded-memory comparison belongs to the permanent product direction rather than this bounded terminal projection.</li>
+</ol>
+<p>In Evidence or Memory, a developer can stage or unstage a supported record in the candidate with <code>Space</code>, rerun the shipped acceptance interaction through the real Hees-owned boundary with <code>v</code>, and reset with <code>r</code>. Candidate validation keeps the stable contract reason separate from the profile-specific diagnostic: removing required evidence returns <code>invalid_package</code> and <code>invalid_package_atoms</code>. <code>a</code> demonstrates the authority boundary by leaving the candidate explicitly <code>candidate only — not active</code>; the current public profile does not expose a safe activation API, so UI state cannot replace the shipped active profile.</p>
+<p>Offline replay is the zero-credential default transport. Each shipped replay contains an exact request binding, untrusted proposal, bounded observations, schema identities, and an integrity digest. It contains no stored decision, finding, selected memory, Content DNA, or receipt. Every replay invokes the real Hees profile again.</p>
+<p>The full-screen Console keeps profile declarations, candidate state, source evidence, reviewed memory, proposal, support mappings, Hees-derived verifier manifest, provider observations, Hees findings, Spectrum result, selected memory, Content DNA, receipt, and non-authoritative execution trace in separate surfaces. Direct question and source text appear only in the interactive surface; headless output redacts them by default.</p>
+<p>The optional live mode binds a question through Hees, sends a strict structured proposal request to the OpenAI Responses API, asks role-bound evaluators to inspect only the exact targets derived by Hees, and passes the normalized inputs through the same terminal profile. Replay supplies saved inputs rather than making provider calls. After transport-specific decoding, both modes enter identical validation, finding-classification, Spectrum, memory-selection, Content DNA, and receipt code. Live mode fails closed on missing credentials, provider failure, malformed output, excessive size or nesting, identity mismatch, and incomplete observation coverage; it never silently changes to replay while retaining a live label.</p>
+<h2 id="trust-boundary"><a class="header" href="#trust-boundary">Trust boundary</a></h2>
+<pre><code class="language-text">fictional evidence -&gt; candidate memory atoms -&gt; reviewed memory atoms
+                                                        |
+                                             governance profile
+                                                        |
+saved replay inputs ─┐                                  v
+                    ├─&gt; proposal + committee observations
+live GPT-5.6 inputs ─┘                                  |
+                                                        v
+                     compiled Incan-authored Hees profile
+               validation -&gt; findings -&gt; bounded Spectrum
+                                                        |
+                       governed terminal decision
+                            /                  \
+   ADMITTED + selected memory + Content DNA + receipt   REJECTED + exact reason
+</code></pre>
+<p>Console owns presentation, bounded provider transport, replay loading, and session-local candidate state. It calls the public Hees profile directly and does not reconstruct terminal authority from JSON. Hees owns profile validation, package, request, proposal, manifest, finding, policy, Spectrum, selected-memory, Content DNA, and receipt behavior.</p>
+<h2 id="run-offline"><a class="header" href="#run-offline">Run offline</a></h2>
+<p>The release archive contains one native executable plus the project license, notice, third-party license report, and release manifest. After extracting a supported archive, launch the Console without a compiler, package manager, source checkout, network connection, or API key:</p>
+<pre><code class="language-bash">./hees-console
+</code></pre>
+<p>Keys <code>1</code> through <code>7</code> open Profiles, Evidence, Memory, Committee, Interactions, Decisions, and Help. In Evidence or Memory, use <code>↑</code> and <code>↓</code> to select a record, <code>Space</code> to stage or unstage it in the candidate, <code>v</code> to validate through Hees, <code>a</code> to test the explicitly blocked activation boundary, and <code>r</code> to reset. In Interactions, use <code>↑</code> and <code>↓</code>, or <code>j</code> and <code>k</code>, to move through the admitted and adversarial scenarios. Press <code>b</code> to collapse or expand the item rail and <code>q</code> to quit.</p>
+<p>Search integrates tags into the free-text control. Press <code>/</code>, type a query, use <code>↑</code> and <code>↓</code> to highlight a tag, use <code>tab</code> to check or uncheck it, and use <code>ctrl-u</code> to clear the query. Interactive states use explicit text and stable symbols as complete signals without colour.</p>
+<p>Headless mode evaluates one scenario and emits stable, control-free, privacy-redacted output:</p>
+<pre><code class="language-bash">./hees-console --headless --scenario valid
+./hees-console --headless --scenario undeclared-action
+./hees-console --headless --scenario unknown-evidence
+./hees-console --headless --scenario unknown-memory
+./hees-console --headless --scenario non-admitted-memory
+</code></pre>
+<h2 id="run-live"><a class="header" href="#run-live">Run live</a></h2>
+<p>Live mode is explicit and requires <code>OPENAI_API_KEY</code>. The key is read only from the environment and is excluded from request bodies, arguments, output, traces, Content DNA, receipts, fixtures, and release artifacts.</p>
+<pre><code class="language-zsh">(
+  read -rs "OPENAI_API_KEY?OpenAI API key: "
+  print
+  export OPENAI_API_KEY
+  ./hees-console \
+    --mode live \
+    --question "What order should I use for the Lantern Path cards?"
+)
+</code></pre>
+<p>The adapter uses model identifier <code>gpt-5.6-sol</code>, strict JSON Schema structured outputs, low reasoning effort, bounded output tokens, a fifteen-second per-call timeout, no tools, and sequential committee calls. Preflight permits one proposal call plus at most eight committee calls, so one invocation can make at most nine calls and run for at most 135 seconds. Each request body is limited to 65,536 UTF-8 bytes, and the adapter performs no retries. Provider availability is not required for offline replay.</p>
+<h2 id="what-this-release-provesand-where-it-leads"><a class="header" href="#what-this-release-provesand-where-it-leads">What this release proves—and where it leads</a></h2>
+<p>An admitted result proves that the frozen profile accepted the exact package, request, proposal, support mappings, complete observation set, package-owned finding policy, structural admission, selected-memory set, Content DNA construction, and receipt projection required by <code>console_profile_0_1</code>. The candidate workflow additionally proves that UI state cannot silently replace the active profile and that candidate changes reach a real Hees acceptance result with its stable public reason and exact profile diagnostic.</p>
+<p>This is the foundation for semantic and factual verification, source and claim provenance, rights assurance, conflict management, governed behavior, richer Spectrum adjudication, and durable reusable profiles. Those later assurance layers require deeper contracts and evaluators; this release establishes the authority graph, evidence eligibility, selected-memory boundary, Content DNA path, and receipt model on which they can build.</p>
+<p>The <a href="#governance-profiles">Governance profiles guide</a> explains the field-level package contract. The <a href="#console-profile-01-bounds-and-evidence">initial-profile bounds and measurements</a> page records enforced ceilings, verified local release-candidate measurements, supported evidence, and unresolved release gates. <a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/010-hees-console.md">RFC 010</a> defines the permanent product contract.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="governance-profiles"><a class="header" href="#governance-profiles">Governance profiles</a></h1>
+<p>A governance profile is the executable unit of governed AI development in hees.ai. It connects a domain package to a controlled interaction by declaring which evidence and memory are eligible, what a model may propose, how provider observations are interpreted, and which terminal artifacts Hees must produce.</p>
+<p>The model does not author this contract. A profile remains reusable across model providers because proposals and evaluator observations enter as bounded inputs while evidence state, policy, Spectrum behavior, selected memory, Content DNA, and terminal authority remain governed by Hees.</p>
+<h2 id="from-evidence-to-a-governed-interaction"><a class="header" href="#from-evidence-to-a-governed-interaction">From evidence to a governed interaction</a></h2>
+<p>The permanent hees.ai console workflow is:</p>
+<ol>
+<li>Load and inspect lawful source evidence.</li>
+<li>Derive or enter candidate memory atoms while keeping model suggestions visibly untrusted.</li>
+<li>Establish package-owned provenance, review, rights, authority, and evidence declarations.</li>
+<li>Define permitted actions, answer requirements, policy thresholds, and evaluator roles.</li>
+<li>Validate the resulting governance profile through Hees.</li>
+<li>Pressure-test memory and proposals through Training by Committee.</li>
+<li>Run live or saved inputs through the active compiled profile.</li>
+<li>Inspect the Spectrum decision, selected and discarded memory, Content DNA, receipt, and trace.</li>
+<li>Save, compare, replay, or export bounded artifacts without treating a historical decision as current authority.</li>
+</ol>
+<p>The Build Week release makes this workflow tangible through the fictional Lantern Labs profile. Its Profile Studio is deliberately session-local: a developer can inspect the supplied evidence and memory, stage or unstage profile-supported material in a candidate, rerun the shipped acceptance interaction against that candidate through the Hees-owned boundary, and reset the workspace. Candidate activation is deliberately blocked as <code>candidate only — not active</code> because the current public profile does not expose a safe activation-authority API. General document ingestion, durable workspaces, arbitrary package compilation, and governed activation of edited profiles are later product capabilities.</p>
+<h2 id="what-the-profile-contract-declares"><a class="header" href="#what-the-profile-contract-declares">What the profile contract declares</a></h2>
+<p>“Package contract” is shorthand for a concrete set of declarations, not an opaque file or a prompt.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Declaration</th><th>Example in <code>console_profile_0_1</code></th><th>Owner</th><th>Effect on a run</th></tr>
+</thead>
+<tbody>
+<tr><td>Profile and package identity</td><td><code>console_profile_0_1</code>, <code>lantern_labs</code>, revision <code>1.0.0</code></td><td>Package author; validated by Hees</td><td>Binds every request, proposal, observation, and artifact to one exact governed context.</td></tr>
+<tr><td>Source catalog</td><td><code>source_lantern_path</code>, English fictional lesson note, exact fingerprint</td><td>Package author</td><td>Establishes which source bytes and source-safe identities are available to the profile.</td></tr>
+<tr><td>Review and rights state</td><td><code>approved</code>, <code>allowed</code> for the Lantern Path atom</td><td>Package author or authorized reviewer</td><td>Determines whether material may enter admitted memory. A model cannot grant either state.</td></tr>
+<tr><td>Memory atom</td><td><code>memory_lantern_sequence</code> linked to <code>evidence_lantern_path</code> and an exact source span</td><td>Package author; validated by Hees</td><td>Supplies a bounded claim and guidance unit that can be selected only through a valid support mapping.</td></tr>
+<tr><td>Permitted actions</td><td><code>explain_lesson</code>, <code>compare_observations</code>, <code>propose_practice_step</code></td><td>Package author</td><td>Any other action, such as <code>assign_final_grade</code>, is rejected as <code>unknown_action</code>.</td></tr>
+<tr><td>Answer requirements</td><td><code>explain_sequence</code>, <code>ground_in_lesson</code></td><td>Package author</td><td>Defines what the visible answer must cover and therefore which synthesis targets Hees derives.</td></tr>
+<tr><td>Policy thresholds</td><td>minimum support <code>6500</code> basis points, maximum contradiction <code>3500</code> basis points</td><td>Package author; interpreted by Hees</td><td>Turns bounded evaluator observations into deterministic Hees findings.</td></tr>
+<tr><td>Evaluator roles</td><td>evidence relation, contradiction cross-check, synthesis coverage</td><td>Hees-derived manifest and profile contract</td><td>Limits Training by Committee to exact targets and roles; evaluator output remains non-authoritative.</td></tr>
+<tr><td>Terminal behavior</td><td>admitted or closed rejection reason, selected memory, Content DNA, receipt</td><td>Hees</td><td>Produces the only authoritative result. The Console renders it but cannot fabricate or reinterpret it.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="worked-fictional-example"><a class="header" href="#worked-fictional-example">Worked fictional example</a></h2>
+<p>The Lantern Path source says that learners place an amber card, then a blue card, then a green card. The profile does not place that paragraph directly into a model prompt and hope for the best. It governs the path from source to answer:</p>
+<pre><code class="language-text">source
+  source_id:           source_lantern_path
+  source_fingerprint:  sha256:5503ee...
+  language:            en
+
+reviewed memory atom
+  memory_id:           memory_lantern_sequence
+  evidence_id:         evidence_lantern_path
+  source_span:         UTF-8 bytes 47..138
+  review_state:        approved
+  rights_state:        allowed
+  evidence_kind:       lesson_fact
+  provenance_digest:   sha256:b377db...
+
+governance profile
+  permitted action:    explain_lesson
+  requirements:        explain_sequence, ground_in_lesson
+  minimum support:     6500 basis points
+  maximum contradiction: 3500 basis points
+</code></pre>
+<p>For the valid interaction, the model proposes the declared <code>explain_lesson</code> action, cites <code>evidence_lantern_path</code>, and maps its visible units to <code>memory_lantern_sequence</code>. Hees derives exact relation, contradiction, and synthesis targets. Training by Committee supplies bounded observations for those targets. Hees checks their identity and complete coverage, classifies them under the profile’s thresholds, and performs the terminal Spectrum operation.</p>
+<p>If the result is admitted, Hees freezes <code>memory_lantern_sequence</code> as selected memory, constructs Content DNA from that exact selection, and emits the receipt. If the proposal cites <code>evidence_missing_lantern</code>, Hees returns <code>unknown_evidence</code>. If it proposes <code>assign_final_grade</code>, Hees returns <code>unknown_action</code>. Valid identifier syntax never creates package authority.</p>
+<p>The same profile also contains <code>memory_public_ranking_draft</code>, a deliberately non-admitted atom whose review state is <code>pending</code> and rights state is <code>denied</code>. The atom exists so developers can inspect the difference between material that is known to the workspace and material that is eligible for a governed answer. A proposal cannot use it merely because it appears in the package data.</p>
+<h2 id="try-the-session-local-profile-studio"><a class="header" href="#try-the-session-local-profile-studio">Try the session-local Profile Studio</a></h2>
+<p>The release exposes working candidate-profile controls rather than static future-product buttons:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Key</th><th>Action</th></tr>
+</thead>
+<tbody>
+<tr><td><code>1</code></td><td>Open Profiles and inspect the shipped active profile beside the candidate.</td></tr>
+<tr><td><code>2</code></td><td>Open Evidence.</td></tr>
+<tr><td><code>3</code></td><td>Open Memory.</td></tr>
+<tr><td><code>↑</code> / <code>↓</code></td><td>Select an evidence record or memory atom.</td></tr>
+<tr><td><code>Space</code></td><td>Stage or unstage the selected record in the candidate profile.</td></tr>
+<tr><td><code>v</code></td><td>Rerun the shipped acceptance interaction through the Incan-authored Hees boundary and display its stable public reason plus exact profile diagnostic.</td></tr>
+<tr><td><code>a</code></td><td>Attempt activation; the current profile keeps the candidate non-active and explains the missing authority seam.</td></tr>
+<tr><td><code>r</code></td><td>Reset the session-local candidate to the shipped reviewed profile.</td></tr>
+</tbody>
+</table>
+</div>
+<p>For the clearest demonstration, open Evidence, unstage one record, and validate. Hees rejects the incomplete candidate with stable public reason <code>invalid_package</code> and exact profile diagnostic <code>invalid_package_atoms</code> while the shipped active profile remains unchanged. Reset and validate again to restore the valid candidate. No action persists a package to disk, silently repairs a profile, or promotes candidate state into runtime authority.</p>
+<h2 id="who-may-decide-what"><a class="header" href="#who-may-decide-what">Who may decide what</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Surface</th><th>May propose or edit</th><th>May make authoritative</th></tr>
+</thead>
+<tbody>
+<tr><td>Candidate source extraction and atom text</td><td>Developer or provider adapter</td><td>Nobody until package-owned review and validation succeed</td></tr>
+<tr><td>Review, rights, provenance, authority class, actions, requirements, and policy</td><td>Authorized package authoring workflow</td><td>Hees validates the declared profile; a provider cannot self-declare authority</td></tr>
+<tr><td>Proposal text and support mappings</td><td>Model or deterministic fixture</td><td>Never by themselves</td></tr>
+<tr><td>Relation and synthesis observations</td><td>Bounded evaluator roles</td><td>Never by themselves</td></tr>
+<tr><td>Findings and policy effects</td><td>Hees</td><td>Hees only</td></tr>
+<tr><td>Spectrum result and selected memory</td><td>Hees</td><td>Hees only</td></tr>
+<tr><td>Content DNA and receipt</td><td>Hees</td><td>Hees only</td></tr>
+<tr><td>Rendering, navigation, local candidate state, and transport</td><td>Console</td><td>Presentation and platform behavior only</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="replay-and-live-mode-use-one-authority-path"><a class="header" href="#replay-and-live-mode-use-one-authority-path">Replay and live mode use one authority path</a></h2>
+<p>Replay and live mode are input transports, not alternative governance implementations.</p>
+<pre><code class="language-text">saved replay inputs ─┐
+                    ├─&gt; normalize and validate ─&gt; compiled Hees profile ─&gt; decision and artifacts
+live GPT-5.6 inputs ─┘
+</code></pre>
+<p>A replay stores an integrity-checked request, proposal, bounded observations, and schema identities. It does not store findings, a Spectrum result, selected memory, Content DNA, or a receipt. Live mode obtains the same classes of bounded proposal and observation input from GPT-5.6. After transport-specific decoding, both modes invoke the same validation, manifest derivation, observation classification, Spectrum operation, memory selection, Content DNA construction, and receipt code.</p>
+<p>Replay therefore demonstrates real offline governance over saved inputs. It is not a mock and it is not evidence that a live provider call occurred.</p>
+<h2 id="what-this-release-provesand-where-it-leads-1"><a class="header" href="#what-this-release-provesand-where-it-leads-1">What this release proves—and where it leads</a></h2>
+<p>The Build Week profile proves that a self-contained Incan application can make evidence state, reviewed memory, package authority, model proposals, evaluator observations, Hees findings, terminal decisions, Content DNA, and receipts separate and inspectable. It proves deterministic admission and rejection under one exact fictional profile and provides a bounded Profile Studio for exercising candidate evidence state.</p>
+<p>That is a meaningful foundation for the larger Hees direction: semantic and factual verification, source and claim provenance, rights assurance, governed behavior, conflict management, richer Spectrum adjudication, durable IncQL-DB-backed workspaces, and reusable profiles across domains and providers. Those capabilities become credible because the authority graph and terminal artifact path already exist; later profiles can deepen the assurance without handing the decision back to a model or UI host.</p>
+<p>Continue with <a href="#heesai-console">hees.ai console</a> for the interaction guide, <a href="#architecture">Architecture</a> for the complete authority path, and <a href="#console-profile-01-bounds-and-evidence">Console profile 0.1 bounds</a> for the enforced limits of this release.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="console-profile-01-bounds-and-evidence"><a class="header" href="#console-profile-01-bounds-and-evidence">Console profile 0.1 bounds and evidence</a></h1>
+<p><code>console_profile_0_1</code> is the first bounded implementation profile for hees.ai console. It combines a session-local Profile Studio over the supplied fictional evidence catalog with one complete governed-interaction path. The exact profile label remains <code>console_profile_0_1</code>; the product itself is provider-neutral and domain-neutral.</p>
+<h2 id="profile-studio-contract"><a class="header" href="#profile-studio-contract">Profile Studio contract</a></h2>
+<p>The release exposes one shipped active profile and one session-local candidate derived from it. Evidence and memory records may be staged or unstaged in the candidate, and <code>v</code> reruns the shipped acceptance interaction against that candidate through the real Incan-authored Hees boundary. Candidate validation exposes the stable public reason separately from the exact profile diagnostic; removing required evidence returns <code>invalid_package</code> and <code>invalid_package_atoms</code>. Candidate activation remains blocked as <code>candidate only — not active</code> because the public profile does not yet expose a safe activation-authority API. <code>r</code> resets the candidate to the shipped profile. No candidate change persists after exit or alters the active profile used by governed interactions.</p>
+<h2 id="enforced-ceilings"><a class="header" href="#enforced-ceilings">Enforced ceilings</a></h2>
+<p>The table records enforced implementation limits, not recommended permanent-product defaults. Byte limits count UTF-8 bytes. Text and identifier limits count Unicode characters unless a byte unit is stated explicitly.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Surface</th><th>Enforced ceiling</th></tr>
+</thead>
+<tbody>
+<tr><td>Raw runner request</td><td>262,144 bytes, one canonical JSON record, at most 16 nested JSON containers</td></tr>
+<tr><td>Raw runner response</td><td>65,536 bytes including the terminal line feed</td></tr>
+<tr><td>Provider request body</td><td>65,536 UTF-8 bytes</td></tr>
+<tr><td>Provider response envelope</td><td>131,072 bytes and at most 16 nested JSON containers</td></tr>
+<tr><td>Structured proposal output</td><td>32,768 bytes and at most 2,048 output tokens</td></tr>
+<tr><td>Structured observation output</td><td>8,192 bytes and at most 512 output tokens</td></tr>
+<tr><td>Normalized proposal</td><td>131,072 UTF-8 bytes after serialization</td></tr>
+<tr><td>Request question</td><td>512 characters and at least one non-whitespace character</td></tr>
+<tr><td>Identifier</td><td>128 characters using the closed lowercase identifier grammar</td></tr>
+<tr><td>Source reference</td><td>256 characters under the closed fictional-reference grammar</td></tr>
+<tr><td>Package mission</td><td>512 characters</td></tr>
+<tr><td>Fixed package</td><td>Exactly 3 sources, 3 actions, and 4 atoms; 1 through 4 requirements</td></tr>
+<tr><td>Source text</td><td>4,096 characters per source</td></tr>
+<tr><td>Atom content</td><td>512 characters each for claim and guidance</td></tr>
+<tr><td>Visible response</td><td>1 through 8 ordered visible units, each at most 1,024 characters</td></tr>
+<tr><td>Proposal evidence</td><td>At most 8 unique evidence identifiers</td></tr>
+<tr><td>Unit requirements</td><td>1 through 4 unique requirement identifiers per visible unit</td></tr>
+<tr><td>Support mappings</td><td>Exactly one per visible unit and at most 8 total; at most 4 evidence identifiers per mapping</td></tr>
+<tr><td>Verifier manifest</td><td>At most 22 targets: 17 relation or contradiction targets and 5 synthesis targets</td></tr>
+<tr><td>Provider committee</td><td>The generic manifest can describe 22 targets, but live preflight permits at most 8 sequential committee calls and one proposal call; each call has a 15-second timeout, for at most 9 calls and 135 seconds per complete live invocation</td></tr>
+<tr><td>Selected memory</td><td>At most 3 atoms in this fixed package, with no duplicates</td></tr>
+<tr><td>Content DNA</td><td>Every and only selected memory, therefore at most 3 entries for this profile</td></tr>
+<tr><td>Receipt identifiers</td><td>At most 8 admitted evidence identifiers and 8 selected-memory identifiers; the fixed package narrows selected memory to 3</td></tr>
+<tr><td>Inspector rendering</td><td>At most 8 displayed list items per section, 240 characters per displayed prose value, and 1,200 characters for expanded Content DNA or receipt JSON</td></tr>
+<tr><td>Retained workspace state</td><td>One shipped active profile, one session-local candidate with staged evidence and memory plus validation state, and one interaction containing request, proposal, manifest, observations, findings, terminal result, selected memory, receipt, Content DNA, and non-authoritative trace; no durable persistence</td></tr>
+</tbody>
+</table>
+</div>
+<p>The runner and provider reject excessive nesting before invoking a JSON parser. Closed typed decoding and canonical round-trip checks reject unknown or duplicate authority-bearing fields. A host may impose stricter platform limits but cannot raise Hees limits or truncate one input into a different valid value.</p>
+<h2 id="measured-macos-arm64-release-candidate"><a class="header" href="#measured-macos-arm64-release-candidate">Measured macOS ARM64 release candidate</a></h2>
+<p>The following measurements were recorded on 2026-07-19 from clean source commit <code>982932a095c3a61806b6032a74adb36d703e1925</code>, using released Incan <code>0.4.0</code> on macOS <code>26.5.2</code>, Apple M5 Max ARM64. They describe one local candidate and do not establish support for another platform. This snapshot is evidence for the measured implementation, not a substitute for the checksum sidecar of the eventual public release.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Measurement</th><th>Observed value</th></tr>
+</thead>
+<tbody>
+<tr><td>Native executable</td><td>6,159,184 bytes</td></tr>
+<tr><td>Complete compressed archive</td><td>2,364,971 bytes</td></tr>
+<tr><td>Candidate archive SHA-256</td><td><code>3bfaa19d5ccc2e99457ab922add3b9b980e70aea5e42ea98c128fae211500ee3</code></td></tr>
+<tr><td>Valid headless report</td><td>7,185 bytes with direct question and source text redacted</td></tr>
+<tr><td>Warm-cache headless execution</td><td>9.3 ms mean, 1.2 ms standard deviation, 7.7–13.7 ms range over 50 fresh processes</td></tr>
+<tr><td>Peak resident set size</td><td>5,603,328 bytes maximum across five fresh-process runs</td></tr>
+<tr><td>Shipped package JSON</td><td>6,891 bytes</td></tr>
+<tr><td>Largest shipped replay JSON</td><td>13,325 bytes</td></tr>
+<tr><td>All five shipped replay JSON files</td><td>22,276 bytes</td></tr>
+</tbody>
+</table>
+</div>
+<p>The historical measured archive packages the executable, Apache-2.0 project license, repository notice, that platform build’s generated third-party license report, and exact release manifest. Its release-candidate gate rebuilt the native Console, ran 17 native tests and 14 provider tests, audited dependency licenses, checked for source-path and active credential leakage, verified the archive checksum and layout, extracted it into a clean temporary directory, and reran all five offline scenarios without an Incan compiler, source checkout, package manager, network service, or API key. The redesigned source currently passes 47 Hees authority and contract tests, 27 native Console tests, and 17 provider-boundary tests. The final three-platform release must rerun those frozen suites and refresh the complete release-gate results from its audited artifacts.</p>
+<p>The timing measurement used Hyperfine <code>--shell=none</code> with five warm-up runs and fifty measured fresh processes. It is a warm filesystem-cache result and does not claim cold-boot latency. Peak resident memory came from macOS <code>/usr/bin/time -l</code>; the maximum is reported rather than the mean.</p>
+<h2 id="current-release-gates"><a class="header" href="#current-release-gates">Current release gates</a></h2>
+<p>The earlier immutable-source GitHub matrix built, extracted, and smoke-tested exact-head candidates on macOS ARM64, macOS x86-64, and Linux x86-64 with the then-pinned <code>0.4.0</code> compiler. Those results are historical candidate evidence for their source commit. The current source tree requires the commit-pinned Incan <code>0.5.0-dev.19</code> compiler and must produce a fresh three-platform matrix before any current support claim. A platform becomes judge-facing only when its exact audited artifact is published with its checksum, provenance, dependency notices, and test instructions. Windows and Linux ARM64 remain unsupported.</p>
+<p>The live adapter and its injected network-free composition tests are implemented, but no successful public GPT-5.6 canary is recorded yet. Offline replay remains fully functional without that evidence. The required no-rebuild judge path can be satisfied by the published native test build. Any optional hosted equivalent must run the same prebuilt executable without exposing an unrestricted shell, credentials, unrelated files, or cross-session persistence.</p>
+<p>The optional atom-comparison inspector remains separate from Profile Studio candidate staging and reports <code>not_configured</code> for the current interaction. It concerns model-generated atom comparison, not the session-local selection of supplied reviewed evidence and memory.</p>
+<p>This release is the working foundation for general evidence intake, durable profile authoring, semantic and factual verification, source and claim provenance, rights assurance, richer Spectrum and Content DNA contracts, and broader governed-response lifecycles. Those later capabilities require deeper profiles; they are not implied by the bounded fictional package or its evaluator observations.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h1>
+<h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
+<p>The current branch requires Incan <code>0.5.0-dev.19</code> from merged source commit <a href="https://github.com/encero-systems/incan/commit/7656195ba94a4fc309ee5ee83c9dd45a42800db0"><code>7656195ba94a4fc309ee5ee83c9dd45a42800db0</code></a>. Release tooling records that source identity separately from the canonical root <code>incan.lock</code>. The lock was generated by that exact compiler, an immediate second generation was byte-identical, and two clean strict locked library builds passed. The complete local gate and native release matrix remain publication evidence gates.</p>
+<h2 id="verify-the-repository"><a class="header" href="#verify-the-repository">Verify the repository</a></h2>
+<pre><code class="language-bash">make ci
+</code></pre>
+<p>Pass <code>INCAN=/path/to/incan</code> when the compiler is not on <code>PATH</code>.</p>
+<h2 id="consume-the-library"><a class="header" href="#consume-the-library">Consume the library</a></h2>
+<p>During pre-release development, another Incan project can use a local path dependency:</p>
+<pre><code class="language-toml">[dependencies]
+hees_ai = { path = "../hees.ai" }
+</code></pre>
+<p>Import checked symbols through the library namespace:</p>
+<pre><code class="language-incan">from pub::hees_ai import package_loader_descriptor, validate_package_loader_descriptor
+</code></pre>
+<p>The test project under <code>workspaces/external-consumer/</code> compiles and tests this exact dependency boundary.</p>
+<h2 id="verify-the-initial-console-profile"><a class="header" href="#verify-the-initial-console-profile">Verify the initial console profile</a></h2>
+<p>The Console workspace uses only original fictional acceptance data. Its verification covers session-local candidate-profile state, evidence and memory staging, the Hees-owned acceptance probe, blocked activation, reset, responsive rendering, provider boundaries, and all five governed interactions:</p>
+<pre><code class="language-bash">make console-test console-native-smoke \
+  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
+</code></pre>
+<p>This proves the bounded <code>console_profile_0_1</code> workflow without downloading or invoking a language model. Provider-facing and rendering modules never receive package-authoring, activation, or terminal authority.</p>
+<h2 id="run-the-native-console"><a class="header" href="#run-the-native-console">Run the native Console</a></h2>
+<p>Build the executable with the pinned Incan compiler, then start the zero-credential offline experience:</p>
+<pre><code class="language-bash">make console-build INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
+workspaces/hees-console/target/incan/.cargo-target/release/hees_console
+</code></pre>
+<p>The release-candidate archive renames the installed executable to <code>hees-console</code> and needs no compiler, package manager, source checkout, network connection, or API key at runtime. Open Evidence with <code>2</code>, unstage a record with <code>Space</code>, validate with <code>v</code>, and reset with <code>r</code> to exercise the Profile Studio before running an interaction. Use <code>--headless</code> for privacy-redacted automation output. See <a href="#governance-profiles">Governance profiles</a> for the package contract, <a href="#heesai-console">hees.ai console</a> for every interaction key and live-mode syntax, and <a href="#console-profile-01-bounds-and-evidence">profile bounds and evidence</a> before making platform or resource claims.</p>
+<h2 id="run-the-fictional-runtime-example"><a class="header" href="#run-the-fictional-runtime-example">Run the fictional runtime example</a></h2>
+<pre><code class="language-bash">incan build --lib --locked
+cd examples/minimal_governed_agent
+incan run src/main.incn --locked
+</code></pre>
+<p>The example constructs values in memory. It is not a model, RAG, archive, package-file, or semantic-verifier demo.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="contracts"><a class="header" href="#contracts">Contracts</a></h1>
+<p><code>src/lib.incn</code> is the complete checked public surface.</p>
+<h2 id="external-package-descriptor"><a class="header" href="#external-package-descriptor">External package descriptor</a></h2>
+<p>The descriptor API exports:</p>
+<ul>
+<li><code>PackageLoaderDescriptor</code></li>
+<li><code>PackageLoaderValidation</code></li>
+<li><code>package_loader_descriptor</code></li>
+<li><code>validate_package_loader_descriptor</code></li>
+<li><code>package_loader_summary</code></li>
+</ul>
+<p>Despite the historical <code>Loader</code> name, this surface validates metadata only. It requires schema <code>0.1</code>, source kind <code>source_controlled_domain_package</code>, safe identifiers, and a repository-relative path ending in <code>package/domain.json</code>. It rejects traversal, dot segments, absolute paths, Windows drive forms, backslashes, and common embedded control characters. It does not call a filesystem API or establish that the referenced file exists.</p>
+<h2 id="runtime-package"><a class="header" href="#runtime-package">Runtime package</a></h2>
+<p><code>GovernedPackage</code> contains a schema version, package and domain identifiers, a mission, action contracts, and evidence records. A deployable evidence record must be explicitly <code>RightsStatus.Allowed</code> and <code>ReviewStatus.Approved</code>; raw source text is not part of the model.</p>
+<p><code>validate_governed_package</code> rejects unsupported schema versions, unsafe or duplicate identifiers, missing missions or actions, unsafe source references, unapproved evidence, and evidence whose declared runtime rights are not allowed.</p>
+<h2 id="proposal-admission"><a class="header" href="#proposal-admission">Proposal admission</a></h2>
+<p><code>ModelProposal</code> carries package/domain identifiers, a package-owned action identifier, visible output, and cited evidence identifiers. <code>admit_model_proposal</code> rejects invalid packages, identity mismatches, empty visible output, undeclared actions, missing required evidence, duplicate citations, and unknown citations.</p>
+<p>Admission proves only those structural conditions. It does not prove factual correctness, semantic support, source ownership, licensing, cryptographic integrity, retrieval quality, model correctness, or policy completeness.</p>
+<p><code>AdmissionResult</code> records a terminal <code>RuntimeDecision</code>, a stable reason, cited evidence identifiers, and package errors. It contains no hidden reasoning or chain-of-thought.</p>
+<h2 id="initial-console-profile"><a class="header" href="#initial-console-profile">Initial console profile</a></h2>
+<p><code>console_profile_0_1</code> is a separate, closed profile over the fictional Console acceptance corpus. It extends the generic runtime with one exact governed-development and interaction contract.</p>
+<p>Its package contract is concrete: profile, package, domain and revision identity; exact source records and fingerprints; reviewed-memory atoms with source spans, provenance, review and rights state; permitted actions; visible-answer requirements; integer policy thresholds; evaluator roles and bounds; terminal reasons; selected-memory behavior; Content DNA; and receipt projection. The <a href="#governance-profiles">Governance profiles guide</a> maps those fields to the fictional Lantern Labs package and explains their authority owners.</p>
+<p>The profile validates exact package, request-binding, and proposal identities; recomputes the package, provenance, request, proposal, manifest-target, Content DNA, and receipt digests; constructs the complete verifier manifest; validates exact observation coverage and fingerprints; and derives findings under package-owned basis-point thresholds. Provider observations remain non-authoritative inputs. The profile, not the provider-facing Console module, selects the public reason and terminal decision.</p>
+<p>On the admitted path, the profile delegates structural checks to <code>admit_model_proposal</code>, freezes every and only the admitted package atoms referenced by the support mappings, constructs Content DNA from that ordered selection, and returns the visible units and provenance atomically. A rejected path exposes no visible units, selected memory, or Content DNA. Once the fixed package, request, and proposal identity are safely established, it returns a redacted rejection receipt; raw-contract, replay, package, request, and unsafe-proposal-identity failures return no receipt.</p>
+<p>The native Incan Console calls the public profile directly. Its Profile Studio may stage or unstage supplied evidence and memory in a session-local candidate and invoke real profile validation, but the candidate remains non-active because this profile exposes no activation-authority API. The <code>console_runner_request_0_1</code> and <code>console_runner_response_0_1</code> schemas remain a bounded compatibility and diagnostic seam rather than the product’s application boundary. Authority-bearing finding, Spectrum, evaluation, Content DNA, and receipt types stay internal; only their canonical terminal projection crosses the package ABI. Live mode accepts bounded provider-normalized inputs. Replay mode additionally binds the checked schema, model, configuration, prompt, and replay identities used by the fictional acceptance corpus. After decoding, both modes call the same authority path.</p>
+<p>This first profile does not provide retrieval, a semantic verifier model, a general package compiler, or a stable production protocol. Its fixed counts, languages, source kinds, policy values, and fixture identities are deliberate acceptance-profile constraints.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="rfc-proposals"><a class="header" href="#rfc-proposals">RFC proposals</a></h1>
+<p>Hees uses RFCs to review public contracts before implementation. A Draft describes proposed behavior only: it is not part of the checked <code>0.0.1</code> API. Until an RFC and its implementation are merged, <a href="#contracts">Contracts</a> and <code>src/lib.incn</code> remain the source of truth for supported behavior.</p>
+<p>The current Draft set is deliberately coupled. RFC 000 defines the foundational authority model; RFC 001 and RFC 002 establish Spectrum and Content DNA as core contracts; RFC 003–009 refine governed memory, constraints, packages, receipts, verifier findings, behavior selection, and visible-response governance; and RFC 010 proposes a permanent hees.ai console with one deliberately bounded first profile. None transfers runtime authority to a model or provider.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>RFC</th><th>Proposal</th><th>Status</th></tr>
+</thead>
+<tbody>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/000-foundational-governance-authority.md">000: Foundational governance authority</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/1">#1</a></td><td>Draft</td></tr>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/001-spectrum-terminal-adjudication.md">001: Spectrum terminal adjudication</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/2">#2</a></td><td>Draft</td></tr>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/002-content-dna-answer-time-provenance.md">002: Content DNA answer-time provenance</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/3">#3</a></td><td>Draft</td></tr>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/003-governed-memory-and-retrieval-results.md">003: Governed memory and retrieval results</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/4">#4</a></td><td>Draft</td></tr>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/004-composable-governance-constraints.md">004: Composable governance constraints</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/5">#5</a></td><td>Draft</td></tr>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/005-canonical-package-artifact-admission.md">005: Canonical package artifact admission</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/6">#6</a></td><td>Draft</td></tr>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/006-export-safe-governance-receipts.md">006: Export-safe governance receipts</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/7">#7</a></td><td>Draft</td></tr>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/007-evidence-grounded-claim-verification-findings.md">007: Evidence-grounded claim verification findings</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/8">#8</a></td><td>Draft</td></tr>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/008-governed-behavior-envelopes.md">008: Governed behavior envelopes</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/9">#9</a></td><td>Draft</td></tr>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/009-governed-visible-response-lifecycle.md">009: Governed visible response lifecycle</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/11">#11</a></td><td>Draft</td></tr>
+<tr><td><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/010-hees-console.md">010: hees.ai console</a></td><td><a href="https://github.com/encero-systems/hees.ai/issues/14">#14</a></td><td>Draft</td></tr>
+</tbody>
+</table>
+</div>
+<p>See the <a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/README.md">RFC process and lifecycle</a> for the status definitions and publication boundary.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="architecture"><a class="header" href="#architecture">Architecture</a></h1>
+<div class="hees-architecture-hero">
+  <img src="assets/governed-runtime-authority-flow.png" alt="An amber untrusted proposal and cyan evidence lattice enter a central graphite and jade governed runtime, which emits separate jade admitted and crimson rejected structural outcomes.">
+  
+<div class="hees-architecture-hero-copy">
+    <span class="hees-eyebrow">The authority boundary</span>
+    <strong>The model proposes.<br>The runtime decides.</strong>
+    
+<p>Hees turns evidence, reviewed memory, declared authority, and policy into executable governance profiles, then keeps generated values separate from the terminal decision.</p>
+
+  </div>
+
+</div>
+
+<h2 id="evidence-first-decision-last"><a class="header" href="#evidence-first-decision-last">Evidence first, decision last</a></h2>
+<pre><code class="language-text">source evidence -&gt; candidate memory atoms -&gt; reviewed memory atoms
+                                                        |
+                                                        v
+                             candidate governance profile
+                                                        |
+                                  Training by Committee observations
+                                                        |
+saved replay inputs ─┐                                  v
+                    ├─&gt; compiled Hees profile -&gt; bounded Spectrum
+live model inputs ───┘                                  |
+                                                        v
+                         governed decision -&gt; selected memory
+                                                        |
+                                          Content DNA -&gt; receipt
+</code></pre>
+<p>The governance profile is the reusable product unit. It names the exact evidence catalog, reviewed memory, rights and review state, permitted actions, answer requirements, policy thresholds, evaluator roles, bounds, Spectrum behavior, terminal reasons, and receipt projection that apply to an interaction. A model may supply proposals and observations inside that space; it cannot write the space into existence.</p>
+<p>The Build Week Profile Studio makes that distinction executable. Evidence and memory can be staged or unstaged in a session-local candidate and sent through the shipped acceptance interaction at the real Hees boundary. The result keeps the stable public contract reason separate from the exact profile diagnostic; removing required evidence produces <code>invalid_package</code> and <code>invalid_package_atoms</code>. A rejected candidate probe cannot replace the shipped active profile. The <a href="#governance-profiles">Governance profiles guide</a> explains the complete contract through the fictional Lantern Labs fields.</p>
+<h2 id="one-boundary-three-distinct-roles"><a class="header" href="#one-boundary-three-distinct-roles">One boundary, three distinct roles</a></h2>
+<div class="hees-authority-grid">
+  <article class="hees-authority-card hees-authority-card-package">
+    <span>01 · Declares</span>
+    
+<h3>Governed package</h3>
+
+    
+<p>Defines the admitted actions, reviewed memory, evidence identities, rights state, policy thresholds, and behavioral constraints available to one profile.</p>
+
+  </article>
+  <article class="hees-authority-card hees-authority-card-model">
+    <span>02 · Proposes and observes</span>
+    
+<h3>Models and adapters</h3>
+
+    
+<p>Nominate bounded proposals or evaluator observations. Their values remain untrusted and non-authoritative even when they satisfy a strict transport schema.</p>
+
+  </article>
+  <article class="hees-authority-card hees-authority-card-hees">
+    <span>03 · Decides</span>
+    
+<h3>Hees runtime</h3>
+
+    
+<p>Validates identity and structure, classifies observations under package-owned policy, selects the terminal Spectrum result, and emits only the artifacts permitted by that result.</p>
+
+  </article>
+</div>
+
+<p>This separation is the architectural invariant behind the public project. The provider cannot declare its own authority, a presentation host cannot reinterpret a rejection as an admission, and a receipt cannot substitute for the terminal decision that produced it.</p>
+<h2 id="implemented-console_profile_0_1-path"><a class="header" href="#implemented-console_profile_0_1-path">Implemented <code>console_profile_0_1</code> path</a></h2>
+<ol class="hees-flow">
+  
+<li><span>Profile</span><strong>Evidence + reviewed memory + declared authority</strong>
+<p>The fictional package binds exact source identities, review and rights state, memory atoms, permitted actions, answer requirements, evaluator roles, and policy thresholds. The Profile Studio runs a candidate acceptance probe through Hees while protecting the active package.</p>
+</li>
+
+  
+<li><span>Request</span><strong>Integrity-bound question</strong>
+<p>The active profile and direct question are bound before provider work begins, preventing later inputs from drifting to a different package or request.</p>
+</li>
+
+  
+<li><span>Proposal</span><strong>Untrusted structured value</strong>
+<p>Offline replay or the optional GPT-5.6 adapter supplies visible response units, an action identifier, evidence references, and identifier-only support mappings. Schema validity does not grant authority.</p>
+</li>
+
+  
+<li><span>Committee</span><strong>Non-authoritative observations</strong>
+<p>Hees derives exact relation and synthesis targets. Role-bound evaluators return bounded observations against those targets; they do not vote and cannot select the terminal result.</p>
+</li>
+
+  
+<li><span>Classification</span><strong>Hees findings + package policy</strong>
+<p>Hees validates target identities and complete coverage, classifies observations, and applies the package-owned thresholds in fixed public-reason precedence.</p>
+</li>
+
+  
+<li><span>Adjudication</span><strong>Bounded Spectrum operation</strong>
+<p>The profile reaches the checked structural runtime only after earlier validation succeeds. The profile's limited Spectrum operation then returns exactly `admit` or `reject` with a closed reason.</p>
+</li>
+
+  
+<li><span>Artifacts</span><strong>Selected memory + Content DNA + receipt</strong>
+<p>An admission freezes the exact selected package memory and atomically constructs the profile-specific Content DNA and receipt. A rejection exposes its exact reason and a redacted rejection receipt when identity is safely established.</p>
+</li>
+
+</ol>
+
+<p>The Console renders the returned profile projection; it does not reconstruct authority from transport JSON. Offline replay stores requests, proposals, observations, schema identities, and an integrity digest, but it stores no decision, finding, selected memory, Content DNA, or receipt. Optional live mode supplies the same input classes through provider decoding. Both transports invoke identical compiled Hees behavior after normalization.</p>
+<h2 id="training-by-committee-without-provider-authority"><a class="header" href="#training-by-committee-without-provider-authority">Training by Committee without provider authority</a></h2>
+<div class="hees-committee-boundary">
+  
+<div><span>Hees</span><strong>Derive targets</strong>
+<p>Construct canonical subject and premise identities from the package, request, and proposal.</p>
+</div>
+
+  
+<div><span>Adapters</span><strong>Return observations</strong>
+<p>Evaluate only the supplied targets and return bounded integer scores plus their exact target identities.</p>
+</div>
+
+  
+<div><span>Hees</span><strong>Validate and classify</strong>
+<p>Reject identity drift or incomplete coverage, then derive findings under package-owned policy.</p>
+</div>
+
+  
+<div><span>Spectrum</span><strong>Select the terminal state</strong>
+<p>Compose the admitted inputs and deterministic structural result. No provider majority or self-reported confidence can override this boundary.</p>
+</div>
+
+</div>
+
+<p>This profile exercises a working proposal-pressure-testing slice of Training by Committee. It keeps evaluator roles bounded and non-authoritative while Hees derives targets, validates coverage, classifies observations, and decides.</p>
+<h2 id="kernel-and-application-topology"><a class="header" href="#kernel-and-application-topology">Kernel and application topology</a></h2>
+<p>The public Incan library has a small facade and focused internal modules. The native application is also authored in Incan and uses ordinary external crates only at genuine platform boundaries such as raw terminal I/O and HTTPS transport.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Layer</th><th>Implemented owner</th><th>Responsibility</th></tr>
+</thead>
+<tbody>
+<tr><td>Nominal identifiers</td><td><code>identifiers.incn</code></td><td>Bounded identifier, digest, and revision types with distinct public namespaces</td></tr>
+<tr><td>Generic structural kernel</td><td><code>runtime.incn</code></td><td>Fail-closed package and proposal admission against declared actions and evidence</td></tr>
+<tr><td>Initial governed profile</td><td><code>console_profile_*.incn</code></td><td>Request binding, manifest planning, observation validation, finding classification, policy precedence, selected memory, and terminal composition</td></tr>
+<tr><td>Authority artifacts</td><td><code>content_dna.incn</code> and profile artifact module</td><td>Internal construction and sealing of Content DNA and receipt envelopes</td></tr>
+<tr><td>Public facade</td><td><code>lib.incn</code> and <code>console_profile.incn</code></td><td>Checked public types and functions without exporting authority-bearing constructors</td></tr>
+<tr><td>Native product</td><td><code>workspaces/hees-console</code></td><td>Session-local Profile Studio, evidence and memory staging, candidate acceptance probing, replay, optional provider adapter, responsive terminal state, rendering, and source-safe inspection</td></tr>
+</tbody>
+</table>
+</div>
+<p>Public contract identifiers are distinct Incan newtypes. A <code>PackageId</code> cannot be substituted for a <code>DomainId</code> merely because both carry the same spelling. Every symbolic identifier derives from a shared bounded <code>IdType</code>; digest and revision specializations enforce their own forms. The pinned compiler invokes validated-newtype construction during derived JSON deserialization, so malformed identifier text cannot inhabit a decoded typed contract. That is still only type validity: authority requires a separate declaration or admission check.</p>
+<h2 id="current-proof-and-product-direction"><a class="header" href="#current-proof-and-product-direction">Current proof and product direction</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Working in this release</th><th>Direction enabled by the architecture</th></tr>
+</thead>
+<tbody>
+<tr><td>Exact source, review, rights, provenance, action, requirement, policy, and evaluator declarations are visible as one profile contract</td><td>General evidence intake, extraction, candidate-atom curation, governed activation, versioning, and durable IncQL-DB-backed workspaces</td></tr>
+<tr><td>Candidate evidence and memory can change session-locally and reach a real Hees acceptance result without replacing the active profile</td><td>Reusable profile creation, validation, comparison, publication, and deployment across providers and domains</td></tr>
+<tr><td>Hees binds requests, proposals, targets, observations, findings, and terminal artifacts to exact identities</td><td>Semantic and factual verification, claim-level support, source provenance, rights assurance, and conflict management</td></tr>
+<tr><td>Training by Committee observations are target-bound and non-authoritative</td><td>Richer provider-neutral pressure testing of evidence, atoms, profiles, prompts, proposals, and policy</td></tr>
+<tr><td>Spectrum, selected memory, Content DNA, and receipts run end to end for the bounded profile</td><td>Generalized Spectrum adjudication, complete Content DNA, governed response lifecycles, and durable governance receipts</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="permanent-product-north-star"><a class="header" href="#permanent-product-north-star">Permanent product north star</a></h2>
+<p>RFC 010 places evidence intake and profile creation before governed interaction. The permanent Console will let developers inspect lawful source evidence, create candidate memory atoms without pre-granting review or rights, validate package declarations through Hees, pressure-test them through provider-neutral committee roles, run governed interactions, and inspect terminal Spectrum and Content DNA artifacts. The Build Week Profile Studio delivers the first working session-local portion of that workflow; the fictional package is its demonstration context, not its product boundary.</p>
+<p><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/000-foundational-governance-authority.md">RFC 000</a> owns the foundational authority model. <a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/001-spectrum-terminal-adjudication.md">RFC 001</a> defines the proposed generalized Spectrum boundary. <a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/002-content-dna-answer-time-provenance.md">RFC 002</a> defines answer-time Content DNA. The <a href="#spectrum-and-content-dna">Spectrum and Content DNA whitepaper</a> explains their intended relationship, while <a href="#contracts">Contracts</a> and <code>src/lib.incn</code> remain the source of truth for checked behavior.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="spectrum-and-content-dna"><a class="header" href="#spectrum-and-content-dna">Spectrum and Content DNA</a></h1>
+<h2 id="status"><a class="header" href="#status">Status</a></h2>
+<p>This whitepaper explains the architectural intent behind Spectrum and Content DNA. The working <code>console_profile_0_1</code> release now exercises a bounded Spectrum operation, selected-memory finality, answer-time Content DNA, and receipts over one fictional profile. The generalized contracts continue in <a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/000-foundational-governance-authority.md">RFC 000</a>, <a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/001-spectrum-terminal-adjudication.md">RFC 001</a>, and <a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/002-content-dna-answer-time-provenance.md">RFC 002</a>.</p>
+<h2 id="the-problem-is-authority-not-only-generation"><a class="header" href="#the-problem-is-authority-not-only-generation">The problem is authority, not only generation</a></h2>
+<p>A language model can produce useful explanations, but fluent generation does not establish that an answer follows reviewed knowledge, respects policy, handles conflicting material consistently, or can be traced to the exact sources that governed it. Retrieval alone does not solve this problem. A retrieved passage is a nomination: it may be relevant without supporting the answer, may be outdated or rights-restricted, and may conflict with another reviewed source.</p>
+<p>Hees separates language generation from governance. Packages contain reviewed knowledge and policy. Providers nominate bounded results. The model proposes visible language. Hees validates those inputs and applies deterministic contracts. Spectrum owns the terminal decision, while Content DNA records the exact reviewed memory selected for the admitted answer.</p>
+<p>This separation matters most when the deployment must behave consistently across different models, providers, languages, and devices. The model can change without silently acquiring authority over policy or provenance.</p>
+<h2 id="spectrum"><a class="header" href="#spectrum">Spectrum</a></h2>
+<p>Spectrum is the Hees adjudication core that turns admitted governed inputs into one terminal outcome. It does not generate content and does not author policy. It applies the policy and reviewed memory already admitted from a package, composes bounded non-authoritative findings, resolves declared conflicts, selects the memory that may govern the response, and chooses the final response path.</p>
+<p>The word terminal is important. A retrieval provider may rank memory, a verifier may score a claim-premise relationship, a constraint evaluator may nominate an action, and a behavior selector may choose an eligible frame. None of those intermediate results can admit an answer. Spectrum is the single point at which those results become one governed decision.</p>
+<p>Spectrum preserves several distinctions that conventional orchestration often collapses:</p>
+<ul>
+<li>Retrieved memory is not automatically selected memory.</li>
+<li>Selected memory is not the same as every premise examined by a verifier.</li>
+<li>A verifier finding is not a policy action.</li>
+<li>A behavior selection is not response admission.</li>
+<li>A trace is not an authority capability.</li>
+<li>A receipt is not proof of unrestricted truth.</li>
+</ul>
+<p>For an admitted answer, Spectrum freezes the exact ordered selected-memory set and the complementary discarded-memory set. This terminal selection is the source from which Hees constructs Content DNA.</p>
+<h2 id="content-dna"><a class="header" href="#content-dna">Content DNA</a></h2>
+<p>Content DNA is answer-time provenance. It binds one terminal answer to every and only the reviewed governed-memory atoms selected by Spectrum, together with their source-safe provenance, review state, rights state, package identity, governing policy, proposal identity, and Spectrum decision.</p>
+<p>It is not a list of model-authored citations. It is also not a copy of a build-time source manifest. A package authoring system can know where reviewed memory came from, but it cannot know which memory a future live answer will use. A model can name sources, but it cannot author its own provenance authority. Only Hees has both the admitted package facts and the terminal Spectrum selection required to construct the answer-specific value.</p>
+<p>Content DNA contains identifiers, governance state, source-safe references, and canonical digests rather than source passages or answer prose. The visible answer is bound by digest, and authorized applications can resolve the source-safe references independently. This avoids creating a second content channel while still making the relationship deterministic and auditable.</p>
+<h2 id="the-governed-flow"><a class="header" href="#the-governed-flow">The governed flow</a></h2>
+<p>The proposed runtime flow is:</p>
+<ol>
+<li>A package-authoring system compiles reviewed knowledge, policy, source-safe provenance, rights state, and acceptance fixtures into a governed package.</li>
+<li>Hees admits the exact package artifact and establishes its trusted identity.</li>
+<li>A retrieval provider nominates logical memory identifiers under a package-approved binding.</li>
+<li>Hees validates the complete retrieval result and materializes package-owned memory rather than trusting provider-returned text.</li>
+<li>A model proposes bounded behavior and visible response values through the declared provider contract.</li>
+<li>Verifiers and other evaluators return bounded observations for exact governed targets.</li>
+<li>Spectrum applies package policy, resolves the response lifecycle, and freezes the terminal selected-memory set.</li>
+<li>Hees constructs and validates Content DNA from the selected package-owned memory.</li>
+<li>The admitted visible answer and Content DNA are returned atomically; if provenance construction fails, the answer is not admitted.</li>
+<li>Export-safe receipts or traces may explain the outcome without becoming a second terminal authority.</li>
+</ol>
+<p>An implementation may fuse internal stages to reduce allocation or latency, but it cannot change the authority flow or expose a partial answer before terminal provenance succeeds.</p>
+<h2 id="why-content-dna-is-more-than-a-receipt"><a class="header" href="#why-content-dna-is-more-than-a-receipt">Why Content DNA is more than a receipt</a></h2>
+<p>A governance receipt records a terminal outcome in a compact, redacted form. It can identify the proposal, package, terminal variant, reason, and admitted logical identifiers. Content DNA answers a narrower but deeper question: which reviewed memories, from which source-safe provenance and under which governing identity, made this particular answer admissible?</p>
+<p>The two artifacts therefore remain separate. An admitted proposal receipt references the Content DNA identifier. The Content DNA document carries the selected-memory provenance. Neither artifact recreates the direct in-process Spectrum authority merely because its canonical digest verifies.</p>
+<h2 id="conflict-and-uncertainty"><a class="header" href="#conflict-and-uncertainty">Conflict and uncertainty</a></h2>
+<p>Reviewed sources may disagree, apply to different periods, or carry different authority. Spectrum does not solve this by asking a model to improvise a compromise. Contradictions and policy conflicts must enter through typed package declarations or accepted bounded findings. Package policy determines whether the result may answer with qualification, must request clarification, must reject, or may escalate.</p>
+<p>Content DNA then reflects the memory actually selected under that policy. It must not include every retrieved source merely to appear comprehensive, and it must not omit a selected source because that source complicates the explanation. Exact coverage makes disagreement auditable without exposing private deliberation or hidden model reasoning.</p>
+<h2 id="multilingual-behavior"><a class="header" href="#multilingual-behavior">Multilingual behavior</a></h2>
+<p>Spectrum and Content DNA are language-independent governance responsibilities. English, Afrikaans, isiZulu, Arabic, or another language may change the model, tokenizer, speech layer, translated content, or verifier calibration, but it must not change who owns terminal authority or provenance.</p>
+<p>Translated and language-specific memory still requires package review, rights state, source provenance, applicability, and policy identity. If multiple language variants resolve to one conceptual source, the package must declare that relationship explicitly rather than letting a model infer equivalence. Content DNA identifies the exact reviewed memory variant selected for the answer, which allows an application to explain whether the answer relied on original-language material, an approved translation, or another governed representation.</p>
+<h2 id="offline-and-constrained-deployment"><a class="header" href="#offline-and-constrained-deployment">Offline and constrained deployment</a></h2>
+<p>The authority model does not require a network service. Package admission, Spectrum adjudication, Content DNA construction, and receipt projection can run locally after installation. Provider execution can also remain local when a deployment supplies a compatible on-device model and retrieval implementation; Console <code>0.1.0</code> itself does not bundle that provider. Provider-neutral contracts keep those chosen components non-authoritative.</p>
+<p>Consumer-device constraints still shape the detailed contracts. Memory counts, finding batches, canonicalization buffers, retained repair state, Content DNA entries, and traces require absolute bounds and representative measurements alongside the resident model. Low-memory implementations may stream or fuse internal work, but truncating Content DNA, dropping selected memory, or returning the answer before provenance completion is not an acceptable optimization.</p>
+<h2 id="profile-authoring-and-hees"><a class="header" href="#profile-authoring-and-hees">Profile authoring and Hees</a></h2>
+<p>Profile-authoring workflows own preparation: source intake, semantic transformation, human review, provenance compilation, rights and policy declarations, package construction, and acceptance suites. Those workflows may live in the local-first hees.ai console or another contract-compatible tool. Hees owns authority-bearing validation and runtime behavior: package admission, provider-result validation, Spectrum adjudication, response admission, and Content DNA construction.</p>
+<p>That boundary keeps runtime behavior portable. Different authoring surfaces can produce the same accepted profile contract, and another Hees implementation can consume it, without changing who decides the live outcome. Authoring tools may generate synthetic expected Content DNA for fixtures, but Hees must recompute the live value from the terminal selected memory.</p>
+<h2 id="current-proof-and-assurance-direction"><a class="header" href="#current-proof-and-assurance-direction">Current proof and assurance direction</a></h2>
+<p>The working profile makes testable claims today: authority is explicit, provider outputs remain bounded nominations, terminal behavior follows admitted policy, admitted answers have exact selected-memory provenance, and independent implementations can be checked against the same contracts.</p>
+<p>The larger Hees direction adds semantic and factual verification, source and claim provenance, rights assurance, producer identity, conflict management, governed behavior, and richer response lifecycles to this foundation. Those assurance layers require explicit contracts and evidence. They are not replaced by a digest or evaluator score, and they do not turn hidden model reasoning into authority.</p>
+<h2 id="normative-map"><a class="header" href="#normative-map">Normative map</a></h2>
+<ul>
+<li><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/000-foundational-governance-authority.md">RFC 000</a> defines the foundational authority model and invariants.</li>
+<li><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/001-spectrum-terminal-adjudication.md">RFC 001</a> defines Spectrum inputs, memory roles, deterministic adjudication, terminal decision, and trace boundary.</li>
+<li><a href="https://github.com/encero-systems/hees.ai/blob/main/rfcs/002-content-dna-answer-time-provenance.md">RFC 002</a> defines Content DNA states, body, entries, exact coverage, canonical identity, validation, and receipt relationship.</li>
+<li>Later RFCs define governed memory, constraints, package artifacts, receipts, verifier findings, behavior envelopes, and visible-response lifecycle as specialized contracts under that foundation.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="development"><a class="header" href="#development">Development</a></h1>
+<p>Run the complete local gate with commit-pinned Incan <code>0.5.0-dev.19</code>:</p>
+<pre><code class="language-bash">make ci INCAN=/path/to/incan
+</code></pre>
+<p>The default uses locked dependency resolution and permits a clean machine to populate Cargo’s cache. Once dependencies are present, <code>INCAN_FLAGS="--locked --offline"</code> provides an additional dependency-resolution check; the packaged replay executable itself is already network-independent.</p>
+<p>The gate includes:</p>
+<ul>
+<li>formatting checks;</li>
+<li>a locked public-library build;</li>
+<li>positive and adversarial package/runtime tests;</li>
+<li>an actual external Incan dependency test;</li>
+<li>the fictional external runtime example;</li>
+<li>the fail-closed repository boundary audit; and</li>
+<li>a strict documentation build.</li>
+</ul>
+<p>Changes to the initial console profile or application also require:</p>
+<pre><code class="language-bash">make console-test console-native-smoke \
+  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan
+</code></pre>
+<p>Those gates compile the native Incan Console, run the direct profile and application suite, and execute all five offline scenarios through the real Hees profile. The domain JSON Schemas constrain provider-facing shape; profile authority and public reason selection remain inside the Hees profile.</p>
+<h2 id="release-candidate-archive"><a class="header" href="#release-candidate-archive">Release-candidate archive</a></h2>
+<p>Build a local candidate only with the pinned toolchain for the current native target:</p>
+<pre><code class="language-bash">make console-release-candidate \
+  INCAN=/path/to/incan-0.5.0-dev.19/bin/incan \
+  RELEASE_PLATFORM=macos-aarch64
+</code></pre>
+<p>The candidate-platform registry is <code>workspaces/hees-console/packaging/release-platforms.json</code>. It pins the exact public Incan source commit, target architecture, and standard hosted runner for Linux x86_64, macOS ARM64, and macOS x86_64. Each lane builds that compiler commit natively, verifies its version, then builds Console. The command fails when the executing host does not match the selected target. Windows and Linux ARM64 are excluded until equivalent native lanes execute successfully.</p>
+<p>For a fixed source tree, the gate:</p>
+<ol>
+<li>reruns the package and release-contract tests;</li>
+<li>audits the native bundle after remapping build paths, including checks for active credential values in the bundle;</li>
+<li>embeds exactly the native Console binary, project license, repository notice, the current platform build’s generated third-party license report, and release manifest, while keeping the build-side smoke oracle out of the artifact;</li>
+<li>writes <code>RELEASE-MANIFEST.json</code> with the source commit, clean-tree evidence, candidate platform, exact Incan source identity, Console lock digest, notice digests, and binary hash;</li>
+<li>creates a normalized <code>hees-console-&lt;version&gt;-&lt;platform&gt;.tar.gz</code> plus adjacent <code>.sha256</code>; and</li>
+<li>extracts and executes that archive from a clean temporary working directory with a minimal environment, temporary home, and no API key.</li>
+</ol>
+<p>The smoke proves that the candidate does not need a separately installed Incan compiler, package manager, source checkout, provider credential, or network service. It does not prove that the process is physically network-sandboxed, that a different operating-system build works, that native compiler output is bit-reproducible, or that an unsigned macOS artifact carries publisher identity.</p>
+<p>The matching GitHub Actions workflow checks its matrix against the same registry and uses immutable action revisions with read-only repository permission. It uploads short-lived candidate evidence and never creates a release or deployment. A platform remains a candidate until its extracted hosted artifact has run successfully. macOS outputs are ad-hoc signed where the toolchain requires it, but they are not publisher-signed or notarized.</p>
+<p>Public symbols must be re-exported deliberately from <code>src/lib.incn</code>. A change that claims a new guarantee needs a test that fails when the guarantee is violated and documentation that distinguishes the guarantee from caller-owned work.</p>
+<p>Do not add client packages, corpora, private source material, generated model artifacts, research benchmarks, provider spikes, or product control surfaces. Use fictional data in tests and examples.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+
+    </div>
+    </body>
+</html>

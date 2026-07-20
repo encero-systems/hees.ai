@@ -1,0 +1,185 @@
+:root {
+  --hees-runtime-black: #0a0c0f;
+  --hees-graphite: #111418;
+  --hees-steel: #2b3138;
+  --hees-jade: #3ecf8e;
+  --hees-cyan: #69d6ff;
+  --hees-amber: #f2c14e;
+  --hees-crimson: #e15b64;
+  --hees-slate: #88929a;
+}
+
+.hees-architecture-hero {
+  position: relative;
+  overflow: hidden;
+  margin: 1.5rem 0 3.5rem;
+  border: 1px solid rgba(62, 207, 142, 0.24);
+  border-radius: 18px;
+  background: var(--hees-runtime-black);
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.28);
+}
+
+.hees-architecture-hero img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.hees-architecture-hero::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, rgba(10, 12, 15, 0.94) 0%, rgba(10, 12, 15, 0.58) 32%, rgba(10, 12, 15, 0) 58%);
+  pointer-events: none;
+}
+
+.hees-architecture-hero-copy {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: clamp(1.5rem, 5vw, 4.5rem);
+  width: min(35rem, 42%);
+  color: #f3f6f5;
+  transform: translateY(-50%);
+}
+
+.hees-architecture-hero-copy strong {
+  display: block;
+  margin: 0.65rem 0 1rem;
+  font-size: clamp(2rem, 4vw, 4.6rem);
+  font-weight: 600;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.hees-architecture-hero-copy p {
+  max-width: 31rem;
+  margin: 0;
+  color: #b7c1c0;
+  font-size: clamp(0.9rem, 1.25vw, 1.1rem);
+  line-height: 1.65;
+}
+
+.hees-eyebrow,
+.hees-authority-card > span,
+.hees-flow li > span,
+.hees-committee-boundary span {
+  color: var(--hees-jade);
+  font-family: var(--mono-font);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hees-authority-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2.75rem;
+}
+
+.hees-authority-card {
+  min-height: 13rem;
+  padding: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--hees-steel) 82%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--hees-graphite) 88%, transparent), color-mix(in srgb, var(--hees-runtime-black) 94%, transparent));
+}
+
+.hees-authority-card h3 {
+  margin: 0.65rem 0 0.8rem;
+  font-size: 1.15rem;
+}
+
+.hees-authority-card p,
+.hees-flow p,
+.hees-committee-boundary p {
+  margin: 0;
+  color: var(--fg);
+  line-height: 1.6;
+}
+
+.hees-authority-card-model {
+  border-top-color: var(--hees-amber);
+}
+
+.hees-authority-card-package {
+  border-top-color: var(--hees-cyan);
+}
+
+.hees-authority-card-hees {
+  border-top-color: var(--hees-jade);
+}
+
+.hees-flow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 1.5rem 0 2.75rem;
+  padding: 1px;
+  list-style: none;
+  border: 1px solid color-mix(in srgb, var(--hees-steel) 72%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--hees-steel) 72%, transparent);
+  overflow: hidden;
+}
+
+.hees-flow li {
+  margin: 0;
+  padding: 1.5rem;
+  background: var(--bg);
+}
+
+.hees-flow strong,
+.hees-committee-boundary strong {
+  display: block;
+  margin: 0.45rem 0 0.65rem;
+  font-size: 1rem;
+}
+
+.hees-committee-boundary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0 2.75rem;
+}
+
+.hees-committee-boundary > div {
+  padding: 1.25rem;
+  border-left: 2px solid var(--hees-jade);
+  background: color-mix(in srgb, var(--hees-graphite) 55%, transparent);
+}
+
+.content main table {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--hees-steel) 72%, transparent);
+  border-radius: 12px;
+}
+
+.content main th {
+  color: var(--hees-jade);
+  background: color-mix(in srgb, var(--hees-graphite) 72%, transparent);
+}
+
+@media (max-width: 900px) {
+  .hees-architecture-hero-copy {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+    padding: 1.5rem;
+    transform: none;
+  }
+
+  .hees-architecture-hero::after {
+    display: none;
+  }
+
+  .hees-authority-grid,
+  .hees-flow,
+  .hees-committee-boundary {
+    grid-template-columns: 1fr;
+  }
+}
