@@ -4,7 +4,7 @@ from std.fs import Path
 from std.json import JsonValue
 from std.serde import json
 from std.serde.json import Deserialize, Serialize
-from std.testing import assert_eq, assert_is_err, assert_is_ok
+from std.testing import assert_eq, assert_is_err, assert_is_ok, serial
 from pub::hees_ai import (
     ConsoleProposal,
     RelationObservation,
@@ -27,8 +27,13 @@ from pub::hees_ai import (
 from crate.provider import (
     GPT56_MODEL,
     MAX_COMMITTEE_CALLS,
+    MAX_LIVE_COMMITTEE_CALLS,
+    MAX_LIVE_PROVIDER_CALLS,
+    MAX_PROVIDER_REQUEST_BYTES,
     MAX_RELATION_CALLS,
     MAX_SYNTHESIS_CALLS,
+    OBSERVATION_OUTPUT_TOKENS,
+    PROPOSAL_OUTPUT_TOKENS,
     PROVIDER_TIMEOUT_SECONDS,
     LiveCanaryGate,
     PreparedProviderCall,
@@ -46,6 +51,8 @@ from crate.provider import (
     provider_api_key_environment,
     provider_endpoint,
 )
+
+static injected_transport_calls: int = 0
 
 
 @derive(json)
@@ -145,19 +152,25 @@ def require_array(value: JsonValue, key: str) -> list[JsonValue]:
     return assert_is_ok(require(value, key).expect_array())
 
 
+def admitted_memory_projection(atom: JsonValue) -> JsonValue:
+    """Project one approved package atom into the provider's admitted-memory shape."""
+
+    memory_fields = ["evidence_id", "memory_id", "claim", "guidance", "language", "source_ref", "source_kind", "source_fingerprint", "review_state", "review_revision", "rights_state", "authority_class", "evidence_kind"]
+    mut projection: Dict[str, JsonValue] = {}
+    for field in memory_fields:
+        projection[field] = JsonValue.str(require_str(atom, field))
+    return JsonValue.object(projection)
+
+
 def context_plan() -> str:
     """Reproduce the frozen Hees-authored context envelope as a provider contract fixture."""
 
     package = assert_is_ok(JsonValue.parse(read_text(fixture_path("package/package.json"))))
     request = assert_is_ok(JsonValue.parse(read_text(fixture_path("requests/valid_lantern.json"))))
-    mut admitted_memory: list[JsonValue] = []
-    memory_fields = ["evidence_id", "memory_id", "claim", "guidance", "language", "source_ref", "source_kind", "source_fingerprint", "review_state", "review_revision", "rights_state", "authority_class", "evidence_kind"]
-    for atom in require_array(package, "atoms"):
-        if require_str(atom, "review_state") == "approved" and require_str(atom, "rights_state") == "allowed":
-            mut projection: Dict[str, JsonValue] = {}
-            for field in memory_fields:
-                projection[field] = JsonValue.str(require_str(atom, field))
-            admitted_memory.append(JsonValue.object(projection))
+    admitted_memory = [admitted_memory_projection(atom) for atom in require_array(package, "atoms") if require_str(
+        atom,
+        "review_state",
+    ) == "approved" and require_str(atom, "rights_state") == "allowed"]
     context = JsonValue.object(
         {"profile_id": JsonValue.str(require_str(package, "profile_id")), "package_id": JsonValue.str(
             require_str(package, "package_id"),
@@ -215,6 +228,62 @@ def unavailable_transport(_request_body: str) -> Result[str, ProviderFailure]:
     return Err(ProviderFailure.Unavailable)
 
 
+def maximum_proposal_transport(_request_body: str) -> Result[str, ProviderFailure]:
+    """Return the maximum schema-valid proposal after exactly one injected call."""
+
+    return Ok(response_with_output(maximum_proposal().to_json()))
+
+
+def observation_response(relative: str) -> str:
+    """Remove host fingerprints from one observation fixture and wrap it as provider output."""
+
+    mut observation = assert_is_ok(JsonValue.parse(read_text(fixture_path(relative))))
+    assert_is_ok(observation.remove("model_fingerprint"))
+    assert_is_ok(observation.remove("prompt_fingerprint"))
+    assert_is_ok(observation.remove("configuration_fingerprint"))
+    return response_with_output(assert_is_ok(observation.to_json()))
+
+
+def counting_interaction_transport(request_body: str) -> Result[str, ProviderFailure]:
+    """Count and satisfy one complete injected proposal-and-committee interaction."""
+
+    injected_transport_calls += 1
+    body = JsonValue.parse(request_body).map_err((_error) => ProviderFailure.InvalidInput)?
+    schema_name = require_str(require(require(body, "text"), "format"), "name")
+    if schema_name == "console_proposal_provider_0_1":
+        return Ok(response_with_output(read_text(fixture_path("proposals/valid_lantern.json"))))
+    inputs = require_array(body, "input")
+    content = require_array(inputs[0], "content")
+    payload = JsonValue.parse(require_str(content[0], "text")).map_err((_error) => ProviderFailure.InvalidInput)?
+    target_id = require_str(require(require(payload, "target"), "body"), "target_id")
+    if target_id == "target_visible_unit_sequence":
+        return Ok(observation_response("observations/relation_visible_sequence.json"))
+    if target_id == "target_visible_unit_grounding":
+        return Ok(observation_response("observations/relation_visible_grounding.json"))
+    if target_id == "target_support_claim_sequence":
+        return Ok(observation_response("observations/relation_support_sequence.json"))
+    if target_id == "target_support_claim_grounding":
+        return Ok(observation_response("observations/relation_support_grounding.json"))
+    if target_id == "target_proposal_contradiction":
+        return Ok(observation_response("observations/relation_contradiction.json"))
+    if target_id == "target_request_coverage":
+        return Ok(observation_response("observations/synthesis_request.json"))
+    if target_id == "target_requirement_explain_sequence":
+        return Ok(observation_response("observations/synthesis_explain_sequence.json"))
+    if target_id == "target_requirement_ground_in_lesson":
+        return Ok(observation_response("observations/synthesis_ground_in_lesson.json"))
+    return Err(ProviderFailure.InvalidInput)
+
+
+def oversized_ascii_value() -> str:
+    """Build 64 KiB of ASCII without relying on host-language test helpers."""
+
+    mut value = "x"
+    for _index in range(16):
+        value = value + value
+    return value
+
+
 def target_value(index: int, evaluator_role: str, target_role: str, candidate_digest: str) -> JsonValue:
     """Construct one read-only Hees-target projection for maximum-shape capacity tests."""
 
@@ -252,10 +321,10 @@ def fixture_manifest_json() -> str:
     """Load the canonical happy-path targets into the closed Hees manifest envelope."""
 
     scenario = assert_is_ok(JsonValue.parse(read_text(fixture_path("scenarios/valid_lantern.json"))))
-    mut targets: list[JsonValue] = []
-    for path in require_array(scenario, "manifest_target_paths"):
-        target_path = assert_is_ok(path.expect_str())
-        targets.append(assert_is_ok(JsonValue.parse(read_text(fixture_path(target_path)))))
+    targets = [assert_is_ok(JsonValue.parse(read_text(fixture_path(assert_is_ok(path.expect_str()))))) for path in require_array(
+        scenario,
+        "manifest_target_paths",
+    )]
     return manifest_plan_json(targets)
 
 
@@ -270,42 +339,51 @@ def maximum_manifest_json(proposal: ConsoleProposal) -> str:
     """Construct the exact 17-relation and 5-synthesis maximum manifest shape."""
 
     candidate_digest = proposal_candidate_digest(proposal)
-    mut targets: list[JsonValue] = []
-    for index in range(8):
-        targets.append(target_value(index + 1, "evidence_relation", "visible_unit_union", candidate_digest))
-    for index in range(8):
-        targets.append(target_value(index + 9, "evidence_relation", "support_claim_memory", candidate_digest))
-    targets.append(target_value(17, "contradiction_cross_check", "proposal_union", candidate_digest))
-    targets.append(target_value(18, "synthesis_coverage", "request_coverage", candidate_digest))
-    for index in range(4):
-        targets.append(target_value(index + 19, "synthesis_coverage", "requirement_coverage", candidate_digest))
+    visible_targets = [target_value(index + 1, "evidence_relation", "visible_unit_union", candidate_digest) for index in range(
+        8,
+    )]
+    support_targets = [target_value(index + 9, "evidence_relation", "support_claim_memory", candidate_digest) for index in range(
+        8,
+    )]
+    requirement_targets = [target_value(index + 19, "synthesis_coverage", "requirement_coverage", candidate_digest) for index in range(
+        4,
+    )]
+    targets = [*visible_targets, *support_targets, target_value(
+        17,
+        "contradiction_cross_check",
+        "proposal_union",
+        candidate_digest,
+    ), target_value(18, "synthesis_coverage", "request_coverage", candidate_digest), *requirement_targets]
     return manifest_plan_json(targets)
+
+
+def capacity_visible_unit(number: int) -> VisibleUnit:
+    """Construct one maximum-shape visible unit with stable identifiers."""
+
+    return VisibleUnit(
+        unit_id=unit_id(f"unit_capacity_{number}"),
+        text=f"Bounded fictional answer unit {number}.",
+        requirement_ids=[requirement_id("explain_sequence")],
+    )
+
+
+def capacity_support_mapping(number: int) -> SupportMapping:
+    """Construct one maximum-shape support mapping paired to its visible unit."""
+
+    return SupportMapping(
+        support_claim_id=support_claim_id(f"support_capacity_{number}"),
+        unit_id=unit_id(f"unit_capacity_{number}"),
+        memory_id=memory_id("memory_lantern_sequence"),
+        evidence_ids=Some([evidence_id("evidence_lantern_path")]),
+    )
 
 
 def maximum_proposal() -> ConsoleProposal:
     """Expand the frozen proposal to its visible-unit and support-mapping maxima."""
 
     mut proposal = load_proposal()
-    proposal.visible_units = []
-    proposal.support_mappings = []
-    for index in range(8):
-        number = index + 1
-        unit_identifier = unit_id(f"unit_capacity_{number}")
-        proposal.visible_units.append(
-            VisibleUnit(
-                unit_id=unit_identifier,
-                text=f"Bounded fictional answer unit {number}.",
-                requirement_ids=[requirement_id("explain_sequence")],
-            ),
-        )
-        proposal.support_mappings.append(
-            SupportMapping(
-                support_claim_id=support_claim_id(f"support_capacity_{number}"),
-                unit_id=unit_identifier,
-                memory_id=memory_id("memory_lantern_sequence"),
-                evidence_ids=Some([evidence_id("evidence_lantern_path")]),
-            ),
-        )
+    proposal.visible_units = [capacity_visible_unit(index + 1) for index in range(8)]
+    proposal.support_mappings = [capacity_support_mapping(index + 1) for index in range(8)]
     return proposal
 
 
@@ -314,21 +392,17 @@ def maximum_context_plan() -> str:
 
     mut plan = assert_is_ok(JsonValue.parse(context_plan()))
     context = require(plan, "context")
-    mut requirements = require_array(context, "requirements")
-    requirements.append(
-        JsonValue.object(
-            {"requirement_id": JsonValue.str("clarify_example"), "description": JsonValue.str(
-                "Clarify the fictional example.",
-            )},
-        ),
+    clarify_example = JsonValue.object(
+        {"requirement_id": JsonValue.str("clarify_example"), "description": JsonValue.str(
+            "Clarify the fictional example.",
+        )},
     )
-    requirements.append(
-        JsonValue.object(
-            {"requirement_id": JsonValue.str("invite_check"), "description": JsonValue.str(
-                "Invite the learner to check the sequence.",
-            )},
-        ),
+    invite_check = JsonValue.object(
+        {"requirement_id": JsonValue.str("invite_check"), "description": JsonValue.str(
+            "Invite the learner to check the sequence.",
+        )},
     )
+    requirements = [*require_array(context, "requirements"), clarify_example, invite_check]
     mut expanded_context = context
     assert_is_ok(expanded_context.set("requirements", JsonValue.array(requirements)))
     assert_is_ok(plan.set("context", expanded_context))
@@ -344,7 +418,9 @@ def test_proposal_request_is_the_exact_closed_responses_operation() -> None:
     assert_eq(provider_api_key_environment(), "OPENAI_API_KEY")
     assert_eq(require_str(body, "model"), "gpt-5.6-sol")
     assert_eq(require_str(require(body, "reasoning"), "effort"), "low")
-    assert_eq(require_int(body, "max_output_tokens"), 2048)
+    assert_eq(require_int(body, "max_output_tokens"), PROPOSAL_OUTPUT_TOKENS)
+    assert_eq(PROPOSAL_OUTPUT_TOKENS, 2_048)
+    assert_eq(call.request_body_bytes <= MAX_PROVIDER_REQUEST_BYTES, true)
     assert_eq(len(require_array(body, "tools")), 0)
     assert_eq(require_str(body, "tool_choice"), "none")
     assert_eq(require_bool(body, "store"), false)
@@ -379,9 +455,8 @@ def test_proposal_input_contains_only_hees_authored_untrusted_context() -> None:
     assert_eq(len(require_array(payload, "requirements")), 2)
     memory = require_array(payload, "admitted_memory")
     assert_eq(len(memory), 3)
-    mut memory_ids: list[str] = []
+    memory_ids = [require_str(atom, "memory_id") for atom in memory]
     for atom in memory:
-        memory_ids.append(require_str(atom, "memory_id"))
         assert_eq(require_str(atom, "review_state"), "approved")
         assert_eq(require_str(atom, "rights_state"), "allowed")
     assert_eq(memory_ids.contains("memory_public_ranking_draft"), false)
@@ -409,6 +484,27 @@ def test_propose_with_transport_is_deterministic_and_network_free() -> None:
 
     proposal: ConsoleProposal = assert_is_ok(propose_with_transport(context_plan(), fixture_transport))
     assert_eq(proposal_id_text(proposal.proposal_id), "proposal_valid_lantern")
+
+
+@serial
+def test_complete_injected_interaction_uses_exactly_one_proposal_and_eight_committee_calls() -> None:
+    """Exercise the production preflight and both injected transports under the nine-call ceiling."""
+
+    injected_transport_calls = 0
+    context_source = context_plan()
+    proposal_source = assert_is_ok(propose_json_with_transport(context_source, counting_interaction_transport))
+    committee_source = assert_is_ok(
+        evaluate_committee_json_with_transport(
+            context_source,
+            proposal_source,
+            fixture_manifest_json(),
+            counting_interaction_transport,
+        ),
+    )
+    committee = assert_is_ok(JsonValue.parse(committee_source))
+    assert_eq(injected_transport_calls, MAX_LIVE_PROVIDER_CALLS)
+    assert_eq(len(require_array(committee, "relations")), 5)
+    assert_eq(len(require_array(committee, "syntheses")), 3)
 
 
 def test_private_provider_envelopes_are_versioned_and_fail_closed() -> None:
@@ -477,8 +573,8 @@ def test_json_nesting_limit_ignores_strings_and_rejects_before_provider_parsing(
     assert_eq(manifest_error.value(), "provider_invalid_input")
 
 
-def test_maximum_committee_shape_is_exact_and_sequentially_bounded() -> None:
-    """Freeze 17 relation, 5 synthesis, 22 total calls, and the deterministic deadline ceiling."""
+def test_maximum_committee_shape_and_live_budget_are_both_exact() -> None:
+    """Keep generic target capacity while freezing the narrower Console live budget."""
 
     proposal = maximum_proposal()
     calls: list[PreparedProviderCall] = assert_is_ok(
@@ -491,13 +587,51 @@ def test_maximum_committee_shape_is_exact_and_sequentially_bounded() -> None:
             synthesis_count = synthesis_count + 1
         else:
             relation_count = relation_count + 1
+        body = assert_is_ok(JsonValue.parse(call.request_body))
+        assert_eq(require_int(body, "max_output_tokens"), OBSERVATION_OUTPUT_TOKENS)
+        assert_eq(call.request_body_bytes <= MAX_PROVIDER_REQUEST_BYTES, true)
     assert_eq(relation_count, 17)
     assert_eq(synthesis_count, 5)
     assert_eq(len(calls), 22)
     assert_eq(MAX_RELATION_CALLS, 17)
     assert_eq(MAX_SYNTHESIS_CALLS, 5)
     assert_eq(MAX_COMMITTEE_CALLS, 22)
+    assert_eq(MAX_LIVE_COMMITTEE_CALLS, 8)
+    assert_eq(MAX_LIVE_PROVIDER_CALLS, 9)
+    assert_eq(MAX_LIVE_PROVIDER_CALLS, 1 + MAX_LIVE_COMMITTEE_CALLS)
+    assert_eq(OBSERVATION_OUTPUT_TOKENS, 512)
+    assert_eq(MAX_PROVIDER_REQUEST_BYTES, 65_536)
     assert_eq(PROVIDER_TIMEOUT_SECONDS * MAX_COMMITTEE_CALLS, 330)
+    assert_eq(PROVIDER_TIMEOUT_SECONDS * MAX_LIVE_COMMITTEE_CALLS, 120)
+    assert_eq(PROVIDER_TIMEOUT_SECONDS * MAX_LIVE_PROVIDER_CALLS, 135)
+
+
+def test_over_budget_proposal_fails_before_any_committee_transport() -> None:
+    """Allow one proposal call, then reject its 22-target plan without invoking the committee transport."""
+
+    context_source = maximum_context_plan()
+    proposal_source = assert_is_ok(propose_json_with_transport(context_source, maximum_proposal_transport))
+    proposal = maximum_proposal()
+    error = assert_is_err(
+        evaluate_committee_json_with_transport(
+            context_source,
+            proposal_source,
+            maximum_manifest_json(proposal),
+            unavailable_transport,
+        ),
+    )
+    assert_eq(error.value(), "provider_committee_too_large")
+
+
+def test_request_size_ceiling_fails_closed_before_transport() -> None:
+    """Reject a request that cannot fit the 64 KiB live request-body budget."""
+
+    mut plan = assert_is_ok(JsonValue.parse(context_plan()))
+    mut context = require(plan, "context")
+    assert_is_ok(context.set("mission", JsonValue.str(oversized_ascii_value())))
+    assert_is_ok(plan.set("context", context))
+    error = assert_is_err(build_proposal_call(assert_is_ok(plan.to_json())))
+    assert_eq(error.value(), "provider_input_too_large")
 
 
 def test_empty_manifest_skips_the_non_authoritative_committee() -> None:

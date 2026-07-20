@@ -11,7 +11,9 @@ from pub::hees_ai import (
     RelationObservation,
     SynthesisObservation,
     bind_console_request_json,
+    evidence_id_text,
     evaluate_console_profile_json,
+    memory_id_text,
     plan_console_manifest_json,
     plan_console_provider_context_json,
     proposal_id_text,
@@ -119,7 +121,7 @@ pub model CompleteProfileProjection:
     pub findings: list[FindingProjection]
     pub spectrum: SpectrumProjection
     pub admitted_visible_units: list[VisibleUnitProjection]
-    pub selected_memory: list[SelectedMemoryProjection]
+    pub selected_memory: list[MemoryAtomProjection]
     pub content_dna_json: Option[str]
     pub receipt_json: Option[str]
 
@@ -188,6 +190,38 @@ pub model SourceInspectionProjection:
     pub text: str
 
 
+@derive(Clone, json)
+pub model ActionInspectionProjection:
+    """One package-owned action shown in the Profile Studio contract view."""
+
+    pub action_id: str
+    pub evidence_required: bool
+
+
+@derive(Clone, json)
+pub model RequirementInspectionProjection:
+    """One package-owned response requirement shown in the Profile Studio."""
+
+    pub requirement_id: str
+    pub description: str
+
+
+@derive(Clone, json)
+pub model PolicyInspectionProjection:
+    """Exact package-owned committee and Spectrum thresholds for inspection."""
+
+    pub constraint_plan_id: str
+    pub constraint_plan_revision: str
+    pub response_contract_id: str
+    pub response_contract_revision: str
+    pub min_support_bps: int
+    pub max_contradiction_bps: int
+    pub max_relation_unresolved_bps: int
+    pub min_coverage_bps: int
+    pub max_gap_bps: int
+    pub max_synthesis_unresolved_bps: int
+
+
 @derive(Clone)
 pub model PackageInspectionProjection:
     """Non-authoritative package display projection kept beside the typed Hees input."""
@@ -200,14 +234,18 @@ pub model PackageInspectionProjection:
     pub artifact_digest: str
     pub mission: str
     pub sources: list[SourceInspectionProjection]
+    pub actions: list[ActionInspectionProjection]
+    pub requirements: list[RequirementInspectionProjection]
+    pub atoms: list[MemoryAtomProjection]
+    pub policy: PolicyInspectionProjection
     pub action_count: int
     pub requirement_count: int
     pub atom_count: int
 
 
 @derive(Clone, json)
-pub model SelectedMemoryProjection:
-    """Source-safe memory atom selected only by the terminal Hees evaluation."""
+pub model MemoryAtomProjection:
+    """Source-safe memory atom projected from a package or terminal Hees result."""
 
     pub memory_id: str
     pub evidence_id: str
@@ -225,6 +263,15 @@ pub model SelectedMemoryProjection:
     pub authority_class: str
     pub evidence_kind: str
     pub provenance_digest: str
+
+
+@derive(Clone)
+pub model CandidateCompatibilityProbe:
+    """Result of probing one fixed-profile candidate against the public Hees boundary."""
+
+    pub valid: bool
+    pub reason: str
+    pub retained_atom_count: int
 
 
 @derive(Clone, json)
@@ -320,6 +367,10 @@ model PartialPackageInspectionProjection:
     artifact_digest: str
     mission: str
     sources: list[SourceInspectionProjection]
+    actions: list[ActionInspectionProjection]
+    requirements: list[RequirementInspectionProjection]
+    atoms: list[MemoryAtomProjection]
+    policy: PolicyInspectionProjection
 
 
 @derive(Clone, json)
@@ -377,9 +428,51 @@ def package_inspection(package: ConsolePackage) -> Result[PackageInspectionProje
             artifact_digest=package_view.artifact_digest,
             mission=package_view.mission,
             sources=package_view.sources,
-            action_count=len(package.actions),
-            requirement_count=len(package.requirements),
-            atom_count=len(package.atoms),
+            actions=package_view.actions,
+            requirements=package_view.requirements,
+            atoms=package_view.atoms,
+            policy=package_view.policy,
+            action_count=len(package_view.actions),
+            requirement_count=len(package_view.requirements),
+            atom_count=len(package_view.atoms),
+        ),
+    )
+
+
+pub def probe_candidate_compatibility(
+    evidence_ids: list[str],
+    memory_ids: list[str],
+) -> Result[CandidateCompatibilityProbe, str]:
+    """Probe whether one session candidate preserves the shipped profile's real Hees path."""
+
+    scenario = load_offline_scenario("valid")?
+    inputs = decode_authority_input(scenario)?
+    mut package = inputs.package
+    package_evidence_ids = [evidence_id_text(atom.evidence_id) for atom in package.atoms]
+    package_memory_ids = [memory_id_text(atom.memory_id) for atom in package.atoms]
+    for evidence_id in evidence_ids:
+        if not package_evidence_ids.contains(evidence_id):
+            return Err("candidate_probe_input_invalid")
+    for memory_id in memory_ids:
+        if not package_memory_ids.contains(memory_id):
+            return Err("candidate_probe_input_invalid")
+    package.atoms = [atom for atom in package.atoms if memory_ids.contains(memory_id_text(atom.memory_id)) and evidence_ids.contains(
+        evidence_id_text(atom.evidence_id),
+    )]
+    retained_atom_count = len(package.atoms)
+    source = evaluate_console_profile_json(
+        package,
+        inputs.request,
+        inputs.proposal,
+        inputs.relation_observations,
+        inputs.synthesis_observations,
+    )
+    result = CompleteProfileProjection.from_json(source).map_err((_error) => f"candidate_probe_projection_failed")?
+    return Ok(
+        CandidateCompatibilityProbe(
+            valid=result.spectrum.admitted,
+            reason=result.spectrum.reason,
+            retained_atom_count=retained_atom_count,
         ),
     )
 

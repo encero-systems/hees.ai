@@ -2,6 +2,7 @@
 
 from std.fs import Path
 from std.json import JsonValue
+from std.regex import Regex
 from std.serde import json
 from std.testing import assert_eq, assert_is_err, assert_is_ok
 from embedded_data import (
@@ -20,6 +21,8 @@ from rendering import bounded_text, render_headless, render_screen, render_scree
 from replays import embedded_inputs_are_non_terminal, load_offline_scenario
 from state import (
     apply_command,
+    candidate_evidence_catalog,
+    candidate_memory_catalog,
     initial_state,
     selected_inspector_name,
     selected_scenario_slug,
@@ -189,6 +192,29 @@ def option_has_value(value: Option[str]) -> bool:
         None => return false
 
 
+def strip_terminal_styles(value: str) -> str:
+    """Remove only application-authored SGR colour sequences for visible-width assertions."""
+
+    match Regex("\\x1B\\[[0-9;]*m"):
+        Err(_) => return value
+        Ok(pattern) => return pattern.replace_all(value, "")
+
+
+def screen_has_exact_geometry(screen: str, columns: int, rows: int) -> bool:
+    """Require every ANSI-stripped frame row to fit the declared terminal exactly."""
+
+    lines = screen.split("\n")
+    if len(lines) != rows:
+        return false
+    for line in lines:
+        mut visible_character_count = 0
+        for _character in strip_terminal_styles(line):
+            visible_character_count += 1
+        if visible_character_count != columns:
+            return false
+    return true
+
+
 def test_embedded_package_and_replays_match_checked_fixtures() -> None:
     """Prevent embedded replay data from drifting away from the reviewed fixture set."""
 
@@ -284,7 +310,7 @@ def test_state_transitions_wrap_and_select_scenarios_and_inspectors() -> None:
     mut state = initial_state()
     assert_eq(selected_scenario_slug(state), "valid")
     assert_eq(selected_inspector_name(state), "PACKAGE")
-    assert_eq(state.surface, "interactions")
+    assert_eq(state.surface, "profiles")
     state = apply_command(state, "previous-scenario", states)
     assert_eq(selected_scenario_slug(state), "non-admitted-memory")
     state = apply_command(state, "next-scenario", states)
@@ -294,7 +320,7 @@ def test_state_transitions_wrap_and_select_scenarios_and_inspectors() -> None:
     state = apply_command(state, "scenario-5", states)
     assert_eq(selected_scenario_slug(state), "non-admitted-memory")
     state = apply_command(state, "previous-inspector", states)
-    assert_eq(state.surface, "inspector")
+    assert_eq(state.surface, "decisions")
     assert_eq(selected_inspector_name(state), "TRACE")
     state = apply_command(state, "next-inspector", states)
     assert_eq(selected_inspector_name(state), "PACKAGE")
@@ -309,6 +335,7 @@ def test_interaction_filters_compose_status_free_text_and_tags() -> None:
 
     states = [true, false, false, false, false]
     mut state = initial_state()
+    state = apply_command(state, "show-interactions", states)
     state = apply_command(state, "open-status", states)
     state = apply_command(state, "toggle-option", states)
     assert_eq(visible_scenario_indexes(state, states), [1, 2, 3, 4])
@@ -325,6 +352,7 @@ def test_interaction_filters_compose_status_free_text_and_tags() -> None:
     assert_eq(visible_scenario_indexes(state, states), [1, 2, 3, 4])
 
     mut empty = initial_state()
+    empty = apply_command(empty, "show-interactions", states)
     empty = apply_command(empty, "open-status", states)
     empty = apply_command(empty, "toggle-option", states)
     empty = apply_command(empty, "next-option", states)
@@ -336,13 +364,94 @@ def test_interaction_filters_compose_status_free_text_and_tags() -> None:
     assert_eq(empty.surface, "interactions")
 
 
+def test_default_demo_probes_missing_lantern_evidence_without_replacing_active_authority() -> None:
+    """Unstage Lantern evidence, probe the exact rejection, and preserve shipped authority."""
+
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    assert_eq(state.surface, "profiles")
+    assert_eq(state.active_profile_id, "console_profile_0_1")
+    assert_eq(len(state.candidate_evidence_ids), 4)
+    assert_eq(len(state.candidate_memory_ids), 4)
+
+    state = apply_command(state, "show-evidence", states)
+    assert_eq(state.evidence_index, 0)
+    state = apply_command(state, "toggle-staged", states)
+    assert_eq(state.candidate_evidence_ids.contains("evidence_lantern_path"), false)
+    assert_eq(state.candidate_probe_state, "not_checked")
+
+    state = apply_command(state, "show-memory", states)
+    assert_eq(len(state.candidate_memory_ids), 4)
+    state = apply_command(state, "probe-candidate", states)
+    assert_eq(state.candidate_probe_state, "incompatible")
+    assert_eq(state.candidate_probe_reason, "invalid_package")
+    assert_eq(state.active_profile_id, "console_profile_0_1")
+
+    state = apply_command(state, "attempt-activate", states)
+    assert_eq(state.candidate_activation_state, "blocked_requires_authority_api")
+    assert_eq(state.active_profile_id, "console_profile_0_1")
+
+    state = apply_command(state, "reset-candidate", states)
+    assert_eq(len(state.candidate_evidence_ids), 4)
+    assert_eq(len(state.candidate_memory_ids), 4)
+    state = apply_command(state, "probe-candidate", states)
+    assert_eq(state.candidate_probe_state, "compatible")
+    assert_eq(state.candidate_probe_reason, "admitted")
+
+
+def test_probe_infrastructure_error_is_not_presented_as_incompatibility() -> None:
+    """Reserve incompatibility for decoded Hees results and label probe failures separately."""
+
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    state.candidate_evidence_ids = ["evidence_outside_fixed_profile"]
+    state = apply_command(state, "probe-candidate", states)
+    assert_eq(state.candidate_probe_state, "probe_error")
+    assert_eq(state.candidate_probe_reason, "candidate_probe_input_invalid")
+    screen = render_screen_for_size(state, [assert_is_ok(evaluate_offline_scenario("valid"))], 160, 44)
+    assert_eq(screen.contains("! PROBE ERROR"), true)
+    assert_eq(screen.contains("INCOMPATIBLE"), false)
+
+
+def test_closed_profile_catalogs_exactly_match_the_embedded_package() -> None:
+    """Fail on drift between bounded session state and the package-owned atom identities."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    package_evidence_ids = [atom.evidence_id for atom in run.scenario.package.atoms]
+    package_memory_ids = [atom.memory_id for atom in run.scenario.package.atoms]
+    assert_eq(candidate_evidence_catalog(), package_evidence_ids)
+    assert_eq(candidate_memory_catalog(), package_memory_ids)
+
+
+def test_product_destinations_and_profile_controls_have_direct_keys() -> None:
+    """Expose the evidence-first product workflow as real deterministic navigation."""
+
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    for command, surface in [("show-profiles", "profiles"), ("show-evidence", "evidence"), ("show-memory", "memory"), ("show-committee", "committee"), ("show-interactions", "interactions"), ("show-decisions", "decisions"), ("show-help", "help")]:
+        state = apply_command(state, command, states)
+        assert_eq(state.surface, surface)
+    assert_eq(command_for_byte(49), "show-profiles")
+    assert_eq(command_for_byte(50), "show-evidence")
+    assert_eq(command_for_byte(51), "show-memory")
+    assert_eq(command_for_byte(52), "show-committee")
+    assert_eq(command_for_byte(53), "show-interactions")
+    assert_eq(command_for_byte(54), "show-decisions")
+    assert_eq(command_for_byte(55), "show-help")
+    assert_eq(command_for_byte(32), "toggle-staged")
+    assert_eq(command_for_byte(118), "probe-candidate")
+    assert_eq(command_for_byte(114), "reset-candidate")
+    assert_eq(command_for_byte(97), "attempt-activate")
+
+
 def test_portable_raw_key_decoder_maps_shortcuts_and_cursor_sequences() -> None:
     """Keep raw terminal decoding deterministic without crossterm event metadata."""
 
-    assert_eq(command_for_byte(49), "show-interactions")
-    assert_eq(command_for_byte(52), "show-decisions")
-    assert_eq(command_for_byte(53), "show-receipts")
-    assert_eq(command_for_byte(54), "show-help")
+    assert_eq(command_for_byte(49), "show-profiles")
+    assert_eq(command_for_byte(52), "show-committee")
+    assert_eq(command_for_byte(53), "show-interactions")
+    assert_eq(command_for_byte(54), "show-decisions")
+    assert_eq(command_for_byte(55), "show-help")
     assert_eq(command_for_byte(98), "toggle-sidebar")
     assert_eq(command_for_byte(103), "show-interactions")
     assert_eq(command_for_byte(47), "open-search")
@@ -370,15 +479,29 @@ def test_portable_raw_key_decoder_maps_shortcuts_and_cursor_sequences() -> None:
     assert_eq(status_command_for_byte(13), "close-control")
 
 
-def test_terminal_sanitizer_removes_controls_and_preserves_unicode_bounds() -> None:
-    """Remove C0 and C1 terminal controls while bounding text by Unicode characters."""
+def test_terminal_sanitizer_removes_controls_and_normalizes_uncertain_cell_width() -> None:
+    """Remove controls and fail closed on wide, combining, or bidi display-width uncertainty."""
 
     payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b[31mred\\u001b[0m\"}"))
     assert_eq(bounded_text(payload.value, 100), " [31mred [0m")
     c1_payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"before\\u009b;31mafter\"}"))
     assert_eq(bounded_text(c1_payload.value, 100), "before ;31mafter")
     assert_eq(bounded_text("line one\nline two\tend", 100), "line one line two end")
-    assert_eq(bounded_text("isiZulu", 4), "isiZ…")
+    assert_eq(bounded_text("isiZulu", 4), "isi~")
+    width_payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"A\\u754ce\\u0301\\u202eZ\"}"))
+    assert_eq(bounded_text(width_payload.value, 32), "A?e??Z")
+
+
+def test_uncertain_dynamic_terminal_width_is_normalized_before_geometry() -> None:
+    """Keep the frame aligned when dynamic state contains unsupported terminal-width text."""
+
+    payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"A\\u754ce\\u0301\\u202eZ\"}"))
+    runs = [assert_is_ok(evaluate_offline_scenario("valid"))]
+    mut state = initial_state()
+    state.active_profile_id = payload.value
+    screen = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(screen.contains("A?e??Z"), true)
+    assert_eq(screen_has_exact_geometry(screen, 160, 44), true)
 
 
 def test_proposal_evidence_ids_are_sanitized_before_rendering() -> None:
@@ -406,21 +529,75 @@ def test_full_screen_carries_the_exact_build_week_product_line() -> None:
     states = [true, false, false, false, false]
     mut state = initial_state()
     browser = render_screen(state, runs)
-    assert_eq(browser.contains("[1 INTERACTIONS]"), true)
-    assert_eq(browser.contains("Search interactions"), true)
-    assert_eq(browser.contains("CONTEXT  EVIDENCE  MEMORY  [RECEIPT]"), true)
-    assert_eq(browser.contains("ADMITTED"), true)
-    assert_eq(browser.contains("REJECTED"), true)
-    assert_eq(browser.contains("✓"), true)
+    assert_eq(browser.contains("[1 PROFILES]"), true)
+    assert_eq(browser.contains("PROFILE STUDIO"), true)
+    assert_eq(browser.contains("DECLARED ACTIONS"), true)
+    assert_eq(browser.contains("CANDIDATE DRAFT"), true)
+    assert_eq(browser.contains("candidate only · not active"), true)
+    assert_eq(browser.contains("not a general package validator."), true)
+    assert_eq(browser.contains("safe profile-activation"), true)
+    assert_eq(browser.contains("authority API."), true)
+    assert_eq(browser.ends_with("\n"), false)
     escape = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b\"}"))
     assert_eq(browser.contains(escape.value), true)
-    state = apply_command(state, "next-inspector", states)
+    state = apply_command(state, "show-evidence", states)
     screen = render_screen(state, runs)
-    assert_eq(screen.contains("GPT-5.6 proposes. Hees decides."), true)
+    assert_eq(screen.contains("Governed AI Profile Studio"), true)
     assert_eq(screen.contains("console_profile_0_1"), true)
-    assert_eq(screen.contains("FIXED PROFILE PACKAGE"), true)
-    assert_eq(screen.contains("What order should I use for the Lantern Path cards?"), true)
-    assert_eq(screen.contains("b collapse"), true)
+    assert_eq(screen.contains("EVIDENCE CATALOG"), true)
+    assert_eq(screen.contains("evidence_lantern_path"), true)
+    assert_eq(screen.contains("SPACE stage/unstage"), true)
+
+
+def test_profile_studio_exposes_evidence_memory_committee_and_result_value() -> None:
+    """Keep evidence authoring and governed evaluation visible as the Console's primary value."""
+
+    mut runs: list[ConsoleRun] = []
+    for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
+        runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+
+    state = apply_command(state, "show-evidence", states)
+    evidence = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(evidence.contains("SELECTED EVIDENCE"), true)
+    assert_eq(evidence.contains("source rights"), true)
+    assert_eq(evidence.contains("source text"), true)
+    assert_eq(evidence.contains("evidence_public_ranking_draft"), true)
+    assert_eq(evidence.contains("pending · rights denied"), true)
+
+    state = apply_command(state, "show-memory", states)
+    memory = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(memory.contains("SELECTED MEMORY ATOM"), true)
+    assert_eq(memory.contains("memory_public_ranking_draft"), true)
+    assert_eq(memory.contains("guidance"), true)
+
+    state = apply_command(state, "show-committee", states)
+    committee = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(committee.contains("TRAINING BY COMMITTEE"), true)
+    assert_eq(committee.contains("PROVIDER OBSERVATIONS"), true)
+    assert_eq(committee.contains("NON-AUTHORITATIVE"), true)
+    assert_eq(committee.contains("HEES-CLASSIFIED FINDINGS"), true)
+    assert_eq(committee.contains("owns terminal authority"), true)
+
+    state = apply_command(state, "show-decisions", states)
+    decision = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(decision.contains("SPECTRUM"), true)
+    assert_eq(decision.contains("NOT SELECTED THIS RESULT"), true)
+    assert_eq(decision.contains("CONTENT DNA      present"), true)
+    assert_eq(decision.contains("RECEIPT          present"), true)
+
+
+def test_blocked_activation_is_visible_and_never_replaces_active_authority() -> None:
+    """Make the bounded activation gap explicit after the user invokes it."""
+
+    runs = [assert_is_ok(evaluate_offline_scenario("valid"))]
+    states = [true]
+    state = apply_command(initial_state(), "attempt-activate", states)
+    screen = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(screen.contains("✕ BLOCKED · authority API unavailable"), true)
+    assert_eq(screen.contains("candidate only — not active"), true)
+    assert_eq(state.active_profile_id, "console_profile_0_1")
 
 
 def test_interaction_workspace_prioritizes_navigation_authority_and_readable_receipts() -> None:
@@ -431,16 +608,17 @@ def test_interaction_workspace_prioritizes_navigation_authority_and_readable_rec
         runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
     states = [true, false, false, false, false]
     mut state = initial_state()
+    state = apply_command(state, "show-interactions", states)
     state = apply_command(state, "next-scenario", states)
     screen = render_screen_for_size(state, runs, 160, 44)
     assert_eq(screen.contains("hees.ai console"), true)
-    assert_eq(screen.contains("[1 INTERACTIONS]"), true)
+    assert_eq(screen.contains("[5 INTERACTIONS]"), true)
     assert_eq(screen.contains("UNTRUSTED PROPOSAL  MODEL"), true)
     assert_eq(screen.contains("HEES DECISION"), true)
     assert_eq(screen.contains("unknown_action"), true)
-    assert_eq(screen.contains("CONTEXT  EVIDENCE  MEMORY  [RECEIPT]"), true)
-    assert_eq(screen.contains("TAB or ←/→ context"), true)
-    assert_eq(screen.contains("1–6 destinations"), true)
+    assert_eq(screen.contains("CONTEXT  EVIDENCE  MEMORY  DNA  [RECEIPT]"), true)
+    assert_eq(screen.contains("←→ context"), true)
+    assert_eq(screen.contains("1–7 destinations"), true)
     assert_eq(screen.contains("SHIFT+TAB"), false)
     assert_eq(screen.contains("direct scenario"), false)
     assert_eq(screen.contains("{\"body\""), false)
@@ -452,13 +630,32 @@ def test_compact_workspace_keeps_the_decision_and_controls_visible() -> None:
     mut runs: list[ConsoleRun] = []
     for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
         runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
-    state = apply_command(initial_state(), "next-scenario", [true, false, false, false, false])
+    mut state = apply_command(initial_state(), "show-interactions", [true, false, false, false, false])
+    state = apply_command(state, "next-scenario", [true, false, false, false, false])
     screen = render_screen_for_size(state, runs, 100, 20)
     assert_eq(screen.contains("COMPACT VIEW"), true)
     assert_eq(screen.contains("HEES DECISION"), true)
     assert_eq(screen.contains("unknown_action"), true)
     assert_eq(screen.contains("q quit"), true)
-    assert_eq(len(screen.split("\n")) <= 20, true)
+    assert_eq(len(screen.split("\n")), 20)
+
+
+def test_every_declared_viewport_has_exact_ansi_stripped_geometry() -> None:
+    """Keep rows, borders, and compact destinations aligned at every supported viewport."""
+
+    mut runs: list[ConsoleRun] = []
+    for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
+        runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
+    mut state = initial_state()
+    for columns, rows in [(160, 44), (140, 36), (120, 30), (100, 20)]:
+        screen = render_screen_for_size(state, runs, columns, rows)
+        assert_eq(screen_has_exact_geometry(screen, columns, rows), true)
+    state = apply_command(state, "show-evidence", [true, false, false, false, false])
+    assert_eq(screen_has_exact_geometry(render_screen_for_size(state, runs, 160, 44), 160, 44), true)
+    state = apply_command(state, "show-memory", [true, false, false, false, false])
+    assert_eq(screen_has_exact_geometry(render_screen_for_size(state, runs, 140, 36), 140, 36), true)
+    state = apply_command(state, "show-decisions", [true, false, false, false, false])
+    assert_eq(screen_has_exact_geometry(render_screen_for_size(state, runs, 120, 30), 120, 30), true)
 
 
 def test_trace_is_separate_non_authoritative_and_redacts_interaction_content() -> None:

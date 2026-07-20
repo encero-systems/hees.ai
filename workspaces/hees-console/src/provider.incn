@@ -6,10 +6,10 @@ admits a proposal, classifies an observation, selects memory, constructs Content
 closed context and manifest envelopes authored by Hees. An empty manifest is valid: it means the proposal must continue
 to Hees with no committee observations so the terminal boundary can return the exact earlier structural rejection.
 
-Live committee calls are intentionally sequential in the current Console profile. The direct `ureq` edge has a 15-second
-timeout and the frozen profile permits at most 22 targets, so the committee has a deterministic 330-second upper bound.
-The module does not claim cancellable concurrency for a blocking HTTP primitive that this profile has not demonstrated
-safely.
+Live committee calls are intentionally sequential in the current Console profile. Generic planning can represent 22
+targets, but one optional live interaction is frozen to one proposal and at most eight committee calls. Every prepared
+request body is at most 64 KiB. With the direct `ureq` edge's 15-second timeout, the complete live interaction therefore
+has a nine-call and 135-second ceiling before any retry policy, which this boundary intentionally does not provide.
 """
 
 from rust::std::string import String as RustString
@@ -44,16 +44,19 @@ pub const PROVIDER_TIMEOUT_SECONDS: int = 15
 pub const MAX_RELATION_CALLS: int = 17
 pub const MAX_SYNTHESIS_CALLS: int = 5
 pub const MAX_COMMITTEE_CALLS: int = 22
+pub const MAX_LIVE_COMMITTEE_CALLS: int = 8
+const LIVE_PROPOSAL_CALLS_PER_INTERACTION: int = 1
+pub const MAX_LIVE_PROVIDER_CALLS: int = LIVE_PROPOSAL_CALLS_PER_INTERACTION + MAX_LIVE_COMMITTEE_CALLS
+pub const MAX_PROVIDER_REQUEST_BYTES: int = 65_536
 const RESPONSES_ENDPOINT: str = "https://api.openai.com/v1/responses"
 const API_KEY_ENVIRONMENT: str = "OPENAI_API_KEY"
 const REASONING_EFFORT: str = "low"
-const MAX_PROVIDER_INPUT_BYTES: int = 262_144
 const MAX_PROVIDER_ENVELOPE_BYTES: int = 131_072
 pub const MAX_JSON_NESTING: int = 16
 const PROPOSAL_OUTPUT_BYTES: int = 32_768
 const OBSERVATION_OUTPUT_BYTES: int = 8_192
-const PROPOSAL_OUTPUT_TOKENS: int = 2_048
-const OBSERVATION_OUTPUT_TOKENS: int = 512
+pub const PROPOSAL_OUTPUT_TOKENS: int = 2_048
+pub const OBSERVATION_OUTPUT_TOKENS: int = 512
 const PROPOSAL_RESULT_CONTRACT: str = "console_provider_proposal_result_0_1"
 const COMMITTEE_RESULT_CONTRACT: str = "console_provider_committee_result_0_1"
 const CONSOLE_PROFILE: str = "console_profile_0_1"
@@ -97,6 +100,7 @@ pub model PreparedProviderCall:
 
     pub operation: str
     pub request_body: str
+    pub request_body_bytes: int
     pub max_output_bytes: int
     pub prompt_fingerprint: str
     pub configuration_fingerprint: str
@@ -137,21 +141,29 @@ model TypedProposalEnvelope:
 
 @derive(Clone, json)
 model UntypedRelationEnvelope:
+    """JSON-value envelope used to preserve strict relation shape checks before typed decoding."""
+
     relation: JsonValue
 
 
 @derive(Clone, json)
 model TypedRelationEnvelope:
+    """Non-authoritative relation observation decoded into the public Hees contract."""
+
     relation: RelationObservation
 
 
 @derive(Clone, json)
 model UntypedSynthesisEnvelope:
+    """JSON-value envelope used to preserve strict synthesis shape checks before typed decoding."""
+
     synthesis: JsonValue
 
 
 @derive(Clone, json)
 model TypedSynthesisEnvelope:
+    """Non-authoritative synthesis observation decoded into the public Hees contract."""
+
     synthesis: SynthesisObservation
 
 
@@ -395,9 +407,7 @@ def json_strings(values: list[str]) -> JsonValue:
 def closed_object_schema(properties: Dict[str, JsonValue]) -> JsonValue:
     """Construct an OpenAI-strict object schema requiring every declared property."""
 
-    mut required: list[str] = []
-    for property_name in properties.keys():
-        required.append(f"{property_name}")
+    required = [property_name for property_name in properties.keys()]
     return JsonValue.object(
         {"type": JsonValue.str("object"), "additionalProperties": JsonValue.bool(false), "required": json_strings(
             required,
@@ -593,35 +603,29 @@ def provider_context_shape_is_closed(value: JsonValue) -> bool:
 def parse_provider_context(source: str) -> Result[ProviderContext, ProviderFailure]:
     """Consume only a plannable closed context envelope authored by Hees."""
 
-    if utf8_length(source) > MAX_PROVIDER_INPUT_BYTES:
+    if utf8_length(source) > MAX_PROVIDER_REQUEST_BYTES:
         return Err(ProviderFailure.InputTooLarge)
     if not json_nesting_is_within_limit(source):
         return Err(ProviderFailure.InvalidInput)
-    match JsonValue.parse(source):
-        Err(_) => return Err(ProviderFailure.InvalidInput)
-        Ok(value) =>
-            if not json_keys_are_exact(value, ["contract_version", "profile_id", "plannable", "context"]):
+    value = JsonValue.parse(source).map_err((_error) => ProviderFailure.InvalidInput)?
+    if not json_keys_are_exact(value, ["contract_version", "profile_id", "plannable", "context"]):
+        return Err(ProviderFailure.InvalidInput)
+    match value.get("context"):
+        None => return Err(ProviderFailure.InvalidInput)
+        Some(context) =>
+            if context.is_null() or not provider_context_shape_is_closed(context):
                 return Err(ProviderFailure.InvalidInput)
-            match value.get("context"):
-                None => return Err(ProviderFailure.InvalidInput)
-                Some(context) =>
-                    if context.is_null() or not provider_context_shape_is_closed(context):
-                        return Err(ProviderFailure.InvalidInput)
-            match value.to_json():
-                Err(_) => return Err(ProviderFailure.InvalidInput)
-                Ok(source) =>
-                    match ProviderContextPlan.from_json(source):
-                        Err(_) => return Err(ProviderFailure.InvalidInput)
-                        Ok(plan) =>
-                            if (
-                                plan.contract_version != "console_provider_context_plan_0_1"
-                                or plan.profile_id != "console_profile_0_1"
-                                or not plan.plannable
-                            ):
-                                return Err(ProviderFailure.InvalidInput)
-                            match plan.context:
-                                None => return Err(ProviderFailure.InvalidInput)
-                                Some(context) => return Ok(context)
+    canonical_source = value.to_json().map_err((_error) => ProviderFailure.InvalidInput)?
+    plan = ProviderContextPlan.from_json(canonical_source).map_err((_error) => ProviderFailure.InvalidInput)?
+    if (
+        plan.contract_version != "console_provider_context_plan_0_1"
+        or plan.profile_id != "console_profile_0_1"
+        or not plan.plannable
+    ):
+        return Err(ProviderFailure.InvalidInput)
+    match plan.context:
+        None => return Err(ProviderFailure.InvalidInput)
+        Some(context) => return Ok(context)
 
 
 def prepare_call(
@@ -635,7 +639,7 @@ def prepare_call(
 ) -> Result[PreparedProviderCall, ProviderFailure]:
     """Construct one exact Responses request and its safe fingerprints."""
 
-    if utf8_length(payload_json) > MAX_PROVIDER_INPUT_BYTES:
+    if utf8_length(payload_json) > MAX_PROVIDER_REQUEST_BYTES:
         return Err(ProviderFailure.InputTooLarge)
     request = ResponseRequest(
         model_name=GPT56_MODEL,
@@ -651,7 +655,8 @@ def prepare_call(
         truncation="disabled",
     )
     request_body = request.to_json()
-    if utf8_length(request_body) > MAX_PROVIDER_INPUT_BYTES:
+    request_body_bytes = utf8_length(request_body)
+    if request_body_bytes > MAX_PROVIDER_REQUEST_BYTES:
         return Err(ProviderFailure.InputTooLarge)
     configuration = ProviderConfiguration(
         model_name=GPT56_MODEL,
@@ -670,6 +675,7 @@ def prepare_call(
         PreparedProviderCall(
             operation=operation,
             request_body=request_body,
+            request_body_bytes=request_body_bytes,
             max_output_bytes=max_output_bytes,
             prompt_fingerprint=fingerprint(instructions),
             configuration_fingerprint=fingerprint(configuration.to_json()),
@@ -737,44 +743,35 @@ def target_shape_is_closed(value: JsonValue) -> bool:
 def parse_manifest(source: str) -> Result[list[ProviderManifestTarget], ProviderFailure]:
     """Decode only the closed manifest-plan envelope authored by Hees."""
 
-    if utf8_length(source) > MAX_PROVIDER_INPUT_BYTES:
+    if utf8_length(source) > MAX_PROVIDER_REQUEST_BYTES:
         return Err(ProviderFailure.InputTooLarge)
     if not json_nesting_is_within_limit(source):
         return Err(ProviderFailure.InvalidInput)
-    match JsonValue.parse(source):
-        Err(_) => return Err(ProviderFailure.InvalidInput)
-        Ok(value) =>
-            if not json_keys_are_exact(value, ["contract_version", "profile_id", "plannable", "targets"]):
-                return Err(ProviderFailure.InvalidInput)
-            match value.get("targets"):
+    value = JsonValue.parse(source).map_err((_error) => ProviderFailure.InvalidInput)?
+    if not json_keys_are_exact(value, ["contract_version", "profile_id", "plannable", "targets"]):
+        return Err(ProviderFailure.InvalidInput)
+    match value.get("targets"):
+        None => return Err(ProviderFailure.InvalidInput)
+        Some(targets_value) =>
+            match targets_value.as_array():
                 None => return Err(ProviderFailure.InvalidInput)
-                Some(targets_value) =>
-                    match targets_value.as_array():
-                        None => return Err(ProviderFailure.InvalidInput)
-                        Some(items) =>
-                            if len(items) > MAX_COMMITTEE_CALLS:
-                                return Err(ProviderFailure.CommitteeTooLarge)
-                            for item in items:
-                                if not target_shape_is_closed(item):
-                                    return Err(ProviderFailure.InvalidInput)
-            match value.to_json():
-                Err(_) => return Err(ProviderFailure.InvalidInput)
-                Ok(source) =>
-                    match ProviderManifestPlan.from_json(source):
-                        Err(_) => return Err(ProviderFailure.InvalidInput)
-                        Ok(plan) =>
-                            if (
-                                plan.contract_version != "console_manifest_plan_0_1"
-                                or plan.profile_id != "console_profile_0_1"
-                            ):
-                                return Err(ProviderFailure.InvalidInput)
-                            if not plan.plannable:
-                                if len(plan.targets) != 0:
-                                    return Err(ProviderFailure.InvalidInput)
-                                return Ok([])
-                            if len(plan.targets) == 0:
-                                return Err(ProviderFailure.InvalidInput)
-                            return Ok(plan.targets)
+                Some(items) =>
+                    if len(items) > MAX_COMMITTEE_CALLS:
+                        return Err(ProviderFailure.CommitteeTooLarge)
+                    for item in items:
+                        if not target_shape_is_closed(item):
+                            return Err(ProviderFailure.InvalidInput)
+    canonical_source = value.to_json().map_err((_error) => ProviderFailure.InvalidInput)?
+    plan = ProviderManifestPlan.from_json(canonical_source).map_err((_error) => ProviderFailure.InvalidInput)?
+    if plan.contract_version != "console_manifest_plan_0_1" or plan.profile_id != "console_profile_0_1":
+        return Err(ProviderFailure.InvalidInput)
+    if not plan.plannable:
+        if len(plan.targets) != 0:
+            return Err(ProviderFailure.InvalidInput)
+        return Ok([])
+    if len(plan.targets) == 0:
+        return Err(ProviderFailure.InvalidInput)
+    return Ok(plan.targets)
 
 
 def observation_id(index: int) -> str:
@@ -883,6 +880,7 @@ pub def build_committee_calls(
         target = targets[index]
         if not target_matches_interaction(target, context, candidate_digest):
             return Err(ProviderFailure.InvalidInput)
+        # dev.19 moves both a direct model field and a reused local into `contains`; separate copies avoid a Rust move.
         if target_ids.contains(f"{target.body.target_id}"):
             return Err(ProviderFailure.InvalidInput)
         target_ids.append(f"{target.body.target_id}")
@@ -894,11 +892,11 @@ pub def build_committee_calls(
         if relation_count > MAX_RELATION_CALLS or synthesis_count > MAX_SYNTHESIS_CALLS:
             return Err(ProviderFailure.CommitteeTooLarge)
         payload = CommitteeProviderInput(
-            profile_id=f"{context.profile_id}",
-            package_id=f"{context.package_id}",
-            domain_id=f"{context.domain_id}",
-            package_revision=f"{context.package_revision}",
-            artifact_digest=f"{context.artifact_digest}",
+            profile_id=context.profile_id,
+            package_id=context.package_id,
+            domain_id=context.domain_id,
+            package_revision=context.package_revision,
+            artifact_digest=context.artifact_digest,
             request=context.request,
             proposal=proposal,
             observation_id=observation_id(index + 1),
@@ -907,15 +905,28 @@ pub def build_committee_calls(
         )
         calls.append(
             prepare_call(
-                f"{operation}",
+                operation,
                 f"console_{operation}_provider_0_1",
-                committee_schema(f"{operation}"),
+                committee_schema(operation),
                 committee_instructions(operation),
                 payload.to_json(),
                 OBSERVATION_OUTPUT_TOKENS,
                 OBSERVATION_OUTPUT_BYTES,
             )?,
         )
+    return Ok(calls)
+
+
+def build_live_committee_calls(
+    context_plan_json: str,
+    proposal: ConsoleProposal,
+    manifest_json: str,
+) -> Result[list[PreparedProviderCall], ProviderFailure]:
+    """Preflight the complete committee before any injected or network transport is invoked."""
+
+    calls = build_committee_calls(context_plan_json, proposal, manifest_json)?
+    if LIVE_PROPOSAL_CALLS_PER_INTERACTION + len(calls) > MAX_LIVE_PROVIDER_CALLS:
+        return Err(ProviderFailure.CommitteeTooLarge)
     return Ok(calls)
 
 
@@ -958,12 +969,7 @@ def json_string_values(value: JsonValue) -> Result[list[str], ProviderFailure]:
     match value.as_array():
         None => return Err(ProviderFailure.MalformedOutput)
         Some(items) =>
-            mut values: list[str] = []
-            for item in items:
-                match item.as_str():
-                    None => return Err(ProviderFailure.MalformedOutput)
-                    Some(text) => values.append(text)
-            return Ok(values)
+            return Ok([item.expect_str().map_err((_error) => ProviderFailure.MalformedOutput)? for item in items])
 
 
 def json_string_array_field(value: JsonValue, field: str) -> Result[list[str], ProviderFailure]:
@@ -1092,42 +1098,53 @@ def attach_fingerprints(call: PreparedProviderCall, output_text: str, relation: 
 
     if not json_nesting_is_within_limit(output_text):
         return Err(ProviderFailure.MalformedOutput)
-    match JsonValue.parse(output_text):
-        Err(_) => return Err(ProviderFailure.MalformedOutput)
-        Ok(parsed) =>
-            mut value = parsed
-            if relation and not relation_shape_is_closed(value):
-                return Err(ProviderFailure.MalformedOutput)
-            if not relation and not synthesis_shape_is_closed(value):
-                return Err(ProviderFailure.MalformedOutput)
-            match value.set("model_fingerprint", JsonValue.str(fingerprint(GPT56_MODEL))):
-                Err(_) => return Err(ProviderFailure.MalformedOutput)
-                Ok(_) => pass
-            match value.set("prompt_fingerprint", JsonValue.str(call.prompt_fingerprint)):
-                Err(_) => return Err(ProviderFailure.MalformedOutput)
-                Ok(_) => pass
-            match value.set("configuration_fingerprint", JsonValue.str(call.configuration_fingerprint)):
-                Err(_) => return Err(ProviderFailure.MalformedOutput)
-                Ok(_) => pass
-            match value.to_json():
-                Err(_) => return Err(ProviderFailure.MalformedOutput)
-                Ok(source) => return Ok(source)
+    mut value = JsonValue.parse(output_text).map_err((_error) => ProviderFailure.MalformedOutput)?
+    if relation and not relation_shape_is_closed(value):
+        return Err(ProviderFailure.MalformedOutput)
+    if not relation and not synthesis_shape_is_closed(value):
+        return Err(ProviderFailure.MalformedOutput)
+    value
+        .set("model_fingerprint", JsonValue.str(fingerprint(GPT56_MODEL)))
+        .map_err((_error) => ProviderFailure.MalformedOutput)?
+    value
+        .set("prompt_fingerprint", JsonValue.str(call.prompt_fingerprint))
+        .map_err((_error) => ProviderFailure.MalformedOutput)?
+    value
+        .set("configuration_fingerprint", JsonValue.str(call.configuration_fingerprint))
+        .map_err((_error) => ProviderFailure.MalformedOutput)?
+    return value.to_json().map_err((_error) => ProviderFailure.MalformedOutput)
 
 
 def relation_from_value(value: JsonValue) -> Result[RelationObservation, ProviderFailure]:
     """Construct a public Hees relation observation from the closed provider projection."""
 
     source = UntypedRelationEnvelope(relation=value).to_json()
-    envelope = TypedRelationEnvelope.from_json(source).map_err((_error) => ProviderFailure.MalformedOutput)?
-    return Ok(envelope.relation)
+    return TypedRelationEnvelope
+        .from_json(source)
+        .map_err((_error) => ProviderFailure.MalformedOutput)
+        .map(relation_from_envelope)
+
+
+def relation_from_envelope(envelope: TypedRelationEnvelope) -> RelationObservation:
+    """Project the typed relation payload for `Result.map` without inference-only field access."""
+
+    return envelope.relation
 
 
 def synthesis_from_value(value: JsonValue) -> Result[SynthesisObservation, ProviderFailure]:
     """Construct a public Hees synthesis observation from the closed provider projection."""
 
     source = UntypedSynthesisEnvelope(synthesis=value).to_json()
-    envelope = TypedSynthesisEnvelope.from_json(source).map_err((_error) => ProviderFailure.MalformedOutput)?
-    return Ok(envelope.synthesis)
+    return TypedSynthesisEnvelope
+        .from_json(source)
+        .map_err((_error) => ProviderFailure.MalformedOutput)
+        .map(synthesis_from_envelope)
+
+
+def synthesis_from_envelope(envelope: TypedSynthesisEnvelope) -> SynthesisObservation:
+    """Project the typed synthesis payload for `Result.map` without inference-only field access."""
+
+    return envelope.synthesis
 
 
 pub def decode_relation_response(
@@ -1140,9 +1157,7 @@ pub def decode_relation_response(
         return Err(ProviderFailure.InvalidInput)
     output_text = extract_output_text(call, response_source)?
     source = attach_fingerprints(call, output_text, true)?
-    match JsonValue.parse(source):
-        Err(_) => return Err(ProviderFailure.MalformedOutput)
-        Ok(value) => return relation_from_value(value)
+    return JsonValue.parse(source).map_err((_error) => ProviderFailure.MalformedOutput).and_then(relation_from_value)
 
 
 pub def decode_synthesis_response(
@@ -1155,9 +1170,7 @@ pub def decode_synthesis_response(
         return Err(ProviderFailure.InvalidInput)
     output_text = extract_output_text(call, response_source)?
     source = attach_fingerprints(call, output_text, false)?
-    match JsonValue.parse(source):
-        Err(_) => return Err(ProviderFailure.MalformedOutput)
-        Ok(value) => return synthesis_from_value(value)
+    return JsonValue.parse(source).map_err((_error) => ProviderFailure.MalformedOutput).and_then(synthesis_from_value)
 
 
 pub def propose_with_transport(
@@ -1200,7 +1213,7 @@ pub def evaluate_committee_with_transport(
 ) -> Result[ProviderCommitteeResult, ProviderFailure]:
     """Evaluate every Hees target sequentially through an injected transport."""
 
-    calls = build_committee_calls(context_plan_json, proposal, manifest_json)?
+    calls = build_live_committee_calls(context_plan_json, proposal, manifest_json)?
     mut relations: list[RelationObservation] = []
     mut syntheses: list[SynthesisObservation] = []
     for call in calls:
@@ -1235,10 +1248,12 @@ pub def evaluate_committee_json_with_transport(
 def load_api_key() -> Result[str, ProviderFailure]:
     """Read only `OPENAI_API_KEY` and reject blank, oversized, or header-breaking values."""
 
+    # dev.19 emits an ambiguous `.into()` for a direct `str` passed to Rust's generic `env::var` boundary.
     environment_name = f"{API_KEY_ENVIRONMENT}"
     match env_var(environment_name):
         Err(_) => return Err(ProviderFailure.MissingApiKey)
         Ok(raw_key) =>
+            # `env_var` returns Rust `String`; interpolation is the explicit conversion to Incan `str`.
             key = f"{raw_key}"
             if key == "" or key.strip() != key or len(key) > 512 or key.contains("\n") or key.contains("\r"):
                 return Err(ProviderFailure.MissingApiKey)
@@ -1301,7 +1316,7 @@ pub def live_committee(
     match gate:
         LiveCanaryGate.Disabled => return Err(ProviderFailure.LiveCanaryDisabled)
         LiveCanaryGate.Explicit => pass
-    calls = build_committee_calls(context_plan_json, proposal, manifest_json)?
+    calls = build_live_committee_calls(context_plan_json, proposal, manifest_json)?
     if len(calls) == 0:
         return Ok(
             ProviderCommitteeResult(
@@ -1315,7 +1330,7 @@ pub def live_committee(
     mut relations: list[RelationObservation] = []
     mut syntheses: list[SynthesisObservation] = []
     for call in calls:
-        response = send_https(f"{api_key}", call.request_body)?
+        response = send_https(api_key, call.request_body)?
         if call.operation == "synthesis":
             syntheses.append(decode_synthesis_response(call, response)?)
         else:

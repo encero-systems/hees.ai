@@ -4,7 +4,7 @@ Raw-key terminal boundary for the native Incan Console.
 Crossterm supplies only cross-platform raw-mode primitives. Incan owns byte-level key decoding, fixed terminal-control sequences, state transitions, scenario evaluation, rendering, and all application behavior.
 """
 
-from rust::std::io import Read, stdin
+from rust::std::io import Read, Write, stdin, stdout
 from rust::std::string import String as RustString
 from rust::crossterm::terminal import disable_raw_mode, enable_raw_mode, size as terminal_size
 from evaluation import ConsoleRun, evaluate_offline_scenario
@@ -19,17 +19,27 @@ pub def command_for_byte(value: int) -> str:
     if value == 113:
         return "quit"
     if value == 49:
-        return "show-interactions"
+        return "show-profiles"
     if value == 50:
-        return "show-package"
-    if value == 51:
         return "show-evidence"
+    if value == 51:
+        return "show-memory"
     if value == 52:
-        return "show-decisions"
+        return "show-committee"
     if value == 53:
-        return "show-receipts"
+        return "show-interactions"
     if value == 54:
+        return "show-decisions"
+    if value == 55:
         return "show-help"
+    if value == 32:
+        return "toggle-staged"
+    if value == 118:
+        return "probe-candidate"
+    if value == 114:
+        return "reset-candidate"
+    if value == 97:
+        return "attempt-activate"
     if value == 98:
         return "toggle-sidebar"
     if value == 103:
@@ -217,11 +227,18 @@ def leave_terminal_screen() -> None:
 
 
 def draw_frame(state: ConsoleState, runs: list[ConsoleRun]) -> None:
-    """Replace the alternate-screen frame with bounded native Incan output."""
+    """Replace the alternate-screen frame without printing a scrolling trailing newline."""
 
     columns, rows = terminal_dimensions()
     frame = render_screen_for_size(state, runs, columns, rows).replace("\n", "\r\n")
-    println(f"{clear_and_home()}{frame}")
+    data = RustString.from(f"{clear_and_home()}{frame}").into_bytes()
+    mut out = stdout()
+    match out.write_all(data):
+        Err(_) => return
+        Ok(_) => pass
+    match out.flush():
+        Err(_) => return
+        Ok(_) => return
 
 
 def live_safe_command(command: str) -> str:
