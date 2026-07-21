@@ -17,6 +17,8 @@ CONSOLE_RELEASE_SET_TOOL := $(abspath $(CONSOLE_ROOT)/packaging/validate_release
 CONSOLE_RELEASE_SET_TEST := $(abspath $(CONSOLE_ROOT)/packaging/test_release_set.sh)
 DOCS_PAGES_TOOL := $(abspath workspaces/docs-site/packaging/prepare_pages.sh)
 DOCS_PAGES_TEST := $(abspath workspaces/docs-site/packaging/test_prepare_pages.sh)
+DOCS_PAGES_PUBLISH_TOOL := $(abspath workspaces/docs-site/packaging/publish_pages.sh)
+DOCS_PAGES_PUBLISH_TEST := $(abspath workspaces/docs-site/packaging/test_publish_pages.sh)
 CONSOLE_GENERATED_ROOT := $(abspath $(CONSOLE_ROOT)/target/incan/hees_console)
 CONSOLE_RUNNER_ROOT := $(abspath $(CONSOLE_ROOT)/runner)
 CONSOLE_RUNNER_BINARY := $(CONSOLE_RUNNER_ROOT)/target/incan/.cargo-target/release/hees_runner
@@ -31,10 +33,12 @@ INCAN_REQUIRED_VERSION := incan 0.5.0-dev.22
 RELEASE_OUTPUT ?= $(abspath $(CONSOLE_ROOT)/target/release)
 RELEASE_PLATFORM ?=
 PAGES_OUTPUT ?=
+PAGES_REMOTE ?=
+PAGES_BRANCH ?=
 SOURCE_COMMIT ?= $(shell git rev-parse HEAD)
 SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct HEAD)
 
-.PHONY: fmt lib test consumer example boundary boundary-self-test docs docs-pages-contract-test docs-pages-stage ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-set-test console-release-lint
+.PHONY: fmt lib test consumer example boundary boundary-self-test docs docs-pages-contract-test docs-pages-publish-contract-test docs-pages-stage docs-pages-publish ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-set-test console-release-lint
 
 fmt:
 	$(INCAN) fmt --check .
@@ -63,9 +67,18 @@ docs:
 docs-pages-contract-test:
 	$(DOCS_PAGES_TEST)
 
+docs-pages-publish-contract-test:
+	$(DOCS_PAGES_PUBLISH_TEST)
+
 docs-pages-stage: docs
 	@test -n "$(PAGES_OUTPUT)" || { echo "PAGES_OUTPUT is required" >&2; exit 1; }
 	$(DOCS_PAGES_TOOL) --site workspaces/docs-site/site --destination "$(PAGES_OUTPUT)" --source-commit "$(SOURCE_COMMIT)"
+
+docs-pages-publish:
+	@test -n "$(PAGES_OUTPUT)" || { echo "PAGES_OUTPUT is required" >&2; exit 1; }
+	@test -n "$(PAGES_REMOTE)" || { echo "PAGES_REMOTE is required" >&2; exit 1; }
+	@test -n "$(PAGES_BRANCH)" || { echo "PAGES_BRANCH is required" >&2; exit 1; }
+	$(DOCS_PAGES_PUBLISH_TOOL) --site "$(PAGES_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --remote "$(PAGES_REMOTE)" --branch "$(PAGES_BRANCH)" --publish
 
 console-build:
 	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "hees.ai console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
@@ -105,8 +118,8 @@ console-release-set-test:
 	$(CONSOLE_RELEASE_SET_TEST)
 
 console-release-lint:
-	sh -n $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST) $(CONSOLE_RELEASE_SET_TOOL) $(CONSOLE_RELEASE_SET_TEST) $(DOCS_PAGES_TOOL) $(DOCS_PAGES_TEST)
-	shellcheck -s sh $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST) $(CONSOLE_RELEASE_SET_TOOL) $(CONSOLE_RELEASE_SET_TEST) $(DOCS_PAGES_TOOL) $(DOCS_PAGES_TEST)
+	sh -n $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST) $(CONSOLE_RELEASE_SET_TOOL) $(CONSOLE_RELEASE_SET_TEST) $(DOCS_PAGES_TOOL) $(DOCS_PAGES_TEST) $(DOCS_PAGES_PUBLISH_TOOL) $(DOCS_PAGES_PUBLISH_TEST)
+	shellcheck -s sh $(CONSOLE_RELEASE_TOOL) $(CONSOLE_RELEASE_TEST) $(CONSOLE_RELEASE_SET_TOOL) $(CONSOLE_RELEASE_SET_TEST) $(DOCS_PAGES_TOOL) $(DOCS_PAGES_TEST) $(DOCS_PAGES_PUBLISH_TOOL) $(DOCS_PAGES_PUBLISH_TEST)
 	actionlint .github/workflows/console-release-candidate.yml .github/workflows/console-draft-release.yml .github/workflows/docs.yml
 
 console-release-candidate: console-release-contract-test console-test console-native-smoke console-license-audit
@@ -115,4 +128,4 @@ console-release-candidate: console-release-contract-test console-test console-na
 	THIRD_PARTY_LICENSES_SOURCE="$(CONSOLE_GENERATED_LICENSE_REPORT)" $(CONSOLE_RELEASE_TOOL) package --binary "$(CONSOLE_BINARY)" --platform "$(RELEASE_PLATFORM)" --output-directory "$(RELEASE_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --source-date-epoch "$(SOURCE_DATE_EPOCH)" --incan-root "$(INCAN_RELEASE_ROOT)" --incan-lock "$(CONSOLE_LOCK)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)" --forbidden "$(INCAN_PROVIDER_HOME)"
 	$(CONSOLE_RELEASE_TOOL) smoke-archive --archive "$(RELEASE_OUTPUT)/hees-console-0.1.0-$(RELEASE_PLATFORM).tar.gz" --platform "$(RELEASE_PLATFORM)" --forbidden "$(abspath .)" --forbidden "$(HOME)" --forbidden "$(INCAN_RELEASE_ROOT)" --forbidden "$(INCAN_PROVIDER_HOME)"
 
-ci: fmt lib test consumer example boundary boundary-self-test docs docs-pages-contract-test console-test console-runner-build console-kernel-compatibility console-release-contract-test console-release-set-test
+ci: fmt lib test consumer example boundary boundary-self-test docs docs-pages-contract-test docs-pages-publish-contract-test console-test console-runner-build console-kernel-compatibility console-release-contract-test console-release-set-test

@@ -11,6 +11,8 @@
 
 ## Evidence first, decision last
 
+The permanent product arc begins with raw source evidence and candidate memory creation:
+
 ```text
 source evidence -> candidate memory atoms
                            |
@@ -34,7 +36,7 @@ live model inputs ───┘     |
 
 The governance profile is the reusable product unit. It names the exact evidence catalog, reviewed memory, rights and review state, permitted actions, answer requirements, policy thresholds, evaluator roles, bounds, Spectrum behavior, terminal reasons, and receipt projection that apply to an interaction. A model may supply proposals and observations inside that space; it cannot write the space into existence.
 
-The Build Week Profile Studio makes that distinction executable. Evidence and memory can be staged or unstaged in a session-local candidate and sent through the shipped acceptance interaction at the real Hees boundary. The result keeps the stable public contract reason separate from the exact profile diagnostic; removing required evidence produces `invalid_package` and `invalid_package_atoms`. A rejected candidate probe cannot replace the shipped active profile. The [Governance profiles guide](governance-profiles.md) explains the complete contract through the fictional Lantern Labs fields.
+The Build Week release begins later in that arc, from a supplied fictional evidence catalog and reviewed-memory package. Its Profile Studio makes the governance boundary executable: evidence and memory can be staged or unstaged in a session-local candidate and sent through the shipped acceptance interaction at the real Hees boundary. It does not yet ingest arbitrary evidence, derive memory atoms, persist edits, or activate a candidate. The result keeps the stable public contract reason separate from the exact profile diagnostic; removing required evidence produces `invalid_package` and `invalid_package_atoms`. A rejected candidate probe cannot replace the shipped active profile. The [Governance profiles guide](governance-profiles.md) explains the complete contract through the fictional Lantern Labs fields.
 
 ## One boundary, three distinct roles
 

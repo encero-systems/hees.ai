@@ -42,6 +42,20 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 - [ ] Screenshots and video surfaces contain no credentials, personal data, personal paths, private repositories, private packages, hidden prompts, raw provider metadata, unrestricted rationale, or unrelated work.
 - [ ] The Devpost draft, video script, captions, README, testing instructions, and release notes agree on capabilities, limits, scenario values, and lineage.
 
+### Manual Pages publication
+
+The publisher is intentionally separate from documentation generation and has no default remote or branch. From a clean frozen checkout, stage the already scanned site into a new external directory, then publish it only with an explicit flag:
+
+```bash
+make docs-pages-stage PAGES_OUTPUT=/absolute/empty/hees-pages-stage
+make docs-pages-publish \
+  PAGES_OUTPUT=/absolute/empty/hees-pages-stage \
+  PAGES_REMOTE=origin \
+  PAGES_BRANCH=gh-pages
+```
+
+The command verifies the staged `SOURCE_COMMIT`, checks that the source checkout is clean and at that exact commit, creates a temporary detached worktree from the current remote `gh-pages` tip, and performs a normal non-force push. It refuses a missing publication flag, a changed remote tip, missing branch, source mismatch, or unsafe staged tree. Verify the public site while signed out after it completes.
+
 ## Official-rules reconciliation
 
 ### Eligibility and ownership

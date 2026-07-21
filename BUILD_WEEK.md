@@ -34,7 +34,7 @@ Default replay mode uses deterministic request, proposal, and observation fixtur
 
 ## What the Build Week slice is
 
-The Build Week release target is the first bounded implementation profile of the permanent hees.ai console product. Its working product arc is `evidence -> memory atoms -> candidate profile -> Hees acceptance probe -> Training by Committee -> bounded Spectrum evaluation -> governed interaction -> Content DNA and receipt`.
+The Build Week release target is the first bounded implementation profile of the permanent hees.ai console product. The permanent product arc is `evidence -> memory atoms -> candidate profile -> Hees acceptance probe -> Training by Committee -> bounded Spectrum evaluation -> governed interaction -> Content DNA and receipt`. This release begins with a supplied fictional evidence catalog and reviewed memory atoms, then implements session-local candidate staging, acceptance probing, pressure testing, adjudication, and terminal artifacts.
 
 A developer or judge can browse every supplied fictional source and memory atom with its exact identity, provenance, review, and rights state; stage or unstage supported material in a session-local candidate; run the shipped acceptance interaction against the candidate through Hees; inspect the active profile's actions, requirements, policy, and evaluator contract; run one admitted and four adversarial interactions; and inspect every terminal artifact. The fictional domain, bounded candidate workflow, offline fixtures, and optional GPT-5.6 adapter are profile choices, not permanent Console constraints.
 

@@ -1,6 +1,6 @@
 # hees.ai console video and screenshot plan
 
-> **Freeze gate:** Record only from the audited release artifact after every final-evidence placeholder below has been replaced. The target runtime is **2:50**, leaving ten seconds below the official three-minute limit.
+> **Freeze gate:** Record only from an extracted, smoke-tested `hees-console-v0.1.0` archive after its digest has been checked against the release `SHA256SUMS` and its source identity has been checked against the tagged release. The target runtime is **2:50**, leaving ten seconds below the official three-minute limit.
 
 ## Product story
 
@@ -96,7 +96,7 @@ By the end of the video, a judge should understand that:
 - Keep `REPLAY` or `LIVE` visible throughout each run. Never splice replay output under a live label.
 - Use no copyrighted music, third-party logos, private browser chrome, account identifiers, notification banners, or unlicensed assets.
 - Do not display `OPENAI_API_KEY`, environment variables, request headers, hidden prompts, unrestricted rationale, personal data, local paths, issue drafts, or private repositories.
-- Record the product demonstration in replay. State that a provider-only native Incan diagnostic exercised credential loading, `ureq` HTTPS, strict schema, and typed proposal decoding. State separately that a temporary generated harness completed six live committee calls and reached an admitted real-Hees result. Do not present the separate diagnostics as one combined frozen release-binary run.
+- Record the product demonstration in replay. State that a provider-only native Incan diagnostic exercised credential loading, `ureq` HTTPS, strict schema, and typed proposal decoding. State separately that six live committee calls were verified with the recorded proposal and reached an admitted real-Hees result. Do not present the separate diagnostics as one combined frozen release-binary run; retain the implementation-harness detail in the testing record rather than foregrounding it in the video.
 - Confirm every displayed reason, digest, artifact identity, and trust label against the frozen outputs after editing the video.
 - Upload the approved final cut publicly to YouTube and verify it while signed out. Paste that observed URL into the Devpost form and final video description.
 
