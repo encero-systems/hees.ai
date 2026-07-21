@@ -1,0 +1,20 @@
+hees.ai console 0.1.0
+
+This archive contains a prebuilt native executable. Running it does not require the Incan compiler or a network connection.
+
+Interactive offline replay:
+
+  ./hees-console
+
+Headless offline verification:
+
+  ./hees-console --mode offline --scenario valid --headless
+
+Other bundled replay scenarios are undeclared-action, unknown-evidence, unknown-memory, and non-admitted-memory.
+
+The macOS executables are unsigned and not notarized. Verify the adjacent SHA-256 checksum before extraction. If Gatekeeper then blocks the verified executable, remove its downloaded-file quarantine attribute and run it again:
+
+  xattr -d com.apple.quarantine ./hees-console
+  ./hees-console
+
+This exception applies only to the verified executable in this archive; it does not disable Gatekeeper system-wide.

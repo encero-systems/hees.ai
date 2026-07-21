@@ -1,0 +1,555 @@
+"""Data contracts and private projections for the bounded Console profile."""
+
+from std.serde import json
+from crate.identifiers import (
+    ActionId,
+    ConstraintPlanId,
+    ContractId,
+    DecisionId,
+    DigestIdType,
+    DomainId,
+    EvidenceId,
+    FindingId,
+    MemoryId,
+    ObservationId,
+    PackageId,
+    ProfileId,
+    ProposalId,
+    RequestId,
+    RequirementId,
+    ResponseContractId,
+    RevisionType,
+    SourceId,
+    SupportClaimId,
+    TargetId,
+    UnitId,
+)
+
+
+@derive(Clone, json)
+pub model SourceSpan:
+    """Bounded page coordinates retained as source-safe package metadata."""
+
+    pub start_utf8_byte: int
+    pub end_utf8_byte: int
+
+
+@derive(Clone, json)
+pub model ConsoleSource:
+    """Reviewed source identity admitted by the fixed console package."""
+
+    pub source_id: SourceId
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: DigestIdType
+    pub language: str
+    pub rights_state: str
+    pub text: str
+
+
+@derive(Clone, json)
+pub model ConsoleAction:
+    """Package-owned action and its evidence requirement."""
+
+    pub action_id: ActionId
+    pub evidence_required: bool
+
+
+@derive(Clone, json)
+pub model ConsoleRequirement:
+    """Package-owned visible-answer requirement checked by synthesis findings."""
+
+    pub requirement_id: RequirementId
+    pub description: str
+
+
+@derive(Clone, json)
+pub model ConsoleAtom:
+    """Governed memory atom with review, rights, evidence, and provenance identity."""
+
+    pub memory_id: MemoryId
+    pub evidence_id: EvidenceId
+    pub source_id: SourceId
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: DigestIdType
+    pub source_span: SourceSpan
+    pub claim: str
+    pub guidance: str
+    pub language: str
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+    pub authority_class: str
+    pub evidence_kind: str
+    pub provenance_digest: DigestIdType
+
+
+@derive(Clone, json)
+pub model ConsolePolicy:
+    """Package-owned thresholds and constraint identities for finding policy."""
+
+    pub constraint_plan_id: ConstraintPlanId
+    pub constraint_plan_revision: RevisionType
+    pub response_contract_id: ResponseContractId
+    pub response_contract_revision: RevisionType
+    pub min_support_bps: int
+    pub max_contradiction_bps: int
+    pub max_relation_unresolved_bps: int
+    pub min_coverage_bps: int
+    pub max_gap_bps: int
+    pub max_synthesis_unresolved_bps: int
+
+
+@derive(Clone, json)
+pub model ConsolePackage:
+    """Closed governed package accepted by the bounded Console profile."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub mission: str
+    pub sources: list[ConsoleSource]
+    pub actions: list[ConsoleAction]
+    pub requirements: list[ConsoleRequirement]
+    pub atoms: list[ConsoleAtom]
+    pub policy: ConsolePolicy
+
+
+@derive(Clone, json)
+pub model ConsoleRequestBinding:
+    """Exact user question bound to a caller-safe request identity and digest."""
+
+    pub request_id: RequestId
+    pub question: str
+    pub request_digest: DigestIdType
+
+
+@derive(Clone, json)
+pub model VisibleUnit:
+    """One bounded piece of model-authored visible answer text."""
+
+    pub unit_id: UnitId
+    pub text: str
+    pub requirement_ids: list[RequirementId]
+
+
+@derive(Clone, json)
+pub model SupportMapping:
+    """Declared link from one visible support claim to one governed memory atom."""
+
+    pub support_claim_id: SupportClaimId
+    pub unit_id: UnitId
+    pub memory_id: MemoryId
+    pub evidence_ids: Option[list[EvidenceId]]
+
+
+@derive(Clone, json)
+pub model ConsoleProposal:
+    """Untrusted normalized answer candidate submitted to the console profile."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub request_id: RequestId
+    pub request_digest: DigestIdType
+    pub proposal_id: ProposalId
+    pub action_id: ActionId
+    pub evidence_ids: list[EvidenceId]
+    pub visible_units: list[VisibleUnit]
+    pub support_mappings: list[SupportMapping]
+
+
+@derive(Clone, json)
+pub model PremiseIdentity:
+    """Digest-only memory premise projected into a verifier target."""
+
+    pub memory_id: MemoryId
+    pub content_digest: DigestIdType
+
+
+@derive(Clone, json)
+pub model ManifestTargetBody:
+    """Canonical verifier target identity before its target digest is attached."""
+
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub request_digest: DigestIdType
+    pub candidate_digest: DigestIdType
+    pub target_id: TargetId
+    pub evaluator_role: str
+    pub target_role: str
+    pub subject_digest: DigestIdType
+    pub premises: list[PremiseIdentity]
+
+
+@derive(Clone, json)
+pub model ManifestTarget:
+    """Hees-authored verifier target body sealed by a canonical digest."""
+
+    pub body: ManifestTargetBody
+    pub target_digest: DigestIdType
+
+
+@derive(Clone, json)
+pub model ConsoleManifestPlan:
+    """Non-terminal Hees-authored evaluator targets for one plannable proposal."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub plannable: bool
+    pub targets: list[ManifestTarget]
+
+
+@derive(Clone, json)
+pub model ConsoleProviderMemory:
+    """Source-safe admitted-memory projection for one untrusted provider context."""
+
+    pub evidence_id: EvidenceId
+    pub memory_id: MemoryId
+    pub claim: str
+    pub guidance: str
+    pub language: str
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: DigestIdType
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+    pub authority_class: str
+    pub evidence_kind: str
+
+
+@derive(Clone, json)
+pub model ConsoleProviderContext:
+    """Validated package and request context safe for an untrusted proposal call."""
+
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub mission: str
+    pub request: ConsoleRequestBinding
+    pub declared_actions: list[ConsoleAction]
+    pub requirements: list[ConsoleRequirement]
+    pub admitted_memory: list[ConsoleProviderMemory]
+
+
+@derive(Clone, json)
+pub model ConsoleProviderContextPlan:
+    """Non-terminal Hees-authored provider context or a closed non-plannable result."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub plannable: bool
+    pub context: Option[ConsoleProviderContext]
+
+
+@derive(Clone, json)
+pub model ConsoleRequestPlan:
+    """Bound request input or a closed non-plannable result for Console composition."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub plannable: bool
+    pub request: Option[ConsoleRequestBinding]
+
+
+@derive(Clone, json)
+pub model ConsoleProposalIdentity:
+    """Read-only canonical identity for provider target binding and inspection."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub proposal_id: ProposalId
+    pub candidate_digest: DigestIdType
+
+
+@derive(Clone, json)
+pub model RelationObservation:
+    """Bounded non-authoritative relation scores over one manifest target."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub observation_id: ObservationId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub request_id: RequestId
+    pub request_digest: DigestIdType
+    pub candidate_digest: DigestIdType
+    pub target_id: TargetId
+    pub target_digest: DigestIdType
+    pub evaluator_role: str
+    pub target_role: str
+    pub support_bps: int
+    pub contradiction_bps: int
+    pub unresolved_bps: int
+    pub model_fingerprint: DigestIdType
+    pub prompt_fingerprint: DigestIdType
+    pub configuration_fingerprint: DigestIdType
+
+
+@derive(Clone, json)
+pub model SynthesisObservation:
+    """Bounded non-authoritative synthesis scores over one manifest target."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub observation_id: ObservationId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub request_id: RequestId
+    pub request_digest: DigestIdType
+    pub candidate_digest: DigestIdType
+    pub target_id: TargetId
+    pub target_digest: DigestIdType
+    pub evaluator_role: str
+    pub target_role: str
+    pub covered_bps: int
+    pub gap_bps: int
+    pub unresolved_bps: int
+    pub model_fingerprint: DigestIdType
+    pub prompt_fingerprint: DigestIdType
+    pub configuration_fingerprint: DigestIdType
+
+
+@derive(Clone, json)
+pub model DerivedFinding:
+    """Hees-owned classification derived from one validated observation."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub finding_id: FindingId
+    pub observation_id: ObservationId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub request_id: RequestId
+    pub request_digest: DigestIdType
+    pub candidate_digest: DigestIdType
+    pub target_id: TargetId
+    pub target_digest: DigestIdType
+    pub evaluator_role: str
+    pub target_role: str
+    pub classification: str
+    pub constraint_plan_id: ConstraintPlanId
+    pub constraint_plan_revision: RevisionType
+
+
+@derive(Clone, json)
+pub model ProfileValidation:
+    """Closed validation outcome with one public reason and bounded diagnostics."""
+
+    pub valid: bool
+    pub reason: str
+    pub errors: list[str]
+
+
+@derive(Clone, json)
+pub model SpectrumResult:
+    """Terminal profile decision returned by the bounded Spectrum operation."""
+
+    pub decision_id: DecisionId
+    pub admitted: bool
+    pub decision: str
+    pub reason_namespace: str
+    pub reason: str
+    pub structural_reason: Option[str]
+    pub admitted_evidence_ids: list[EvidenceId]
+    pub selected_memory_ids: list[MemoryId]
+
+
+@derive(Clone, json)
+pub model ProfileEvaluation:
+    """Pre-artifact terminal evaluation and its admitted output projections."""
+
+    pub manifest: list[ManifestTarget]
+    pub findings: list[DerivedFinding]
+    pub spectrum: SpectrumResult
+    pub admitted_visible_units: list[VisibleUnit]
+    pub selected_memory: list[ConsoleAtom]
+
+
+@derive(Clone, json)
+pub model CompleteProfileEvaluation:
+    """Terminal evaluation plus internal artifacts projected as canonical JSON."""
+
+    pub manifest: list[ManifestTarget]
+    pub findings: list[DerivedFinding]
+    pub spectrum: SpectrumResult
+    pub admitted_visible_units: list[VisibleUnit]
+    pub selected_memory: list[ConsoleAtom]
+    pub content_dna_json: Option[str]
+    pub receipt_json: Option[str]
+
+
+@derive(Clone)
+pub model StructuralAdmission:
+    """Private projection of the generic kernel's structural admission result."""
+
+    pub admitted: bool
+    pub reason: str
+    pub evidence_ids: list[EvidenceId]
+
+
+@derive(Clone, json)
+pub model AtomArtifactProjection:
+    """Atom fields covered by the fixed package artifact digest."""
+
+    pub memory_id: MemoryId
+    pub evidence_id: EvidenceId
+    pub source_id: SourceId
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: DigestIdType
+    pub source_span: SourceSpan
+    pub claim: str
+    pub guidance: str
+    pub language: str
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+    pub authority_class: str
+    pub evidence_kind: str
+
+
+@derive(Clone, json)
+pub model PackageArtifactProjection:
+    """Package body covered by the fixed artifact identity."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub mission: str
+    pub sources: list[ConsoleSource]
+    pub actions: list[ConsoleAction]
+    pub requirements: list[ConsoleRequirement]
+    pub atoms: list[AtomArtifactProjection]
+    pub policy: ConsolePolicy
+
+
+@derive(Clone, json)
+pub model PackageIdentity:
+    """Package identity bound into each atom provenance digest."""
+
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+
+
+@derive(Clone, json)
+pub model ProvenanceEntry:
+    """Atom metadata bound alongside its fixed package identity."""
+
+    pub memory_id: MemoryId
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: DigestIdType
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+    pub authority_class: str
+    pub evidence_kind: str
+
+
+@derive(Clone, json)
+pub model ProvenanceProjection:
+    """Canonical package-and-entry body used for atom provenance hashing."""
+
+    pub package: PackageIdentity
+    pub entry: ProvenanceEntry
+
+
+@derive(Clone, json)
+pub model PremiseProjection:
+    """Memory content fields bound into a verifier premise digest."""
+
+    pub memory_id: MemoryId
+    pub claim: str
+    pub guidance: str
+    pub language: str
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: DigestIdType
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+    pub authority_class: str
+    pub evidence_kind: str
+
+
+@derive(Clone, json)
+pub model VisibleUnitSubject:
+    """Verifier subject for one visible answer unit."""
+
+    pub subject_kind: str
+    pub unit: VisibleUnit
+
+
+@derive(Clone, json)
+pub model SupportClaimSubject:
+    """Verifier subject for one support claim and its visible text."""
+
+    pub subject_kind: str
+    pub support_claim_id: SupportClaimId
+    pub unit_id: UnitId
+    pub text: str
+
+
+@derive(Clone, json)
+pub model VisibleResponseSubject:
+    """Verifier subject spanning the complete ordered visible response."""
+
+    pub subject_kind: str
+    pub visible_units: list[VisibleUnit]
+
+
+@derive(Clone, json)
+pub model RequestSynthesisSubject:
+    """Synthesis subject binding visible units to the exact request digest."""
+
+    pub subject_kind: str
+    pub visible_units: list[VisibleUnit]
+    pub request_digest: DigestIdType
+
+
+@derive(Clone, json)
+pub model RequirementSynthesisSubject:
+    """Synthesis subject for one package-owned answer requirement."""
+
+    pub subject_kind: str
+    pub visible_units: list[VisibleUnit]
+    pub requirement: ConsoleRequirement
+
+
+@derive(Clone, json)
+pub model RequestDigestProjection:
+    """Exact request fields covered by the request digest."""
+
+    pub request_id: RequestId
+    pub question: str
+
+
+@derive(Clone, json)
+pub model AnswerProjection:
+    """Ordered visible units covered by the admitted-answer digest."""
+
+    pub visible_units: list[VisibleUnit]

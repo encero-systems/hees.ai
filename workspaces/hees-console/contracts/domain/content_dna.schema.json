@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/console_content_dna_0_1.schema.json",
+  "title": "hees.ai console Build Week initial-profile experimental Content DNA",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["body", "content_dna_id"],
+  "properties": {
+    "body": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_version", "state", "package", "proposal_id", "spectrum_decision_id", "terminal", "policy", "entries", "source_digests", "answer_digest"],
+      "properties": {
+        "contract_version": {"const": "console_content_dna_0_1"},
+        "state": {"const": "admitted_answer"},
+        "package": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["package_id", "domain_id", "package_revision", "artifact_digest"],
+          "properties": {
+            "package_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "domain_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "package_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+            "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+          }
+        },
+        "proposal_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+        "spectrum_decision_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+        "terminal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["decision", "reason_namespace", "reason"],
+          "properties": {
+            "decision": {"const": "admit"},
+            "reason_namespace": {"const": "console_admission_0_1"},
+            "reason": {"const": "admitted"}
+          }
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["constraint_plan_id", "constraint_plan_revision", "response_contract_id", "response_contract_revision"],
+          "properties": {
+            "constraint_plan_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "constraint_plan_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+            "response_contract_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+            "response_contract_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+          }
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["memory_id", "source_ref", "source_kind", "source_fingerprint", "provenance_digest", "review_state", "review_revision", "rights_state", "authority_class", "evidence_kind"],
+            "properties": {
+              "memory_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+              "source_ref": {"type": "string", "pattern": "^fictional/(?!.*\\.\\.)[a-z0-9_./-]+$"},
+              "source_kind": {"const": "fictional_lesson_note"},
+              "source_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+              "provenance_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+              "review_state": {"const": "approved"},
+              "review_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+              "rights_state": {"const": "allowed"},
+              "authority_class": {"const": "reviewed_fixture"},
+              "evidence_kind": {"enum": ["lesson_fact", "lesson_guidance"]}
+            }
+          }
+        },
+        "source_digests": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
+        "answer_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "content_dna_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

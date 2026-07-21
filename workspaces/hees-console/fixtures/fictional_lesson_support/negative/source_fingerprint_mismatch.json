@@ -1,0 +1,53 @@
+{
+  "contract_version": "console_source_catalog_0_1",
+  "sources": [
+    {
+      "source_id": "source_lantern_path",
+      "title": "Lantern Path",
+      "language": "en",
+      "source_ref": "fictional/lesson/lantern_path",
+      "source_kind": "fictional_lesson_note",
+      "content_path": "sources/lantern_path.txt",
+      "source_fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "content_bytes": 232,
+      "original_author_statement": "Original fictional English content authored for the public hees.ai console Build Week initial-profile fixture.",
+      "rights_state": "fictional_use_allowed",
+      "review_state": "approved",
+      "review_revision": "1.0.0",
+      "spans": [{"span_id": "span_lantern_sequence", "start_utf8_byte": 47, "end_utf8_byte": 138}]
+    },
+    {
+      "source_id": "source_echo_map",
+      "title": "Echo Map",
+      "language": "en",
+      "source_ref": "fictional/lesson/echo_map",
+      "source_kind": "fictional_lesson_note",
+      "content_path": "sources/echo_map.txt",
+      "source_fingerprint": "sha256:54102b695f9db7819eab9d8391b382f57874e16bc1981449109775861568ac0b",
+      "content_bytes": 234,
+      "original_author_statement": "Original fictional English content authored for the public hees.ai console Build Week initial-profile fixture.",
+      "rights_state": "fictional_use_allowed",
+      "review_state": "approved",
+      "review_revision": "1.0.0",
+      "spans": [{"span_id": "span_echo_markers", "start_utf8_byte": 44, "end_utf8_byte": 145}]
+    },
+    {
+      "source_id": "source_pebble_workshop",
+      "title": "Pebble Workshop",
+      "language": "en",
+      "source_ref": "fictional/lesson/pebble_workshop",
+      "source_kind": "fictional_lesson_note",
+      "content_path": "sources/pebble_workshop.txt",
+      "source_fingerprint": "sha256:ee6d8ef254c2b536ac654a62c61280150ed29fc95f0ccd9869138960eea77448",
+      "content_bytes": 285,
+      "original_author_statement": "Original fictional English content authored for the public hees.ai console Build Week initial-profile fixture.",
+      "rights_state": "fictional_use_allowed",
+      "review_state": "approved",
+      "review_revision": "1.0.0",
+      "spans": [
+        {"span_id": "span_pebble_reserve", "start_utf8_byte": 48, "end_utf8_byte": 166},
+        {"span_id": "span_public_ranking_draft", "start_utf8_byte": 167, "end_utf8_byte": 284}
+      ]
+    }
+  ]
+}

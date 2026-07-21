@@ -1,0 +1,500 @@
+"""Fail-closed package, request, and proposal validation for the Console profile."""
+
+from rust::std::string import String as RustString
+from std.serde.json import Serialize
+from crate.console_profile_identity import (
+    digest_atom_provenance,
+    digest_package_artifact,
+    digest_request_binding,
+    digest_text_bytes,
+)
+from crate.console_profile_models import (
+    ConsoleAction,
+    ConsoleAtom,
+    ConsolePackage,
+    ConsolePolicy,
+    ConsoleProposal,
+    ConsoleRequestBinding,
+    ConsoleRequirement,
+    ConsoleSource,
+    ProfileValidation,
+    VisibleUnit,
+)
+from crate.identifiers import (
+    ActionId,
+    EvidenceId,
+    MemoryId,
+    SourceId,
+    UnitId,
+    action_id_text,
+    contract_id_text,
+    domain_id_text,
+    digest_id_type,
+    evidence_id_text,
+    memory_id_text,
+    package_id_text,
+    profile_id_text,
+    revision,
+    requirement_id_text,
+    source_id_text,
+    support_claim_id_text,
+    unit_id_text,
+)
+
+const CONSOLE_PROFILE_ID: str = "console_profile_0_1"
+const PACKAGE_CONTRACT: str = "console_package_0_1"
+const PROPOSAL_CONTRACT: str = "console_proposal_0_1"
+const FIXED_PACKAGE_ID: str = "lantern_labs"
+const FIXED_DOMAIN_ID: str = "fictional_lesson_support"
+const FIXED_PACKAGE_REVISION: str = "1.0.0"
+const FIXED_ARTIFACT_DIGEST: str = "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335"
+
+
+def utf8_length(value: str) -> int:
+    """Return the exact UTF-8 byte length used by raw profile size bounds."""
+
+    return len(RustString.from(value).into_bytes())
+
+
+pub def validation_ok() -> ProfileValidation:
+    """Construct the shared successful validation value."""
+
+    return ProfileValidation(valid=true, reason="ok", errors=[])
+
+
+pub def validation_error(reason: str, error: str) -> ProfileValidation:
+    """Construct one closed public reason with a bounded internal diagnostic."""
+
+    return ProfileValidation(valid=false, reason=reason, errors=[error])
+
+
+def source_ref_is_safe(value: str) -> bool:
+    """Accept a bounded fictional source reference without traversal syntax."""
+
+    if len(value) == 0 or len(value) > 256 or not value.startswith("fictional/") or value.contains(".."):
+        return false
+    for character in value:
+        if not "abcdefghijklmnopqrstuvwxyz0123456789_./-".contains(character):
+            return false
+    return true
+
+
+pub def has_duplicate_strings(values: list[str]) -> bool:
+    """Return whether a bounded string projection repeats an earlier value."""
+
+    mut seen: list[str] = []
+    for value in values:
+        if seen.contains(value):
+            return true
+        seen.append(value)
+    return false
+
+
+def find_source(sources: list[ConsoleSource], source_id: SourceId) -> Option[ConsoleSource]:
+    """Find one package source by exact identifier."""
+
+    for source in sources:
+        if source.source_id == source_id:
+            return Some(source)
+    return None
+
+
+pub def atom_is_admitted(atom: ConsoleAtom) -> bool:
+    """Return whether review and rights state admit an atom for runtime use."""
+
+    return atom.review_state == "approved" and atom.rights_state == "allowed"
+
+
+pub def admitted_atoms(package: ConsolePackage) -> list[ConsoleAtom]:
+    """Select admitted atoms without changing their package order."""
+
+    return [atom for atom in package.atoms if atom_is_admitted(atom)]
+
+
+def validate_package_header(package: ConsolePackage) -> ProfileValidation:
+    """Validate contract identity and bounded human-authored package metadata."""
+
+    if contract_id_text(package.contract_version) != PACKAGE_CONTRACT or profile_id_text(package.profile_id) != CONSOLE_PROFILE_ID:
+        return validation_error("invalid_package", "unsupported_package_contract")
+    if package.mission.strip() == "" or len(package.mission) > 512:
+        return validation_error("invalid_package", "invalid_package_mission")
+    return validation_ok()
+
+
+def validate_package_shape(package: ConsolePackage) -> ProfileValidation:
+    """Validate bounded collection sizes and nominal uniqueness."""
+
+    if len(package.sources) != 3 or has_duplicate_strings(
+        [source_id_text(source.source_id) for source in package.sources],
+    ):
+        return validation_error("invalid_package", "invalid_package_sources")
+    if len(package.actions) != 3 or has_duplicate_strings(
+        [action_id_text(action.action_id) for action in package.actions],
+    ):
+        return validation_error("invalid_package", "invalid_package_actions")
+    if len(package.requirements) < 1 or len(package.requirements) > 4:
+        return validation_error("invalid_package", "invalid_package_requirements")
+    if has_duplicate_strings([requirement_id_text(requirement.requirement_id) for requirement in package.requirements]):
+        return validation_error("invalid_package", "duplicate_requirement_id")
+    if len(package.atoms) != 4:
+        return validation_error("invalid_package", "invalid_package_atoms")
+    if has_duplicate_strings([memory_id_text(atom.memory_id) for atom in package.atoms]) or has_duplicate_strings(
+        [evidence_id_text(atom.evidence_id) for atom in package.atoms],
+    ):
+        return validation_error("invalid_package", "duplicate_atom_identity")
+    return validation_ok()
+
+
+def validate_package_policy(policy: ConsolePolicy) -> ProfileValidation:
+    """Validate the fixed profile thresholds and policy identities."""
+
+    if policy.min_support_bps != 6500 or policy.max_contradiction_bps != 3500:
+        return validation_error("invalid_package", "invalid_relation_policy")
+    if policy.max_relation_unresolved_bps != 2500 or policy.min_coverage_bps != 6500:
+        return validation_error("invalid_package", "invalid_coverage_policy")
+    if policy.max_gap_bps != 3500 or policy.max_synthesis_unresolved_bps != 2500:
+        return validation_error("invalid_package", "invalid_synthesis_policy")
+    return validation_ok()
+
+
+def validate_source(source: ConsoleSource) -> ProfileValidation:
+    """Validate one fictional source and its exact content fingerprint."""
+
+    if not source_ref_is_safe(source.source_ref):
+        return validation_error("invalid_package", "invalid_source_identity")
+    if source.source_kind != "fictional_lesson_note" or source.language != "en":
+        return validation_error("invalid_package", "unsupported_source_contract")
+    if source.rights_state != "fictional_use_allowed" or len(source.text) == 0 or len(source.text) > 4096:
+        return validation_error("invalid_package", "invalid_source_content")
+    if digest_text_bytes(source.text) != source.source_fingerprint:
+        return validation_error("invalid_package", "source_fingerprint_mismatch")
+    return validation_ok()
+
+
+def validate_requirement(requirement: ConsoleRequirement) -> ProfileValidation:
+    """Validate one package-owned visible-answer requirement."""
+
+    if requirement.description.strip() == "" or len(requirement.description) > 256:
+        return validation_error("invalid_package", "invalid_requirement_description")
+    return validation_ok()
+
+
+def validate_atom_source_span(source: ConsoleSource, atom: ConsoleAtom) -> ProfileValidation:
+    """Validate exact UTF-8 byte boundaries for one atom's source span."""
+
+    if atom.source_ref != source.source_ref or atom.source_kind != source.source_kind:
+        return validation_error("invalid_package", "atom_source_identity_mismatch")
+    if atom.source_fingerprint != source.source_fingerprint or atom.language != source.language:
+        return validation_error("invalid_package", "atom_source_identity_mismatch")
+    source_text = RustString.from(source.text)
+    if atom.source_span.start_utf8_byte < 0 or atom.source_span.start_utf8_byte >= atom.source_span.end_utf8_byte:
+        return validation_error("invalid_package", "invalid_atom_source_span")
+    maybe_start_boundary: Option[usize] = atom.source_span.start_utf8_byte.try_resize()
+    maybe_end_boundary: Option[usize] = atom.source_span.end_utf8_byte.try_resize()
+    match maybe_start_boundary:
+        None => return validation_error("invalid_package", "invalid_atom_source_span")
+        Some(start_boundary) =>
+            match maybe_end_boundary:
+                None => return validation_error("invalid_package", "invalid_atom_source_span")
+                Some(end_boundary) =>
+                    if not source_text.is_char_boundary(start_boundary) or not source_text.is_char_boundary(end_boundary):
+                        return validation_error("invalid_package", "invalid_atom_source_span")
+    if atom.source_span.end_utf8_byte > len(source_text.into_bytes()):
+        return validation_error("invalid_package", "invalid_atom_source_span")
+    return validation_ok()
+
+
+def validate_atom(package: ConsolePackage, atom: ConsoleAtom) -> ProfileValidation:
+    """Validate one governed atom and its two-phase provenance identity."""
+
+    if not source_ref_is_safe(atom.source_ref):
+        return validation_error("invalid_package", "invalid_atom_source")
+    if atom.source_kind != "fictional_lesson_note" or atom.language != "en":
+        return validation_error("invalid_package", "unsupported_atom_contract")
+    if not ["approved", "pending", "rejected"].contains(f"{atom.review_state}"):
+        return validation_error("invalid_package", "invalid_atom_review_state")
+    if not ["allowed", "denied"].contains(f"{atom.rights_state}"):
+        return validation_error("invalid_package", "invalid_atom_rights_state")
+    if atom.authority_class != "reviewed_fixture":
+        return validation_error("invalid_package", "invalid_atom_authority")
+    if not ["lesson_fact", "lesson_guidance", "discarded_draft"].contains(f"{atom.evidence_kind}"):
+        return validation_error("invalid_package", "invalid_atom_evidence_kind")
+    if atom.claim.strip() == "" or len(atom.claim) > 512 or atom.guidance.strip() == "" or len(atom.guidance) > 512:
+        return validation_error("invalid_package", "invalid_atom_content")
+    match find_source(package.sources, atom.source_id):
+        None => return validation_error("invalid_package", "unknown_atom_source")
+        Some(source) =>
+            source_validation = validate_atom_source_span(source, atom)
+            if not source_validation.valid:
+                return source_validation
+    if digest_atom_provenance(package, atom) != atom.provenance_digest:
+        return validation_error("invalid_package", "atom_provenance_digest_mismatch")
+    return validation_ok()
+
+
+def validate_fixed_package_identity(package: ConsolePackage) -> ProfileValidation:
+    """Validate derived package identity and the fixed demo profile binding."""
+
+    if digest_package_artifact(package) != package.artifact_digest:
+        return validation_error("invalid_package", "artifact_digest_mismatch")
+    if len(admitted_atoms(package)) == 0:
+        return validation_error("memory_context_invalid", "no_admitted_memory")
+    if package_id_text(package.package_id) != FIXED_PACKAGE_ID:
+        return validation_error("package_id_mismatch", "fixed_package_id_mismatch")
+    if domain_id_text(package.domain_id) != FIXED_DOMAIN_ID:
+        return validation_error("domain_id_mismatch", "fixed_domain_id_mismatch")
+    if package.package_revision != revision(FIXED_PACKAGE_REVISION):
+        return validation_error("package_revision_mismatch", "fixed_package_revision_mismatch")
+    if package.artifact_digest != digest_id_type(FIXED_ARTIFACT_DIGEST):
+        return validation_error("artifact_digest_mismatch", "fixed_artifact_digest_mismatch")
+    return validation_ok()
+
+
+pub def validate_console_package(package: ConsolePackage) -> ProfileValidation:
+    """Compose focused validators for the complete fixed-profile package."""
+
+    for validation in [validate_package_header(package), validate_package_shape(package), validate_package_policy(
+        package.policy,
+    )]:
+        if not validation.valid:
+            return validation
+    for source in package.sources:
+        validation = validate_source(source)
+        if not validation.valid:
+            return validation
+    for requirement in package.requirements:
+        validation = validate_requirement(requirement)
+        if not validation.valid:
+            return validation
+    for atom in package.atoms:
+        validation = validate_atom(package, atom)
+        if not validation.valid:
+            return validation
+    return validate_fixed_package_identity(package)
+
+
+pub def console_package_candidate_diagnostic(package: ConsolePackage) -> str:
+    """Return one bounded diagnostic for a compiled, non-authoritative package candidate."""
+
+    validation = validate_console_package(package)
+    if validation.valid:
+        return "ok"
+    if len(validation.errors) > 0:
+        return validation.errors[0]
+    return validation.reason
+
+
+pub def classify_relation(policy: ConsolePolicy, support_bps: int, contradiction_bps: int, unresolved_bps: int) -> str:
+    """Classify a relation score triple in the profile's fail-closed precedence."""
+    if contradiction_bps > policy.max_contradiction_bps:
+        return "contradicted"
+    if unresolved_bps > policy.max_relation_unresolved_bps:
+        return "uncertain"
+    if support_bps >= policy.min_support_bps:
+        return "supported"
+    return "unsupported"
+
+
+pub def classify_synthesis(policy: ConsolePolicy, covered_bps: int, gap_bps: int, unresolved_bps: int) -> str:
+    """Classify a synthesis score triple in the profile's fail-closed precedence."""
+    if gap_bps > policy.max_gap_bps:
+        return "not_covered"
+    if unresolved_bps > policy.max_synthesis_unresolved_bps:
+        return "uncertain"
+    if covered_bps >= policy.min_coverage_bps:
+        return "covered"
+    return "not_covered"
+
+
+pub def validate_request_binding(request: ConsoleRequestBinding) -> ProfileValidation:
+    """Validate an exact, non-normalized request binding."""
+    if request.question.strip() == "" or len(request.question) > 512:
+        return validation_error("invalid_request_schema", "invalid_question")
+    if digest_request_binding(request) != request.request_digest:
+        return validation_error("request_digest_mismatch", "request_digest_mismatch")
+    return validation_ok()
+
+
+pub def find_atom_by_memory(atoms: list[ConsoleAtom], memory_id: MemoryId) -> Option[ConsoleAtom]:
+    """Find one package atom by exact memory identifier."""
+
+    for atom in atoms:
+        if atom.memory_id == memory_id:
+            return Some(atom)
+    return None
+
+
+pub def find_atom_by_evidence(atoms: list[ConsoleAtom], evidence_id: EvidenceId) -> Option[ConsoleAtom]:
+    """Find one package atom by exact evidence identifier."""
+
+    for atom in atoms:
+        if atom.evidence_id == evidence_id:
+            return Some(atom)
+    return None
+
+
+pub def find_unit(units: list[VisibleUnit], unit_id: UnitId) -> Option[VisibleUnit]:
+    """Find one visible unit by exact identifier."""
+
+    for unit in units:
+        if unit.unit_id == unit_id:
+            return Some(unit)
+    return None
+
+
+def action_requirement(actions: list[ConsoleAction], action_id: ActionId) -> Option[bool]:
+    """Return the evidence requirement for one declared action."""
+
+    for action in actions:
+        if action.action_id == action_id:
+            return Some(action.evidence_required)
+    return None
+
+
+pub def validate_console_proposal_identity(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> ProfileValidation:
+    """Establish only the package, request, contract, and proposal identity safe for a receipt."""
+    if contract_id_text(proposal.contract_version) != PROPOSAL_CONTRACT or profile_id_text(proposal.profile_id) != CONSOLE_PROFILE_ID:
+        return validation_error("unsupported_proposal_contract", "unsupported_proposal_contract")
+    if utf8_length(proposal.to_json()) > 131072:
+        return validation_error("proposal_too_large", "proposal_too_large")
+    if proposal.package_id != package.package_id:
+        return validation_error("package_id_mismatch", "proposal_package_id_mismatch")
+    if proposal.domain_id != package.domain_id:
+        return validation_error("domain_id_mismatch", "proposal_domain_id_mismatch")
+    if proposal.package_revision != package.package_revision:
+        return validation_error("package_revision_mismatch", "proposal_package_revision_mismatch")
+    if proposal.artifact_digest != package.artifact_digest:
+        return validation_error("artifact_digest_mismatch", "proposal_artifact_digest_mismatch")
+    if proposal.request_id != request.request_id or proposal.request_digest != request.request_digest:
+        return validation_error("proposal_request_mismatch", "proposal_request_mismatch")
+    if len(proposal.evidence_ids) > 8:
+        return validation_error("invalid_proposal_schema", "too_many_evidence_references")
+    return validation_ok()
+
+
+def validate_visible_answer(package: ConsolePackage, proposal: ConsoleProposal) -> ProfileValidation:
+    """Validate bounded visible units and package-owned requirement references."""
+
+    if len(proposal.visible_units) == 0:
+        return validation_error("missing_visible_output", "missing_visible_units")
+    if len(proposal.visible_units) > 8 or has_duplicate_strings(
+        [unit_id_text(unit.unit_id) for unit in proposal.visible_units],
+    ):
+        return validation_error("invalid_visible_unit", "invalid_visible_units")
+    for unit in proposal.visible_units:
+        if unit.text.strip() == "" or len(unit.text) > 1024:
+            return validation_error("invalid_visible_unit", "invalid_visible_unit")
+        if len(unit.requirement_ids) == 0 or len(unit.requirement_ids) > 4 or has_duplicate_strings(
+            [requirement_id_text(requirement_id) for requirement_id in unit.requirement_ids],
+        ):
+            return validation_error("invalid_visible_unit", "invalid_unit_requirements")
+        for requirement_id in unit.requirement_ids:
+            if not [requirement.requirement_id for requirement in package.requirements].contains(requirement_id):
+                return validation_error("invalid_visible_unit", "unknown_unit_requirement")
+    return validation_ok()
+
+
+def validate_declared_evidence(package: ConsolePackage, proposal: ConsoleProposal) -> ProfileValidation:
+    """Validate the declared action and its complete evidence-reference set."""
+
+    match action_requirement(package.actions, proposal.action_id):
+        None => return validation_error("unknown_action", "unknown_action")
+        Some(evidence_required) =>
+            if has_duplicate_strings([evidence_id_text(value) for value in proposal.evidence_ids]):
+                return validation_error("duplicate_evidence_reference", "duplicate_evidence_reference")
+            for mapping in proposal.support_mappings:
+                match mapping.evidence_ids:
+                    None => pass
+                    Some(mapping_evidence_ids) =>
+                        if has_duplicate_strings([evidence_id_text(value) for value in mapping_evidence_ids]):
+                            return validation_error("duplicate_evidence_reference", "duplicate_support_evidence")
+            if evidence_required and len(proposal.evidence_ids) == 0:
+                return validation_error("evidence_required", "evidence_required")
+    for evidence_id in proposal.evidence_ids:
+        match find_atom_by_evidence(package.atoms, evidence_id):
+            None => return validation_error("unknown_evidence", "unknown_evidence")
+            Some(_) => pass
+    return validation_ok()
+
+
+def validate_support_mappings(package: ConsolePackage, proposal: ConsoleProposal) -> ProfileValidation:
+    """Validate ordered visible-unit support and its package-memory bindings."""
+
+    if len(proposal.support_mappings) != len(proposal.visible_units):
+        return validation_error("support_mapping_invalid", "support_coverage_invalid")
+    if len(proposal.support_mappings) > 8 or has_duplicate_strings(
+        [support_claim_id_text(mapping.support_claim_id) for mapping in proposal.support_mappings],
+    ):
+        return validation_error("support_mapping_invalid", "duplicate_support_claim")
+    for index in range(len(proposal.support_mappings)):
+        mapping = proposal.support_mappings[index]
+        unit = proposal.visible_units[index]
+        if mapping.unit_id != unit.unit_id:
+            return validation_error("support_mapping_invalid", "support_unit_order_invalid")
+        match mapping.evidence_ids:
+            None => pass
+            Some(mapping_evidence_ids) =>
+                if len(mapping_evidence_ids) == 0 or len(mapping_evidence_ids) > 4:
+                    return validation_error("support_mapping_invalid", "support_evidence_invalid")
+                for evidence_id in mapping_evidence_ids:
+                    if not proposal.evidence_ids.contains(evidence_id):
+                        return validation_error("support_mapping_invalid", "support_evidence_not_declared")
+        match find_atom_by_memory(package.atoms, mapping.memory_id):
+            None => pass
+            Some(atom) =>
+                match mapping.evidence_ids:
+                    None =>
+                        if not proposal.evidence_ids.contains(atom.evidence_id):
+                            return validation_error("support_mapping_invalid", "support_memory_evidence_mismatch")
+                    Some(mapping_evidence_ids) =>
+                        if not mapping_evidence_ids.contains(atom.evidence_id):
+                            return validation_error("support_mapping_invalid", "support_memory_evidence_mismatch")
+    for mapping in proposal.support_mappings:
+        match find_atom_by_memory(package.atoms, mapping.memory_id):
+            None => return validation_error("unknown_memory", "unknown_memory")
+            Some(_) => pass
+    return validation_ok()
+
+
+def validate_admitted_references(package: ConsolePackage, proposal: ConsoleProposal) -> ProfileValidation:
+    """Reject declared evidence or support memory outside the admitted package subset."""
+
+    for evidence_id in proposal.evidence_ids:
+        match find_atom_by_evidence(package.atoms, evidence_id):
+            None => pass
+            Some(atom) =>
+                if not atom_is_admitted(atom):
+                    return validation_error("memory_not_admitted", "evidence_memory_not_admitted")
+    for mapping in proposal.support_mappings:
+        match find_atom_by_memory(package.atoms, mapping.memory_id):
+            None => pass
+            Some(atom) =>
+                if not atom_is_admitted(atom):
+                    return validation_error("memory_not_admitted", "memory_not_admitted")
+    return validation_ok()
+
+
+pub def validate_console_proposal(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+) -> ProfileValidation:
+    """Compose identity, visible-answer, evidence, support, and admitted-memory validation."""
+
+    identity = validate_console_proposal_identity(package, request, proposal)
+    if not identity.valid:
+        return identity
+    visible_answer = validate_visible_answer(package, proposal)
+    if not visible_answer.valid:
+        return visible_answer
+    declared_evidence = validate_declared_evidence(package, proposal)
+    if not declared_evidence.valid:
+        return declared_evidence
+    support_mappings = validate_support_mappings(package, proposal)
+    if not support_mappings.valid:
+        return support_mappings
+    return validate_admitted_references(package, proposal)

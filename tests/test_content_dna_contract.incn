@@ -1,0 +1,114 @@
+"""Contract tests for internal Content DNA and receipt projection."""
+
+from std.fs import Path
+from std.serde.json import Deserialize
+from std.testing import assert_eq, assert_is_none, assert_is_ok, assert_is_some
+from crate.content_dna import (
+    ContentDna,
+    ProfileReceipt,
+    content_dna_answer_digest,
+    content_dna_identity,
+    profile_receipt_identity,
+)
+from crate.console_profile import (
+    ConsolePackage,
+    ConsoleProposal,
+    ConsoleRequestBinding,
+    RelationObservation,
+    SynthesisObservation,
+    evaluate_console_profile_with_artifacts,
+)
+
+
+def read_fixture(path: str) -> Result[str, str]:
+    """Read one UTF-8 contract fixture from the repository."""
+
+    return Path(path).read_text("utf-8", "strict").map_err((error) => error.message())
+
+
+def package_fixture() -> Result[ConsolePackage, str]:
+    """Decode the frozen fictional package fixture."""
+
+    text = read_fixture("workspaces/hees-console/fixtures/fictional_lesson_support/package/package.json")?
+    return ConsolePackage.from_json(text)
+
+
+def request_fixture() -> Result[ConsoleRequestBinding, str]:
+    """Decode the frozen request-binding fixture."""
+
+    text = read_fixture("workspaces/hees-console/fixtures/fictional_lesson_support/requests/valid_lantern.json")?
+    return ConsoleRequestBinding.from_json(text)
+
+
+def proposal_fixture() -> Result[ConsoleProposal, str]:
+    """Decode the frozen valid proposal fixture."""
+
+    text = read_fixture("workspaces/hees-console/fixtures/fictional_lesson_support/proposals/valid_lantern.json")?
+    return ConsoleProposal.from_json(text)
+
+
+def relation_fixtures() -> Result[list[RelationObservation], str]:
+    """Decode relation observations in manifest order."""
+
+    filenames = ["relation_visible_sequence.json", "relation_visible_grounding.json", "relation_support_sequence.json", "relation_support_grounding.json", "relation_contradiction.json"]
+    mut result: list[RelationObservation] = []
+    for filename in filenames:
+        text = read_fixture(f"workspaces/hees-console/fixtures/fictional_lesson_support/observations/{filename}")?
+        result.append(RelationObservation.from_json(text)?)
+    return Ok(result)
+
+
+def synthesis_fixtures() -> Result[list[SynthesisObservation], str]:
+    """Decode synthesis observations in manifest order."""
+
+    filenames = ["synthesis_request.json", "synthesis_explain_sequence.json", "synthesis_ground_in_lesson.json"]
+    mut result: list[SynthesisObservation] = []
+    for filename in filenames:
+        text = read_fixture(f"workspaces/hees-console/fixtures/fictional_lesson_support/observations/{filename}")?
+        result.append(SynthesisObservation.from_json(text)?)
+    return Ok(result)
+
+
+def test_admitted_content_dna_and_receipt_match_frozen_envelope_ids() -> None:
+    """Freeze admitted-answer, Content DNA, and receipt identities in Incan."""
+
+    result = evaluate_console_profile_with_artifacts(
+        assert_is_ok(package_fixture()),
+        assert_is_ok(request_fixture()),
+        assert_is_ok(proposal_fixture()),
+        assert_is_ok(relation_fixtures()),
+        assert_is_ok(synthesis_fixtures()),
+    )
+    assert_eq(result.spectrum.admitted, true)
+    content_dna = assert_is_ok(ContentDna.from_json(assert_is_some(result.content_dna_json)))
+    assert_eq(
+        content_dna_answer_digest(content_dna),
+        "sha256:70a8e39c86b1524474352733c3570579321e097e65379a1a8723ba1caa92c57b",
+    )
+    assert_eq(
+        content_dna_identity(content_dna),
+        "sha256:996b888344eefc0d6632f7325c82335a1443b77383356c4be55ce3b965f55133",
+    )
+    receipt = assert_is_ok(ProfileReceipt.from_json(assert_is_some(result.receipt_json)))
+    assert_eq(
+        profile_receipt_identity(receipt),
+        "sha256:997be090e39265761d838f9c66c703c2971c9a3dd14efac8661202fb88dd5f0d",
+    )
+
+
+def test_rejected_evaluation_never_exposes_admitted_artifacts() -> None:
+    """Keep Content DNA absent while allowing an identity-safe rejection receipt."""
+
+    result = evaluate_console_profile_with_artifacts(
+        assert_is_ok(package_fixture()),
+        assert_is_ok(request_fixture()),
+        assert_is_ok(proposal_fixture()),
+        [],
+        [],
+    )
+    assert_eq(result.spectrum.admitted, false)
+    assert_eq(result.spectrum.reason, "observation_unavailable")
+    assert_is_none(result.content_dna_json)
+    assert_is_some(result.receipt_json)
+    assert_eq(len(result.admitted_visible_units), 0)
+    assert_eq(len(result.selected_memory), 0)

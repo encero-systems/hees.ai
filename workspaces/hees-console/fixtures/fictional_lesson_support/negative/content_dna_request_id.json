@@ -1,0 +1,39 @@
+{
+  "body": {
+    "contract_version": "console_content_dna_0_1",
+    "state": "admitted_answer",
+    "package": {
+      "package_id": "lantern_labs",
+      "domain_id": "fictional_lesson_support",
+      "package_revision": "1.0.0",
+      "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335"
+    },
+    "proposal_id": "proposal_valid_lantern",
+    "spectrum_decision_id": "decision_valid_lantern",
+    "terminal": {"decision": "admit", "reason_namespace": "console_admission_0_1", "reason": "admitted"},
+    "policy": {
+      "constraint_plan_id": "fictional_lesson_constraints",
+      "constraint_plan_revision": "1.0.0",
+      "response_contract_id": "fictional_lesson_response",
+      "response_contract_revision": "1.0.0"
+    },
+    "entries": [
+      {
+        "memory_id": "memory_lantern_sequence",
+        "source_ref": "fictional/lesson/lantern_path",
+        "source_kind": "fictional_lesson_note",
+        "source_fingerprint": "sha256:5503ee1e808112eda809d8c6d68a16ab2793bc88ee2123305c318dd6b0f31f5f",
+        "provenance_digest": "sha256:b377db288cdec3d1a854cf67ae00b23565122c073c6f6fc16434f0a1cd547ca8",
+        "review_state": "approved",
+        "review_revision": "1.0.0",
+        "rights_state": "allowed",
+        "authority_class": "reviewed_fixture",
+        "evidence_kind": "lesson_fact"
+      }
+    ],
+    "source_digests": ["sha256:5503ee1e808112eda809d8c6d68a16ab2793bc88ee2123305c318dd6b0f31f5f"],
+    "answer_digest": "sha256:70a8e39c86b1524474352733c3570579321e097e65379a1a8723ba1caa92c57b",
+    "request_id": "request_valid_lantern"
+  },
+  "content_dna_id": "sha256:996b888344eefc0d6632f7325c82335a1443b77383356c4be55ce3b965f55133"
+}

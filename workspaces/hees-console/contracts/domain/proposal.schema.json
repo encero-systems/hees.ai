@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/console_proposal_0_1.schema.json",
+  "title": "hees.ai console Build Week initial-profile untrusted proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_id", "request_digest", "proposal_id", "action_id", "evidence_ids", "visible_units", "support_mappings"],
+  "properties": {
+    "contract_version": {"const": "console_proposal_0_1"},
+    "profile_id": {"const": "console_profile_0_1"},
+    "package_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "domain_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "package_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32},
+    "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "request_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "request_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "proposal_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "action_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "evidence_ids": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"}},
+    "visible_units": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["unit_id", "text", "requirement_ids"],
+        "properties": {
+          "unit_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "text": {"type": "string", "pattern": ".*\\S.*", "maxLength": 1024},
+          "requirement_ids": {"type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"}}
+        }
+      }
+    },
+    "support_mappings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["support_claim_id", "unit_id", "memory_id"],
+        "properties": {
+          "support_claim_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "unit_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "memory_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+          "evidence_ids": {"type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"}}
+        }
+      }
+    }
+  }
+}

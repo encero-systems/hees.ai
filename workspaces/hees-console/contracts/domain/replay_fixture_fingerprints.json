@@ -1,0 +1,54 @@
+{
+  "contract_version": "console_replay_fixture_fingerprints_0_1",
+  "profile_id": "console_profile_0_1",
+  "model": {
+    "projection": {
+      "namespace": "hees_console_replay_fixture_0_1",
+      "profile_id": "console_profile_0_1",
+      "identity_kind": "reserved_replay_fixture_model",
+      "identity": "hees_console_reserved_replay_model_0_1"
+    },
+    "fingerprint": "sha256:0d36065526d4b9ee377f0ec145f83745d519dc086259d3fa2eb3416e90d6d4e6"
+  },
+  "configuration": {
+    "projection": {
+      "namespace": "hees_console_replay_fixture_0_1",
+      "profile_id": "console_profile_0_1",
+      "identity_kind": "reserved_replay_fixture_configuration",
+      "identity": "hees_console_reserved_replay_configuration_0_1"
+    },
+    "fingerprint": "sha256:e7e220e5fea960397d903f2379c3639d9d7a3d3d8cd5a48e451e1d428057e54f"
+  },
+  "prompts": {
+    "evidence_relation": {
+      "projection": {
+        "namespace": "hees_console_replay_fixture_0_1",
+        "profile_id": "console_profile_0_1",
+        "identity_kind": "reserved_replay_fixture_prompt",
+        "evaluator_role": "evidence_relation",
+        "identity": "hees_console_reserved_replay_prompt_evidence_relation_0_1"
+      },
+      "fingerprint": "sha256:5afc179a8c9d5293e6efcd86489bb193ddbfb88093a473ab3fffc975b8f51c27"
+    },
+    "contradiction_cross_check": {
+      "projection": {
+        "namespace": "hees_console_replay_fixture_0_1",
+        "profile_id": "console_profile_0_1",
+        "identity_kind": "reserved_replay_fixture_prompt",
+        "evaluator_role": "contradiction_cross_check",
+        "identity": "hees_console_reserved_replay_prompt_contradiction_cross_check_0_1"
+      },
+      "fingerprint": "sha256:014a1878cb28136a920a9764490d258ff1252b6b3d38abfa252da4bffa2e9dfc"
+    },
+    "synthesis_coverage": {
+      "projection": {
+        "namespace": "hees_console_replay_fixture_0_1",
+        "profile_id": "console_profile_0_1",
+        "identity_kind": "reserved_replay_fixture_prompt",
+        "evaluator_role": "synthesis_coverage",
+        "identity": "hees_console_reserved_replay_prompt_synthesis_coverage_0_1"
+      },
+      "fingerprint": "sha256:aed38decfe39079be2788dce47df46207f4709bcea2b8b7fefd5c41f886025b3"
+    }
+  }
+}

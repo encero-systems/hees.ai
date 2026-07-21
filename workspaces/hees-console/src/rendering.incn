@@ -1,0 +1,1571 @@
+"""
+Bounded, terminal-safe renderers for native Console output.
+
+All provider- or package-derived strings pass through one finite sanitizer before reaching a terminal. Headless output deliberately contains no terminal escape sequences and keeps authority-bearing sections visibly separate.
+"""
+
+from evaluation import ConsoleRun, FindingProjection, MemoryAtomProjection
+from replays import ProposalProjection, RelationObservationProjection, SynthesisObservationProjection, scenario_tags
+from state import ConsoleState, selected_tag_name, visible_scenario_indexes
+from rust::std::string import String as RustString
+from rust::unicode_segmentation import UnicodeSegmentation
+from rust::unicode_width import UnicodeWidthStr
+
+const MAX_TEXT_CHARACTERS: int = 240
+const MAX_JSON_CHARACTERS: int = 1200
+const MAX_INSPECTOR_ITEMS: int = 8
+const PROFILE_LABEL: str = "BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1"
+
+
+enum StyledRow:
+    """One row whose colour authority is fixed before dynamic text is rendered."""
+
+    Plain(str)
+    Heading(str)
+    Authority(str)
+    Candidate(str)
+    Proposal(str)
+    Support(str)
+    Admitted(str)
+    Rejected(str)
+
+
+def is_terminal_control(character: str) -> bool:
+    """Recognize C0, delete, and C1 controls from one Unicode scalar's UTF-8 bytes."""
+
+    bytes = RustString.as_bytes(character)
+    if len(bytes) == 1:
+        return bytes[0] < 32 or bytes[0] == 127
+    return len(bytes) == 2 and bytes[0] == 194 and bytes[1] >= 128 and bytes[1] <= 159
+
+
+def is_bidi_control(character: str) -> bool:
+    """Recognize invisible directional controls that can visually reorder authority-bearing text."""
+
+    bytes = RustString.as_bytes(character)
+    if len(bytes) == 2 and bytes[0] == 216 and bytes[1] == 156:
+        return true
+    if len(bytes) != 3:
+        return false
+    if bytes[0] == 226 and bytes[1] == 128:
+        return bytes[2] == 142 or bytes[2] == 143 or bytes[2] >= 170 and bytes[2] <= 174
+    return bytes[0] == 226 and bytes[1] == 129 and bytes[2] >= 166 and bytes[2] <= 169
+
+
+def escape_terminal_hazards(value: str) -> str:
+    """Preserve printable Unicode while making control and bidi hazards visibly explicit."""
+
+    mut safe: list[str] = []
+    for character in value:
+        if is_terminal_control(character):
+            safe.append("[ctrl]")
+        elif is_bidi_control(character):
+            safe.append("[bidi]")
+        else:
+            safe.append(character)
+    return "".join(safe)
+
+
+pub def terminal_cell_width(value: str) -> int:
+    """Measure rendered terminal cells through the narrow unicode-width Rust interop boundary."""
+
+    return int(UnicodeWidthStr.width(RustString.as_str(value)))
+
+
+def terminal_graphemes(value: str) -> list[str]:
+    """Split printable text at extended grapheme boundaries through a narrow Rust interop boundary."""
+
+    mut result: list[str] = []
+    for grapheme in UnicodeSegmentation.graphemes(RustString.as_str(value), true):
+        result.append(f"{grapheme}")
+    return result
+
+
+def clip_to_terminal_cells(value: str, width: int) -> str:
+    """Return the longest grapheme-safe prefix whose complete rendered width fits the column."""
+
+    if width <= 0:
+        return ""
+    mut result = ""
+    for grapheme in terminal_graphemes(value):
+        candidate = f"{result}{grapheme}"
+        if terminal_cell_width(candidate) > width:
+            break
+        result = candidate
+    return result
+
+
+pub def bounded_text(value: str, limit: int) -> str:
+    """Escape terminal hazards and cap one untrusted value by measured display cells."""
+
+    if limit <= 0:
+        return ""
+    clean = escape_terminal_hazards(value)
+    if terminal_cell_width(clean) <= limit:
+        return clean
+    if limit == 1:
+        return "~"
+    return f"{clip_to_terminal_cells(clean, limit - 1)}~"
+
+
+def status_label(run: ConsoleRun) -> str:
+    """Render the terminal Spectrum state without inferring a decision."""
+
+    if run.result.spectrum.admitted:
+        return "ADMITTED"
+    return "REJECTED"
+
+
+def status_icon_label(run: ConsoleRun) -> str:
+    """Pair each terminal state with a stable non-colour-dependent icon."""
+
+    if run.result.spectrum.admitted:
+        return "✓ ADMITTED"
+    return "✕ REJECTED"
+
+
+def fixed_terminal_sequence(value: bytes) -> str:
+    """Decode one application-authored terminal style sequence."""
+
+    match RustString.from_utf8(value):
+        Err(_) => return ""
+        Ok(value) => return value
+
+
+def option_presence(value: Option[str]) -> str:
+    """Render whether one terminal artifact is present without inventing it."""
+
+    match value:
+        Some(_) => return "present"
+        None => return "absent"
+
+
+def option_text(value: Option[str]) -> str:
+    """Render one optional terminal artifact as bounded safe JSON."""
+
+    match value:
+        Some(source) => return bounded_text(source, MAX_JSON_CHARACTERS)
+        None => return "absent"
+
+
+def bounded_identifiers(values: list[str]) -> str:
+    """Sanitize and join untrusted identifiers before terminal rendering."""
+
+    return ", ".join([bounded_text(value, 128) for value in values])
+
+
+def optional_identifiers(values: Option[list[str]]) -> str:
+    """Render an optional identifier list without merging evidence and memory namespaces."""
+
+    match values:
+        Some(items) => return bounded_identifiers(items)
+        None => return "none"
+
+
+def package_lines(run: ConsoleRun) -> list[str]:
+    """Render the fixed profile package without presenting it as a permanent Console limit."""
+
+    package = run.scenario.package
+    return ["FIXED PROFILE PACKAGE", f"package={bounded_text(package.package_id, 128)} domain={bounded_text(
+        package.domain_id,
+        128,
+    )} revision={bounded_text(package.package_revision, 64)}", f"contract={bounded_text(package.contract_version, 64)} artifact={bounded_text(
+        package.artifact_digest,
+        96,
+    )}", f"sources={len(package.sources)} actions={package.action_count} requirements={package.requirement_count} atoms={package.atom_count}", f"mission={bounded_text(
+        package.mission,
+        MAX_TEXT_CHARACTERS,
+    )}", "This fixed fictional package is an implementation-profile input, not the permanent product boundary."]
+
+
+def source_lines(run: ConsoleRun, include_text: bool) -> list[str]:
+    """Render source identity, including text only in the direct interactive inspector."""
+
+    sources = run.scenario.package.sources
+    mut lines = [f"FIXED PROFILE SOURCES count={len(sources)}"]
+    mut count = 0
+    for source in sources:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional sources omitted")
+            break
+        lines.append(
+            f"  {bounded_text(source.source_id, 128)} ref={bounded_text(source.source_ref, 128)} language={bounded_text(
+                source.language,
+                32,
+            )} rights={bounded_text(source.rights_state, 64)}",
+        )
+        if include_text:
+            lines.append(f"    {bounded_text(source.text, MAX_TEXT_CHARACTERS)}")
+        else:
+            lines.append("    text=[redacted from headless output]")
+        count += 1
+    return lines
+
+
+def atom_comparison_lines() -> list[str]:
+    """Disclose the optional display-only atom-comparison capability as absent."""
+
+    return ["OPTIONAL ATOM COMPARISON", "state=not_configured package_effect=none", "No atom candidate enters this interaction or its terminal runner request.", "Candidate-memory creation and comparison remain an optional display-only profile surface."]
+
+
+def proposal_lines(proposal: ProposalProjection) -> list[str]:
+    """Render the normalized untrusted proposal without assigning authority."""
+
+    mut lines = ["UNTRUSTED PROPOSAL", f"proposal_id={bounded_text(proposal.proposal_id, 128)} action={bounded_text(
+        proposal.action_id,
+        128,
+    )}", f"evidence=[{bounded_identifiers(proposal.evidence_ids)}] visible_units={len(proposal.visible_units)} support_mappings={len(
+        proposal.support_mappings,
+    )}"]
+    mut count = 0
+    for unit in proposal.visible_units:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("… additional visible units omitted")
+            break
+        lines.append(f"  {bounded_text(unit.unit_id, 128)}: {bounded_text(unit.text, MAX_TEXT_CHARACTERS)}")
+        count += 1
+    return lines
+
+
+def support_lines(proposal: ProposalProjection) -> list[str]:
+    """Render evidence and governed-memory support as separate typed namespaces."""
+
+    mut lines = ["DECLARED SUPPORT", f"proposal_evidence_ids=[{bounded_identifiers(proposal.evidence_ids)}]", f"support_mappings={len(
+        proposal.support_mappings,
+    )}"]
+    mut count = 0
+    for mapping in proposal.support_mappings:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional mappings omitted")
+            break
+        lines.append(
+            f"  {bounded_text(mapping.support_claim_id, 128)} unit={bounded_text(mapping.unit_id, 128)} memory_id={bounded_text(
+                mapping.memory_id,
+                128,
+            )}",
+        )
+        lines.append(f"    evidence_ids=[{optional_identifiers(mapping.evidence_ids)}]")
+        count += 1
+    lines.append("Evidence identifiers and memory identifiers are distinct and cannot substitute for one another.")
+    return lines
+
+
+def premise_ids(run: ConsoleRun, target_index: int) -> str:
+    """Project one manifest target's ordered memory identifiers for display."""
+
+    target = run.result.manifest[target_index]
+    identifiers = [premise.memory_id for premise in target.body.premises]
+    return bounded_identifiers(identifiers)
+
+
+def manifest_lines(run: ConsoleRun) -> list[str]:
+    """Render the exact Hees-derived verifier targets and their digest identities."""
+
+    manifest = run.result.manifest
+    mut lines = [f"HEES-DERIVED VERIFIER MANIFEST count={len(manifest)}"]
+    mut index = 0
+    for target in manifest:
+        if index >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional targets omitted")
+            break
+        lines.append(
+            f"  {bounded_text(target.body.target_id, 128)} evaluator={bounded_text(target.body.evaluator_role, 64)} target={bounded_text(
+                target.body.target_role,
+                64,
+            )}",
+        )
+        lines.append(f"    premises=[{premise_ids(run, index)}] digest={bounded_text(target.target_digest, 96)}")
+        index += 1
+    return lines
+
+
+def relation_line(observation: RelationObservationProjection) -> str:
+    """Render one relation observation as explicitly non-authoritative input."""
+
+    return (f"  {bounded_text(observation.observation_id, 128)} role={bounded_text(observation.evaluator_role, 64)} " + f"support={observation.support_bps} contradiction={observation.contradiction_bps} unresolved={observation.unresolved_bps}")
+
+
+def synthesis_line(observation: SynthesisObservationProjection) -> str:
+    """Render one synthesis observation as explicitly non-authoritative input."""
+
+    return (f"  {bounded_text(observation.observation_id, 128)} role={bounded_text(observation.evaluator_role, 64)} " + f"covered={observation.covered_bps} gap={observation.gap_bps} unresolved={observation.unresolved_bps}")
+
+
+def observation_lines(run: ConsoleRun) -> list[str]:
+    """Render bounded relation and synthesis observations in replay order."""
+
+    relations = run.scenario.body.relation_observations
+    syntheses = run.scenario.body.synthesis_observations
+    mut lines = [f"NON-AUTHORITATIVE OBSERVATIONS relation={len(relations)} synthesis={len(syntheses)}"]
+    mut count = 0
+    for observation in relations:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional observations omitted")
+            return lines
+        lines.append(relation_line(observation))
+        count += 1
+    for observation in syntheses:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional observations omitted")
+            return lines
+        lines.append(synthesis_line(observation))
+        count += 1
+    return lines
+
+
+def finding_line(finding: FindingProjection) -> str:
+    """Render one Hees-owned finding classification and its target role."""
+
+    return (f"  {bounded_text(finding.finding_id, 128)} classification={bounded_text(finding.classification, 64)} " + f"role={bounded_text(
+        finding.evaluator_role,
+        64,
+    )} target={bounded_text(finding.target_role, 64)}")
+
+
+def finding_lines(run: ConsoleRun) -> list[str]:
+    """Render bounded Hees-derived findings in manifest order."""
+
+    mut lines = [f"HEES-CLASSIFIED NON-AUTHORITATIVE FINDINGS count={len(run.result.findings)}"]
+    mut count = 0
+    for finding in run.result.findings:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional findings omitted")
+            break
+        lines.append(finding_line(finding))
+        count += 1
+    return lines
+
+
+def spectrum_lines(run: ConsoleRun) -> list[str]:
+    """Render the exact Hees terminal Spectrum decision and reasons."""
+
+    spectrum = run.result.spectrum
+    structural = match spectrum.structural_reason:
+        Some(reason) => bounded_text(reason, 128)
+        None => f"none"
+
+    return [f"SPECTRUM {status_label(run)}", f"decision={bounded_text(spectrum.decision, 64)} reason={bounded_text(
+        spectrum.reason,
+        128,
+    )} namespace={bounded_text(spectrum.reason_namespace, 128)}", f"structural_reason={structural} decision_id={bounded_text(
+        spectrum.decision_id,
+        128,
+    )}"]
+
+
+def memory_lines(run: ConsoleRun) -> list[str]:
+    """Render only memory selected by the terminal Hees evaluation."""
+
+    mut lines = [f"SELECTED MEMORY count={len(run.result.selected_memory)}"]
+    mut count = 0
+    for atom in run.result.selected_memory:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional memory omitted")
+            break
+        lines.append(
+            f"  {bounded_text(atom.memory_id, 128)} source={bounded_text(atom.source_ref, 128)} claim={bounded_text(
+                atom.claim,
+                MAX_TEXT_CHARACTERS,
+            )}",
+        )
+        count += 1
+    return lines
+
+
+def content_dna_lines(run: ConsoleRun, include_json: bool) -> list[str]:
+    """Render admitted-only Content DNA presence and optionally its bounded JSON envelope."""
+
+    mut lines = [f"CONTENT DNA {option_presence(run.result.content_dna_json)}"]
+    if include_json:
+        lines.append(option_text(run.result.content_dna_json))
+    return lines
+
+
+def receipt_lines(run: ConsoleRun, include_json: bool) -> list[str]:
+    """Render terminal receipt presence and optionally its bounded JSON envelope."""
+
+    mut lines = [f"RECEIPT {option_presence(run.result.receipt_json)}"]
+    if include_json:
+        lines.append(option_text(run.result.receipt_json))
+    return lines
+
+
+def visible_mode_label(mode: str) -> str:
+    """Name fixture-backed offline execution as replay at the presentation boundary."""
+
+    if mode == "OFFLINE":
+        return "REPLAY"
+    return mode
+
+
+def replay_integrity_line(run: ConsoleRun) -> str:
+    """Describe whether replay integrity was verified before Hees evaluation."""
+
+    if run.scenario.mode == "OFFLINE":
+        return f"replay_integrity=verified replay_id={bounded_text(run.scenario.input_id, 96)}"
+    return "replay_integrity=not_applicable_live"
+
+
+def trace_lines(run: ConsoleRun) -> list[str]:
+    """Render the bounded non-authoritative trace separately from the Hees result."""
+
+    trace = run.trace
+    mut lines = ["NON-AUTHORITATIVE EXECUTION TRACE", f"contract={bounded_text(trace.contract_version, 64)} profile={bounded_text(
+        trace.profile_id,
+        64,
+    )} mode={bounded_text(visible_mode_label(trace.mode), 32)}", f"build={bounded_text(trace.build_identity, 64)} toolchain={bounded_text(
+        trace.toolchain_identity,
+        64,
+    )} runner={bounded_text(trace.runner_identity, 96)}", f"provider={bounded_text(trace.provider_id, 64)} proposal={bounded_text(
+        trace.proposal_id,
+        128,
+    )}", replay_integrity_line(run), f"relation_observations={len(trace.relation_observation_ids)} synthesis_observations={len(
+        trace.synthesis_observation_ids,
+    )} findings={len(trace.finding_ids)}", f"model_fingerprints=[{bounded_identifiers(trace.model_fingerprints)}]", f"prompt_fingerprints=[{bounded_identifiers(
+        trace.prompt_fingerprints,
+    )}]", f"configuration_fingerprints=[{bounded_identifiers(trace.configuration_fingerprints)}]", "Trace construction and display cannot change the terminal Hees result."]
+    mut count = 0
+    for schema in trace.schema_digests:
+        if count >= MAX_INSPECTOR_ITEMS:
+            lines.append("  … additional schema identities omitted")
+            break
+        lines.append(
+            f"  schema={bounded_text(schema.contract_version, 64)} digest={bounded_text(schema.schema_digest, 96)}",
+        )
+        count += 1
+    return lines
+
+
+def append_section(lines: list[str], section: list[str]) -> list[str]:
+    """Append one separated inspector section to a headless output buffer."""
+
+    mut result = lines
+    if len(result) > 0:
+        result.append("")
+    result.extend(section)
+    return result
+
+
+pub def render_headless(run: ConsoleRun) -> str:
+    """Render stable control-free output with direct question text redacted by default."""
+
+    mut lines = ["hees.ai console 0.1.0", PROFILE_LABEL, f"MODE {visible_mode_label(run.scenario.mode)}", f"SCENARIO {run.scenario.slug}", "QUESTION [redacted from headless output]"]
+    lines = append_section(lines, package_lines(run))
+    lines = append_section(lines, source_lines(run, false))
+    lines = append_section(lines, atom_comparison_lines())
+    lines = append_section(lines, proposal_lines(run.scenario.body.proposal))
+    lines = append_section(lines, support_lines(run.scenario.body.proposal))
+    lines = append_section(lines, manifest_lines(run))
+    lines = append_section(lines, observation_lines(run))
+    lines = append_section(lines, finding_lines(run))
+    lines = append_section(lines, spectrum_lines(run))
+    lines = append_section(lines, memory_lines(run))
+    lines = append_section(lines, content_dna_lines(run, false))
+    lines = append_section(lines, receipt_lines(run, false))
+    lines = append_section(lines, trace_lines(run))
+    return "\n".join(lines)
+
+
+def spaces(count: int) -> str:
+    """Return a small fixed-width padding string without terminal controls."""
+
+    mut result = ""
+    mut index = 0
+    while index < count:
+        result = f"{result} "
+        index += 1
+    return result
+
+
+def clip_column(value: str, width: int) -> str:
+    """Clip one presentation value to a fixed terminal column."""
+
+    if width <= 0:
+        return ""
+    return bounded_text(value, width)
+
+
+def padded_column(value: str, width: int) -> str:
+    """Clip and right-pad one fixed terminal column."""
+
+    clipped = clip_column(value, width)
+    visible_width = terminal_cell_width(clipped)
+    if visible_width >= width:
+        return clipped
+    return f"{clipped}{spaces(width - visible_width)}"
+
+
+def split_terminal_width(value: str, width: int) -> list[str]:
+    """Split one hazard-free token into measured terminal-width segments without breaking graphemes."""
+
+    if width <= 0:
+        return []
+    mut result: list[str] = []
+    mut segment = ""
+    for grapheme in terminal_graphemes(value):
+        candidate = f"{segment}{grapheme}"
+        if terminal_cell_width(candidate) > width:
+            if segment != "":
+                result.append(segment)
+            segment = grapheme
+            if terminal_cell_width(segment) > width:
+                result.append("~")
+                segment = f""
+        else:
+            segment = candidate
+    if segment != "":
+        result.append(segment)
+    return result
+
+
+def wrapped_text_lines(value: str, width: int, limit: int) -> list[str]:
+    """Wrap sanitized prose on word boundaries and split only genuinely long tokens."""
+
+    if width <= 0:
+        return []
+    source = bounded_text(value, limit)
+    if source == "":
+        return [""]
+    mut lines: list[str] = []
+    mut line = ""
+    for word in source.split(" "):
+        if word == "":
+            continue
+        word_width = terminal_cell_width(word)
+        if word_width > width:
+            if line != "":
+                lines.append(line)
+                line = f""
+            lines.extend(split_terminal_width(word, width))
+        elif line == "":
+            line = word
+        elif terminal_cell_width(f"{line} {word}") <= width:
+            line = f"{line} {word}"
+        else:
+            lines.append(line)
+            line = word
+    if line != "":
+        lines.append(line)
+    if len(lines) == 0:
+        return [""]
+    return lines
+
+
+def checkbox(selected: bool) -> str:
+    """Render a status or tag checkbox without relying on colour."""
+
+    if selected:
+        return "[x]"
+    return "[ ]"
+
+
+def admitted_states(runs: list[ConsoleRun]) -> list[bool]:
+    """Project real Hees terminal states for browser rendering."""
+
+    return [run.result.spectrum.admitted for run in runs]
+
+
+def selected_run(state: ConsoleState, runs: list[ConsoleRun]) -> ConsoleRun:
+    """Return the selected evaluated interaction with a defensive first-run fallback."""
+
+    if state.scenario_index < 0 or state.scenario_index >= len(runs):
+        return runs[0]
+    return runs[state.scenario_index]
+
+
+def status_order_label(state: ConsoleState) -> str:
+    """Render the current Status-column ordering in compact form."""
+
+    if state.status_order == "admitted-first":
+        return "admitted first"
+    if state.status_order == "rejected-first":
+        return "rejected first"
+    return "scenario order"
+
+
+def selected_tags_label(state: ConsoleState) -> str:
+    """Render checked tags inside the search surface rather than a separate dropdown."""
+
+    if len(state.selected_tags) == 0:
+        return "all tags"
+    return ", ".join(state.selected_tags)
+
+
+def status_control_lines(state: ConsoleState) -> list[str]:
+    """Render filtering and ordering under the Status table-column header."""
+
+    if state.focus != "status":
+        return []
+    mut lines = ["STATUS FILTER / SORT", "  ↑/↓ choose · space toggle", "  o sort · enter apply"]
+    mut admitted_marker = " "
+    mut rejected_marker = " "
+    mut order_marker = " "
+    if state.status_index == 0:
+        admitted_marker = f">"
+    elif state.status_index == 1:
+        rejected_marker = f">"
+    else:
+        order_marker = f">"
+    lines.append(f"  {admitted_marker} {checkbox(state.show_admitted)} ADMITTED")
+    lines.append(f"  {rejected_marker} {checkbox(state.show_rejected)} REJECTED")
+    lines.append(f"  {order_marker} sort: {status_order_label(state)}")
+    return lines
+
+
+pub def render_screen(state: ConsoleState, runs: list[ConsoleRun]) -> str:
+    """Render one standard wide frame for tests and non-size-aware callers."""
+
+    return render_screen_for_size(state, runs, 160, 44)
+
+
+def styled_jade(value: str) -> str:
+    """Apply the fixed authority colour to trusted application text."""
+
+    return f"{fixed_terminal_sequence(b"\x1b[38;5;79m")}{value}{fixed_terminal_sequence(b"\x1b[0m")}"
+
+
+def styled_cyan(value: str) -> str:
+    """Apply the fixed evidence colour to trusted application text."""
+
+    return f"{fixed_terminal_sequence(b"\x1b[38;5;81m")}{value}{fixed_terminal_sequence(b"\x1b[0m")}"
+
+
+def styled_amber(value: str) -> str:
+    """Apply the fixed proposal colour to trusted application text."""
+
+    return f"{fixed_terminal_sequence(b"\x1b[38;5;221m")}{value}{fixed_terminal_sequence(b"\x1b[0m")}"
+
+
+def styled_crimson(value: str) -> str:
+    """Apply the fixed rejection colour to trusted application text."""
+
+    return f"{fixed_terminal_sequence(b"\x1b[38;5;203m")}{value}{fixed_terminal_sequence(b"\x1b[0m")}"
+
+
+pub def without_terminal_styles(value: str) -> str:
+    """Remove only the fixed colour sequences authored by the Console renderer."""
+
+    mut plain = value
+    for sequence in [b"\x1b[38;5;79m", b"\x1b[38;5;81m", b"\x1b[38;5;221m", b"\x1b[38;5;203m", b"\x1b[0m"]:
+        plain = plain.replace(fixed_terminal_sequence(sequence), "")
+    return plain
+
+
+def plain_rows(values: list[str]) -> list[StyledRow]:
+    """Assign an explicit plain style without inspecting row content."""
+
+    return [StyledRow.Plain(value) for value in values]
+
+
+def decision_row(value: str, admitted: bool) -> StyledRow:
+    """Assign terminal-decision colour from the typed Hees result only."""
+
+    if admitted:
+        return StyledRow.Admitted(value)
+    return StyledRow.Rejected(value)
+
+
+def probe_row(value: str, state: ConsoleState) -> StyledRow:
+    """Assign probe colour from the typed candidate state, never from rendered text."""
+
+    if state.candidate_probe_state == "probe_admitted":
+        return StyledRow.Admitted(value)
+    if state.candidate_probe_state == "probe_rejected" or state.candidate_probe_state == "probe_error":
+        return StyledRow.Rejected(value)
+    return StyledRow.Candidate(value)
+
+
+def activation_row(value: str, state: ConsoleState) -> StyledRow:
+    """Assign activation colour from the typed candidate state."""
+
+    if state.candidate_activation_state == "blocked_requires_authority_api":
+        return StyledRow.Rejected(value)
+    return StyledRow.Candidate(value)
+
+
+def heading_rows(values: list[str]) -> list[StyledRow]:
+    """Style the declared first row as a section heading without inspecting content."""
+
+    if len(values) == 0:
+        return []
+    mut rows = [StyledRow.Heading(values[0])]
+    rows.extend([StyledRow.Plain(value) for value in values[1:]])
+    return rows
+
+
+def render_styled_row(row: StyledRow, width: int) -> str:
+    """Pad one typed row before applying its fixed style."""
+
+    match row:
+        StyledRow.Plain(value) => return padded_column(value, width)
+        StyledRow.Heading(value) => return styled_cyan(padded_column(value, width))
+        StyledRow.Authority(value) => return styled_jade(padded_column(value, width))
+        StyledRow.Candidate(value) => return styled_amber(padded_column(value, width))
+        StyledRow.Proposal(value) => return styled_amber(padded_column(value, width))
+        StyledRow.Support(value) => return styled_cyan(padded_column(value, width))
+        StyledRow.Admitted(value) => return styled_jade(padded_column(value, width))
+        StyledRow.Rejected(value) => return styled_crimson(padded_column(value, width))
+
+
+def mode_label(run: ConsoleRun) -> str:
+    """Return the compact mode label used in the product header."""
+
+    if run.scenario.mode == "LIVE":
+        return "LIVE GPT-5.6"
+    return "REPLAY"
+
+
+def selected_top_section(state: ConsoleState) -> int:
+    """Map the evidence-first workflow into seven stable product destinations."""
+
+    if state.surface == "profiles":
+        return 1
+    if state.surface == "evidence":
+        return 2
+    if state.surface == "memory":
+        return 3
+    if state.surface == "committee":
+        return 4
+    if state.surface == "interactions":
+        return 5
+    if state.surface == "decisions":
+        return 6
+    if state.surface == "help":
+        return 7
+    return 1
+
+
+def top_section_label(index: int, label: str, selected: int) -> str:
+    """Render one numbered top-level destination with a text-visible selection state."""
+
+    if index == selected:
+        return f"[{index} {label}]"
+    return f" {index} {label} "
+
+
+def top_navigation_line(state: ConsoleState) -> str:
+    """Render the complete profile-to-decision workflow as one keyboard rail."""
+
+    selected = selected_top_section(state)
+    return "  ".join(
+        [top_section_label(1, "PROFILES", selected), top_section_label(2, "EVIDENCE", selected), top_section_label(
+            3,
+            "MEMORY",
+            selected,
+        ), top_section_label(4, "COMMITTEE", selected), top_section_label(5, "INTERACTIONS", selected), top_section_label(
+            6,
+            "DECISIONS",
+            selected,
+        ), top_section_label(7, "HELP", selected)],
+    )
+
+
+def compact_navigation_line(state: ConsoleState) -> str:
+    """Keep all seven destinations visible in terminals too narrow for the full workflow rail."""
+
+    selected = selected_top_section(state)
+    return "  ".join(
+        [top_section_label(1, "PROF", selected), top_section_label(2, "EVID", selected), top_section_label(
+            3,
+            "MEM",
+            selected,
+        ), top_section_label(4, "COMM", selected), top_section_label(5, "INT", selected), top_section_label(
+            6,
+            "DEC",
+            selected,
+        ), top_section_label(7, "HELP", selected)],
+    )
+
+
+def styled_top_navigation(state: ConsoleState, columns: int) -> str:
+    """Highlight the selected destination after fixed-width layout is complete."""
+
+    selected = selected_top_section(state)
+    labels = ["PROFILES", "EVIDENCE", "MEMORY", "COMMITTEE", "INTERACTIONS", "DECISIONS", "HELP"]
+    selected_label = top_section_label(selected, labels[selected - 1], selected)
+    styled_selected_label = styled_jade(top_section_label(selected, labels[selected - 1], selected))
+    navigation = padded_column(top_navigation_line(state), columns)
+    return navigation.replace(selected_label, styled_selected_label)
+
+
+def styled_shortcuts_line(value: str, columns: int) -> str:
+    """Style fixed application-owned keycaps after layout without interpreting dynamic text."""
+
+    mut rendered = padded_column(value, columns)
+    for keycap in ["[1–7]", "[↑↓]", "[SPACE]", "[v]", "[r]", "[a]", "[←→]", "[b]", "[q]"]:
+        rendered = rendered.replace(keycap, styled_jade(keycap))
+    return rendered
+
+
+def first_visible_unit(run: ConsoleRun) -> str:
+    """Return the first bounded model-visible unit without inventing response text."""
+
+    if len(run.scenario.body.proposal.visible_units) == 0:
+        return "No visible response unit supplied."
+    return bounded_text(run.scenario.body.proposal.visible_units[0].text, 220)
+
+
+def decision_detail_lines(run: ConsoleRun) -> list[str]:
+    """Explain the exact terminal reason using source-faithful fixed vocabulary."""
+
+    reason = run.result.spectrum.reason
+    if reason == "admitted":
+        return ["The proposal used declared authority and structurally admissible", "support. Hees admitted the visible response and produced a receipt."]
+    if reason == "unknown_action":
+        return ["The proposed action is not declared by the package.", "Acting would exceed the proposal's declared authority."]
+    if reason == "unknown_evidence":
+        return ["The proposal references evidence that the package does not", "declare. Unknown evidence cannot support an admitted response."]
+    if reason == "unknown_memory":
+        return ["The proposal references memory that the package does not", "contain. Unknown memory cannot enter the selected-memory result."]
+    if reason == "memory_not_admitted":
+        return ["The proposal relies on memory that did not pass the governed", "admission path. The visible response therefore remains unadmitted."]
+    return [f"Hees returned the terminal reason {bounded_text(reason, 96)}."]
+
+
+def scenario_rail_rows(state: ConsoleState, runs: list[ConsoleRun]) -> list[StyledRow]:
+    """Render scenario discovery, filtering cues, and terminal outcomes in one rail."""
+
+    mut query = state.search_query
+    if query == "":
+        query = f"Search interactions…"
+    states = admitted_states(runs)
+    visible = visible_scenario_indexes(state, states)
+    mut rows = [StyledRow.Heading("INTERACTIONS"), StyledRow.Plain(f"⌕ {bounded_text(query, 22)}  [/]"), StyledRow.Plain(
+        f"tags  {bounded_text(selected_tags_label(state), 22)}",
+    ), StyledRow.Plain(f"status [s]  {status_order_label(state)}"), StyledRow.Plain("")]
+    if state.focus == "search":
+        rows.append(StyledRow.Support(f"tag focus  {selected_tag_name(state)}"))
+        rows.append(StyledRow.Plain("tab toggle · enter apply"))
+        rows.append(StyledRow.Plain(""))
+    elif state.focus == "status":
+        rows.extend(heading_rows(status_control_lines(state)))
+        rows.append(StyledRow.Plain(""))
+    if len(visible) == 0:
+        rows.append(StyledRow.Candidate("No matching scenarios."))
+    for index in visible:
+        run = runs[index]
+        if index == state.scenario_index:
+            rows.append(StyledRow.Authority(f"▶ {index + 1}  {bounded_text(run.scenario.title, 23)}"))
+        else:
+            rows.append(StyledRow.Plain(f"  {index + 1}  {bounded_text(run.scenario.title, 23)}"))
+        rows.append(StyledRow.Plain(f"    {bounded_text(run.scenario.slug, 24)}"))
+        rows.append(decision_row(f"    {status_label(run)}", run.result.spectrum.admitted))
+        rows.append(StyledRow.Plain(""))
+    rows.append(StyledRow.Plain(f"{len(visible)} / {len(runs)} reviewed scenarios"))
+    rows.append(StyledRow.Plain("[↑↓] select  [/] search"))
+    return rows
+
+
+def visible_response_rows(run: ConsoleRun, content_width: int) -> list[StyledRow]:
+    """Wrap the model-visible response inside the actual centre-pane width."""
+
+    prefix = "visible response  "
+    prefix_width = terminal_cell_width(prefix)
+    mut available_width = content_width - prefix_width
+    if available_width < 1:
+        available_width = 1
+    wrapped = wrapped_text_lines(first_visible_unit(run), available_width, 220)
+    if len(wrapped) == 0:
+        return [StyledRow.Proposal(prefix)]
+    mut rows = [StyledRow.Proposal(f"{prefix}{wrapped[0]}")]
+    continuation = spaces(prefix_width)
+    for line in wrapped[1:]:
+        rows.append(StyledRow.Proposal(f"{continuation}{line}"))
+    return rows
+
+
+def interaction_center_rows(run: ConsoleRun, content_width: int) -> list[StyledRow]:
+    """Render proposal, package support, and Hees authority with explicit typed row styles."""
+
+    proposal = run.scenario.body.proposal
+    mut rows = [StyledRow.Plain(f"INTERACTION  {bounded_text(run.scenario.slug, 48)}"), decision_row(
+        f"STATE  {status_icon_label(run)}",
+        run.result.spectrum.admitted,
+    ), StyledRow.Plain(
+        "────────────────────────────────────────────────────────────────",
+    ), StyledRow.Plain("QUESTION"), StyledRow.Plain(bounded_text(run.scenario.body.request.question, 220)), StyledRow.Plain(
+        "",
+    ), StyledRow.Proposal("UNTRUSTED PROPOSAL  MODEL"), StyledRow.Proposal(
+        f"action            {bounded_text(proposal.action_id, 96)}",
+    ), StyledRow.Proposal(f"evidence          [{bounded_identifiers(proposal.evidence_ids)}]"), StyledRow.Proposal(
+        f"package           {bounded_text(proposal.package_id, 80)} · revision {bounded_text(
+            proposal.package_revision,
+            32,
+        )}",
+    )]
+    rows.extend(visible_response_rows(run, content_width))
+    rows.extend(
+        [StyledRow.Plain(""), StyledRow.Support("DECLARED SUPPORT  PACKAGE"), StyledRow.Support(
+            f"declared actions  {run.scenario.package.action_count}",
+        ), StyledRow.Support(f"support mappings  {len(proposal.support_mappings)}"), StyledRow.Support(
+            f"selected memory  {len(run.result.selected_memory)}",
+        ), StyledRow.Plain("")],
+    )
+    rows.append(
+        decision_row(
+            "┌─ HEES DECISION ────────────────────────────────────────────────",
+            run.result.spectrum.admitted,
+        ),
+    )
+    rows.append(decision_row(f"│  {status_icon_label(run)}", run.result.spectrum.admitted))
+    rows.append(
+        decision_row(f"│  REASON  {bounded_text(run.result.spectrum.reason, 96)}", run.result.spectrum.admitted),
+    )
+    for detail in decision_detail_lines(run):
+        rows.append(decision_row(f"│  {detail}", run.result.spectrum.admitted))
+    rows.append(
+        decision_row("│  EFFECT  No external action is executed by this session.", run.result.spectrum.admitted),
+    )
+    rows.append(
+        decision_row(
+            "└────────────────────────────────────────────────────────────────",
+            run.result.spectrum.admitted,
+        ),
+    )
+    rows.append(StyledRow.Plain(""))
+    rows.append(StyledRow.Plain("AUTHORITY  MODEL proposes · HEES decides · ARTIFACT records"))
+    return rows
+
+
+def wrapped_identity_lines(label: str, value: str) -> list[str]:
+    """Wrap one long identity across predictable inspector rows without raw JSON."""
+
+    mut lines = [label]
+    lines.extend([f"  {line}" for line in wrapped_text_lines(value, 38, 128)])
+    return lines
+
+
+def receipt_context_lines(run: ConsoleRun, scenario_index: int, total: int) -> list[str]:
+    """Render a readable typed receipt projection instead of its JSON transport."""
+
+    spectrum = run.result.spectrum
+    proposal = run.scenario.body.proposal
+    mut lines = ["CONTEXT  EVIDENCE  MEMORY  [RECEIPT]", "────────────────────────────────────────────", f"RECEIPT  {scenario_index + 1} / {total}", f"artifact          {option_presence(
+        run.result.receipt_json,
+    )}", f"scenario          {bounded_text(run.scenario.slug, 40)}", f"state             {status_icon_label(run)}", f"reason            {bounded_text(
+        spectrum.reason,
+        64,
+    )}", f"namespace         {bounded_text(spectrum.reason_namespace, 64)}", f"decision id       {bounded_text(
+        spectrum.decision_id,
+        64,
+    )}", "", "PROPOSAL SUMMARY", f"action            {bounded_text(proposal.action_id, 64)}", f"evidence          [{bounded_identifiers(
+        proposal.evidence_ids,
+    )}]", f"package revision  {bounded_text(proposal.package_revision, 32)}", "", "DECLARED SUPPORT SUMMARY", f"package actions   {run.scenario.package.action_count}", f"memory selected   {len(
+        run.result.selected_memory,
+    )}", f"content dna       {option_presence(run.result.content_dna_json)}", "", "DIGESTS  WRAPPED"]
+    lines.extend(wrapped_identity_lines("request", run.scenario.body.request.request_digest))
+    lines.extend(wrapped_identity_lines("artifact", run.scenario.package.artifact_digest))
+    return lines
+
+
+def context_header(state: ConsoleState) -> str:
+    """Render all context tabs while making the current tab explicit without colour."""
+
+    mut labels: list[str] = []
+    for index, name in enumerate(["EVIDENCE", "MEMORY", "DNA", "RECEIPT"]):
+        if index == state.context_index:
+            labels.append(f"[{name}]")
+        else:
+            labels.append(name)
+    joined = "  ".join(labels)
+    return f"CONTEXT  {joined}"
+
+
+def evidence_context_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
+    """Render proposal and admitted evidence identifiers as separate authority states."""
+
+    proposal = run.scenario.body.proposal
+    spectrum = run.result.spectrum
+    mut lines = [context_header(state), "────────────────────────────────────────────", "PROPOSAL EVIDENCE  UNTRUSTED", f"count             {len(
+        proposal.evidence_ids,
+    )}"]
+    for evidence_id in proposal.evidence_ids:
+        lines.append(f"  {bounded_text(evidence_id, 42)}")
+    lines.append("")
+    lines.append("ADMITTED EVIDENCE  HEES")
+    lines.append(f"count             {len(spectrum.admitted_evidence_ids)}")
+    for evidence_id in spectrum.admitted_evidence_ids:
+        lines.append(f"  {bounded_text(evidence_id, 42)}")
+    lines.append("")
+    lines.append("Evidence identity is structural support; it is not a semantic truth claim.")
+    return lines
+
+
+def memory_context_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
+    """Render only memory selected by the terminal Hees decision."""
+
+    mut lines = [context_header(state), "────────────────────────────────────────────", f"SELECTED MEMORY  {len(
+        run.result.selected_memory,
+    )}"]
+    for atom in run.result.selected_memory:
+        lines.append(f"memory            {bounded_text(atom.memory_id, 42)}")
+        lines.append(f"source            {bounded_text(atom.source_ref, 42)}")
+        lines.append(f"claim             {bounded_text(atom.claim, 42)}")
+        lines.append(f"review            {bounded_text(atom.review_state, 20)} · {bounded_text(atom.rights_state, 20)}")
+        lines.append("")
+    if len(run.result.selected_memory) == 0:
+        lines.append("No memory entered this terminal result.")
+    return lines
+
+
+def content_dna_context_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
+    """Render the admitted-only provenance projection behind an explicit context tab."""
+
+    mut lines = [context_header(state), "────────────────────────────────────────────", f"CONTENT DNA  {option_presence(
+        run.result.content_dna_json,
+    )}", "", "Binds the exact memory atoms selected for this admitted result.", "It is absent on rejection.", ""]
+    if option_presence(run.result.content_dna_json) == "present":
+        lines.append("CANONICAL PROJECTION")
+        lines.extend(wrapped_text_lines(option_text(run.result.content_dna_json), 42, MAX_JSON_CHARACTERS))
+    return lines
+
+
+def context_panel_lines(state: ConsoleState, run: ConsoleRun, scenario_index: int, total: int) -> list[str]:
+    """Select the contextual evidence, memory, or receipt inspector."""
+
+    if state.context_index == 0:
+        return evidence_context_lines(state, run)
+    if state.context_index == 1:
+        return memory_context_lines(state, run)
+    if state.context_index == 2:
+        return content_dna_context_lines(state, run)
+    mut lines = receipt_context_lines(run, scenario_index, total)
+    lines[0] = context_header(state)
+    return lines
+
+
+def help_center_lines() -> list[str]:
+    """Render exact keyboard help for the evidence-first product workflow."""
+
+    return ["HELP", "────────────────────────────────────────────────────────────", "1  Profiles", "2  Evidence", "3  Memory", "4  Committee", "5  Interactions", "6  Decisions", "7  Help", "", "↑ / ↓   Select evidence, memory, or interaction", "← / →   Change decision context", "Space   Stage or unstage selected evidence or memory", "v       Run the shipped-scenario Hees probe", "r       Reset candidate to the shipped profile", "a       Attempt activation; this bounded profile refuses it", "/       Search interactions and tags", "s       Filter or sort interactions by terminal status", "b       Collapse or expand the workflow rail", "q       Quit", "", "Colour never carries authority alone. Every state has text and a symbol."]
+
+
+def probe_label(state: ConsoleState) -> str:
+    """Name the exact shipped-scenario result without generalizing it to package compatibility."""
+
+    if state.candidate_probe_state == "probe_admitted":
+        return "✓ PROBE ADMITTED"
+    if state.candidate_probe_state == "probe_rejected":
+        return "✕ PROBE REJECTED"
+    if state.candidate_probe_state == "probe_error":
+        return "! PROBE ERROR"
+    return "○ NOT CHECKED"
+
+
+def activation_label(state: ConsoleState) -> str:
+    """Expose a blocked activation attempt instead of silently ignoring it."""
+
+    if state.candidate_activation_state == "blocked_requires_authority_api":
+        return "✕ BLOCKED · authority API unavailable"
+    return "○ NOT ATTEMPTED"
+
+
+def candidate_identity_label(state: ConsoleState) -> str:
+    """Report candidate artifact integrity only after a completed Hees probe."""
+
+    if state.candidate_identity_valid:
+        return "verified"
+    if state.candidate_probe_state == "probe_error":
+        return "unavailable"
+    return "not checked"
+
+
+def staged_marker(staged: bool) -> str:
+    """Render session staging without implying package approval."""
+
+    if staged:
+        return "[x]"
+    return "[ ]"
+
+
+def workflow_rail_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRow]:
+    """Render the permanent profile-to-decision workflow and candidate authority state."""
+
+    destinations = [("profiles", "1  PROFILES"), ("evidence", "2  EVIDENCE"), ("memory", "3  MEMORY"), ("committee", "4  COMMITTEE"), ("interactions", "5  INTERACTIONS"), ("decisions", "6  DECISIONS"), ("help", "7  HELP")]
+    mut rows = [StyledRow.Heading("GOVERNANCE WORKFLOW")]
+    for surface, label in destinations:
+        if state.surface == surface:
+            rows.append(StyledRow.Authority(f"▶ {label}"))
+        else:
+            rows.append(StyledRow.Plain(f"  {label}"))
+    rows.extend(
+        [StyledRow.Plain(""), StyledRow.Authority("ACTIVE AUTHORITY"), StyledRow.Authority(
+            f"  {state.active_profile_id}",
+        ), StyledRow.Plain("  package-owned · unchanged"), StyledRow.Plain(""), StyledRow.Candidate("CANDIDATE DRAFT"), StyledRow.Candidate(
+            f"  evidence  {len(state.candidate_evidence_ids)} / {len(run.scenario.package.atoms)}",
+        ), StyledRow.Candidate(f"  memory    {len(state.candidate_memory_ids)} / {len(run.scenario.package.atoms)}"), probe_row(
+            f"  {probe_label(state)}",
+            state,
+        ), StyledRow.Candidate("  candidate only · not active"), activation_row(f"  {activation_label(state)}", state), StyledRow.Plain(
+            "",
+        ), StyledRow.Plain("[v] probe · [r] reset"), StyledRow.Plain("[SPACE] stage · a activate"), StyledRow.Plain(
+            "[b] collapse rail · [q] quit",
+        )],
+    )
+    return rows
+
+
+def profile_center_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRow]:
+    """Render the fixed package as an explicit reusable governance-profile contract."""
+
+    package = run.scenario.package
+    mut rows = [StyledRow.Heading("PROFILE STUDIO"), StyledRow.Plain(
+        "────────────────────────────────────────────────────────────",
+    ), StyledRow.Authority("ACTIVE PROFILE  PACKAGE-OWNED AUTHORITY"), StyledRow.Authority(
+        f"profile          {package.profile_id}",
+    ), StyledRow.Authority(f"package          {package.package_id}"), StyledRow.Plain(
+        f"domain           {package.domain_id}",
+    ), StyledRow.Plain(f"revision         {package.package_revision}"), StyledRow.Plain(
+        f"contract         {package.contract_version}",
+    ), StyledRow.Plain(""), StyledRow.Candidate("CANDIDATE DRAFT  SESSION LOCAL"), StyledRow.Candidate(
+        f"evidence staged  {len(state.candidate_evidence_ids)} / {len(package.atoms)}",
+    ), StyledRow.Candidate(f"memory staged    {len(state.candidate_memory_ids)} / {len(package.atoms)}"), probe_row(
+        f"probe result     {probe_label(state)}",
+        state,
+    ), probe_row(f"probe reason     {state.candidate_probe_reason}", state), probe_row(
+        f"Hees diagnostic {state.candidate_probe_diagnostic}",
+        state,
+    ), StyledRow.Candidate(f"artifact identity {candidate_identity_label(state)}"), StyledRow.Candidate(
+        f"candidate digest  {bounded_text(state.candidate_artifact_digest, 38)}",
+    ), activation_row(f"activation       {activation_label(state)}", state), StyledRow.Candidate(
+        "candidate        candidate only — not active",
+    ), StyledRow.Plain(""), StyledRow.Heading("DECLARED ACTIONS")]
+    for action in package.actions:
+        mut evidence = "optional"
+        if action.evidence_required:
+            evidence = f"required"
+        rows.append(StyledRow.Authority(f"  {action.action_id} · evidence {evidence}"))
+    rows.append(StyledRow.Plain(""))
+    rows.append(StyledRow.Heading("ANSWER REQUIREMENTS"))
+    for requirement in package.requirements:
+        rows.append(StyledRow.Authority(f"  {requirement.requirement_id}"))
+        rows.extend([StyledRow.Plain(f"    {line}") for line in wrapped_text_lines(requirement.description, 54, 180)])
+    rows.extend(
+        [StyledRow.Plain(""), StyledRow.Heading("POLICY THRESHOLDS"), StyledRow.Authority(
+            f"  support ≥ {package.policy.min_support_bps} bps · contradiction ≤ {package.policy.max_contradiction_bps} bps",
+        ), StyledRow.Authority(
+            f"  coverage ≥ {package.policy.min_coverage_bps} bps · gap ≤ {package.policy.max_gap_bps} bps",
+        ), StyledRow.Plain(""), StyledRow.Plain(
+            "[v] RUN SHIPPED-SCENARIO PROBE  ·  [r] RESET  ·  a ATTEMPT ACTIVATION",
+        )],
+    )
+    return rows
+
+
+def candidate_status_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRow]:
+    """Explain active versus candidate state without pretending to persist or activate a draft."""
+
+    mut rows = [StyledRow.Candidate("CANDIDATE PROFILE"), StyledRow.Plain(
+        "──────────────────────────────────────",
+    ), probe_row(f"probe result  {probe_label(state)}", state), probe_row(
+        f"probe reason  {state.candidate_probe_reason}",
+        state,
+    ), probe_row(f"Hees diagnostic  {state.candidate_probe_diagnostic}", state), StyledRow.Candidate(
+        f"identity      {candidate_identity_label(state)}",
+    ), StyledRow.Candidate(
+        f"evidence      {len(state.candidate_evidence_ids)} / {len(run.scenario.package.atoms)} staged",
+    ), StyledRow.Candidate(f"memory        {len(state.candidate_memory_ids)} / {len(run.scenario.package.atoms)} staged"), StyledRow.Plain(
+        "",
+    ), StyledRow.Heading("AUTHORITY"), StyledRow.Authority(f"active        {state.active_profile_id}"), StyledRow.Candidate(
+        "candidate     candidate only — not active",
+    ), activation_row(f"activation    {activation_label(state)}", state), StyledRow.Plain("")]
+    rows.extend(
+        [StyledRow.Plain(line) for line in wrapped_text_lines(
+            "This runs one shipped acceptance scenario through the compiled Hees path. It is not a general package validator.",
+            44,
+            180,
+        )],
+    )
+    rows.append(StyledRow.Plain(""))
+    rows.extend(
+        [StyledRow.Plain(line) for line in wrapped_text_lines(
+            "Activation is intentionally unavailable until Hees exposes a safe profile-activation authority API.",
+            44,
+            160,
+        )],
+    )
+    rows.extend([StyledRow.Plain(""), StyledRow.Plain("[v] probe · [r] reset · a test activation")])
+    return rows
+
+
+def selected_atom(run: ConsoleRun, index: int) -> MemoryAtomProjection:
+    """Return one fixed package atom with a defensive first-item fallback."""
+
+    atoms = run.scenario.package.atoms
+    if index < 0 or index >= len(atoms):
+        return atoms[0]
+    return atoms[index]
+
+
+pub def source_text_for_display(value: str) -> str:
+    """Remove only one transport line ending while preserving every other source character."""
+
+    if value.endswith("\r\n"):
+        return value[:len(value) - 2]
+    if value.endswith("\n"):
+        return value[:len(value) - 1]
+    return value
+
+
+def source_text_for_atom(run: ConsoleRun, atom: MemoryAtomProjection) -> str:
+    """Resolve the reviewed source text behind one fixed-profile memory atom."""
+
+    for source in run.scenario.package.sources:
+        if source.source_id == atom.source_id:
+            return source_text_for_display(source.text)
+    return "Source text unavailable."
+
+
+def source_rights_for_atom(run: ConsoleRun, atom: MemoryAtomProjection) -> str:
+    """Resolve the source-level rights declaration separately from atom admission rights."""
+
+    for source in run.scenario.package.sources:
+        if source.source_id == atom.source_id:
+            return source.rights_state
+    return "unknown"
+
+
+def evidence_center_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
+    """Render the complete evidence catalog and working candidate staging action."""
+
+    package = run.scenario.package
+    mut lines = ["EVIDENCE CATALOG", "────────────────────────────────────────────────────────────", "Space stages or unstages evidence in the session candidate.", "Package review and rights declarations remain authoritative.", ""]
+    for index, atom in enumerate(package.atoms):
+        mut cursor = " "
+        if index == state.evidence_index:
+            cursor = f">"
+        lines.append(
+            f"{cursor} {staged_marker(state.candidate_evidence_ids.contains(f"{atom.evidence_id}"))} {atom.evidence_id}",
+        )
+        lines.append(f"    {atom.evidence_kind} · review {atom.review_state} · rights {atom.rights_state}")
+    atom = selected_atom(run, state.evidence_index)
+    lines.extend(
+        ["", "SELECTED EVIDENCE", f"identity         {atom.evidence_id}", f"source id        {atom.source_id}", f"source ref       {atom.source_ref}", f"fingerprint      {bounded_text(
+            atom.source_fingerprint,
+            58,
+        )}", f"declared span    {atom.source_span.start_utf8_byte}..{atom.source_span.end_utf8_byte} UTF-8 bytes", f"language         {atom.language}", f"review           {atom.review_state} · revision {atom.review_revision}", f"source rights    {source_rights_for_atom(
+            run,
+            atom,
+        )}", f"atom rights      {atom.rights_state}", f"authority        {atom.authority_class}", f"provenance       {bounded_text(
+            atom.provenance_digest,
+            58,
+        )}", "claim"],
+    )
+    lines.extend([f"  {line}" for line in wrapped_text_lines(atom.claim, 56, MAX_TEXT_CHARACTERS)])
+    lines.append("source text")
+    lines.extend([f"  {line}" for line in wrapped_text_lines(source_text_for_atom(run, atom), 56, 360)])
+    lines.extend(["", "↑↓ select · SPACE stage/unstage · v probe · r reset"])
+    return lines
+
+
+def memory_center_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
+    """Render every reviewed and non-admitted atom with candidate staging state."""
+
+    package = run.scenario.package
+    mut lines = ["MEMORY ATOMS", "────────────────────────────────────────────────────────────", "Candidate staging does not override review, rights, or provenance.", ""]
+    for index, atom in enumerate(package.atoms):
+        mut cursor = " "
+        if index == state.memory_index:
+            cursor = f">"
+        lines.append(
+            f"{cursor} {staged_marker(state.candidate_memory_ids.contains(f"{atom.memory_id}"))} {atom.memory_id}",
+        )
+        lines.append(f"    evidence {atom.evidence_id} · {atom.review_state} · {atom.rights_state}")
+    atom = selected_atom(run, state.memory_index)
+    lines.extend(
+        ["", "SELECTED MEMORY ATOM", f"identity         {atom.memory_id}", f"evidence         {atom.evidence_id}", f"source id        {atom.source_id}", f"source ref       {atom.source_ref}", f"fingerprint      {bounded_text(
+            atom.source_fingerprint,
+            58,
+        )}", f"declared span    {atom.source_span.start_utf8_byte}..{atom.source_span.end_utf8_byte} UTF-8 bytes", f"language         {atom.language}", f"review           {atom.review_state} · revision {atom.review_revision}", f"rights           {atom.rights_state}", f"authority        {atom.authority_class}", f"provenance       {bounded_text(
+            atom.provenance_digest,
+            58,
+        )}", f"kind             {atom.evidence_kind}", "claim"],
+    )
+    lines.extend([f"  {line}" for line in wrapped_text_lines(atom.claim, 56, MAX_TEXT_CHARACTERS)])
+    lines.append("guidance")
+    lines.extend([f"  {line}" for line in wrapped_text_lines(atom.guidance, 56, MAX_TEXT_CHARACTERS)])
+    lines.extend(["", "↑↓ select · SPACE stage/unstage · v probe · r reset"])
+    return lines
+
+
+def committee_center_lines(run: ConsoleRun) -> list[str]:
+    """Render evaluator targets, observations, and Hees-owned classifications together."""
+
+    mut lines = ["TRAINING BY COMMITTEE", "────────────────────────────────────────────────────────────", "Evaluators observe. Hees validates coverage and classifies findings.", "Only Spectrum makes the terminal decision.", "", f"HEES-DERIVED TARGETS  {len(
+        run.result.manifest,
+    )}"]
+    mut count = 0
+    for target in run.result.manifest:
+        if count >= 6:
+            lines.append("  … additional targets available in the inspector")
+            break
+        lines.append(f"  {target.body.target_id}")
+        lines.append(f"    role {target.body.evaluator_role} → {target.body.target_role}")
+        count += 1
+    lines.extend(
+        ["", f"PROVIDER OBSERVATIONS  {len(run.scenario.body.relation_observations) + len(
+            run.scenario.body.synthesis_observations,
+        )}  NON-AUTHORITATIVE"],
+    )
+    for observation in run.scenario.body.relation_observations:
+        lines.append(f"  {observation.observation_id} · support {observation.support_bps} bps")
+    for observation in run.scenario.body.synthesis_observations:
+        lines.append(f"  {observation.observation_id} · covered {observation.covered_bps} bps")
+    lines.extend(["", f"HEES-CLASSIFIED FINDINGS  {len(run.result.findings)}"])
+    for finding in run.result.findings:
+        lines.append(f"  {finding.finding_id} · {finding.classification}")
+    return lines
+
+
+def committee_status_lines(run: ConsoleRun) -> list[str]:
+    """Render package-owned thresholds and the committee authority legend."""
+
+    policy = run.scenario.package.policy
+    return ["COMMITTEE CONTRACT", "──────────────────────────────────────", f"relation targets  {len(
+        run.scenario.body.relation_observations,
+    )}", f"synthesis targets {len(run.scenario.body.synthesis_observations)}", f"findings          {len(
+        run.result.findings,
+    )}", "", "PACKAGE POLICY", f"min support       {policy.min_support_bps} bps", f"max contradiction {policy.max_contradiction_bps} bps", f"min coverage      {policy.min_coverage_bps} bps", f"max gap           {policy.max_gap_bps} bps", "", "MODEL / PROVIDER", "  supplies untrusted observations", "", "HEES", "  binds targets", "  validates complete coverage", "  classifies findings", "  owns terminal authority"]
+
+
+def decision_center_lines(run: ConsoleRun) -> list[str]:
+    """Render Spectrum and all resulting governance artifacts as one outcome workspace."""
+
+    mut lines = ["DECISION WORKSPACE", "────────────────────────────────────────────────────────────", f"SPECTRUM        {status_icon_label(
+        run,
+    )}", f"reason          {run.result.spectrum.reason}", f"namespace       {run.result.spectrum.reason_namespace}", f"decision id     {run.result.spectrum.decision_id}", ""]
+    lines.extend(decision_detail_lines(run))
+    lines.extend(["", f"SELECTED MEMORY  {len(run.result.selected_memory)}"])
+    for atom in run.result.selected_memory:
+        lines.append(f"  {atom.memory_id} ← {atom.evidence_id}")
+    if len(run.result.selected_memory) == 0:
+        lines.append("  none entered the terminal result")
+    selected_ids = [atom.memory_id for atom in run.result.selected_memory]
+    lines.extend(["", "NOT SELECTED THIS RESULT"])
+    for atom in run.scenario.package.atoms:
+        if not selected_ids.contains(f"{atom.memory_id}"):
+            lines.append(f"  {atom.memory_id} · review {atom.review_state} · rights {atom.rights_state}")
+    lines.extend(
+        ["", f"CONTENT DNA      {option_presence(run.result.content_dna_json)}", f"RECEIPT          {option_presence(
+            run.result.receipt_json,
+        )}", "", "←→ switch Evidence / Memory / DNA / Receipt context"],
+    )
+    return lines
+
+
+def workspace_center_rows(state: ConsoleState, run: ConsoleRun, content_width: int) -> list[StyledRow]:
+    """Select the task surface and assign row styles independently from dynamic content."""
+
+    if state.surface == "profiles":
+        return profile_center_rows(state, run)
+    if state.surface == "evidence":
+        return heading_rows(evidence_center_lines(state, run))
+    if state.surface == "memory":
+        return heading_rows(memory_center_lines(state, run))
+    if state.surface == "committee":
+        return heading_rows(committee_center_lines(run))
+    if state.surface == "interactions":
+        return interaction_center_rows(run, content_width)
+    if state.surface == "decisions":
+        mut rows = heading_rows(decision_center_lines(run))
+        rows[2] = decision_row(f"SPECTRUM        {status_icon_label(run)}", run.result.spectrum.admitted)
+        return rows
+    return heading_rows(help_center_lines())
+
+
+def workspace_right_rows(state: ConsoleState, run: ConsoleRun, total: int) -> list[StyledRow]:
+    """Select the authority and artifact context appropriate to the primary surface."""
+
+    if state.surface == "committee":
+        return heading_rows(committee_status_lines(run))
+    if state.surface == "interactions" or state.surface == "decisions":
+        return heading_rows(context_panel_lines(state, run, state.scenario_index, total))
+    if state.surface == "help":
+        return heading_rows(
+            ["AUTHORITY LEGEND", "──────────────────────────────────────", "MODEL      proposes", "PACKAGE    declares", "COMMITTEE  observes", "HEES       validates and decides", "ARTIFACT   records", "", "REPLAY reruns the same compiled profile without a provider call."],
+        )
+    return candidate_status_rows(state, run)
+
+
+def compact_workflow_lines(state: ConsoleState, run: ConsoleRun, total: int, content_width: int) -> list[str]:
+    """Prioritize the selected task and its authority state within the compact pane width."""
+
+    package = run.scenario.package
+    if state.surface == "profiles":
+        return ["PROFILE STUDIO", f"active        {state.active_profile_id}", "candidate     session local · not active", f"probe result  {probe_label(
+            state,
+        )}", f"probe reason  {state.candidate_probe_reason}", f"diagnostic    {state.candidate_probe_diagnostic}", f"identity      {candidate_identity_label(
+            state,
+        )}", f"evidence      {len(state.candidate_evidence_ids)} / {len(package.atoms)} staged", f"memory        {len(
+            state.candidate_memory_ids,
+        )} / {len(package.atoms)} staged", f"activation    {activation_label(state)}", "", f"package       {package.package_id} · {package.package_revision}", f"actions       {package.action_count}", f"requirements  {package.requirement_count}", f"policy        support ≥ {package.policy.min_support_bps} bps", "v probe · r reset · a test activation"]
+    if state.surface == "evidence":
+        atom = selected_atom(run, state.evidence_index)
+        mut lines = [f"EVIDENCE  {state.evidence_index + 1} / {len(package.atoms)}", f"{staged_marker(
+            state.candidate_evidence_ids.contains(f"{atom.evidence_id}"),
+        )} {atom.evidence_id}", f"source id    {atom.source_id}", f"source ref   {atom.source_ref}", f"span         {atom.source_span.start_utf8_byte}..{atom.source_span.end_utf8_byte}", f"language     {atom.language}", f"review       {atom.review_state}", f"rights       {atom.rights_state}", f"kind         {atom.evidence_kind}", "", "CLAIM"]
+        lines.extend(wrapped_text_lines(atom.claim, content_width, MAX_TEXT_CHARACTERS))
+        lines.append("↑↓ select · SPACE stage · v probe")
+        return lines
+    if state.surface == "memory":
+        atom = selected_atom(run, state.memory_index)
+        mut lines = [f"MEMORY  {state.memory_index + 1} / {len(package.atoms)}", f"{staged_marker(
+            state.candidate_memory_ids.contains(f"{atom.memory_id}"),
+        )} {atom.memory_id}", f"evidence     {atom.evidence_id}", f"source id    {atom.source_id}", f"source ref   {atom.source_ref}", f"span         {atom.source_span.start_utf8_byte}..{atom.source_span.end_utf8_byte}", f"language     {atom.language}", f"review       {atom.review_state}", f"rights       {atom.rights_state}", f"authority    {atom.authority_class}", "", "CLAIM"]
+        lines.extend(wrapped_text_lines(atom.claim, content_width, MAX_TEXT_CHARACTERS))
+        lines.append("↑↓ select · SPACE stage · v probe")
+        return lines
+    if state.surface == "committee":
+        return ["TRAINING BY COMMITTEE", "provider observations are non-authoritative", f"targets       {len(
+            run.result.manifest,
+        )}", f"observations  {len(run.scenario.body.relation_observations) + len(
+            run.scenario.body.synthesis_observations,
+        )}", f"Hees findings {len(run.result.findings)}", "", f"min support   {package.policy.min_support_bps} bps", f"min coverage  {package.policy.min_coverage_bps} bps", "", "Hees binds targets, validates coverage,", "classifies findings, and owns the decision."]
+    if state.surface == "interactions":
+        proposal = run.scenario.body.proposal
+        return [f"INTERACTION  {run.scenario.slug}", f"mode          {mode_label(run)}", f"question      {bounded_text(
+            run.scenario.body.request.question,
+            82,
+        )}", "", "UNTRUSTED PROPOSAL  MODEL", f"action        {proposal.action_id}", f"evidence      [{bounded_identifiers(
+            proposal.evidence_ids,
+        )}]", "", "HEES DECISION", f"state         {status_icon_label(run)}", f"reason        {run.result.spectrum.reason}", f"receipt       {option_presence(
+            run.result.receipt_json,
+        )}"]
+    if state.surface == "decisions":
+        context = context_panel_lines(state, run, state.scenario_index, total)
+        mut lines = ["DECISION WORKSPACE", f"Spectrum      {status_icon_label(run)}", f"reason        {run.result.spectrum.reason}", context[0], "←→ inspect Evidence / Memory / DNA / Receipt"]
+        lines.extend(context[2:])
+        return lines
+    return help_center_lines()
+
+
+def workspace_center_width(columns: int, left_width: int, right_width: int) -> int:
+    """Return the single centre-pane width used for wrapping, rules, and row composition."""
+
+    if left_width == 0:
+        return columns - right_width - 7
+    return columns - left_width - right_width - 10
+
+
+def compose_workspace_rows(
+    left: list[StyledRow],
+    center: list[StyledRow],
+    right: list[StyledRow],
+    columns: int,
+    height: int,
+    left_width: int,
+) -> list[str]:
+    """Compose three bounded product panes into one deterministic terminal grid."""
+
+    right_width = 46
+    center_width = workspace_center_width(columns, left_width, right_width)
+    mut result: list[str] = []
+    mut row = 0
+    while row < height:
+        mut left_value = StyledRow.Plain("")
+        mut center_value = StyledRow.Plain("")
+        mut right_value = StyledRow.Plain("")
+        if row < len(left):
+            left_value = left[row]
+        if row < len(center):
+            center_value = center[row]
+        if row < len(right):
+            right_value = right[row]
+        left_rendered = render_styled_row(left_value, left_width)
+        center_rendered = render_styled_row(center_value, center_width)
+        right_rendered = render_styled_row(right_value, right_width)
+        if left_width == 0:
+            result.append(f"│ {center_rendered} │ {right_rendered} │")
+        else:
+            result.append(f"│ {left_rendered} │ {center_rendered} │ {right_rendered} │")
+        row += 1
+    return result
+
+
+def workspace_rule(columns: int, left_width: int, right_width: int, junction: str) -> str:
+    """Build one pane-aware rule whose junctions match every body border exactly."""
+
+    center_width = workspace_center_width(columns, left_width, right_width)
+    if left_width == 0:
+        return f"├{horizontal_rule(center_width + 2)}{junction}{horizontal_rule(right_width + 2)}┤"
+    return f"├{horizontal_rule(left_width + 2)}{junction}{horizontal_rule(center_width + 2)}{junction}{horizontal_rule(
+        right_width + 2,
+    )}┤"
+
+
+def framed_row(value: str, columns: int) -> str:
+    """Fit one header or footer inside the outer frame."""
+
+    return f"│ {padded_column(value, columns - 4)} │"
+
+
+def compact_screen(state: ConsoleState, runs: list[ConsoleRun], columns: int, rows: int) -> str:
+    """Render one full-width workflow destination instead of squeezing three panes."""
+
+    run = selected_run(state, runs)
+    body_height = rows - 7
+    mut lines = [f"┌{horizontal_rule(columns - 2)}┐", framed_row(
+        f"hees.ai console · COMPACT VIEW · {mode_label(run)} · {state.active_profile_id}",
+        columns,
+    ), framed_row(compact_navigation_line(state), columns), f"├{horizontal_rule(columns - 2)}┤"]
+    content = plain_rows(compact_workflow_lines(state, run, len(runs), columns - 4))
+    mut index = 0
+    while index < body_height:
+        mut value = StyledRow.Plain("")
+        if index < len(content):
+            value = content[index]
+        lines.append(f"│ {render_styled_row(value, columns - 4)} │")
+        index += 1
+    mut shortcuts = f"[1–7] go · [↑↓] select · [←→] context · [q] quit"
+    if state.surface == "profiles":
+        shortcuts = f"[SPACE] stage · [v] probe · [q] quit"
+        if columns >= 100:
+            shortcuts = f"[1–7] go · [SPACE] stage · [v] probe · [r] reset · [a] test activation · [q] quit"
+    lines.extend(
+        [f"├{horizontal_rule(columns - 2)}┤", f"│ {styled_shortcuts_line(shortcuts, columns - 4)} │", f"└{horizontal_rule(
+            columns - 2,
+        )}┘"],
+    )
+    return "\n".join(lines)
+
+
+def horizontal_rule(width: int) -> str:
+    """Build one terminal rule without relying on string multiplication."""
+
+    mut result = ""
+    mut index = 0
+    while index < width:
+        result = f"{result}─"
+        index += 1
+    return result
+
+
+pub def render_screen_for_size(state: ConsoleState, runs: list[ConsoleRun], columns: int, rows: int) -> str:
+    """Render an exact-height, exact-width evidence-first workspace for one terminal size."""
+
+    if columns < 140 or rows < 36:
+        return compact_screen(state, runs, columns, rows)
+    run = selected_run(state, runs)
+    mut left = workflow_rail_rows(state, run)
+    if state.surface == "interactions":
+        left = scenario_rail_rows(state, runs)
+    right = workspace_right_rows(state, run, len(runs))
+    mut left_width = 30
+    if state.sidebar_collapsed:
+        left_width = 0
+    right_width = 46
+    center_width = workspace_center_width(columns, left_width, right_width)
+    center = workspace_center_rows(state, run, center_width)
+    body_height = rows - 7
+    mut lines = [f"┌{horizontal_rule(columns - 2)}┐", framed_row(
+        f"hees.ai console   ·   Governed AI Profile Studio   ·   {mode_label(run)}   ·   {state.active_profile_id}",
+        columns,
+    ), f"│ {styled_top_navigation(state, columns - 4)} │", workspace_rule(columns, left_width, right_width, "┬")]
+    lines.extend(compose_workspace_rows(left, center, right, columns, body_height, left_width))
+    lines.extend(
+        [workspace_rule(columns, left_width, right_width, "┴"), f"│ {styled_shortcuts_line(
+            "[1–7] destinations · [↑↓] select · [SPACE] stage · [v] probe · [r] reset · [←→] context · [b] collapse · [q] quit",
+            columns - 4,
+        )} │", f"└{horizontal_rule(columns - 2)}┘"],
+    )
+    return "\n".join(lines)

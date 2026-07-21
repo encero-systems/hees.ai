@@ -1,0 +1,63 @@
+{
+  "body": {
+    "contract_version": "console_replay_0_1",
+    "profile_id": "console_profile_0_1",
+    "scenario_id": "scenario_unknown_evidence",
+    "request": {
+      "request_id": "request_unknown_evidence",
+      "question": "Explain the missing lantern evidence.",
+      "request_digest": "sha256:2c1ca48553f3fad3f1ce7ebdc55d503963cb5912594d67f0ddaa4eeb94abfab6"
+    },
+    "proposal": {
+      "contract_version": "console_proposal_0_1",
+      "profile_id": "console_profile_0_1",
+      "package_id": "lantern_labs",
+      "domain_id": "fictional_lesson_support",
+      "package_revision": "1.0.0",
+      "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+      "request_id": "request_unknown_evidence",
+      "request_digest": "sha256:2c1ca48553f3fad3f1ce7ebdc55d503963cb5912594d67f0ddaa4eeb94abfab6",
+      "proposal_id": "proposal_unknown_evidence",
+      "action_id": "explain_lesson",
+      "evidence_ids": [
+        "evidence_missing_lantern"
+      ],
+      "visible_units": [
+        {
+          "unit_id": "unit_unknown_evidence",
+          "text": "Use the missing lantern record.",
+          "requirement_ids": [
+            "ground_in_lesson"
+          ]
+        }
+      ],
+      "support_mappings": [
+        {
+          "support_claim_id": "support_unknown_evidence",
+          "unit_id": "unit_unknown_evidence",
+          "memory_id": "memory_lantern_sequence",
+          "evidence_ids": [
+            "evidence_missing_lantern"
+          ]
+        }
+      ]
+    },
+    "relation_observations": [],
+    "synthesis_observations": [],
+    "schema_digests": [
+      {
+        "contract_version": "console_proposal_0_1",
+        "schema_digest": "sha256:1dd1555e103f1d5030ff9cc417a3989461189f07f0605af0ad7ea9aa915bb927"
+      },
+      {
+        "contract_version": "console_relation_observation_0_1",
+        "schema_digest": "sha256:6d139b259b7a05b6a69f05dedab1747df58d66bccc34b684a255e34f57f6a5b4"
+      },
+      {
+        "contract_version": "console_synthesis_observation_0_1",
+        "schema_digest": "sha256:9850bad62dbfc9e5d30c1953161a6f44e8c896701af1ef678195c7690370dd88"
+      }
+    ]
+  },
+  "replay_id": "sha256:8975cb465c3f20f8c968a04ebd5a2af3fba81f54810e8b150af12f6ea56376aa"
+}

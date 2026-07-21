@@ -1,0 +1,12 @@
+{
+  "contract_version": "console_atom_candidate_0_1",
+  "profile_id": "console_profile_0_1",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "source_ref": "fictional/lesson/lantern_path",
+  "source_fingerprint": "sha256:5503ee1e808112eda809d8c6d68a16ab2793bc88ee2123305c318dd6b0f31f5f",
+  "claim": "Learners place an amber card, then a blue card, then a green card before testing the route.",
+  "guidance": "Explain the amber-blue-green order and ask the learner to check it against the three-card example.",
+  "language": "en",
+  "candidate_digest": "sha256:297f3a2f6d34110876237d3bda3f4e751e9b659930e57af37a0550ca1842f502"
+}

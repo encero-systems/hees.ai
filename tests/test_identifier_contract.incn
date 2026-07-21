@@ -1,0 +1,50 @@
+"""Contract tests for bounded nominal identifiers and their transparent JSON representation."""
+
+from std.testing import assert_eq, assert_is_err, assert_is_ok
+from crate.identifiers import (
+    DigestIdType,
+    IdType,
+    MAX_IDENTIFIER_LENGTH,
+    RevisionType,
+    action_id,
+    action_id_text,
+    evidence_id,
+    evidence_id_text,
+)
+
+
+def repeated_a(count: int) -> str:
+    mut result = ""
+    for _index in range(count):
+        result = result + "a"
+    return result
+
+
+def test_id_type_accepts_the_exact_maximum_length() -> None:
+    value = repeated_a(MAX_IDENTIFIER_LENGTH)
+    identifier = assert_is_ok(IdType.from_underlying(value))
+    assert_eq(len(identifier.0), MAX_IDENTIFIER_LENGTH)
+
+
+def test_id_type_rejects_a_book_length_identifier_before_storage() -> None:
+    value = repeated_a(MAX_IDENTIFIER_LENGTH + 1)
+    assert_is_err(IdType.from_underlying(value))
+
+
+def test_nominal_namespaces_share_validation_without_sharing_types() -> None:
+    action = action_id("shared_spelling")
+    evidence = evidence_id("shared_spelling")
+    assert_eq(action_id_text(action), "shared_spelling")
+    assert_eq(evidence_id_text(evidence), "shared_spelling")
+
+
+def test_digest_identifier_type_accepts_only_exact_sha256_identity() -> None:
+    valid = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    assert_is_ok(DigestIdType.from_underlying(valid))
+    assert_is_err(DigestIdType.from_underlying("sha256:not-a-digest"))
+
+
+def test_revision_type_owns_revision_validation() -> None:
+    revision = assert_is_ok(RevisionType.from_underlying("1.0.0"))
+    assert_eq(revision.0, "1.0.0")
+    assert_is_err(RevisionType.from_underlying("one.zero.zero"))

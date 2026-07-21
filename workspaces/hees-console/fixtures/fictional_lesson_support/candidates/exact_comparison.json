@@ -1,0 +1,10 @@
+{
+  "contract_version": "console_atom_comparison_0_1",
+  "profile_id": "console_profile_0_1",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "candidate_digest": "sha256:297f3a2f6d34110876237d3bda3f4e751e9b659930e57af37a0550ca1842f502",
+  "matched_memory_id": "memory_lantern_sequence",
+  "comparison_state": "exact_match",
+  "package_effect": "none"
+}

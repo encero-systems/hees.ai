@@ -1,0 +1,19 @@
+{
+  "body": {
+    "contract_version": "console_profile_receipt_0_1",
+    "profile_id": "console_profile_0_1",
+    "package_id": "lantern_labs",
+    "domain_id": "fictional_lesson_support",
+    "package_revision": "1.0.0",
+    "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+    "request_id": "request_unknown_public_reason",
+    "proposal_id": "proposal_unknown_public_reason",
+    "decision": "reject",
+    "reason_namespace": "console_admission_0_1",
+    "reason": "invented_public_reason",
+    "structural_reason": null,
+    "request_digest": "sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71",
+    "candidate_digest": "sha256:1eb12d81b9766254c61281524d9c18cd68ec9027ec65f4f059944b4638ed2b19"
+  },
+  "receipt_id": "sha256:436171112602d5a6123c6487b772f00291b2f6c58bf2edb56bd22fbdb33b4e78"
+}

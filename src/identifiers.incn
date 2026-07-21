@@ -1,0 +1,577 @@
+"""Validated nominal identifier vocabulary shared by every public Hees contract."""
+
+from std.serde import json
+
+pub const MAX_IDENTIFIER_LENGTH: int = 128
+
+
+def id_text_is_safe(value: str) -> bool:
+    """Accept one nonempty, trimmed identifier within the shared storage bound."""
+
+    return value != "" and len(value) <= MAX_IDENTIFIER_LENGTH and value.strip() == value
+
+
+def identifier_text_is_safe(value: str) -> bool:
+    """Accept one bounded lowercase ASCII identifier in canonical form."""
+
+    if not id_text_is_safe(value):
+        return false
+    if "_-".contains(value[0:1]):
+        return false
+    for character in value:
+        if not "abcdefghijklmnopqrstuvwxyz0123456789_-".contains(character):
+            return false
+    return true
+
+
+def digest_id_text_is_safe(value: str) -> bool:
+    """Accept one exact lowercase SHA-256 identity."""
+
+    if len(value) != 71 or not value.startswith("sha256:"):
+        return false
+    for character in value[7:]:
+        if not "0123456789abcdef".contains(character):
+            return false
+    return true
+
+
+def revision_text_is_safe(value: str) -> bool:
+    """Accept one bounded three-component numeric revision."""
+
+    if value == "" or len(value) > 32:
+        return false
+    parts = value.split(".")
+    if len(parts) != 3:
+        return false
+    for part in parts:
+        if part == "":
+            return false
+        for character in part:
+            if not "0123456789".contains(character):
+                return false
+    return true
+
+
+@derive(Clone, Eq, json)
+pub type IdType = newtype str:
+    """Shared bounded string representation beneath every nominal ID namespace."""
+
+    def from_underlying(value: str) -> Result[Self, ValidationError]:
+        """Validate shared storage before constructing a bounded identifier."""
+
+        if not id_text_is_safe(value):
+            return Err(
+                ValidationError(message="identifier must be trimmed and contain 1 to 128 characters", code="invalid_id"),
+            )
+        return Ok(IdType(value))
+
+
+@derive(Clone, Eq, json)
+pub type SymbolicIdType = newtype IdType:
+    """Canonical lowercase ASCII identifier representation for symbolic namespaces."""
+
+    def from_underlying(value: IdType) -> Result[Self, ValidationError]:
+        """Validate canonical symbolic spelling over bounded identifier storage."""
+
+        if not identifier_text_is_safe(value.0):
+            return Err(
+                ValidationError(message="identifier must match ^[a-z0-9][a-z0-9_-]{0,127}$", code="invalid_symbolic_id"),
+            )
+        return Ok(SymbolicIdType(value))
+
+
+@derive(Clone, Eq, json)
+pub type DigestIdType = newtype IdType:
+    """Exact SHA-256 identity representation for content-addressed artifacts."""
+
+    def from_underlying(value: IdType) -> Result[Self, ValidationError]:
+        """Validate a lowercase SHA-256 value over bounded identifier storage."""
+
+        if not digest_id_text_is_safe(value.0):
+            return Err(
+                ValidationError(message="digest identity must be lowercase sha256:<64 hex>", code="invalid_digest_id"),
+            )
+        return Ok(DigestIdType(value))
+
+
+@derive(Clone, Eq, json)
+pub type RevisionType = newtype str:
+    """Bounded semantic revision shared by package and policy contracts."""
+
+    def from_underlying(value: str) -> Result[Self, ValidationError]:
+        """Validate the three-component revision used by governed contracts."""
+
+        if not revision_text_is_safe(value):
+            return Err(
+                ValidationError(message="revision must contain three numeric components", code="invalid_revision"),
+            )
+        return Ok(RevisionType(value))
+
+
+@derive(Clone, Eq, json)
+pub type ActionId = newtype SymbolicIdType:
+    """Nominal identity for one action declared by a governed package."""
+
+
+@derive(Clone, Eq, json)
+pub type ConstraintPlanId = newtype SymbolicIdType:
+    """Nominal identity for one compiled constraint plan."""
+
+
+@derive(Clone, Eq, json)
+pub type ContentDnaId = newtype DigestIdType:
+    """Content-addressed identity for one Content DNA artifact."""
+
+
+@derive(Clone, Eq, json)
+pub type ContractId = newtype SymbolicIdType:
+    """Nominal identity for one versioned public contract."""
+
+
+@derive(Clone, Eq, json)
+pub type DecisionId = newtype SymbolicIdType:
+    """Nominal identity for one deterministic Hees decision."""
+
+
+@derive(Clone, Eq, json)
+pub type DomainId = newtype SymbolicIdType:
+    """Nominal identity for one governed knowledge domain."""
+
+
+@derive(Clone, Eq, json)
+pub type EvidenceId = newtype SymbolicIdType:
+    """Nominal identity for one rights-classified evidence record."""
+
+
+@derive(Clone, Eq, json)
+pub type FindingId = newtype SymbolicIdType:
+    """Nominal identity for one derived verifier finding."""
+
+
+@derive(Clone, Eq, json)
+pub type InputId = newtype SymbolicIdType:
+    """Nominal identity for one governed runtime input."""
+
+
+@derive(Clone, Eq, json)
+pub type MemoryId = newtype SymbolicIdType:
+    """Nominal identity for one reviewed memory atom."""
+
+
+@derive(Clone, Eq, json)
+pub type ObservationId = newtype SymbolicIdType:
+    """Nominal identity for one non-authoritative verifier observation."""
+
+
+@derive(Clone, Eq, json)
+pub type PackageId = newtype SymbolicIdType:
+    """Nominal identity for one governed package."""
+
+
+@derive(Clone, Eq, json)
+pub type ProfileId = newtype SymbolicIdType:
+    """Nominal identity for one Hees evaluation profile."""
+
+
+@derive(Clone, Eq, json)
+pub type ProposalId = newtype SymbolicIdType:
+    """Nominal identity for one untrusted model proposal."""
+
+
+@derive(Clone, Eq, json)
+pub type ProviderId = newtype SymbolicIdType:
+    """Nominal identity for one external proposal provider."""
+
+
+@derive(Clone, Eq, json)
+pub type ReceiptId = newtype DigestIdType:
+    """Content-addressed identity for one Hees decision receipt."""
+
+
+@derive(Clone, Eq, json)
+pub type RequestId = newtype SymbolicIdType:
+    """Nominal identity for one bound user request."""
+
+
+@derive(Clone, Eq, json)
+pub type RequirementId = newtype SymbolicIdType:
+    """Nominal identity for one declared response requirement."""
+
+
+@derive(Clone, Eq, json)
+pub type ResponseContractId = newtype SymbolicIdType:
+    """Nominal identity for one governed response contract."""
+
+
+@derive(Clone, Eq, json)
+pub type ScenarioId = newtype SymbolicIdType:
+    """Nominal identity for one replayable Console scenario."""
+
+
+@derive(Clone, Eq, json)
+pub type SourceId = newtype SymbolicIdType:
+    """Nominal identity for one reviewed source artifact."""
+
+
+@derive(Clone, Eq, json)
+pub type SupportClaimId = newtype SymbolicIdType:
+    """Nominal identity for one proposal-to-memory support claim."""
+
+
+@derive(Clone, Eq, json)
+pub type TargetId = newtype SymbolicIdType:
+    """Nominal identity for one verifier manifest target."""
+
+
+@derive(Clone, Eq, json)
+pub type UnitId = newtype SymbolicIdType:
+    """Nominal identity for one visible proposal unit."""
+
+
+def symbolic_id_from_text(value: str) -> Result[SymbolicIdType, ValidationError]:
+    """Construct a symbolic identity through both validated newtype layers."""
+
+    return IdType.from_underlying(value).and_then((bounded) => SymbolicIdType.from_underlying(bounded))
+
+
+def trusted_symbolic_id(value: str) -> SymbolicIdType:
+    """Validate programmer-authored symbolic text before nominal wrapping."""
+
+    return symbolic_id_from_text(value).unwrap()
+
+
+def trusted_digest_id(value: str) -> DigestIdType:
+    """Validate a programmer-authored digest before nominal wrapping."""
+
+    bounded = IdType.from_underlying(value).unwrap()
+    return DigestIdType.from_underlying(bounded).unwrap()
+
+
+pub def action_id(value: str) -> ActionId:
+    """Wrap trusted canonical text as an action identity."""
+
+    return ActionId(trusted_symbolic_id(value))
+
+
+pub def constraint_plan_id(value: str) -> ConstraintPlanId:
+    """Wrap trusted canonical text as a constraint-plan identity."""
+
+    return ConstraintPlanId(trusted_symbolic_id(value))
+
+
+pub def content_dna_id(value: str) -> ContentDnaId:
+    """Wrap a trusted canonical digest as a Content DNA identity."""
+
+    return ContentDnaId(trusted_digest_id(value))
+
+
+pub def digest_id_type(value: str) -> DigestIdType:
+    """Construct a digest already established by a trusted hashing boundary."""
+
+    return trusted_digest_id(value)
+
+
+pub def contract_id(value: str) -> ContractId:
+    """Wrap trusted canonical text as a contract identity."""
+
+    return ContractId(trusted_symbolic_id(value))
+
+
+pub def decision_id(value: str) -> DecisionId:
+    """Wrap trusted canonical text as a decision identity."""
+
+    return DecisionId(trusted_symbolic_id(value))
+
+
+pub def domain_id(value: str) -> DomainId:
+    """Wrap trusted canonical text as a domain identity."""
+
+    return DomainId(trusted_symbolic_id(value))
+
+
+pub def evidence_id(value: str) -> EvidenceId:
+    """Wrap trusted canonical text as an evidence identity."""
+
+    return EvidenceId(trusted_symbolic_id(value))
+
+
+pub def finding_id(value: str) -> FindingId:
+    """Wrap trusted canonical text as a finding identity."""
+
+    return FindingId(trusted_symbolic_id(value))
+
+
+pub def input_id(value: str) -> InputId:
+    """Wrap trusted canonical text as an input identity."""
+
+    return InputId(trusted_symbolic_id(value))
+
+
+pub def memory_id(value: str) -> MemoryId:
+    """Wrap trusted canonical text as a memory identity."""
+
+    return MemoryId(trusted_symbolic_id(value))
+
+
+pub def observation_id(value: str) -> ObservationId:
+    """Wrap trusted canonical text as an observation identity."""
+
+    return ObservationId(trusted_symbolic_id(value))
+
+
+pub def package_id(value: str) -> PackageId:
+    """Wrap trusted canonical text as a package identity."""
+
+    return PackageId(trusted_symbolic_id(value))
+
+
+pub def profile_id(value: str) -> ProfileId:
+    """Wrap trusted canonical text as a profile identity."""
+
+    return ProfileId(trusted_symbolic_id(value))
+
+
+pub def proposal_id(value: str) -> ProposalId:
+    """Wrap trusted canonical text as a proposal identity."""
+
+    return ProposalId(trusted_symbolic_id(value))
+
+
+pub def provider_id(value: str) -> ProviderId:
+    """Wrap trusted canonical text as a provider identity."""
+
+    return ProviderId(trusted_symbolic_id(value))
+
+
+pub def receipt_id(value: str) -> ReceiptId:
+    """Wrap a trusted canonical digest as a receipt identity."""
+
+    return ReceiptId(trusted_digest_id(value))
+
+
+pub def request_id(value: str) -> RequestId:
+    """Wrap trusted canonical text as a request identity."""
+
+    return request_id_from_text(value).unwrap()
+
+
+pub def request_id_from_text(value: str) -> Result[RequestId, ValidationError]:
+    """Validate untrusted text before constructing a request identity."""
+
+    return symbolic_id_from_text(value).map((identifier) => RequestId(identifier))
+
+
+pub def revision(value: str) -> RevisionType:
+    """Construct a revision already established by a trusted package boundary."""
+
+    return RevisionType.from_underlying(value).unwrap()
+
+
+pub def requirement_id(value: str) -> RequirementId:
+    """Wrap trusted canonical text as a requirement identity."""
+
+    return RequirementId(trusted_symbolic_id(value))
+
+
+pub def response_contract_id(value: str) -> ResponseContractId:
+    """Wrap trusted canonical text as a response-contract identity."""
+
+    return ResponseContractId(trusted_symbolic_id(value))
+
+
+pub def scenario_id(value: str) -> ScenarioId:
+    """Wrap trusted canonical text as a scenario identity."""
+
+    return ScenarioId(trusted_symbolic_id(value))
+
+
+pub def source_id(value: str) -> SourceId:
+    """Wrap trusted canonical text as a source identity."""
+
+    return SourceId(trusted_symbolic_id(value))
+
+
+pub def support_claim_id(value: str) -> SupportClaimId:
+    """Wrap trusted canonical text as a support-claim identity."""
+
+    return SupportClaimId(trusted_symbolic_id(value))
+
+
+pub def target_id(value: str) -> TargetId:
+    """Wrap trusted canonical text as a target identity."""
+
+    return TargetId(trusted_symbolic_id(value))
+
+
+pub def unit_id(value: str) -> UnitId:
+    """Wrap trusted canonical text as a visible-unit identity."""
+
+    return UnitId(trusted_symbolic_id(value))
+
+
+pub def id_type_text(identifier: IdType) -> str:
+    """Expose canonical text only at serialization, hashing, and presentation boundaries."""
+
+    return identifier.0
+
+
+pub def symbolic_id_type_text(identifier: SymbolicIdType) -> str:
+    """Expose canonical symbolic text at serialization, hashing, and presentation boundaries."""
+
+    return id_type_text(identifier.0)
+
+
+pub def digest_id_type_text(identifier: DigestIdType) -> str:
+    """Expose an exact content identity at hashing and presentation boundaries."""
+
+    return id_type_text(identifier.0)
+
+
+pub def revision_text(value: RevisionType) -> str:
+    """Expose revision text at serialization and presentation boundaries."""
+
+    return value.0
+
+
+pub def action_id_text(identifier: ActionId) -> str:
+    """Project an action identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def constraint_plan_id_text(identifier: ConstraintPlanId) -> str:
+    """Project a constraint-plan identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def content_dna_id_text(identifier: ContentDnaId) -> str:
+    """Project a Content DNA identity into canonical digest text."""
+
+    return digest_id_type_text(identifier.0)
+
+
+pub def contract_id_text(identifier: ContractId) -> str:
+    """Project a contract identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def decision_id_text(identifier: DecisionId) -> str:
+    """Project a decision identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def domain_id_text(identifier: DomainId) -> str:
+    """Project a domain identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def evidence_id_text(identifier: EvidenceId) -> str:
+    """Project an evidence identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def finding_id_text(identifier: FindingId) -> str:
+    """Project a finding identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def input_id_text(identifier: InputId) -> str:
+    """Project an input identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def memory_id_text(identifier: MemoryId) -> str:
+    """Project a memory identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def observation_id_text(identifier: ObservationId) -> str:
+    """Project an observation identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def package_id_text(identifier: PackageId) -> str:
+    """Project a package identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def profile_id_text(identifier: ProfileId) -> str:
+    """Project a profile identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def proposal_id_text(identifier: ProposalId) -> str:
+    """Project a proposal identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def provider_id_text(identifier: ProviderId) -> str:
+    """Project a provider identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def receipt_id_text(identifier: ReceiptId) -> str:
+    """Project a receipt identity into canonical digest text."""
+
+    return digest_id_type_text(identifier.0)
+
+
+pub def request_id_text(identifier: RequestId) -> str:
+    """Project a request identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def requirement_id_text(identifier: RequirementId) -> str:
+    """Project a requirement identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def response_contract_id_text(identifier: ResponseContractId) -> str:
+    """Project a response-contract identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def scenario_id_text(identifier: ScenarioId) -> str:
+    """Project a scenario identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def source_id_text(identifier: SourceId) -> str:
+    """Project a source identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def support_claim_id_text(identifier: SupportClaimId) -> str:
+    """Project a support-claim identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def target_id_text(identifier: TargetId) -> str:
+    """Project a verifier-target identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def unit_id_text(identifier: UnitId) -> str:
+    """Project a visible-unit identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/manifest_target_0_1.schema.json",
+  "title": "hees.ai console Build Week initial-profile verifier manifest target",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["body", "target_digest"],
+  "properties": {
+    "body": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "package_id", "domain_id", "package_revision", "artifact_digest", "request_digest", "candidate_digest", "target_id", "evaluator_role", "target_role", "subject_digest", "premises"],
+      "properties": {
+        "profile_id": {"const": "console_profile_0_1"},
+        "package_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+        "domain_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+        "package_revision": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "maxLength": 32},
+        "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "request_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "target_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+        "evaluator_role": {"enum": ["evidence_relation", "contradiction_cross_check", "synthesis_coverage"]},
+        "target_role": {"enum": ["visible_unit_union", "support_claim_memory", "proposal_union", "request_coverage", "requirement_coverage"]},
+        "subject_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "premises": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["memory_id", "content_digest"],
+            "properties": {
+              "memory_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+              "content_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+            }
+          }
+        }
+      }
+    },
+    "target_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}
