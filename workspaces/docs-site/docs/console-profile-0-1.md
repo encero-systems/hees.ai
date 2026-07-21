@@ -1,6 +1,6 @@
 # Console profile 0.1 bounds and evidence
 
-`console_profile_0_1` is the first bounded implementation profile for hees.ai console. It combines a session-local Profile Studio over the supplied fictional evidence catalog with one complete governed-interaction path. The exact profile label remains `console_profile_0_1`; the product itself is provider-neutral and domain-neutral.
+`console_profile_0_1` is the first bounded implementation profile for hees.ai console. It combines a session-local Profile Studio over the supplied fictional evidence catalog with one complete governed-interaction path. The exact profile label remains `console_profile_0_1`. The authority architecture and profile contracts are designed for provider- and domain-neutral extension, while this release intentionally ships one fixed fictional domain and one optional GPT-5.6 adapter.
 
 ## Profile Studio contract
 
