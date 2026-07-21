@@ -1,6 +1,6 @@
 # Development
 
-Run the complete local gate with commit-pinned Incan `0.5.0-dev.22`:
+Run the complete local gate with commit-pinned Incan `0.5.0-dev.23`:
 
 ```bash
 make ci INCAN=/path/to/incan
@@ -22,7 +22,7 @@ Changes to the initial console profile or application also require:
 
 ```bash
 make console-test console-native-smoke \
-  INCAN=/path/to/incan-0.5.0-dev.22/bin/incan
+  INCAN=/path/to/incan-0.5.0-dev.23/bin/incan
 ```
 
 Those gates compile the native Incan Console, run the direct profile and application suite, and execute all five offline scenarios through the real Hees profile. The domain JSON Schemas constrain provider-facing shape; profile authority and public reason selection remain inside the Hees profile.
@@ -33,7 +33,7 @@ Build a local candidate only with the pinned toolchain for the current native ta
 
 ```bash
 make console-release-candidate \
-  INCAN=/path/to/incan-0.5.0-dev.22/bin/incan \
+  INCAN=/path/to/incan-0.5.0-dev.23/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 ```
 

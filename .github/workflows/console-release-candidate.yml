@@ -57,7 +57,7 @@ jobs:
       - name: Build pinned Incan for dependency audit
         run: |
           set -euo pipefail
-          install_root="$RUNNER_TEMP/incan-0.5.0-dev.22"
+          install_root="$RUNNER_TEMP/incan-0.5.0-dev.23"
           workspaces/hees-console/packaging/release_candidate.sh \
             prepare-incan \
             --platform linux-x86_64 \
@@ -70,7 +70,7 @@ jobs:
       - name: Audit the locked native license graph
         run: >-
           make console-license-audit
-          INCAN="$RUNNER_TEMP/incan-0.5.0-dev.22/bin/incan"
+          INCAN="$RUNNER_TEMP/incan-0.5.0-dev.23/bin/incan"
 
   build:
     needs: validate
@@ -97,7 +97,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Configure release paths
         run: |
-          install_root="$RUNNER_TEMP/incan-0.5.0-dev.22"
+          install_root="$RUNNER_TEMP/incan-0.5.0-dev.23"
           {
             echo "INCAN_ROOT=$install_root"
             echo "INCAN_HOME=$RUNNER_TEMP/incan-home"

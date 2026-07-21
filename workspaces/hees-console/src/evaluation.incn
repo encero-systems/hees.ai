@@ -43,7 +43,7 @@ const LIVE_PLAN_CONTRACT: str = "console_live_question_plan_0_1"
 const PROPOSAL_RESULT_CONTRACT: str = "console_provider_proposal_result_0_1"
 const COMMITTEE_RESULT_CONTRACT: str = "console_provider_committee_result_0_1"
 const CONSOLE_PROFILE: str = "console_profile_0_1"
-pub const CONSOLE_TOOLCHAIN_IDENTITY: str = "incan_0_5_0_dev_22"
+pub const CONSOLE_TOOLCHAIN_IDENTITY: str = "incan_0_5_0_dev_23"
 
 
 @derive(Clone, json)
