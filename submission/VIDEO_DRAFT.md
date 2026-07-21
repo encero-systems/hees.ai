@@ -30,7 +30,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 ### 0:50–1:10 — Training by Committee pressure-tests the proposal
 
-**On screen:** Open the valid interaction. Show the untrusted replay proposal, the Hees-derived evaluation targets, separately role-bound observations, and the resulting Hees-classified findings. Keep the sections visually distinct.
+**On screen:** Press `4` to open `Committee`. Show the Hees-derived evaluation targets, separately role-bound untrusted replay observations, and the resulting Hees-classified findings. Keep the sections visually distinct.
 
 **Spoken script:**
 
@@ -38,7 +38,7 @@ The Console is not a prettier response viewer. It is the developer environment i
 
 ### 1:10–1:38 — The profile admits a supported result
 
-**On screen:** Open the valid interaction, then its decision. Show `✓ ADMITTED`, the bounded Spectrum result, selected memory, Content DNA, and the receipt. Expand enough of the receipt to expose package, profile, decision, evidence, memory, and digest identities without lingering on raw JSON.
+**On screen:** Press `5` to open `Interactions` on the valid scenario, then press `6` to open its decision. Show `✓ ADMITTED`, the bounded Spectrum result, selected memory, Content DNA, and the receipt. Expand enough of the receipt to expose package, profile, decision, evidence, memory, and digest identities without lingering on raw JSON.
 
 **Spoken script:**
 
