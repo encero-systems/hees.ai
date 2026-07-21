@@ -751,6 +751,29 @@ def test_compact_workspace_keeps_the_decision_and_controls_visible() -> None:
     assert_eq(screen_has_exact_geometry(responsive_compact, 128, 28), true)
 
 
+def test_compact_profile_studio_keeps_candidate_controls_discoverable() -> None:
+    """Expose the real candidate controls before short compact bodies scroll them away."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    screen = strip_terminal_styles(render_screen_for_size(initial_state(), [run], 100, 20))
+    assert_eq(screen.contains("[SPACE] stage"), true)
+    assert_eq(screen.contains("[v] probe"), true)
+    assert_eq(screen.contains("[a] test activation"), true)
+    assert_eq(screen_has_exact_geometry(screen, 100, 20), true)
+
+
+def test_status_filter_help_fits_the_interaction_rail() -> None:
+    """Keep the status control's compact help legible in the fixed 30-column rail."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    mut state = apply_command(initial_state(), "show-interactions", [true])
+    state = apply_command(state, "open-status", [true])
+    screen = strip_terminal_styles(render_screen_for_size(state, [run], 160, 44))
+    assert_eq(screen.contains("space toggle"), true)
+    assert_eq(screen.contains("space check/ch~"), false)
+    assert_eq(screen_has_exact_geometry(screen, 160, 44), true)
+
+
 def test_compact_decisions_render_every_selected_governance_context() -> None:
     """Make compact context navigation visibly inspect Evidence, Memory, Content DNA, and Receipt."""
 

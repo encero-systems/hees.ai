@@ -4,7 +4,7 @@ This directory contains the production drafts for Danny Meijer's individual hees
 
 These documents are drafting and production controls. They are not evidence that a release, hosted demo, video, or Devpost submission exists.
 
-The submission pack was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 19, 2026. The official rules remain authoritative if this pack becomes stale or incomplete.
+The submission pack was reconciled against the [OpenAI Build Week Official Rules](https://openai.devpost.com/rules) on July 21, 2026. The official rules remain authoritative if this pack becomes stale or incomplete.
 
 ## Documents
 

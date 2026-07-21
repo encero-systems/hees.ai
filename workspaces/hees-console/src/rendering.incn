@@ -596,7 +596,7 @@ def status_control_lines(state: ConsoleState) -> list[str]:
 
     if state.focus != "status":
         return []
-    mut lines = ["STATUS FILTER / SORT", "  ↑/↓ choose · space check/change · o cycle order · enter apply"]
+    mut lines = ["STATUS FILTER / SORT", "  ↑/↓ choose · space toggle", "  o sort · enter apply"]
     mut admitted_marker = " "
     mut rejected_marker = " "
     mut order_marker = " "
@@ -792,7 +792,7 @@ def styled_shortcuts_line(value: str, columns: int) -> str:
     """Style fixed application-owned keycaps after layout without interpreting dynamic text."""
 
     mut rendered = padded_column(value, columns)
-    for keycap in ["[1–7]", "[↑↓]", "[SPACE]", "[v]", "[r]", "[←→]", "[b]", "[q]"]:
+    for keycap in ["[1–7]", "[↑↓]", "[SPACE]", "[v]", "[r]", "[a]", "[←→]", "[b]", "[q]"]:
         rendered = rendered.replace(keycap, styled_jade(keycap))
     return rendered
 
@@ -1516,11 +1516,15 @@ def compact_screen(state: ConsoleState, runs: list[ConsoleRun], columns: int, ro
             value = content[index]
         lines.append(f"│ {render_styled_row(value, columns - 4)} │")
         index += 1
+    mut shortcuts = f"[1–7] go · [↑↓] select · [←→] context · [q] quit"
+    if state.surface == "profiles":
+        shortcuts = f"[SPACE] stage · [v] probe · [q] quit"
+        if columns >= 100:
+            shortcuts = f"[1–7] go · [SPACE] stage · [v] probe · [r] reset · [a] test activation · [q] quit"
     lines.extend(
-        [f"├{horizontal_rule(columns - 2)}┤", f"│ {styled_shortcuts_line(
-            "[1–7] go · [↑↓] select · [←→] context · [q] quit",
-            columns - 4,
-        )} │", f"└{horizontal_rule(columns - 2)}┘"],
+        [f"├{horizontal_rule(columns - 2)}┤", f"│ {styled_shortcuts_line(shortcuts, columns - 4)} │", f"└{horizontal_rule(
+            columns - 2,
+        )}┘"],
     )
     return "\n".join(lines)
 
