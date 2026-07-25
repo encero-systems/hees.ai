@@ -4,6 +4,16 @@ Hees is an Incan-first governed-intelligence runtime. It turns evidence, reviewe
 
 The model proposes. Hees decides.
 
+## Hyperquant retrieval
+
+Hyperquant is Hees's first-party family of bounded vector-retrieval profiles. It nominates package-owned `MemoryId` values with deterministic ranks and relevance metadata; it does not return trusted text or establish review, rights, temporal validity, support, or final authority.
+
+The initial `exact_cosine_0_1` profile is an exhaustive full-precision oracle and small-corpus fallback. It validates and normalizes vectors, scores every indexed entry, retains only a bounded top-k trace, and resolves exact ties by canonical memory identifier. Compressed profiles will be compared against this oracle rather than weakening it.
+
+The implementation is Incan-authored under `src/hyperquant/`. Until Incan supports nested public module namespace exports, the intended Hyperquant declarations are explicitly re-exported from `pub::hees_ai`; [Incan issue #947](https://github.com/encero-systems/incan/issues/947) tracks the preferred `from pub::hees_ai import hyperquant` surface.
+
+See the [Hyperquant retrieval guide](workspaces/docs-site/docs/hyperquant.md) for its authority boundary, bounds, API, and profile roadmap.
+
 ## hees.ai console
 
 hees.ai console is the terminal-first, local-first development environment for governed AI. Its north-star workflow begins before the prompt: developers explore evidence, curate governed memory, create and validate reusable profiles, pressure-test material through Training by Committee, run live or saved interactions, and inspect Spectrum, selected memory, Content DNA, receipts and trace. This release begins with a supplied fictional package containing reviewed evidence and memory, then implements session-local candidate staging, profile validation, committee pressure-testing, governed interactions, and terminal artifacts. It does not yet ingest arbitrary evidence, derive memory atoms, persist edits, or activate a candidate.

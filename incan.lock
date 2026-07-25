@@ -4,7 +4,7 @@
 [incan]
 format = 2
 incan-version = "0.5.0-dev.23"
-deps-fingerprint = "sha256:3abc645f5aae2093cb87834cfbe85bbc51a8f76d61199af7b4f528fe56f90fab"
+deps-fingerprint = "sha256:cf82db07424d112e2de32bd3065c5f17bef9a1833ae5c342c7964aec2341cd7a"
 cargo-features = []
 cargo-no-default-features = false
 cargo-all-features = false
@@ -99,17 +99,17 @@ backend_requirements = []
 identity = "incan_stdlib_core@0.5.0#sha256:75665de11eb89f828eea68a693259a3e4a6d7f252bdbc81e54ce62cda47c52e0[]"
 participation = "used"
 namespace_claims = [["std", "capabilities"], ["std", "derives", "collection"], ["std", "derives", "comparison"], ["std", "derives", "copying"], ["std", "derives", "string"], ["std", "prelude"], ["std", "reflection"], ["std", "registry"], ["std", "result"], ["std", "this"], ["std", "traits"], ["std", "traits", "callable"], ["std", "traits", "convert"], ["std", "traits", "error"], ["std", "traits", "indexing"], ["std", "traits", "ops"]]
-used_modules = [["std", "prelude"]]
-implementation_facets = []
+used_modules = [["std", "prelude"], ["std", "traits", "error"]]
+implementation_facets = ["rust_traits"]
 backend_requirements = []
 
 [[semantic.workspace_members.providers]]
 identity = "incan_stdlib_data@0.5.0#sha256:f369d5ed92bf47d5b694ebf278a328f1bffb5fef9c3988f0419f9fa186bda830[]"
 participation = "used"
 namespace_claims = [["std", "collections"], ["std", "datetime"], ["std", "datetime", "civil"], ["std", "datetime", "civil", "intervals"], ["std", "datetime", "civil", "naive"], ["std", "datetime", "civil", "offset"], ["std", "datetime", "error"], ["std", "datetime", "runtime"], ["std", "graph"], ["std", "hash"], ["std", "hash", "_core"], ["std", "hash", "_streaming"], ["std", "json"], ["std", "math"], ["std", "regex"], ["std", "regex", "_core"], ["std", "regex", "_replacement"], ["std", "regex", "types"], ["std", "serde"], ["std", "serde", "json"], ["std", "uuid"]]
-used_modules = [["std", "hash"], ["std", "json"], ["std", "serde"], ["std", "serde", "json"]]
-implementation_facets = ["rust_hash", "rust_json", "rust_serde"]
-backend_requirements = ["cargo-dependency:blake2", "cargo-dependency:blake3", "cargo-dependency:md5", "cargo-dependency:serde", "cargo-dependency:sha1", "cargo-dependency:sha2", "cargo-dependency:sha3", "cargo-dependency:xxhash_rust", "cargo-feature:incan_stdlib/json"]
+used_modules = [["std", "hash"], ["std", "json"], ["std", "math"], ["std", "serde"], ["std", "serde", "json"]]
+implementation_facets = ["rust_hash", "rust_json", "rust_math", "rust_serde"]
+backend_requirements = ["cargo-dependency:blake2", "cargo-dependency:blake3", "cargo-dependency:libm", "cargo-dependency:md5", "cargo-dependency:serde", "cargo-dependency:sha1", "cargo-dependency:sha2", "cargo-dependency:sha3", "cargo-dependency:xxhash_rust", "cargo-feature:incan_stdlib/json"]
 
 [[semantic.workspace_members.providers]]
 identity = "incan_stdlib_observability@0.5.0#sha256:f402d694da5f2e94cf4b79238e84730a77300003dab81f31aa76281b98f8edc9[]"
@@ -223,9 +223,9 @@ default_features = true
 optional = false
 
 [[semantic.workspace_members.providers]]
-identity = "hees_ai@0.0.1#sha256:0764a079c4b5846f89b132cd16adf46289e29022c6585325589d8e9b32539420[]"
+identity = "hees_ai@0.0.1#sha256:ad63d831732628efda5d35c1e6216bf94930660eeef7b9af5c740ff213524b2d[]"
 participation = "enabled"
-namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
+namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "hyperquant"], ["pub", "hees_ai", "hyperquant", "exact"], ["pub", "hees_ai", "hyperquant", "models"], ["pub", "hees_ai", "hyperquant", "vector"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
 used_modules = []
 implementation_facets = []
 backend_requirements = []
@@ -382,9 +382,9 @@ default_features = true
 optional = false
 
 [[semantic.workspace_members.providers]]
-identity = "hees_ai@0.0.1#sha256:0764a079c4b5846f89b132cd16adf46289e29022c6585325589d8e9b32539420[]"
+identity = "hees_ai@0.0.1#sha256:ad63d831732628efda5d35c1e6216bf94930660eeef7b9af5c740ff213524b2d[]"
 participation = "enabled"
-namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
+namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "hyperquant"], ["pub", "hees_ai", "hyperquant", "exact"], ["pub", "hees_ai", "hyperquant", "models"], ["pub", "hees_ai", "hyperquant", "vector"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
 used_modules = []
 implementation_facets = []
 backend_requirements = []
@@ -541,9 +541,9 @@ default_features = true
 optional = false
 
 [[semantic.workspace_members.providers]]
-identity = "hees_ai@0.0.1#sha256:0764a079c4b5846f89b132cd16adf46289e29022c6585325589d8e9b32539420[]"
+identity = "hees_ai@0.0.1#sha256:ad63d831732628efda5d35c1e6216bf94930660eeef7b9af5c740ff213524b2d[]"
 participation = "enabled"
-namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
+namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "hyperquant"], ["pub", "hees_ai", "hyperquant", "exact"], ["pub", "hees_ai", "hyperquant", "models"], ["pub", "hees_ai", "hyperquant", "vector"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
 used_modules = []
 implementation_facets = []
 backend_requirements = []
@@ -700,9 +700,9 @@ default_features = true
 optional = false
 
 [[semantic.workspace_members.providers]]
-identity = "hees_ai@0.0.1#sha256:0764a079c4b5846f89b132cd16adf46289e29022c6585325589d8e9b32539420[]"
+identity = "hees_ai@0.0.1#sha256:ad63d831732628efda5d35c1e6216bf94930660eeef7b9af5c740ff213524b2d[]"
 participation = "enabled"
-namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
+namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "hyperquant"], ["pub", "hees_ai", "hyperquant", "exact"], ["pub", "hees_ai", "hyperquant", "models"], ["pub", "hees_ai", "hyperquant", "vector"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
 used_modules = []
 implementation_facets = []
 backend_requirements = []
@@ -859,9 +859,9 @@ default_features = true
 optional = false
 
 [[semantic.workspace_members.providers]]
-identity = "hees_ai@0.0.1#sha256:0764a079c4b5846f89b132cd16adf46289e29022c6585325589d8e9b32539420[]"
+identity = "hees_ai@0.0.1#sha256:ad63d831732628efda5d35c1e6216bf94930660eeef7b9af5c740ff213524b2d[]"
 participation = "enabled"
-namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
+namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "hyperquant"], ["pub", "hees_ai", "hyperquant", "exact"], ["pub", "hees_ai", "hyperquant", "models"], ["pub", "hees_ai", "hyperquant", "vector"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
 used_modules = []
 implementation_facets = []
 backend_requirements = []
@@ -1023,9 +1023,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
-version = "1.3.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c89588d05638b5b4594a3348a2d6c20277e43a7f5c5202b05cc56888475a47b8"
+checksum = "5add81bb678e6cb321aff7fa0dc7689ad82b112dbc032cea19f91d6b8e3582b9"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -1261,6 +1261,7 @@ dependencies = [
  "incan_stdlib",
  "incan_stdlib_codecs",
  "incan_stdlib_data",
+ "libm",
  "md-5",
  "serde",
  "sha1",
@@ -1474,6 +1475,7 @@ dependencies = [
  "incan_stdlib_core",
  "incan_stdlib_data",
  "incan_stdlib_testing",
+ "libm",
  "md-5",
  "regex",
  "serde",
@@ -1503,9 +1505,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.187"
+version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7743783ea728ef5c31194c6590797eed286449b4a4e87d626d8a51f0a94e732"
+checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
 name = "libm"
@@ -1782,9 +1784,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-pki-types"
-version = "1.15.0"
+version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "764899a24af3980067ee14bc143654f297b22eaebfe3c7b6b211920a5a59b046"
+checksum = "2f4925028c7eb5d1fcdaf196971378ed9d2c1c4efc7dc5d011256f76c99c0a96"
 dependencies = [
  "zeroize",
 ]
@@ -1839,7 +1841,7 @@ checksum = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.2",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -1961,9 +1963,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "3.0.2"
+version = "3.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a207d6d6a2b7fc470b80443726053f18a2481b7e1eee970597051596567987a3"
+checksum = "53e9bae58849f64dfa4f5d5ae372c8341f7305f82a3868709269343628b659a3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2216,9 +2218,9 @@ checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
 
 [[package]]
 name = "xxhash-rust"
-version = "0.8.17"
+version = "0.8.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "985eec839aaf2a1270af8f4ebcf63cf9401cfd90f0902f97c28d9f104ffbde72"
+checksum = "aee1b19627c7c60102ab80d3a9cbe18de90bfe03bfa6c3715447681f0e8c8af6"
 
 [[package]]
 name = "yoke"
