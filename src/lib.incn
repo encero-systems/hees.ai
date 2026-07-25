@@ -102,13 +102,8 @@ pub from hyperquant import (
     HyperquantNomination,
     HyperquantProfile,
     exact_index,
-    exact_index_dimensions,
-    exact_index_entry_count,
     exact_query,
     hyperquant_entry,
-    nomination_memory_id,
-    nomination_rank,
-    nomination_relevance_bps,
 )
 pub from runtime import (
     ActionContract,

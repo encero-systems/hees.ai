@@ -8,8 +8,6 @@ from pub::hees_ai import (
     hyperquant_entry,
     memory_id,
     memory_id_text,
-    nomination_memory_id,
-    nomination_rank,
     package_loader_descriptor,
     package_loader_summary,
     validate_package_loader_descriptor,
@@ -47,8 +45,10 @@ def test_external_dependency_can_use_the_exact_hyperquant_oracle() -> None:
     """Prove the exact provider works through the generated public-library manifest."""
 
     index = assert_is_ok(exact_index([exact_entry("sleep_schedule", [1.0, 0.0]), exact_entry("hydration", [0.0, 1.0])]))
-    result = assert_is_ok(exact_query(index, [1.0, 0.0], 1))
+    assert_eq(index.dimensions(), 2)
+    assert_eq(index.entry_count(), 2)
 
+    result = assert_is_ok(exact_query(index, [1.0, 0.0], 1))
     assert_eq(len(result.nominations), 1)
-    assert_eq(nomination_rank(result.nominations[0]), 0)
-    assert_eq(memory_id_text(nomination_memory_id(result.nominations[0])), "sleep_schedule")
+    assert_eq(result.nominations[0].rank, 0)
+    assert_eq(memory_id_text(result.nominations[0].memory_id), "sleep_schedule")

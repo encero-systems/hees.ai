@@ -5,8 +5,6 @@ pub from crate.hyperquant.exact import (
     HyperquantExactIndex,
     HyperquantExactResult,
     exact_index,
-    exact_index_dimensions,
-    exact_index_entry_count,
     exact_query,
     hyperquant_entry,
 )
@@ -19,7 +17,4 @@ pub from crate.hyperquant.models import (
     HyperquantExactCandidate,
     HyperquantNomination,
     HyperquantProfile,
-    nomination_memory_id,
-    nomination_rank,
-    nomination_relevance_bps,
 )

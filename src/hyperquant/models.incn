@@ -29,11 +29,6 @@ pub enum HyperquantErrorKind(str):
     DuplicateMemoryId = "duplicate_memory_id"
     InvalidTopK = "invalid_top_k"
 
-    def as_str(self) -> str:
-        """Return the stable diagnostic spelling."""
-
-        return self.value()
-
 
 @derive(Clone)
 pub model HyperquantError with Error:
@@ -52,11 +47,6 @@ pub model HyperquantError with Error:
         """Return the stable failure category."""
 
         return self._kind
-
-    def kind_name(self) -> str:
-        """Return the stable failure category spelling."""
-
-        return self._kind.as_str()
 
     def message(self) -> str:
         """Return a human-readable diagnostic without caller-supplied content."""
@@ -85,21 +75,3 @@ pub model HyperquantExactCandidate:
     pub memory_id: MemoryId
     pub cosine_similarity: float
     pub relevance_bps: int
-
-
-pub def nomination_memory_id(nomination: HyperquantNomination) -> MemoryId:
-    """Return the nominated logical memory identifier."""
-
-    return nomination.memory_id
-
-
-pub def nomination_rank(nomination: HyperquantNomination) -> int:
-    """Return the dense zero-based nomination rank."""
-
-    return nomination.rank
-
-
-pub def nomination_relevance_bps(nomination: HyperquantNomination) -> int:
-    """Return bounded non-authoritative relevance metadata."""
-
-    return nomination.relevance_bps

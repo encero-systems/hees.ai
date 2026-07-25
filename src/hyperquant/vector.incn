@@ -29,20 +29,9 @@ pub def normalize_vector(values: list[float]) -> Result[list[float], HyperquantE
         return Err(HyperquantError.from_kind(HyperquantErrorKind.ZeroVector, "vector norm must be greater than zero"))
 
     scaled_values = [value / maximum_magnitude for value in values]
-    mut scaled_squared_norm = 0.0
-    for value in scaled_values:
-        scaled_squared_norm = scaled_squared_norm + (value * value)
+    scaled_squared_norm = scaled_values.iter().map((value) => value * value).sum()
     scaled_norm = math.sqrt(scaled_squared_norm)
     return Ok([value / scaled_norm for value in scaled_values])
-
-
-pub def exact_cosine(left: list[float], right: list[float]) -> float:
-    """Return the dot product of two already normalized equal-dimension vectors."""
-
-    mut score = 0.0
-    for index in range(len(left)):
-        score = score + (left[index] * right[index])
-    return score
 
 
 pub def relevance_basis_points(cosine_similarity: float) -> int:

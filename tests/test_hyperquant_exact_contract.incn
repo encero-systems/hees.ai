@@ -11,9 +11,6 @@ from crate.hyperquant import (
     exact_index,
     exact_query,
     hyperquant_entry,
-    nomination_memory_id,
-    nomination_rank,
-    nomination_relevance_bps,
 )
 from crate.identifiers import memory_id, memory_id_text
 
@@ -27,7 +24,7 @@ def index(entries: list[HyperquantEntry]) -> HyperquantExactIndex:
 
 
 def nomination_ids(nominations: list[HyperquantNomination]) -> list[str]:
-    return [memory_id_text(nomination_memory_id(nomination)) for nomination in nominations]
+    return [memory_id_text(nomination.memory_id) for nomination in nominations]
 
 
 def test_exact_oracle_ranks_nearest_memory_with_dense_ranks() -> None:
@@ -35,12 +32,12 @@ def test_exact_oracle_ranks_nearest_memory_with_dense_ranks() -> None:
     result = assert_is_ok(exact_query(built, [1.0, 0.0], 3))
 
     assert_eq(nomination_ids(result.nominations), ["axis_x", "axis_y", "opposite_x"])
-    assert_eq(nomination_rank(result.nominations[0]), 0)
-    assert_eq(nomination_rank(result.nominations[1]), 1)
-    assert_eq(nomination_rank(result.nominations[2]), 2)
-    assert_eq(nomination_relevance_bps(result.nominations[0]), 10000)
-    assert_eq(nomination_relevance_bps(result.nominations[1]), 0)
-    assert_eq(nomination_relevance_bps(result.nominations[2]), 0)
+    assert_eq(result.nominations[0].rank, 0)
+    assert_eq(result.nominations[1].rank, 1)
+    assert_eq(result.nominations[2].rank, 2)
+    assert_eq(result.nominations[0].relevance_bps, 10000)
+    assert_eq(result.nominations[1].relevance_bps, 0)
+    assert_eq(result.nominations[2].relevance_bps, 0)
     assert_eq(len(result.candidates), 3)
 
 
@@ -58,14 +55,8 @@ def test_exact_oracle_is_scale_invariant() -> None:
     scaled_result = assert_is_ok(exact_query(built, [20.0, 10.0], 2))
 
     assert_eq(nomination_ids(unit_result.nominations), nomination_ids(scaled_result.nominations))
-    assert_eq(
-        nomination_relevance_bps(unit_result.nominations[0]),
-        nomination_relevance_bps(scaled_result.nominations[0]),
-    )
-    assert_eq(
-        nomination_relevance_bps(unit_result.nominations[1]),
-        nomination_relevance_bps(scaled_result.nominations[1]),
-    )
+    assert_eq(unit_result.nominations[0].relevance_bps, scaled_result.nominations[0].relevance_bps)
+    assert_eq(unit_result.nominations[1].relevance_bps, scaled_result.nominations[1].relevance_bps)
 
 
 def test_vector_normalization_handles_extreme_finite_magnitudes() -> None:
@@ -73,7 +64,7 @@ def test_vector_normalization_handles_extreme_finite_magnitudes() -> None:
     result = assert_is_ok(exact_query(built, [1.0e300, 0.0], 2))
 
     assert_eq(nomination_ids(result.nominations), ["huge_axis_x", "tiny_axis_y"])
-    assert_eq(nomination_relevance_bps(result.nominations[0]), 10000)
+    assert_eq(result.nominations[0].relevance_bps, 10000)
 
 
 def test_exact_oracle_breaks_score_ties_by_canonical_memory_id() -> None:

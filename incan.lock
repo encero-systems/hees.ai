@@ -4,7 +4,7 @@
 [incan]
 format = 2
 incan-version = "0.5.0-dev.23"
-deps-fingerprint = "sha256:cf82db07424d112e2de32bd3065c5f17bef9a1833ae5c342c7964aec2341cd7a"
+deps-fingerprint = "sha256:3eb671ec74bbc74f7791cb0285a51ef8ab774e90f73a6dce49746090fb8d1402"
 cargo-features = []
 cargo-no-default-features = false
 cargo-all-features = false
@@ -223,7 +223,7 @@ default_features = true
 optional = false
 
 [[semantic.workspace_members.providers]]
-identity = "hees_ai@0.0.1#sha256:ad63d831732628efda5d35c1e6216bf94930660eeef7b9af5c740ff213524b2d[]"
+identity = "hees_ai@0.0.1#sha256:545b6e67dcc9465cc16103f77594442b72ecb15168a5ba23154a816e9d79b12c[]"
 participation = "enabled"
 namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "hyperquant"], ["pub", "hees_ai", "hyperquant", "exact"], ["pub", "hees_ai", "hyperquant", "models"], ["pub", "hees_ai", "hyperquant", "vector"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
 used_modules = []
@@ -382,7 +382,7 @@ default_features = true
 optional = false
 
 [[semantic.workspace_members.providers]]
-identity = "hees_ai@0.0.1#sha256:ad63d831732628efda5d35c1e6216bf94930660eeef7b9af5c740ff213524b2d[]"
+identity = "hees_ai@0.0.1#sha256:545b6e67dcc9465cc16103f77594442b72ecb15168a5ba23154a816e9d79b12c[]"
 participation = "enabled"
 namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "hyperquant"], ["pub", "hees_ai", "hyperquant", "exact"], ["pub", "hees_ai", "hyperquant", "models"], ["pub", "hees_ai", "hyperquant", "vector"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
 used_modules = []
@@ -541,7 +541,7 @@ default_features = true
 optional = false
 
 [[semantic.workspace_members.providers]]
-identity = "hees_ai@0.0.1#sha256:ad63d831732628efda5d35c1e6216bf94930660eeef7b9af5c740ff213524b2d[]"
+identity = "hees_ai@0.0.1#sha256:545b6e67dcc9465cc16103f77594442b72ecb15168a5ba23154a816e9d79b12c[]"
 participation = "enabled"
 namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "hyperquant"], ["pub", "hees_ai", "hyperquant", "exact"], ["pub", "hees_ai", "hyperquant", "models"], ["pub", "hees_ai", "hyperquant", "vector"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
 used_modules = []
@@ -700,7 +700,7 @@ default_features = true
 optional = false
 
 [[semantic.workspace_members.providers]]
-identity = "hees_ai@0.0.1#sha256:ad63d831732628efda5d35c1e6216bf94930660eeef7b9af5c740ff213524b2d[]"
+identity = "hees_ai@0.0.1#sha256:545b6e67dcc9465cc16103f77594442b72ecb15168a5ba23154a816e9d79b12c[]"
 participation = "enabled"
 namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "hyperquant"], ["pub", "hees_ai", "hyperquant", "exact"], ["pub", "hees_ai", "hyperquant", "models"], ["pub", "hees_ai", "hyperquant", "vector"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
 used_modules = []
@@ -859,7 +859,7 @@ default_features = true
 optional = false
 
 [[semantic.workspace_members.providers]]
-identity = "hees_ai@0.0.1#sha256:ad63d831732628efda5d35c1e6216bf94930660eeef7b9af5c740ff213524b2d[]"
+identity = "hees_ai@0.0.1#sha256:545b6e67dcc9465cc16103f77594442b72ecb15168a5ba23154a816e9d79b12c[]"
 participation = "enabled"
 namespace_claims = [["pub", "hees_ai", "console_profile"], ["pub", "hees_ai", "console_profile_artifacts"], ["pub", "hees_ai", "console_profile_evaluation"], ["pub", "hees_ai", "console_profile_identity"], ["pub", "hees_ai", "console_profile_models"], ["pub", "hees_ai", "console_profile_observations"], ["pub", "hees_ai", "console_profile_planning"], ["pub", "hees_ai", "console_profile_validation"], ["pub", "hees_ai", "content_dna"], ["pub", "hees_ai", "hyperquant"], ["pub", "hees_ai", "hyperquant", "exact"], ["pub", "hees_ai", "hyperquant", "models"], ["pub", "hees_ai", "hyperquant", "vector"], ["pub", "hees_ai", "identifiers"], ["pub", "hees_ai", "package_loader"], ["pub", "hees_ai", "runtime"]]
 used_modules = []
