@@ -1,0 +1,203 @@
+"""Deterministic full-precision Hyperquant oracle and small-corpus fallback."""
+
+from crate.hyperquant.models import (
+    MAX_HYPERQUANT_ENTRIES,
+    MAX_HYPERQUANT_TOP_K,
+    HyperquantError,
+    HyperquantErrorKind,
+    HyperquantExactCandidate,
+    HyperquantNomination,
+    HyperquantProfile,
+)
+from crate.hyperquant.vector import normalize_vector, relevance_basis_points
+from crate.identifiers import MemoryId, memory_id_text
+
+
+@derive(Clone)
+pub class HyperquantEntry:
+    """One validated package-owned memory identifier and normalized vector."""
+
+    _memory_id: MemoryId
+    _values: list[float]
+
+    pub property memory_id -> MemoryId:
+        """Return the package-owned memory identifier."""
+
+        return self._memory_id
+
+    pub property dimensions -> int:
+        """Return the normalized vector dimension without copying its values."""
+
+        return len(self._values)
+
+    def coordinate(self, index: int) -> float:
+        """Return one normalized vector coordinate without copying the vector."""
+
+        return self._values[index]
+
+
+@derive(Clone)
+pub class HyperquantExactIndex:
+    """In-memory exact index with one validated dimension and unique memory identifiers."""
+
+    _dimensions: int
+    _entries: list[HyperquantEntry]
+
+    def dimensions(self) -> int:
+        """Return the validated vector dimension."""
+
+        return self._dimensions
+
+    def entry_count(self) -> int:
+        """Return the number of validated index entries."""
+
+        return len(self._entries)
+
+    def bounded_candidates(self, normalized_query: list[float], top_k: int) -> list[HyperquantExactCandidate]:
+        """Score entries without copying vector-scale data inside the hot loop."""
+
+        mut candidates: list[HyperquantExactCandidate] = []
+        for entry in self._entries:
+            mut cosine_similarity = 0.0
+            for dimension in range(len(normalized_query)):
+                cosine_similarity += entry.coordinate(dimension) * normalized_query[dimension]
+
+            candidates.append(
+                HyperquantExactCandidate(
+                    memory_id=entry.memory_id,
+                    cosine_similarity=cosine_similarity,
+                    relevance_bps=relevance_basis_points(cosine_similarity),
+                ),
+            )
+            mut position = len(candidates) - 1
+            while position > 0 and candidate_precedes(candidates[position], candidates[position - 1]):
+                candidates.swap(position, position - 1)
+                position -= 1
+            if len(candidates) > top_k:
+                candidates.pop()
+        return candidates
+
+    def validate_entries(mut self) -> Result[None, HyperquantError]:
+        """Set the shared dimension and validate entries without copying their vectors."""
+
+        mut canonical_ids: list[str] = []
+        mut first_entry = true
+        for entry in self._entries:
+            canonical_ids.append(memory_id_text(entry.memory_id))
+            if first_entry:
+                self._dimensions = entry.dimensions
+                first_entry = false
+            elif entry.dimensions != self._dimensions:
+                return Err(
+                    HyperquantError.from_kind(
+                        HyperquantErrorKind.DimensionMismatch,
+                        "all exact-index vectors must have the same dimension",
+                    ),
+                )
+
+        mut previous_id = ""
+        for canonical_id in sorted(canonical_ids):
+            if canonical_id == previous_id:
+                return Err(
+                    HyperquantError.from_kind(
+                        HyperquantErrorKind.DuplicateMemoryId,
+                        "exact index memory identifiers must be unique",
+                    ),
+                )
+            previous_id = canonical_id
+
+        return Ok(None)
+
+
+@derive(Clone)
+pub model HyperquantExactResult:
+    """Exact nominations plus the bounded retained-candidate trace."""
+
+    pub profile: HyperquantProfile
+    pub dimensions: int
+    pub nominations: list[HyperquantNomination]
+    pub candidates: list[HyperquantExactCandidate]
+
+
+pub def hyperquant_entry(memory_id: MemoryId, values: list[float]) -> Result[HyperquantEntry, HyperquantError]:
+    """Validate and normalize one index entry."""
+
+    return normalize_vector(values).map((normalized) => HyperquantEntry(_memory_id=memory_id, _values=normalized))
+
+
+pub def exact_index(entries: list[HyperquantEntry]) -> Result[HyperquantExactIndex, HyperquantError]:
+    """Build a bounded exact index from validated entries."""
+
+    if len(entries) == 0:
+        return Err(
+            HyperquantError.from_kind(HyperquantErrorKind.EmptyIndex, "exact index must contain at least one entry"),
+        )
+    if len(entries) > MAX_HYPERQUANT_ENTRIES:
+        return Err(
+            HyperquantError.from_kind(
+                HyperquantErrorKind.IndexTooLarge,
+                f"exact index exceeds the {MAX_HYPERQUANT_ENTRIES}-entry contract bound",
+            ),
+        )
+
+    mut index = HyperquantExactIndex(_dimensions=0, _entries=entries)
+    index.validate_entries()?
+    return Ok(index)
+
+
+def candidate_precedes(left: HyperquantExactCandidate, right: HyperquantExactCandidate) -> bool:
+    """Order higher scores first and break exact ties by canonical memory identifier."""
+
+    if left.cosine_similarity != right.cosine_similarity:
+        return left.cosine_similarity > right.cosine_similarity
+    return memory_id_text(left.memory_id) < memory_id_text(right.memory_id)
+
+
+def nominations_from_candidates(candidates: list[HyperquantExactCandidate], top_k: int) -> list[HyperquantNomination]:
+    """Project the first `top_k` scored candidates into dense RFC 003-compatible nominations."""
+
+    mut nominations: list[HyperquantNomination] = []
+    mut rank = 0
+    for candidate in candidates:
+        if rank >= top_k:
+            break
+        nominations.append(
+            HyperquantNomination(memory_id=candidate.memory_id, rank=rank, relevance_bps=candidate.relevance_bps),
+        )
+        rank += 1
+    return nominations
+
+
+pub def exact_query(
+    index: HyperquantExactIndex,
+    query_values: list[float],
+    top_k: int,
+) -> Result[HyperquantExactResult, HyperquantError]:
+    """Return deterministic exact nominations without assigning authority to them."""
+
+    if top_k <= 0 or top_k > MAX_HYPERQUANT_TOP_K or top_k > index.entry_count():
+        return Err(
+            HyperquantError.from_kind(
+                HyperquantErrorKind.InvalidTopK,
+                "top_k must be positive and no greater than both the index size and contract bound",
+            ),
+        )
+
+    normalized_query = normalize_vector(query_values)?
+    if len(normalized_query) != index.dimensions():
+        return Err(
+            HyperquantError.from_kind(
+                HyperquantErrorKind.DimensionMismatch,
+                "query vector dimension does not match the exact index",
+            ),
+        )
+
+    candidates = index.bounded_candidates(normalized_query, top_k)
+    return Ok(
+        HyperquantExactResult(
+            profile=HyperquantProfile.ExactCosine01,
+            dimensions=index.dimensions(),
+            nominations=nominations_from_candidates(candidates, top_k),
+            candidates=candidates,
+        ),
+    )

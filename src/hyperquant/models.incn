@@ -1,0 +1,77 @@
+"""Shared public models for versioned Hyperquant retrieval profiles."""
+
+from std.traits.error import Error
+from crate.identifiers import MemoryId
+
+pub const MAX_HYPERQUANT_DIMENSIONS: int = 8192
+pub const MAX_HYPERQUANT_ENTRIES: int = 65536
+pub const MAX_HYPERQUANT_TOP_K: int = 64
+
+
+@derive(Clone, Eq)
+pub enum HyperquantProfile(str):
+    """Stable identity of one retrieval algorithm and behavioral contract."""
+
+    ExactCosine01 = "exact_cosine_0_1"
+
+
+@derive(Clone, Eq)
+pub enum HyperquantErrorKind(str):
+    """Closed failure categories for vector, index, and query validation."""
+
+    EmptyIndex = "empty_index"
+    IndexTooLarge = "index_too_large"
+    EmptyVector = "empty_vector"
+    VectorTooLarge = "vector_too_large"
+    ZeroVector = "zero_vector"
+    NonFiniteValue = "non_finite_value"
+    DimensionMismatch = "dimension_mismatch"
+    DuplicateMemoryId = "duplicate_memory_id"
+    InvalidTopK = "invalid_top_k"
+
+
+@derive(Clone)
+pub model HyperquantError with Error:
+    """Typed fail-closed error with a stable kind and bounded diagnostic detail."""
+
+    pub _kind: HyperquantErrorKind
+    pub _detail: str
+
+    @staticmethod
+    def from_kind(kind: HyperquantErrorKind, detail: str) -> Self:
+        """Construct one typed Hyperquant failure."""
+
+        return HyperquantError(_kind=kind, _detail=detail)
+
+    def kind(self) -> HyperquantErrorKind:
+        """Return the stable failure category."""
+
+        return self._kind
+
+    def message(self) -> str:
+        """Return a human-readable diagnostic without caller-supplied content."""
+
+        return self._detail
+
+    def source(self) -> Option[str]:
+        """Hyperquant contract errors do not currently wrap another error."""
+
+        return None
+
+
+@derive(Clone)
+pub model HyperquantNomination:
+    """One non-authoritative RFC 003-compatible memory nomination."""
+
+    pub memory_id: MemoryId
+    pub rank: int
+    pub relevance_bps: int
+
+
+@derive(Clone)
+pub model HyperquantExactCandidate:
+    """One retained exact-oracle score in the bounded top-k trace."""
+
+    pub memory_id: MemoryId
+    pub cosine_similarity: float
+    pub relevance_bps: int

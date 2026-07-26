@@ -1,7 +1,13 @@
-from std.testing import assert_eq
+from std.testing import assert_eq, assert_is_ok
 from pub::hees_ai import (
+    HyperquantEntry,
     PackageLoaderDescriptor,
     PackageLoaderValidation,
+    exact_index,
+    exact_query,
+    hyperquant_entry,
+    memory_id,
+    memory_id_text,
     package_loader_descriptor,
     package_loader_summary,
     validate_package_loader_descriptor,
@@ -27,3 +33,22 @@ def test_external_dependency_can_use_the_checked_loader_surface() -> None:
         package_loader_summary(validation),
         "package_loader package=lesson_support domain=lesson_support source=source_controlled_domain_package valid=true reason=ok",
     )
+
+
+def exact_entry(id: str, values: list[float]) -> HyperquantEntry:
+    """Build one validated entry through the public package surface."""
+
+    return assert_is_ok(hyperquant_entry(memory_id(id), values))
+
+
+def test_external_dependency_can_use_the_exact_hyperquant_oracle() -> None:
+    """Prove the exact provider works through the generated public-library manifest."""
+
+    index = assert_is_ok(exact_index([exact_entry("sleep_schedule", [1.0, 0.0]), exact_entry("hydration", [0.0, 1.0])]))
+    assert_eq(index.dimensions(), 2)
+    assert_eq(index.entry_count(), 2)
+
+    result = assert_is_ok(exact_query(index, [1.0, 0.0], 1))
+    assert_eq(len(result.nominations), 1)
+    assert_eq(result.nominations[0].rank, 0)
+    assert_eq(memory_id_text(result.nominations[0].memory_id), "sleep_schedule")
