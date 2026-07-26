@@ -208,13 +208,13 @@ def test_seeded_generation_replays_every_frozen_transform() -> None:
     projection = assert_is_ok(gaussian_matrix(fixture.dimensions, 20260726, fixture.qjl_domain))
 
     assert_vectors_close(
-        rotation.uniforms(),
+        rotation.uniforms,
         fixture.rotation_uniforms,
         fixture.absolute_tolerance,
         fixture.relative_tolerance,
     )
     assert_vectors_close(
-        rotation.normals(),
+        rotation.normals,
         fixture.rotation_normals,
         fixture.absolute_tolerance,
         fixture.relative_tolerance,
