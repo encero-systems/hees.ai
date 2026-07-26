@@ -1,0 +1,59 @@
+{
+  "schema_version": "hees_hyperquant_turboquant_manifest_0_1",
+  "contract_version": "hees_hyperquant_turboquant_reference_0_1",
+  "normative_source": {
+    "title": "TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate",
+    "authors": "Amir Zandieh, Majid Daliri, Majid Hadian, Vahab Mirrokni",
+    "version": "arXiv:2504.19874v1",
+    "url": "https://arxiv.org/pdf/2504.19874",
+    "sha256": "431eb13926e10491f5fbd0bebd0813c51bd6c1e884426a1500c5db640b2997ab"
+  },
+  "profiles": [
+    "turboquant_mse_0_1",
+    "turboquant_product_0_1"
+  ],
+  "decisions": [
+    {
+      "id": "TQ-RNG-001",
+      "summary": "Derive portable uniform samples from domain-separated SHA-256 counter blocks and convert pairs with Box-Muller."
+    },
+    {
+      "id": "TQ-QR-001",
+      "summary": "Use Householder QR and normalize every R diagonal to be non-negative."
+    },
+    {
+      "id": "TQ-CODEBOOK-001",
+      "summary": "Bind ordered finite centroids into profile configuration rather than making runtime numerical optimization part of decoding."
+    },
+    {
+      "id": "TQ-SIGN-001",
+      "summary": "Encode sign values as positive for zero and positive inputs, and negative only for strictly negative inputs."
+    },
+    {
+      "id": "TQ-PACK-001",
+      "summary": "Pack coordinates in order, values most-significant-bit first, bytes in stream order, and require zero tail padding."
+    }
+  ],
+  "fixtures": [
+    {
+      "fixture_id": "seeded_generation_d4_seed20260726",
+      "path": "generation.json",
+      "sha256": "e01e46938fe133aa75b77fa3c552509bb8fb5da7cb33c25d4eb119db485d8a1a"
+    },
+    {
+      "fixture_id": "mse_d4_b1_axis",
+      "path": "mse.json",
+      "sha256": "a5b2a4eb464fc6d7a7d627ccf64fe31922edc88b35f74b9fea7176997f0d1f3c"
+    },
+    {
+      "fixture_id": "product_d4_b2_axis",
+      "path": "product.json",
+      "sha256": "b26a7361a8516ea613099b65facac0c3ac79d099df0925ed1e88749cc7e0d48d"
+    },
+    {
+      "fixture_id": "canonical_msb_packing",
+      "path": "packing.json",
+      "sha256": "20b8241468584630a9fd061ca17bfd2c20e33b9c3f519a5bc899092364fb1247"
+    }
+  ]
+}

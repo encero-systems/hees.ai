@@ -1,0 +1,642 @@
+"""Conformance tests for the specified, not-yet-implemented TurboQuant profiles."""
+
+import std.math
+from std.encoding.hex import hexlify
+from std.fs import Path
+from std.hash import sha256
+from std.serde.json import Deserialize
+from std.testing import assert_eq, assert_is_err, assert_is_ok
+
+const FIXTURE_ROOT: str = "tests/fixtures/hyperquant/turboquant_0_1"
+const FIXTURE_SCHEMA: str = "hees_hyperquant_turboquant_fixture_0_1"
+const MANIFEST_SCHEMA: str = "hees_hyperquant_turboquant_manifest_0_1"
+const CONTRACT_VERSION: str = "hees_hyperquant_turboquant_reference_0_1"
+const PAPER_SHA256: str = "431eb13926e10491f5fbd0bebd0813c51bd6c1e884426a1500c5db640b2997ab"
+const GENERATION_SHA256: str = "e01e46938fe133aa75b77fa3c552509bb8fb5da7cb33c25d4eb119db485d8a1a"
+const MSE_SHA256: str = "a5b2a4eb464fc6d7a7d627ccf64fe31922edc88b35f74b9fea7176997f0d1f3c"
+const PRODUCT_SHA256: str = "b26a7361a8516ea613099b65facac0c3ac79d099df0925ed1e88749cc7e0d48d"
+const PACKING_SHA256: str = "20b8241468584630a9fd061ca17bfd2c20e33b9c3f519a5bc899092364fb1247"
+
+
+@derive(Deserialize)
+model NormativeSource:
+    """Identify the exact research artifact mapped by the reference contract."""
+
+    title: str
+    authors: str
+    version: str
+    url: str
+    sha256: str
+
+
+@derive(Deserialize)
+model ReferenceDecision:
+    """Record one Hees portability decision not fixed by the paper."""
+
+    id: str
+    summary: str
+
+
+@derive(Deserialize)
+model FixtureRecord:
+    """Bind one fixture identity to its path and exact byte digest."""
+
+    fixture_id: str
+    path: str
+    sha256: str
+
+
+@derive(Deserialize)
+model ReferenceManifest:
+    """Describe the complete versioned TurboQuant reference fixture set."""
+
+    schema_version: str
+    contract_version: str
+    normative_source: NormativeSource
+    profiles: list[str]
+    decisions: list[ReferenceDecision]
+    fixtures: list[FixtureRecord]
+
+
+@derive(Deserialize)
+model GenerationFixture:
+    """Freeze seeded random samples and dense reference transforms."""
+
+    schema_version: str
+    fixture_id: str
+    source_anchors: list[str]
+    dimensions: int
+    seed_hex: str
+    rotation_domain: str
+    qjl_domain: str
+    rotation_uniforms: list[float]
+    rotation_normals: list[float]
+    rotation_matrix: list[list[float]]
+    qjl_uniforms: list[float]
+    qjl_normals: list[float]
+    qjl_projection_matrix: list[list[float]]
+    absolute_tolerance: float
+    relative_tolerance: float
+
+
+@derive(Deserialize)
+model MseFixture:
+    """Freeze one complete MSE-profile encoding and reconstruction."""
+
+    schema_version: str
+    fixture_id: str
+    profile_id: str
+    source_anchors: list[str]
+    dimensions: int
+    bit_width: int
+    input: list[float]
+    centroids: list[float]
+    rotated: list[float]
+    indices: list[int]
+    packed_indices_hex: str
+    reconstructed: list[float]
+    squared_error: float
+    absolute_tolerance: float
+    relative_tolerance: float
+
+
+@derive(Deserialize)
+model ProductFixture:
+    """Freeze one complete product-profile residual and estimate path."""
+
+    schema_version: str
+    fixture_id: str
+    profile_id: str
+    source_anchors: list[str]
+    dimensions: int
+    bit_width: int
+    mse_bit_width: int
+    input: list[float]
+    mse_reconstructed: list[float]
+    residual: list[float]
+    residual_norm: float
+    projected_residual: list[float]
+    qjl_signs: list[int]
+    packed_qjl_hex: str
+    qjl_scale: float
+    qjl_reconstructed: list[float]
+    product_reconstructed: list[float]
+    query: list[float]
+    exact_inner_product: float
+    mse_inner_product_estimate: float
+    product_inner_product_estimate: float
+    absolute_tolerance: float
+    relative_tolerance: float
+
+
+@derive(Deserialize)
+model PackingFixture:
+    """Freeze canonical non-byte-aligned integer and sign packing."""
+
+    schema_version: str
+    fixture_id: str
+    source_anchors: list[str]
+    integer_bit_width: int
+    integer_values: list[int]
+    integer_packed_hex: str
+    sign_values: list[int]
+    sign_packed_hex: str
+    padding_bits_must_be_zero: bool
+
+
+def fixture_text(filename: str) -> Result[str, str]:
+    """Read one UTF-8 fixture without normalizing its identity-bearing bytes."""
+
+    return Path(f"{FIXTURE_ROOT}/{filename}").read_text("utf-8", "strict").map_err((error) => error.message())
+
+
+def fixture_digest(filename: str) -> Result[str, str]:
+    """Digest one fixture without passing its identity-bearing bytes through text conversion."""
+
+    return Path(f"{FIXTURE_ROOT}/{filename}")
+        .read_bytes()
+        .map((value) => hexlify(sha256.digest(value)))
+        .map_err((error) => error.message())
+
+
+def load_manifest() -> Result[ReferenceManifest, str]:
+    """Decode the reference manifest through its typed schema."""
+
+    return ReferenceManifest.from_json(fixture_text("manifest.json")?)
+
+
+def load_generation() -> Result[GenerationFixture, str]:
+    """Decode the seeded-generation fixture through its typed schema."""
+
+    return GenerationFixture.from_json(fixture_text("generation.json")?)
+
+
+def load_mse() -> Result[MseFixture, str]:
+    """Decode the MSE reference fixture through its typed schema."""
+
+    return MseFixture.from_json(fixture_text("mse.json")?)
+
+
+def load_product() -> Result[ProductFixture, str]:
+    """Decode the product-profile reference fixture through its typed schema."""
+
+    return ProductFixture.from_json(fixture_text("product.json")?)
+
+
+def load_packing() -> Result[PackingFixture, str]:
+    """Decode the canonical packing fixture through its typed schema."""
+
+    return PackingFixture.from_json(fixture_text("packing.json")?)
+
+
+def is_lower_hex(value: str, expected_length: int) -> bool:
+    """Check an exact-length lowercase hexadecimal wire value."""
+
+    if len(value) != expected_length:
+        return false
+    for character in value:
+        if not (character in "0123456789abcdef"):
+            return false
+    return true
+
+
+def anchors_are_safe(anchors: list[str]) -> bool:
+    """Bound the evidence anchors carried by a reference fixture."""
+
+    if len(anchors) == 0 or len(anchors) > 16:
+        return false
+    for anchor in anchors:
+        if len(anchor) == 0 or len(anchor) > 128:
+            return false
+    return true
+
+
+def values_are_finite(values: list[float]) -> bool:
+    """Reject non-finite numerical fixture values before calculation."""
+
+    for value in values:
+        if not value.is_finite():
+            return false
+    return true
+
+
+def matrix_is_bounded(matrix: list[list[float]], dimensions: int) -> bool:
+    """Check a finite square matrix against the declared dimension."""
+
+    if len(matrix) != dimensions:
+        return false
+    for row in matrix:
+        if len(row) != dimensions or not values_are_finite(row):
+            return false
+    return true
+
+
+def validate_manifest(manifest: ReferenceManifest) -> Result[None, str]:
+    """Validate the closed reference inventory without following arbitrary paths."""
+
+    if manifest.schema_version != MANIFEST_SCHEMA or manifest.contract_version != CONTRACT_VERSION:
+        return Err("unsupported TurboQuant reference manifest")
+    if manifest.normative_source.version != "arXiv:2504.19874v1" or manifest.normative_source.sha256 != PAPER_SHA256:
+        return Err("unexpected normative TurboQuant source")
+    if manifest.profiles != ["turboquant_mse_0_1", "turboquant_product_0_1"]:
+        return Err("unexpected TurboQuant profile inventory")
+    if len(manifest.decisions) != 5 or len(manifest.fixtures) != 4:
+        return Err("incomplete TurboQuant reference inventory")
+
+    mut decision_ids: dict[str, bool] = {}
+    for decision in manifest.decisions:
+        if len(decision.id) == 0 or len(decision.id) > 32 or len(decision.summary) == 0 or len(decision.summary) > 240:
+            return Err("invalid TurboQuant decision record")
+        if decision.id in decision_ids:
+            return Err("duplicate TurboQuant decision identity")
+        decision_ids.insert(decision.id, true)
+
+    mut fixture_ids: dict[str, bool] = {}
+    for fixture in manifest.fixtures:
+        if len(fixture.fixture_id) == 0 or len(fixture.fixture_id) > 96:
+            return Err("invalid TurboQuant fixture identity")
+        if fixture.fixture_id in fixture_ids:
+            return Err("duplicate TurboQuant fixture identity")
+        if fixture.path.contains("/") or fixture.path.contains("..") or not fixture.path.endswith(".json"):
+            return Err("unsafe TurboQuant fixture path")
+        if not is_lower_hex(fixture.sha256, 64):
+            return Err("invalid TurboQuant fixture digest")
+        fixture_ids.insert(fixture.fixture_id, true)
+    return Ok(None)
+
+
+def validate_generation(fixture: GenerationFixture) -> Result[None, str]:
+    """Validate the seeded random streams and dense transform shapes."""
+
+    if fixture.schema_version != FIXTURE_SCHEMA or fixture.fixture_id != "seeded_generation_d4_seed20260726":
+        return Err("unsupported TurboQuant generation fixture")
+    if not anchors_are_safe(fixture.source_anchors):
+        return Err("missing TurboQuant generation evidence")
+    if fixture.dimensions <= 0 or fixture.dimensions > 8192:
+        return Err("invalid TurboQuant fixture dimensions")
+    if not is_lower_hex(fixture.seed_hex, 16):
+        return Err("invalid TurboQuant seed")
+    if fixture.rotation_domain != "hees.hyperquant.turboquant.rotation.0_1" or fixture.qjl_domain != "hees.hyperquant.turboquant.qjl.0_1":
+        return Err("unexpected TurboQuant random domain")
+
+    sample_count = fixture.dimensions * fixture.dimensions
+    if len(fixture.rotation_uniforms) != sample_count or len(fixture.rotation_normals) != sample_count:
+        return Err("incomplete TurboQuant rotation stream")
+    if len(fixture.qjl_uniforms) != sample_count or len(fixture.qjl_normals) != sample_count:
+        return Err("incomplete TurboQuant QJL stream")
+    if not values_are_finite(fixture.rotation_uniforms) or not values_are_finite(fixture.rotation_normals):
+        return Err("non-finite TurboQuant rotation stream")
+    if not values_are_finite(fixture.qjl_uniforms) or not values_are_finite(fixture.qjl_normals):
+        return Err("non-finite TurboQuant QJL stream")
+    if not matrix_is_bounded(fixture.rotation_matrix, fixture.dimensions):
+        return Err("invalid TurboQuant rotation matrix")
+    if not matrix_is_bounded(fixture.qjl_projection_matrix, fixture.dimensions):
+        return Err("invalid TurboQuant QJL matrix")
+    if (
+        not fixture.absolute_tolerance.is_finite()
+        or not fixture.relative_tolerance.is_finite()
+        or fixture.absolute_tolerance <= 0.0
+        or fixture.relative_tolerance < 0.0
+    ):
+        return Err("invalid TurboQuant fixture tolerance")
+    return Ok(None)
+
+
+def validate_mse(fixture: MseFixture) -> Result[None, str]:
+    """Validate one bounded MSE-profile conformance fixture."""
+
+    if fixture.schema_version != FIXTURE_SCHEMA or fixture.profile_id != "turboquant_mse_0_1":
+        return Err("unsupported TurboQuant MSE fixture")
+    if not anchors_are_safe(fixture.source_anchors):
+        return Err("missing TurboQuant MSE evidence")
+    if fixture.dimensions <= 0 or fixture.dimensions > 8192 or fixture.bit_width < 1 or fixture.bit_width > 8:
+        return Err("invalid TurboQuant MSE configuration")
+    if len(fixture.centroids) != 1 << fixture.bit_width:
+        return Err("invalid TurboQuant MSE codebook")
+    if len(fixture.input) != fixture.dimensions or len(fixture.rotated) != fixture.dimensions:
+        return Err("invalid TurboQuant MSE vector shape")
+    if len(fixture.indices) != fixture.dimensions or len(fixture.reconstructed) != fixture.dimensions:
+        return Err("invalid TurboQuant MSE result shape")
+    if not values_are_finite(fixture.input) or not values_are_finite(fixture.centroids):
+        return Err("non-finite TurboQuant MSE input")
+    if not values_are_finite(fixture.rotated) or not values_are_finite(fixture.reconstructed):
+        return Err("non-finite TurboQuant MSE output")
+    for index in fixture.indices:
+        if index < 0 or index >= len(fixture.centroids):
+            return Err("invalid TurboQuant centroid index")
+    expected_hex_length = 2 * ((fixture.dimensions * fixture.bit_width + 7) // 8)
+    if not is_lower_hex(fixture.packed_indices_hex, expected_hex_length):
+        return Err("invalid TurboQuant packed MSE payload")
+    if not fixture.squared_error.is_finite() or fixture.squared_error < 0.0:
+        return Err("invalid TurboQuant MSE error")
+    if (
+        not fixture.absolute_tolerance.is_finite()
+        or not fixture.relative_tolerance.is_finite()
+        or fixture.absolute_tolerance <= 0.0
+        or fixture.relative_tolerance < 0.0
+    ):
+        return Err("invalid TurboQuant MSE tolerance")
+    return Ok(None)
+
+
+def validate_product(fixture: ProductFixture) -> Result[None, str]:
+    """Validate one bounded product-profile conformance fixture."""
+
+    if fixture.schema_version != FIXTURE_SCHEMA or fixture.profile_id != "turboquant_product_0_1":
+        return Err("unsupported TurboQuant product fixture")
+    if not anchors_are_safe(fixture.source_anchors):
+        return Err("missing TurboQuant product evidence")
+    if fixture.dimensions <= 0 or fixture.dimensions > 8192 or fixture.bit_width < 1 or fixture.bit_width > 8:
+        return Err("invalid TurboQuant product configuration")
+    if fixture.mse_bit_width != fixture.bit_width - 1:
+        return Err("invalid TurboQuant product MSE width")
+
+    vectors = [fixture.input, fixture.mse_reconstructed, fixture.residual, fixture.projected_residual, fixture.qjl_reconstructed, fixture.product_reconstructed, fixture.query]
+    for values in vectors:
+        if len(values) != fixture.dimensions or not values_are_finite(values):
+            return Err("invalid TurboQuant product vector")
+    if len(fixture.qjl_signs) != fixture.dimensions:
+        return Err("invalid TurboQuant QJL sign count")
+    for sign in fixture.qjl_signs:
+        if sign != -1 and sign != 1:
+            return Err("invalid TurboQuant QJL sign")
+    expected_hex_length = 2 * ((fixture.dimensions + 7) // 8)
+    if not is_lower_hex(fixture.packed_qjl_hex, expected_hex_length):
+        return Err("invalid TurboQuant packed QJL payload")
+    scalars = [fixture.residual_norm, fixture.qjl_scale, fixture.exact_inner_product, fixture.mse_inner_product_estimate, fixture.product_inner_product_estimate, fixture.absolute_tolerance, fixture.relative_tolerance]
+    if (
+        not values_are_finite(scalars)
+        or fixture.residual_norm < 0.0
+        or fixture.absolute_tolerance <= 0.0
+        or fixture.relative_tolerance < 0.0
+    ):
+        return Err("invalid TurboQuant product scalar")
+    return Ok(None)
+
+
+def validate_packing(fixture: PackingFixture) -> Result[None, str]:
+    """Validate the canonical bit-packing fixture and its padding contract."""
+
+    if fixture.schema_version != FIXTURE_SCHEMA or fixture.fixture_id != "canonical_msb_packing":
+        return Err("unsupported TurboQuant packing fixture")
+    if not anchors_are_safe(fixture.source_anchors) or fixture.integer_bit_width < 1 or fixture.integer_bit_width > 8:
+        return Err("invalid TurboQuant packing configuration")
+    if len(fixture.integer_values) == 0 or len(fixture.sign_values) == 0:
+        return Err("empty TurboQuant packing fixture")
+    limit = 1 << fixture.integer_bit_width
+    for value in fixture.integer_values:
+        if value < 0 or value >= limit:
+            return Err("invalid TurboQuant packed integer")
+    for value in fixture.sign_values:
+        if value != 0 and value != 1:
+            return Err("invalid TurboQuant packed sign")
+    integer_hex_length = 2 * ((len(fixture.integer_values) * fixture.integer_bit_width + 7) // 8)
+    sign_hex_length = 2 * ((len(fixture.sign_values) + 7) // 8)
+    if not is_lower_hex(fixture.integer_packed_hex, integer_hex_length) or not is_lower_hex(
+        fixture.sign_packed_hex,
+        sign_hex_length,
+    ):
+        return Err("invalid TurboQuant packed fixture length")
+    if not fixture.padding_bits_must_be_zero:
+        return Err("non-canonical TurboQuant padding contract")
+    return Ok(None)
+
+
+def dot(left: list[float], right: list[float]) -> float:
+    """Compute the fixture-scale reference dot product in declared order."""
+
+    mut result = 0.0
+    for index in range(len(left)):
+        result += left[index] * right[index]
+    return result
+
+
+def matrix_vector(matrix: list[list[float]], vector: list[float]) -> list[float]:
+    """Multiply a row-major reference matrix by a vector."""
+
+    return [dot(row, vector) for row in matrix]
+
+
+def transpose_matrix_vector(matrix: list[list[float]], vector: list[float]) -> list[float]:
+    """Multiply the transpose of a row-major reference matrix by a vector."""
+
+    mut result: list[float] = []
+    for column in range(len(matrix)):
+        mut value = 0.0
+        for row in range(len(matrix)):
+            value += matrix[row][column] * vector[row]
+        result.append(value)
+    return result
+
+
+def assert_close(actual: float, expected: float, absolute_tolerance: float, relative_tolerance: float) -> None:
+    """Assert the reference contract's combined numerical tolerance."""
+
+    tolerance = absolute_tolerance + relative_tolerance * math.abs(expected)
+    assert_eq(math.abs(actual - expected) <= tolerance, true)
+
+
+def assert_vectors_close(
+    actual: list[float],
+    expected: list[float],
+    absolute_tolerance: float,
+    relative_tolerance: float,
+) -> None:
+    """Compare two vectors coordinate by coordinate under combined tolerance."""
+
+    assert_eq(len(actual), len(expected))
+    for index in range(len(actual)):
+        assert_close(actual[index], expected[index], absolute_tolerance, relative_tolerance)
+
+
+def pack_msb(values: list[int], width: int) -> bytes:
+    """Pack fixed-width values in logical order and most-significant-bit first."""
+
+    mut result: list[u8] = []
+    mut byte = 0
+    mut occupied = 0
+    for value in values:
+        mut shift = width - 1
+        while shift >= 0:
+            byte = (byte << 1) | ((value >> shift) & 1)
+            occupied += 1
+            if occupied == 8:
+                encoded: u8 = byte.wrapping_resize()
+                result.append(encoded)
+                byte = 0
+                occupied = 0
+            shift -= 1
+    if occupied > 0:
+        byte <<= 8 - occupied
+        encoded: u8 = byte.wrapping_resize()
+        result.append(encoded)
+    return result
+
+
+def signed_bit(value: float) -> int:
+    """Apply the frozen non-negative sign convention."""
+
+    if value < 0.0:
+        return -1
+    return 1
+
+
+def packed_sign(sign: int) -> int:
+    """Project one signed QJL value into its canonical packed bit."""
+
+    if sign > 0:
+        return 1
+    return 0
+
+
+def test_manifest_freezes_source_decisions_and_exact_fixture_digests() -> None:
+    """Prove that the manifest and fixture files retain their frozen identities."""
+
+    manifest = assert_is_ok(load_manifest())
+    assert_is_ok(validate_manifest(manifest))
+
+    expected = [("generation.json", GENERATION_SHA256), ("mse.json", MSE_SHA256), ("product.json", PRODUCT_SHA256), ("packing.json", PACKING_SHA256)]
+    for filename, digest in expected:
+        assert_eq(assert_is_ok(fixture_digest(filename)), digest)
+
+    assert_eq(manifest.fixtures[0].sha256, GENERATION_SHA256)
+    assert_eq(manifest.fixtures[1].sha256, MSE_SHA256)
+    assert_eq(manifest.fixtures[2].sha256, PRODUCT_SHA256)
+    assert_eq(manifest.fixtures[3].sha256, PACKING_SHA256)
+
+
+def test_seeded_generation_fixture_is_bounded_and_orthonormal() -> None:
+    """Prove seeded samples and the normalized rotation matrix are reproducible."""
+
+    fixture = assert_is_ok(load_generation())
+    assert_is_ok(validate_generation(fixture))
+
+    assert_close(
+        fixture.rotation_uniforms[0],
+        0.6729701911230836,
+        fixture.absolute_tolerance,
+        fixture.relative_tolerance,
+    )
+    assert_close(fixture.rotation_normals[0], 0.8446198957075293, fixture.absolute_tolerance, fixture.relative_tolerance)
+    assert_close(fixture.qjl_uniforms[0], 0.8806288859008131, fixture.absolute_tolerance, fixture.relative_tolerance)
+    assert_close(fixture.qjl_normals[0], 0.4619446689789813, fixture.absolute_tolerance, fixture.relative_tolerance)
+
+    for left in range(fixture.dimensions):
+        for right in range(fixture.dimensions):
+            mut product = 0.0
+            for row in range(fixture.dimensions):
+                product += fixture.rotation_matrix[row][left] * fixture.rotation_matrix[row][right]
+            mut expected = 0.0
+            if left == right:
+                expected = 1.0
+            assert_close(product, expected, fixture.absolute_tolerance, fixture.relative_tolerance)
+
+
+def test_mse_fixture_reproduces_rotation_codebook_reconstruction_and_packing() -> None:
+    """Reproduce the MSE fixture from rotation through packed indices."""
+
+    generation = assert_is_ok(load_generation())
+    fixture = assert_is_ok(load_mse())
+    assert_is_ok(validate_mse(fixture))
+
+    assert_close(fixture.centroids[0], -4.0 / (3.0 * math.PI), fixture.absolute_tolerance, fixture.relative_tolerance)
+    assert_close(fixture.centroids[1], 4.0 / (3.0 * math.PI), fixture.absolute_tolerance, fixture.relative_tolerance)
+
+    rotated = matrix_vector(generation.rotation_matrix, fixture.input)
+    assert_vectors_close(rotated, fixture.rotated, fixture.absolute_tolerance, fixture.relative_tolerance)
+
+    quantized = [fixture.centroids[index] for index in fixture.indices]
+    reconstructed = transpose_matrix_vector(generation.rotation_matrix, quantized)
+    assert_vectors_close(reconstructed, fixture.reconstructed, fixture.absolute_tolerance, fixture.relative_tolerance)
+
+    residual = [fixture.input[index] - reconstructed[index] for index in range(fixture.dimensions)]
+    assert_close(dot(residual, residual), fixture.squared_error, fixture.absolute_tolerance, fixture.relative_tolerance)
+    assert_eq(hexlify(pack_msb(fixture.indices, fixture.bit_width)), fixture.packed_indices_hex)
+
+
+def test_product_fixture_reproduces_residual_qjl_reconstruction_and_estimate() -> None:
+    """Reproduce residual correction and the product-profile estimate."""
+
+    generation = assert_is_ok(load_generation())
+    fixture = assert_is_ok(load_product())
+    assert_is_ok(validate_product(fixture))
+
+    residual = [fixture.input[index] - fixture.mse_reconstructed[index] for index in range(fixture.dimensions)]
+    assert_vectors_close(residual, fixture.residual, fixture.absolute_tolerance, fixture.relative_tolerance)
+    assert_close(
+        math.sqrt(dot(residual, residual)),
+        fixture.residual_norm,
+        fixture.absolute_tolerance,
+        fixture.relative_tolerance,
+    )
+
+    projected = matrix_vector(generation.qjl_projection_matrix, residual)
+    assert_vectors_close(projected, fixture.projected_residual, fixture.absolute_tolerance, fixture.relative_tolerance)
+    signs = [signed_bit(value) for value in projected]
+    assert_eq(signs, fixture.qjl_signs)
+    assert_eq(hexlify(pack_msb([packed_sign(sign) for sign in signs], 1)), fixture.packed_qjl_hex)
+
+    scale = math.sqrt(math.PI / 2.0) * fixture.residual_norm / float(fixture.dimensions)
+    assert_close(scale, fixture.qjl_scale, fixture.absolute_tolerance, fixture.relative_tolerance)
+    qjl = [value * scale for value in transpose_matrix_vector(
+        generation.qjl_projection_matrix,
+        [float(sign) for sign in signs],
+    )]
+    assert_vectors_close(qjl, fixture.qjl_reconstructed, fixture.absolute_tolerance, fixture.relative_tolerance)
+
+    product = [fixture.mse_reconstructed[index] + qjl[index] for index in range(fixture.dimensions)]
+    assert_vectors_close(product, fixture.product_reconstructed, fixture.absolute_tolerance, fixture.relative_tolerance)
+    assert_close(
+        dot(fixture.query, fixture.input),
+        fixture.exact_inner_product,
+        fixture.absolute_tolerance,
+        fixture.relative_tolerance,
+    )
+    assert_close(
+        dot(fixture.query, fixture.mse_reconstructed),
+        fixture.mse_inner_product_estimate,
+        fixture.absolute_tolerance,
+        fixture.relative_tolerance,
+    )
+    assert_close(
+        dot(fixture.query, product),
+        fixture.product_inner_product_estimate,
+        fixture.absolute_tolerance,
+        fixture.relative_tolerance,
+    )
+
+
+def test_non_byte_aligned_packing_is_canonical() -> None:
+    """Prove integer and sign padding is deterministic for partial bytes."""
+
+    fixture = assert_is_ok(load_packing())
+    assert_is_ok(validate_packing(fixture))
+
+    assert_eq(hexlify(pack_msb(fixture.integer_values, fixture.integer_bit_width)), fixture.integer_packed_hex)
+    assert_eq(hexlify(pack_msb(fixture.sign_values, 1)), fixture.sign_packed_hex)
+
+
+def test_reference_validation_fails_closed_on_versions_shapes_values_and_padding() -> None:
+    """Reject malformed versions, shapes, values, padding, and JSON."""
+
+    manifest_text = assert_is_ok(fixture_text("manifest.json")).replace(MANIFEST_SCHEMA, "unknown")
+    manifest = assert_is_ok(ReferenceManifest.from_json(manifest_text))
+    assert_is_err(validate_manifest(manifest))
+
+    generation = assert_is_ok(load_generation())
+    generation.rotation_uniforms = []
+    assert_is_err(validate_generation(generation))
+
+    mse = assert_is_ok(load_mse())
+    mse.indices[0] = 2
+    assert_is_err(validate_mse(mse))
+
+    product = assert_is_ok(load_product())
+    product.qjl_signs[0] = 0
+    assert_is_err(validate_product(product))
+
+    packing = assert_is_ok(load_packing())
+    packing.padding_bits_must_be_zero = false
+    assert_is_err(validate_packing(packing))
+
+    assert_is_err(ReferenceManifest.from_json("{"))

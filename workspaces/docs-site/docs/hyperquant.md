@@ -81,7 +81,9 @@ Diagnostics use stable error kinds and bounded implementation-owned detail. Call
 
 ## Profile roadmap
 
-The first compressed product candidates will be separately versioned, faithful TurboQuant product-style and MSE-oriented profiles. Conformance fixtures will map transforms, quantization, residuals, estimators, packing, and query-time behavior to explicit reference evidence before implementation.
+The first compressed product candidates are separately versioned TurboQuant product-style and MSE-oriented profiles. Their [reference contract](hyperquant-turboquant-reference.md) now maps transforms, quantization, residuals, estimators, packing, and query-time behavior to explicit paper evidence and Hees reproducibility decisions.
+
+The reference contract and conformance fixtures are frozen specification evidence. They do not mean the codecs are already implemented or public. The next implementation slice must reproduce those fixtures in Incan before either compressed profile can be selected.
 
 Both profiles will use bounded approximate nomination and an explicitly configured exact-reranking policy. Evaluation against `exact_cosine_0_1` and independent baselines will determine the default; the paper name alone will not.
 

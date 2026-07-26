@@ -1,0 +1,30 @@
+{
+  "schema_version": "hees_hyperquant_turboquant_fixture_0_1",
+  "fixture_id": "product_d4_b2_axis",
+  "profile_id": "turboquant_product_0_1",
+  "source_anchors": [
+    "paper:section_3_2:algorithm_2",
+    "paper:section_3_2:theorem_2",
+    "decision:TQ-SIGN-001",
+    "decision:TQ-PACK-001"
+  ],
+  "dimensions": 4,
+  "bit_width": 2,
+  "mse_bit_width": 1,
+  "input": [1.0, 0.0, 0.0, 0.0],
+  "mse_reconstructed": [0.7384760360028982, -0.22988355507003927, -0.1207820365806074, -0.32821424372992203],
+  "residual": [0.26152396399710176, 0.22988355507003927, 0.1207820365806074, 0.32821424372992203],
+  "residual_norm": 0.4935120290166806,
+  "projected_residual": [0.002442162313923177, -0.053721569291960924, -0.35062379392052023, -0.3062317930602148],
+  "qjl_signs": [1, -1, -1, -1],
+  "packed_qjl_hex": "80",
+  "qjl_scale": 0.15463140072546577,
+  "qjl_reconstructed": [0.5151541847001149, 0.06780438040856793, -0.2674879109230417, -0.02361069331636217],
+  "product_reconstructed": [1.253630220703013, -0.16207917466147134, -0.38826994750364907, -0.3518249370462842],
+  "query": [0.5, -0.5, 0.5, -0.5],
+  "exact_inner_product": 0.5,
+  "mse_inner_product_estimate": 0.587895899111126,
+  "product_inner_product_estimate": 0.6896321924535598,
+  "absolute_tolerance": 1e-12,
+  "relative_tolerance": 1e-12
+}

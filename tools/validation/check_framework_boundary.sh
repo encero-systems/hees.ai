@@ -149,6 +149,7 @@ allowed_docs=(
     workspaces/docs-site/docs/getting-started.md
     workspaces/docs-site/docs/governance-profiles.md
     workspaces/docs-site/docs/hyperquant.md
+    workspaces/docs-site/docs/hyperquant-turboquant-reference.md
     workspaces/docs-site/docs/index.md
     workspaces/docs-site/docs/rfcs.md
     workspaces/docs-site/docs/whitepapers/spectrum-and-content-dna.md

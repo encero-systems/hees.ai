@@ -1,0 +1,13 @@
+{
+  "schema_version": "hees_hyperquant_turboquant_fixture_0_1",
+  "fixture_id": "canonical_msb_packing",
+  "source_anchors": [
+    "decision:TQ-PACK-001"
+  ],
+  "integer_bit_width": 3,
+  "integer_values": [0, 1, 2, 3, 4],
+  "integer_packed_hex": "0538",
+  "sign_values": [1, 0, 1, 1, 0],
+  "sign_packed_hex": "b0",
+  "padding_bits_must_be_zero": true
+}
