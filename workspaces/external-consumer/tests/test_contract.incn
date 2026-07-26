@@ -1,8 +1,10 @@
 from std.testing import assert_eq, assert_is_ok
 from pub::hees_ai import (
     HyperquantEntry,
+    HyperquantProfile,
     PackageLoaderDescriptor,
     PackageLoaderValidation,
+    TurboquantConfiguration,
     exact_index,
     exact_query,
     hyperquant_entry,
@@ -52,3 +54,18 @@ def test_external_dependency_can_use_the_exact_hyperquant_oracle() -> None:
     assert_eq(len(result.nominations), 1)
     assert_eq(result.nominations[0].rank, 0)
     assert_eq(memory_id_text(result.nominations[0].memory_id), "sleep_schedule")
+
+
+def test_external_dependency_can_encode_and_decode_faithful_turboquant() -> None:
+    """Prove the codec survives the generated public-library boundary."""
+
+    configuration = assert_is_ok(
+        TurboquantConfiguration.create(HyperquantProfile.TurboquantMse01, 2, 2, 20260726, [-0.75, -0.25, 0.25, 0.75]),
+    )
+    code = assert_is_ok(configuration.encode([1.0, 0.0]))
+    decoded = assert_is_ok(configuration.decode(code.to_bytes()))
+
+    assert_eq(configuration.dimensions(), 2)
+    assert_eq(configuration.bit_width(), 2)
+    assert_eq(configuration.seed(), 20260726)
+    assert_eq(decoded.to_bytes(), code.to_bytes())

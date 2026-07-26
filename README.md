@@ -10,7 +10,7 @@ Hyperquant is Hees's first-party family of bounded vector-retrieval profiles. It
 
 The initial `exact_cosine_0_1` profile is an exhaustive full-precision oracle and small-corpus fallback. It validates and normalizes vectors, scores every indexed entry, retains only a bounded top-k trace, and resolves exact ties by canonical memory identifier. Compressed profiles will be compared against this oracle rather than weakening it.
 
-The implementation is Incan-authored under `src/hyperquant/`. Until Incan supports nested public module namespace exports, the intended Hyperquant declarations are explicitly re-exported from `pub::hees_ai`; [Incan issue #947](https://github.com/encero-systems/incan/issues/947) tracks the preferred `from pub::hees_ai import hyperquant` surface.
+The implementation is Incan-authored under `src/hyperquant/`. Until Incan supports nested public module namespace exports, the intended Hyperquant declarations are explicitly re-exported from `pub::hees_ai`; [Incan issue #948](https://github.com/encero-systems/incan/issues/948) tracks the preferred `from pub::hees_ai import hyperquant` surface.
 
 See the [Hyperquant retrieval guide](workspaces/docs-site/docs/hyperquant.md) for its authority boundary, bounds, API, and profile roadmap.
 

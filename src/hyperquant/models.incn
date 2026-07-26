@@ -13,6 +13,8 @@ pub enum HyperquantProfile(str):
     """Stable identity of one retrieval algorithm and behavioral contract."""
 
     ExactCosine01 = "exact_cosine_0_1"
+    TurboquantMse01 = "turboquant_mse_0_1"
+    TurboquantProduct01 = "turboquant_product_0_1"
 
 
 @derive(Clone, Eq)
@@ -28,6 +30,17 @@ pub enum HyperquantErrorKind(str):
     DimensionMismatch = "dimension_mismatch"
     DuplicateMemoryId = "duplicate_memory_id"
     InvalidTopK = "invalid_top_k"
+    InvalidBitWidth = "invalid_bit_width"
+    InvalidCodebook = "invalid_codebook"
+    InvalidPackedValue = "invalid_packed_value"
+    UnsupportedProfile = "unsupported_profile"
+    UnsupportedVersion = "unsupported_version"
+    TruncatedPayload = "truncated_payload"
+    TrailingPayload = "trailing_payload"
+    NonCanonicalPayload = "non_canonical_payload"
+    IntegrityMismatch = "integrity_mismatch"
+    ConfigurationMismatch = "configuration_mismatch"
+    NumericalFailure = "numerical_failure"
 
 
 @derive(Clone)
