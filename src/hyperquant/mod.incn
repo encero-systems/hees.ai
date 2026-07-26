@@ -18,3 +18,4 @@ pub from crate.hyperquant.models import (
     HyperquantNomination,
     HyperquantProfile,
 )
+pub from crate.hyperquant.turboquant import TurboquantCode, TurboquantConfiguration

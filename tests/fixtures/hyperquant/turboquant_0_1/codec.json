@@ -1,0 +1,30 @@
+{
+  "schema_version": "hees_hyperquant_turboquant_fixture_0_1",
+  "fixture_id": "canonical_codec_d4_seed20260726",
+  "source_anchors": [
+    "decision:TQ-RNG-001",
+    "decision:TQ-QR-001",
+    "decision:TQ-CODEBOOK-001",
+    "decision:TQ-SIGN-001",
+    "decision:TQ-PACK-001"
+  ],
+  "dimensions": 4,
+  "seed": 20260726,
+  "centroids": [-0.4244131815783876, 0.4244131815783876],
+  "mse": {
+    "profile_id": "turboquant_mse_0_1",
+    "bit_width": 1,
+    "configuration_hex": "4851545143464730000101010000000400000000013527760002bfdb2995e7b7b6043fdb2995e7b7b604",
+    "configuration_sha256": "3bd0b628d39887e8467b9b0a8a2ece14d8e5fa0b300fe78c07c26f4165436803",
+    "code_hex": "48515451434f444500010101000000043bd0b628d39887e8467b9b0a8a2ece14d8e5fa0b300fe78c07c26f416543680380ef884bf6a08a267914cccbe9d5cd39b9ee94ed3b7fd22b43b9bc70e823be70b2",
+    "code_sha256": "1a9c68560f87708bf1eb07d27d88aa0447819f2611c792eb77d424cc566fb12e"
+  },
+  "product": {
+    "profile_id": "turboquant_product_0_1",
+    "bit_width": 2,
+    "configuration_hex": "4851545143464730000102020000000400000000013527760002bfdb2995e7b7b6043fdb2995e7b7b604",
+    "configuration_sha256": "abdd7e9958db820cb40902bcff2622bfc9dd0241fc7a016a66d3689db7211f3e",
+    "code_hex": "48515451434f44450001020200000004abdd7e9958db820cb40902bcff2622bfc9dd0241fc7a016a66d3689db7211f3e80803fdf95b37a33cab1aac75312ff1c8b956107e36c3480b2a3485f5560916110b1372dd7a2e6786537",
+    "code_sha256": "513a5ba3222b4351764eed501f4b02fd897fd6f363b0d0b1135e1a7a22bbece1"
+  }
+}

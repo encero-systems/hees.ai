@@ -54,6 +54,11 @@
       "fixture_id": "canonical_msb_packing",
       "path": "packing.json",
       "sha256": "20b8241468584630a9fd061ca17bfd2c20e33b9c3f519a5bc899092364fb1247"
+    },
+    {
+      "fixture_id": "canonical_codec_d4_seed20260726",
+      "path": "codec.json",
+      "sha256": "97e1c89370d5978bdaa598e06cc711fc7a363a1ad632da57457a79a5c68b7803"
     }
   ]
 }

@@ -2,7 +2,9 @@
 
 This document freezes the reproducibility contract for Hees's first faithful TurboQuant retrieval profiles. It tells an implementer what comes directly from the published algorithm, what the paper leaves unspecified, and which deterministic decisions Hees makes so two implementations can produce the same result.
 
-The profiles described here are **specified, not yet implemented**. The current public Hyperquant implementation remains `exact_cosine_0_1`. Codec implementation and public compressed-profile constructors belong to the next slice and must pass the fixtures frozen here before they can be called TurboQuant.
+The profiles described here are implemented as a dense, faithful Incan reference codec. `TurboquantConfiguration` validates the numerical configuration, reproduces the frozen transforms, encodes and decodes canonical standalone payloads, reconstructs both profiles, and estimates product-profile inner products. The existing `exact_cosine_0_1` oracle remains the authoritative comparison and reranking baseline; bounded approximate nomination belongs to the next slice.
+
+The canonical envelope permits the shared Hyperquant maximum of 8,192 coordinates so future optimized implementations can preserve the profile contract. The current dense reference implementation deliberately accepts at most 256 coordinates. It materializes dense matrices and performs cubic-time Householder QR, so claiming the general envelope bound here would permit impractical allocations and setup work. Production-dimensional transforms require the measured optimized implementation in the next slice.
 
 ## Why a separate reference contract exists
 
@@ -37,7 +39,7 @@ The contract reserves two behavioral identities:
 
 These identities name mathematical behavior. They do not identify an implementation build, an embedding model, a corpus, an index page, or the eventual IncQL-DB storage representation.
 
-The fixture schema identity is `hees_hyperquant_turboquant_fixture_0_1`. The reference-contract identity is `hees_hyperquant_turboquant_reference_0_1`. A future codec implementation version and physical index format must remain separately identifiable.
+The fixture schema identity is `hees_hyperquant_turboquant_fixture_0_1`. The reference-contract identity is `hees_hyperquant_turboquant_reference_0_1`. The dense Incan implementation identity is `hees_hyperquant_turboquant_incan_0_1`. A future physical index format must remain separately identifiable.
 
 ## Shared vector contract
 
@@ -198,7 +200,7 @@ For example, five three-bit indices `[0, 1, 2, 3, 4]` produce hexadecimal `0538`
 
 ## Canonical standalone code envelope
 
-Slice 3 must implement a standalone binary envelope with the following field order. Multi-byte integers and IEEE-754 values are big-endian.
+The implemented standalone binary envelope uses the following field order. Multi-byte integers and IEEE-754 values are big-endian.
 
 | Field | Size | Contract |
 |---|---:|---|
@@ -207,7 +209,7 @@ Slice 3 must implement a standalone binary envelope with the following field ord
 | Format minor | `u8` | `1` |
 | Profile kind | `u8` | `1` for MSE, `2` for product |
 | Total bit width | `u8` | MSE `1..8`, product `1..8` |
-| Dimensions | `u32` | `1..8192` and equal to configuration |
+| Dimensions | `u32` | `1..8192` and equal to configuration; the dense Incan reference currently executes `1..256` |
 | Configuration digest | 32 bytes | Raw SHA-256 of canonical configuration bytes |
 | MSE indices | variable | Exactly `ceil(d × mse_bits / 8)` bytes |
 | QJL signs | variable | Product profile only; exactly `ceil(d / 8)` bytes |
@@ -260,13 +262,14 @@ The language-neutral fixture set lives under `tests/fixtures/hyperquant/turboqua
 | `mse.json` | Dimension-four one-bit rotation, centroid selection, packing, reconstruction, and squared error. |
 | `product.json` | Residual, QJL signs, product reconstruction, and query estimates. |
 | `packing.json` | Non-byte-aligned integer and sign packing with zero tail padding. |
+| `codec.json` | Canonical configuration and code envelopes, SHA-256 identities, and profile-specific fixture inputs. |
 | `manifest.json` | Paper identity, Hees decisions, fixture identities, and exact fixture digests. |
 
 The fixtures are JSON for accessibility to independent implementers. Their exact file digests are fixture-integrity evidence only; JSON is not the canonical compressed-code or configuration encoding.
 
 ## Fail-closed requirements
 
-A future implementation must reject:
+The reference implementation rejects:
 
 - unknown contract, profile, implementation, or physical-format versions;
 - unsupported dimensions or bit widths;
@@ -286,11 +289,11 @@ Decoding failure returns a closed Hyperquant error. It must not allocate from an
 
 This contract does not claim that:
 
-- the compressed profiles are implemented or exported today;
 - the dimension-four fixture predicts retrieval quality at production dimensions;
 - one seed proves unbiasedness, distortion, recall, latency, or memory behavior;
 - TurboQuant scores establish relevance, evidence support, rights, review, or authority;
 - the dense reference transform will be the performance default;
+- the dense reference implementation is suitable for the 768-coordinate Nomic production path before the optimized slice lands;
 - vector-search profiles can be reused as KV-cache format identities.
 
-Slice 3 implements the reference codecs in Incan. Slice 4 adds bounded approximate nomination and exact reranking. Slice 5 supplies the multi-domain, multilingual, and constrained-device evidence needed to select defaults.
+The reference codecs are now implemented in Incan. Slice 4 adds bounded approximate nomination and exact reranking. Slice 5 supplies the multi-domain, multilingual, and constrained-device evidence needed to select defaults.

@@ -80,10 +80,18 @@ pub class HyperquantExactIndex:
     def validate_entries(mut self) -> Result[None, HyperquantError]:
         """Set the shared dimension and validate entries without copying their vectors."""
 
-        mut canonical_ids: list[str] = []
+        mut canonical_ids: dict[str, bool] = {}
         mut first_entry = true
         for entry in self._entries:
-            canonical_ids.append(memory_id_text(entry.memory_id))
+            canonical_id = memory_id_text(entry.memory_id)
+            if canonical_id in canonical_ids:
+                return Err(
+                    HyperquantError.from_kind(
+                        HyperquantErrorKind.DuplicateMemoryId,
+                        "exact index memory identifiers must be unique",
+                    ),
+                )
+            canonical_ids.insert(canonical_id, true)
             if first_entry:
                 self._dimensions = entry.dimensions
                 first_entry = false
@@ -94,17 +102,6 @@ pub class HyperquantExactIndex:
                         "all exact-index vectors must have the same dimension",
                     ),
                 )
-
-        mut previous_id = ""
-        for canonical_id in sorted(canonical_ids):
-            if canonical_id == previous_id:
-                return Err(
-                    HyperquantError.from_kind(
-                        HyperquantErrorKind.DuplicateMemoryId,
-                        "exact index memory identifiers must be unique",
-                    ),
-                )
-            previous_id = canonical_id
 
         return Ok(None)
 

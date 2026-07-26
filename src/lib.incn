@@ -101,6 +101,8 @@ pub from hyperquant import (
     HyperquantExactResult,
     HyperquantNomination,
     HyperquantProfile,
+    TurboquantCode,
+    TurboquantConfiguration,
     exact_index,
     exact_query,
     hyperquant_entry,

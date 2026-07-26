@@ -16,6 +16,7 @@ const GENERATION_SHA256: str = "e01e46938fe133aa75b77fa3c552509bb8fb5da7cb33c25d
 const MSE_SHA256: str = "a5b2a4eb464fc6d7a7d627ccf64fe31922edc88b35f74b9fea7176997f0d1f3c"
 const PRODUCT_SHA256: str = "b26a7361a8516ea613099b65facac0c3ac79d099df0925ed1e88749cc7e0d48d"
 const PACKING_SHA256: str = "20b8241468584630a9fd061ca17bfd2c20e33b9c3f519a5bc899092364fb1247"
+const CODEC_SHA256: str = "97e1c89370d5978bdaa598e06cc711fc7a363a1ad632da57457a79a5c68b7803"
 
 
 @derive(Deserialize)
@@ -240,7 +241,7 @@ def validate_manifest(manifest: ReferenceManifest) -> Result[None, str]:
         return Err("unexpected normative TurboQuant source")
     if manifest.profiles != ["turboquant_mse_0_1", "turboquant_product_0_1"]:
         return Err("unexpected TurboQuant profile inventory")
-    if len(manifest.decisions) != 5 or len(manifest.fixtures) != 4:
+    if len(manifest.decisions) != 5 or len(manifest.fixtures) != 5:
         return Err("incomplete TurboQuant reference inventory")
 
     mut decision_ids: dict[str, bool] = {}
@@ -495,7 +496,7 @@ def test_manifest_freezes_source_decisions_and_exact_fixture_digests() -> None:
     manifest = assert_is_ok(load_manifest())
     assert_is_ok(validate_manifest(manifest))
 
-    expected = [("generation.json", GENERATION_SHA256), ("mse.json", MSE_SHA256), ("product.json", PRODUCT_SHA256), ("packing.json", PACKING_SHA256)]
+    expected = [("generation.json", GENERATION_SHA256), ("mse.json", MSE_SHA256), ("product.json", PRODUCT_SHA256), ("packing.json", PACKING_SHA256), ("codec.json", CODEC_SHA256)]
     for filename, digest in expected:
         assert_eq(assert_is_ok(fixture_digest(filename)), digest)
 
@@ -503,6 +504,7 @@ def test_manifest_freezes_source_decisions_and_exact_fixture_digests() -> None:
     assert_eq(manifest.fixtures[1].sha256, MSE_SHA256)
     assert_eq(manifest.fixtures[2].sha256, PRODUCT_SHA256)
     assert_eq(manifest.fixtures[3].sha256, PACKING_SHA256)
+    assert_eq(manifest.fixtures[4].sha256, CODEC_SHA256)
 
 
 def test_seeded_generation_fixture_is_bounded_and_orthonormal() -> None:
