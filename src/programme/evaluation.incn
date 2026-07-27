@@ -1,0 +1,282 @@
+"""
+Direct guided-programme operation evaluation.
+
+The evaluator checks one untrusted action and runtime frame against a validated programme declaration. Its public trace
+is safe to serialize and inspect, while ``ProgrammeEvaluation`` retains private backing state so a copied trace cannot
+be submitted as an eligible operation. Eligibility is not package admission or terminal Spectrum authority. No state
+or persistence mutation occurs inside this module.
+"""
+
+from crate.identifiers import GuidedCardId
+from crate.programme.context import (
+    action_origin_reason,
+    card_nomination_reason,
+    find_programme_card,
+    find_programme_choice,
+    progress_snapshot_reason,
+    runtime_frame_reason,
+)
+from crate.programme.decision import ProgrammeEvaluation, mark_operation_eligible
+from crate.programme.models import (
+    GuidedProgramme,
+    ProgrammeAction,
+    ProgrammeActionKind,
+    ProgrammeChoiceAction,
+    ProgrammeCurrentCardAction,
+    ProgrammeEnterAction,
+    ProgrammeMemoryOperation,
+    ProgrammeProgressPolicy,
+    ProgrammeProgressSnapshot,
+    ProgrammeRuntimeFrame,
+    ProgrammeTransitionAction,
+)
+from crate.programme.validation import validate_guided_programme
+
+
+def evaluate_enter(
+    programme: GuidedProgramme,
+    frame: ProgrammeRuntimeFrame,
+    action: ProgrammeEnterAction,
+) -> ProgrammeEvaluation:
+    """Make entry eligible only at the declared first card with complete nominated support."""
+
+    if frame.current_card_id is not None:
+        return ProgrammeEvaluation.rejected(
+            ProgrammeActionKind.Enter,
+            "programme_already_started",
+            frame.current_card_id,
+        )
+    if action.target_card_id != programme.entry_card_id:
+        return ProgrammeEvaluation.rejected(ProgrammeActionKind.Enter, "entry_card_mismatch", frame.current_card_id)
+    entry_card = find_programme_card(programme, programme.entry_card_id).unwrap()
+    match card_nomination_reason(entry_card, frame):
+        Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Enter, reason, frame.current_card_id)
+        None =>
+            return mark_operation_eligible(
+                ProgrammeActionKind.Enter,
+                frame.current_card_id,
+                Some(action.target_card_id),
+                None,
+                None,
+                ProgrammeMemoryOperation.None,
+            )
+
+
+def evaluate_advance(
+    programme: GuidedProgramme,
+    frame: ProgrammeRuntimeFrame,
+    action: ProgrammeTransitionAction,
+) -> ProgrammeEvaluation:
+    """Make only the current card's single declared forward edge eligible."""
+
+    match action_origin_reason(frame, action.from_card_id):
+        Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Advance, reason, frame.current_card_id)
+        None => pass
+    current_card = find_programme_card(programme, action.from_card_id).unwrap()
+    if Some(action.target_card_id) != current_card.next_card_id:
+        return ProgrammeEvaluation.rejected(
+            ProgrammeActionKind.Advance,
+            "transition_not_declared",
+            frame.current_card_id,
+        )
+    target_card = find_programme_card(programme, action.target_card_id).unwrap()
+    match card_nomination_reason(target_card, frame):
+        Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Advance, reason, frame.current_card_id)
+        None =>
+            return mark_operation_eligible(
+                ProgrammeActionKind.Advance,
+                frame.current_card_id,
+                Some(action.target_card_id),
+                None,
+                None,
+                ProgrammeMemoryOperation.None,
+            )
+
+
+def evaluate_backtrack(
+    programme: GuidedProgramme,
+    frame: ProgrammeRuntimeFrame,
+    action: ProgrammeTransitionAction,
+) -> ProgrammeEvaluation:
+    """Make a backtrack eligible only to the immediately preceding supported card."""
+
+    match action_origin_reason(frame, action.from_card_id):
+        Some(reason) =>
+            return ProgrammeEvaluation.rejected(ProgrammeActionKind.Backtrack, reason, frame.current_card_id)
+        None => pass
+    if len(frame.history) == 0 or action.target_card_id != frame.history[len(frame.history) - 1]:
+        return ProgrammeEvaluation.rejected(
+            ProgrammeActionKind.Backtrack,
+            "backtrack_not_in_history",
+            frame.current_card_id,
+        )
+    target_card = find_programme_card(programme, action.target_card_id).unwrap()
+    match card_nomination_reason(target_card, frame):
+        Some(reason) =>
+            return ProgrammeEvaluation.rejected(ProgrammeActionKind.Backtrack, reason, frame.current_card_id)
+        None => pass
+    return mark_operation_eligible(
+        ProgrammeActionKind.Backtrack,
+        frame.current_card_id,
+        Some(action.target_card_id),
+        None,
+        None,
+        ProgrammeMemoryOperation.None,
+    )
+
+
+def evaluate_choice(
+    programme: GuidedProgramme,
+    frame: ProgrammeRuntimeFrame,
+    action: ProgrammeChoiceAction,
+) -> ProgrammeEvaluation:
+    """Make one session-only value declared by the supported current card eligible."""
+
+    match action_origin_reason(frame, action.from_card_id):
+        Some(reason) =>
+            return ProgrammeEvaluation.rejected(ProgrammeActionKind.SelectChoice, reason, frame.current_card_id)
+        None => pass
+    current_card = find_programme_card(programme, action.from_card_id).unwrap()
+    match card_nomination_reason(current_card, frame):
+        Some(reason) =>
+            return ProgrammeEvaluation.rejected(ProgrammeActionKind.SelectChoice, reason, frame.current_card_id)
+        None => pass
+    match find_programme_choice(current_card, action.choice_id):
+        Some(choice) =>
+            return mark_operation_eligible(
+                ProgrammeActionKind.SelectChoice,
+                frame.current_card_id,
+                frame.current_card_id,
+                Some(choice.session_key),
+                Some(choice.session_value),
+                ProgrammeMemoryOperation.None,
+            )
+        None =>
+            return ProgrammeEvaluation.rejected(
+                ProgrammeActionKind.SelectChoice,
+                "choice_not_declared",
+                frame.current_card_id,
+            )
+
+
+def evaluate_complete(
+    programme: GuidedProgramme,
+    frame: ProgrammeRuntimeFrame,
+    action: ProgrammeCurrentCardAction,
+) -> ProgrammeEvaluation:
+    """Make completion eligible only from the package-declared completion card."""
+
+    match action_origin_reason(frame, action.from_card_id):
+        Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Complete, reason, frame.current_card_id)
+        None => pass
+    if action.from_card_id != programme.completion_card_id:
+        return ProgrammeEvaluation.rejected(
+            ProgrammeActionKind.Complete,
+            "completion_card_not_reached",
+            frame.current_card_id,
+        )
+    next_card_id: Option[GuidedCardId] = None
+    return mark_operation_eligible(
+        ProgrammeActionKind.Complete,
+        frame.current_card_id,
+        next_card_id,
+        None,
+        None,
+        ProgrammeMemoryOperation.None,
+    )
+
+
+def evaluate_resume(
+    programme: GuidedProgramme,
+    frame: ProgrammeRuntimeFrame,
+    snapshot: ProgrammeProgressSnapshot,
+) -> ProgrammeEvaluation:
+    """Make a matching durable snapshot eligible only when explicit progress is declared."""
+
+    if frame.current_card_id is not None:
+        return ProgrammeEvaluation.rejected(
+            ProgrammeActionKind.Resume,
+            "programme_already_started",
+            frame.current_card_id,
+        )
+    if programme.progress_policy != ProgrammeProgressPolicy.ExplicitSave:
+        return ProgrammeEvaluation.rejected(
+            ProgrammeActionKind.Resume,
+            "durable_progress_not_allowed",
+            frame.current_card_id,
+        )
+    match progress_snapshot_reason(programme, snapshot):
+        Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Resume, reason, frame.current_card_id)
+        None => pass
+    resumed_card = find_programme_card(programme, snapshot.current_card_id).unwrap()
+    match card_nomination_reason(resumed_card, frame):
+        Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Resume, reason, frame.current_card_id)
+        None =>
+            return mark_operation_eligible(
+                ProgrammeActionKind.Resume,
+                frame.current_card_id,
+                Some(snapshot.current_card_id),
+                None,
+                None,
+                ProgrammeMemoryOperation.None,
+            )
+
+
+def evaluate_memory_operation(
+    programme: GuidedProgramme,
+    frame: ProgrammeRuntimeFrame,
+    action: ProgrammeCurrentCardAction,
+    action_kind: ProgrammeActionKind,
+    operation: ProgrammeMemoryOperation,
+) -> ProgrammeEvaluation:
+    """Make an explicit progress effect eligible without mutating persistence inside Hees."""
+
+    match action_origin_reason(frame, action.from_card_id):
+        Some(reason) => return ProgrammeEvaluation.rejected(action_kind, reason, frame.current_card_id)
+        None => pass
+    if programme.progress_policy != ProgrammeProgressPolicy.ExplicitSave:
+        return ProgrammeEvaluation.rejected(action_kind, "durable_progress_not_allowed", frame.current_card_id)
+    current_card = find_programme_card(programme, action.from_card_id).unwrap()
+    match card_nomination_reason(current_card, frame):
+        Some(reason) => return ProgrammeEvaluation.rejected(action_kind, reason, frame.current_card_id)
+        None => pass
+    return mark_operation_eligible(action_kind, frame.current_card_id, frame.current_card_id, None, None, operation)
+
+
+pub def evaluate_programme_action(
+    programme: GuidedProgramme,
+    frame: ProgrammeRuntimeFrame,
+    action: ProgrammeAction,
+) -> ProgrammeEvaluation:
+    """Evaluate one complete operation without rendering content or mutating caller state."""
+
+    validation = validate_guided_programme(programme)
+    if not validation.valid:
+        return ProgrammeEvaluation.rejected(action.kind(), "invalid_programme", frame.current_card_id)
+    match runtime_frame_reason(programme, frame):
+        Some(reason) => return ProgrammeEvaluation.rejected(action.kind(), reason, frame.current_card_id)
+        None => pass
+
+    match action:
+        ProgrammeAction.Enter(payload) => return evaluate_enter(programme, frame, payload)
+        ProgrammeAction.Advance(payload) => return evaluate_advance(programme, frame, payload)
+        ProgrammeAction.Backtrack(payload) => return evaluate_backtrack(programme, frame, payload)
+        ProgrammeAction.SelectChoice(payload) => return evaluate_choice(programme, frame, payload)
+        ProgrammeAction.Complete(payload) => return evaluate_complete(programme, frame, payload)
+        ProgrammeAction.Resume(snapshot) => return evaluate_resume(programme, frame, snapshot)
+        ProgrammeAction.SaveProgress(payload) =>
+            return evaluate_memory_operation(
+                programme,
+                frame,
+                payload,
+                ProgrammeActionKind.SaveProgress,
+                ProgrammeMemoryOperation.SaveProgress,
+            )
+        ProgrammeAction.DiscardProgress(payload) =>
+            return evaluate_memory_operation(
+                programme,
+                frame,
+                payload,
+                ProgrammeActionKind.DiscardProgress,
+                ProgrammeMemoryOperation.DiscardProgress,
+            )

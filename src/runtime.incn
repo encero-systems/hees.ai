@@ -5,6 +5,7 @@ The runtime does not invoke a model, retrieve evidence, or claim semantic verifi
 an untrusted proposal; Hees checks structural authority before admitting the visible output.
 """
 
+from std.serde import json
 from crate.identifiers import ActionId, DomainId, EvidenceId, PackageId
 
 const GOVERNED_PACKAGE_SCHEMA_VERSION: str = "0.1"
@@ -16,7 +17,7 @@ def contains_control_characters(value: str) -> bool:
     return value.contains("\n") or value.contains("\r") or value.contains("\t")
 
 
-@derive(Clone)
+@derive(Clone, json)
 pub enum ReviewStatus(str):
     """Review state carried by a deployable evidence record."""
 
@@ -25,7 +26,7 @@ pub enum ReviewStatus(str):
     Rejected = "rejected"
 
 
-@derive(Clone)
+@derive(Clone, json)
 pub enum RightsStatus(str):
     """Whether runtime use of an evidence record is allowed."""
 

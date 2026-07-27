@@ -1,17 +1,34 @@
 from std.testing import assert_eq, assert_is_ok
 from pub::hees_ai import (
+    GuidedProgramme,
+    GuidedProgrammeCard,
     HyperquantEntry,
     HyperquantProfile,
     PackageLoaderDescriptor,
     PackageLoaderValidation,
+    ProgrammeAction,
+    ProgrammeActionKind,
+    ProgrammeEnterAction,
+    ProgrammeMemoryOperation,
+    ProgrammeProgressPolicy,
+    ProgrammeRuntimeFrame,
+    ReviewStatus,
+    RightsStatus,
     TurboquantConfiguration,
+    evaluate_programme_action,
     exact_index,
     exact_query,
+    guided_card_id,
     hyperquant_entry,
     memory_id,
     memory_id_text,
     package_loader_descriptor,
     package_loader_summary,
+    package_id,
+    programme_evaluation_trace,
+    programme_id,
+    project_eligible_programme_operation,
+    revision,
     validate_package_loader_descriptor,
 )
 
@@ -69,3 +86,56 @@ def test_external_dependency_can_encode_and_decode_faithful_turboquant() -> None
     assert_eq(configuration.bit_width(), 2)
     assert_eq(configuration.seed(), 20260726)
     assert_eq(decoded.to_bytes(), code.to_bytes())
+
+
+def test_external_dependency_can_request_a_guided_programme_operation() -> None:
+    """Prove eligibility crosses the public library boundary without exporting its private capability."""
+
+    card_id = guided_card_id("completion")
+    programme = GuidedProgramme(
+        programme_id=programme_id("one_card_programme"),
+        package_id=package_id("consumer_fixture"),
+        revision=revision("1.0.0"),
+        language_ids=["en"],
+        audience_ids=["adult_learner"],
+        entry_card_id=card_id,
+        completion_card_id=card_id,
+        progress_policy=ProgrammeProgressPolicy.SessionOnly,
+        cards=[GuidedProgrammeCard(
+            card_id=card_id,
+            evidence_ids=[],
+            memory_ids=[],
+            language_ids=["en"],
+            audience_ids=["adult_learner"],
+            choices=[],
+            next_card_id=None,
+            completion=true,
+            review_status=ReviewStatus.Approved,
+            rights_status=RightsStatus.Allowed,
+        )],
+    )
+    frame = ProgrammeRuntimeFrame(
+        package_id=package_id("consumer_fixture"),
+        programme_id=programme_id("one_card_programme"),
+        revision=revision("1.0.0"),
+        current_card_id=None,
+        history=[],
+        language_id="en",
+        audience_id="adult_learner",
+        nominated_memory_ids=[],
+        nominated_evidence_ids=[],
+    )
+    action = ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=card_id))
+
+    evaluation = evaluate_programme_action(programme, frame, action)
+    trace = programme_evaluation_trace(evaluation.clone())
+    projection = project_eligible_programme_operation(evaluation)
+
+    assert_eq(trace.eligible, true)
+    assert_eq(trace.reason, "eligible")
+    match projection:
+        Some(operation) =>
+            assert_eq(operation.action, ProgrammeActionKind.Enter)
+            assert_eq(operation.next_card_id, Some(card_id))
+            assert_eq(operation.memory_operation, ProgrammeMemoryOperation.None)
+        None => assert_eq(true, false)

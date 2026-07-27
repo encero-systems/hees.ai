@@ -14,6 +14,14 @@ The implementation is Incan-authored under `src/hyperquant/`. Until Incan suppor
 
 See the [Hyperquant retrieval guide](workspaces/docs-site/docs/hyperquant.md) for its authority boundary, bounds, API, and profile roadmap.
 
+## Guided programmes
+
+The guided-programme preview defines bounded programme, card, choice, transition, progress and learner-operation contracts in Incan. A programme declaration can be validated for exact topology, reviewed and rights-allowed cards, language and audience catalogues, support references, completion and package-owned progress policy. Untrusted runtime frames and payload-enum actions can then be evaluated for operation eligibility.
+
+This is deliberately a structural precursor. Runtime support identifiers are nominations, not selected memory, and an eligible operation is not an admitted package artifact or terminal Spectrum decision. The remaining integrations are canonical package admission, governed-memory materialization, Spectrum, Content DNA and receipts.
+
+See the [guided-programme guide](workspaces/docs-site/docs/guided-programmes.md) for the complete public boundary and current limitations.
+
 ## hees.ai console
 
 hees.ai console is the terminal-first, local-first development environment for governed AI. Its north-star workflow begins before the prompt: developers explore evidence, curate governed memory, create and validate reusable profiles, pressure-test material through Training by Committee, run live or saved interactions, and inspect Spectrum, selected memory, Content DNA, receipts and trace. This release begins with a supplied fictional package containing reviewed evidence and memory, then implements session-local candidate staging, profile validation, committee pressure-testing, governed interactions, and terminal artifacts. It does not yet ingest arbitrary evidence, derive memory atoms, persist edits, or activate a candidate.
@@ -203,6 +211,8 @@ Implemented now:
 - a small in-memory governed-package contract;
 - fail-closed structural package validation;
 - fail-closed proposal admission against package-owned actions and reviewed, rights-allowed evidence records;
+- exact and faithful compressed Hyperquant profiles that nominate bounded package-owned memory identifiers without granting authority;
+- guided-programme declaration validation and operation eligibility with closed action payloads, deterministic topology, bounded progress and non-authoritative support nominations;
 - the closed, fixture-bounded `console_profile_0_1` package, request, proposal, manifest, observation, finding, and reason contracts;
 - deterministic relation and synthesis classification, checked structural-kernel delegation, and exact selected-memory freezing;
 - admitted-answer Content DNA, admitted receipts, and identity-safe rejection receipts with frozen canonical SHA-256 goldens;
@@ -215,7 +225,8 @@ Implemented now:
 Not implemented by the checked `0.0.1` library:
 
 - a bundled local model inference engine; the implemented remote provider adapter remains optional and explicitly selected;
-- retrieval, vector search, RAG, or semantic claim verification;
+- governed retrieval-result admission, selected-memory materialization, RAG composition, or semantic claim verification;
+- canonical guided-programme package admission or terminal programme decisions with Spectrum, Content DNA, and receipts;
 - generic filesystem package loading or archive handling outside the closed in-memory console profile;
 - an authoritative semantic evaluator: the console profile consumes bounded provider observations, then classifies and applies them under package policy;
 - proof of source ownership, licensing, or content rights outside the explicit package status value;
