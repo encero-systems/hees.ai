@@ -1,0 +1,44 @@
+"""Validated vector operations shared by exact and compressed Hyperquant profiles."""
+
+import std.math
+from crate.hyperquant.models import MAX_HYPERQUANT_DIMENSIONS, HyperquantError, HyperquantErrorKind
+
+
+pub def normalize_vector(values: list[float]) -> Result[list[float], HyperquantError]:
+    """Validate and normalize one finite non-zero vector without mutating its input."""
+
+    if len(values) == 0:
+        return Err(HyperquantError.from_kind(HyperquantErrorKind.EmptyVector, "vector must contain at least one value"))
+    if len(values) > MAX_HYPERQUANT_DIMENSIONS:
+        return Err(
+            HyperquantError.from_kind(
+                HyperquantErrorKind.VectorTooLarge,
+                f"vector exceeds the {MAX_HYPERQUANT_DIMENSIONS}-dimension contract bound",
+            ),
+        )
+
+    mut maximum_magnitude = 0.0
+    for value in values:
+        if not value.is_finite():
+            return Err(HyperquantError.from_kind(HyperquantErrorKind.NonFiniteValue, "vector values must all be finite"))
+        magnitude = math.abs(value)
+        if magnitude > maximum_magnitude:
+            maximum_magnitude = magnitude
+
+    if maximum_magnitude == 0.0:
+        return Err(HyperquantError.from_kind(HyperquantErrorKind.ZeroVector, "vector norm must be greater than zero"))
+
+    scaled_values = [value / maximum_magnitude for value in values]
+    scaled_squared_norm = scaled_values.iter().map((value) => value * value).sum()
+    scaled_norm = math.sqrt(scaled_squared_norm)
+    return Ok([value / scaled_norm for value in scaled_values])
+
+
+pub def relevance_basis_points(cosine_similarity: float) -> int:
+    """Project positive cosine similarity into RFC 003's inclusive basis-point range."""
+
+    if cosine_similarity <= 0.0:
+        return 0
+    if cosine_similarity >= 1.0:
+        return 10000
+    return int(math.round(cosine_similarity * 10000.0))

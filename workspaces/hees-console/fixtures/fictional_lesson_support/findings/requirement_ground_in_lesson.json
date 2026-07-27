@@ -1,0 +1,20 @@
+{
+  "contract_version": "console_finding_0_1",
+  "profile_id": "console_profile_0_1",
+  "finding_id": "finding_requirement_ground_in_lesson",
+  "observation_id": "observation_requirement_ground_in_lesson",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "package_revision": "1.0.0",
+  "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+  "request_id": "request_valid_lantern",
+  "request_digest": "sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71",
+  "candidate_digest": "sha256:1eb12d81b9766254c61281524d9c18cd68ec9027ec65f4f059944b4638ed2b19",
+  "target_id": "target_requirement_ground_in_lesson",
+  "target_digest": "sha256:08a4140d009e8cb48527abf891e218584f0e834951a6fbbae0a55933f66e52ee",
+  "evaluator_role": "synthesis_coverage",
+  "target_role": "requirement_coverage",
+  "classification": "covered",
+  "constraint_plan_id": "fictional_lesson_constraints",
+  "constraint_plan_revision": "1.0.0"
+}

@@ -19,7 +19,7 @@ body:
   - type: textarea
     attributes:
       label: Why this belongs in Hees
-      description: Explain why this is a reusable governance-runtime responsibility rather than Workbench, package, provider, or research behavior.
+      description: Explain why this is a reusable governance-runtime responsibility rather than package-authoring, implementation-package, provider, or research behavior.
     validations:
       required: true
   - type: textarea
@@ -31,7 +31,7 @@ body:
   - type: textarea
     attributes:
       label: Non-goals
-      description: Identify behavior that should remain with callers, implementation packages, providers, Workbench, or research tooling.
+      description: Identify behavior that should remain with callers, implementation packages, providers, package-authoring systems, or research tooling.
     validations:
       required: true
   - type: textarea

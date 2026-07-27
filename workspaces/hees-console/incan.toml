@@ -1,0 +1,18 @@
+[project]
+name = "hees_console"
+version = "0.1.0"
+description = "Native Incan console for inspecting governed Hees interactions"
+authors = ["Encero Systems"]
+license = "Apache-2.0"
+
+[project.scripts]
+main = "src/main.incn"
+
+[dependencies]
+hees_ai = { workspace = true }
+
+[rust-dependencies]
+crossterm = { workspace = true }
+unicode-width = { workspace = true }
+unicode-segmentation = { workspace = true }
+ureq = { workspace = true }

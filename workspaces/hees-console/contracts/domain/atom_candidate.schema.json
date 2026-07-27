@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hees.ai/contracts/console/console_atom_candidate_0_1.schema.json",
+  "title": "hees.ai console Build Week initial-profile display-only atom candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "profile_id", "package_id", "domain_id", "source_ref", "source_fingerprint", "claim", "guidance", "language", "candidate_digest"],
+  "properties": {
+    "contract_version": {"const": "console_atom_candidate_0_1"},
+    "profile_id": {"const": "console_profile_0_1"},
+    "package_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "domain_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,127}$"},
+    "source_ref": {"type": "string", "pattern": "^fictional/(?!.*\\.\\.)[a-z0-9_./-]+$", "maxLength": 256},
+    "source_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "claim": {"type": "string", "minLength": 1, "maxLength": 512},
+    "guidance": {"type": "string", "minLength": 1, "maxLength": 512},
+    "language": {"const": "en"},
+    "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

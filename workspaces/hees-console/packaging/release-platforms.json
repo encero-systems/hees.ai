@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "incan_toolchain": {
+    "version": "0.5.0-dev.23",
+    "source_repository": "https://github.com/encero-systems/incan",
+    "source_commit": "121b1b789508d8fa83aa7f9400fef52e294afa62"
+  },
+  "platforms": {
+    "linux-x86_64": {
+      "runner": "ubuntu-24.04",
+      "system": "Linux",
+      "machine": "x86_64"
+    },
+    "macos-aarch64": {
+      "runner": "macos-15",
+      "system": "Darwin",
+      "machine": "aarch64"
+    },
+    "macos-x86_64": {
+      "runner": "macos-15-intel",
+      "system": "Darwin",
+      "machine": "x86_64"
+    }
+  },
+  "unsupported_platforms": {
+    "linux-aarch64": "The candidate matrix has no standard hosted Linux ARM64 runner.",
+    "windows-aarch64": "The candidate matrix has not executed a Windows ARM64 build.",
+    "windows-x86_64": "The candidate matrix has not executed a Windows x86_64 build."
+  }
+}

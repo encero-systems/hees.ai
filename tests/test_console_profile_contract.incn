@@ -1,0 +1,517 @@
+from std.testing import assert_eq, assert_is_err, assert_is_ok
+
+"""Contract and precedence tests for the fixed Build Week console profile."""
+
+from rust::std::string import String as RustString
+from std.encoding.hex import hexlify
+from std.fs import Path
+from std.hash import sha256
+from std.serde import json
+from std.serde.json import Deserialize
+from crate.identifiers import (
+    DigestIdType,
+    action_id,
+    constraint_plan_id,
+    contract_id,
+    evidence_id,
+    evidence_id_text,
+    digest_id_type,
+    finding_id_text,
+    memory_id_text,
+    request_id,
+    revision,
+    response_contract_id,
+)
+from crate.console_profile import (
+    ConsolePackage,
+    ConsoleProposal,
+    ConsolePolicy,
+    ConsoleRequestBinding,
+    RelationObservation,
+    SynthesisObservation,
+    evaluate_console_profile,
+)
+from crate.console_profile_identity import (
+    compile_console_package_candidate,
+    console_package_artifact_identity_is_valid,
+    digest_canonical_json,
+    digest_atom_provenance,
+    digest_package_artifact,
+    digest_proposal,
+    digest_request_binding,
+)
+from crate.console_profile_models import DerivedFinding
+from crate.console_profile_observations import derive_findings, finding_policy_reason, validate_observation_coverage
+from crate.console_profile_planning import (
+    bind_console_request_json,
+    build_verifier_manifest,
+    identify_console_proposal_json,
+    plan_console_manifest_json,
+    plan_console_provider_context_json,
+)
+from crate.console_profile_validation import (
+    classify_relation,
+    classify_synthesis,
+    console_package_candidate_diagnostic,
+    validate_console_package,
+    validate_console_proposal,
+    validate_request_binding,
+)
+
+
+def policy() -> ConsolePolicy:
+    """Return the frozen policy thresholds used by classification unit tests."""
+
+    return ConsolePolicy(
+        constraint_plan_id=constraint_plan_id("fictional_lesson_constraints"),
+        constraint_plan_revision=revision("1.0.0"),
+        response_contract_id=response_contract_id("fictional_lesson_response"),
+        response_contract_revision=revision("1.0.0"),
+        min_support_bps=6500,
+        max_contradiction_bps=3500,
+        max_relation_unresolved_bps=2500,
+        min_coverage_bps=6500,
+        max_gap_bps=3500,
+        max_synthesis_unresolved_bps=2500,
+    )
+
+
+def test_canonical_json_digest_returns_a_typed_result() -> None:
+    """Canonicalize equivalent object ordering before constructing a digest identity."""
+
+    left = assert_is_ok(digest_canonical_json("{\"b\":2,\"a\":1}"))
+    right = assert_is_ok(digest_canonical_json("{\"a\":1,\"b\":2}"))
+    assert_eq(left, right)
+
+
+def test_canonical_json_digest_rejects_malformed_input() -> None:
+    """Keep malformed arbitrary JSON outside the identity-bearing digest path."""
+
+    assert_is_err(digest_canonical_json("{\"a\":"))
+
+
+def test_request_digest_matches_the_frozen_rfc010_golden() -> None:
+    """Bind the exact request identifier and question to the RFC golden digest."""
+
+    request = ConsoleRequestBinding(
+        request_id=request_id("request_valid_lantern"),
+        question="What order should I use for the Lantern Path cards?",
+        request_digest=digest_id_type("sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71"),
+    )
+    assert_eq(digest_request_binding(request), request.request_digest)
+
+
+def test_public_request_plan_binds_one_bounded_question_without_exposing_digest_authority() -> None:
+    """Construct the request envelope used by live Console composition."""
+
+    plan = bind_console_request_json("request_live_console", "What order should I use for the Lantern Path cards?")
+    assert_eq(plan.contains("\"contract_version\":\"console_request_plan_0_1\""), true)
+    assert_eq(plan.contains("\"plannable\":true"), true)
+    assert_eq(plan.contains("\"request_id\":\"request_live_console\""), true)
+    assert_eq(plan.contains("\"request_digest\":\"sha256:"), true)
+    assert_eq(plan.contains("\"decision\""), false)
+
+
+def test_public_request_plan_rejects_invalid_input_without_a_terminal_reason() -> None:
+    """Keep invalid live input outside proposal and terminal authority surfaces."""
+
+    plan = bind_console_request_json("request_live_console", "")
+    assert_eq(plan.contains("\"plannable\":false"), true)
+    assert_eq(plan.contains("\"request\":null"), true)
+    assert_eq(plan.contains("invalid_question"), false)
+
+
+def test_relation_classification_uses_fail_closed_precedence() -> None:
+    """Prefer contradiction and uncertainty over nominal support scores."""
+
+    rules = policy()
+    assert_eq(classify_relation(rules, 9000, 3600, 0), "contradicted")
+    assert_eq(classify_relation(rules, 9000, 100, 2600), "uncertain")
+    assert_eq(classify_relation(rules, 6500, 1000, 2500), "supported")
+    assert_eq(classify_relation(rules, 6400, 1000, 2600), "uncertain")
+    assert_eq(classify_relation(rules, 6400, 1000, 2500), "unsupported")
+
+
+def test_synthesis_classification_uses_fail_closed_precedence() -> None:
+    """Prefer gaps and uncertainty over nominal synthesis coverage."""
+
+    rules = policy()
+    assert_eq(classify_synthesis(rules, 9000, 3600, 0), "not_covered")
+    assert_eq(classify_synthesis(rules, 9000, 100, 2600), "uncertain")
+    assert_eq(classify_synthesis(rules, 6500, 1000, 2500), "covered")
+    assert_eq(classify_synthesis(rules, 6400, 1000, 2500), "not_covered")
+
+
+def read_fixture(path: str) -> Result[str, str]:
+    """Read one UTF-8 profile fixture from the repository."""
+
+    return Path(path).read_text("utf-8", "strict").map_err((error) => error.message())
+
+
+def load_package() -> Result[ConsolePackage, str]:
+    """Decode the frozen fixed package fixture."""
+
+    text = read_fixture("workspaces/hees-console/fixtures/fictional_lesson_support/package/package.json")?
+    return ConsolePackage.from_json(text).map_err((_error) => f"invalid package fixture")
+
+
+def load_request() -> Result[ConsoleRequestBinding, str]:
+    """Decode the frozen request-binding fixture."""
+
+    text = read_fixture("workspaces/hees-console/fixtures/fictional_lesson_support/requests/valid_lantern.json")?
+    return ConsoleRequestBinding.from_json(text).map_err((_error) => f"invalid request fixture")
+
+
+def load_proposal() -> Result[ConsoleProposal, str]:
+    """Decode the frozen valid proposal fixture."""
+
+    text = read_fixture("workspaces/hees-console/fixtures/fictional_lesson_support/proposals/valid_lantern.json")?
+    return ConsoleProposal.from_json(text).map_err((_error) => f"invalid proposal fixture")
+
+
+def load_blank_text_proposal() -> Result[ConsoleProposal, str]:
+    """Decode a structurally valid proposal whose visible text is blank."""
+
+    text = read_fixture("workspaces/hees-console/fixtures/fictional_lesson_support/negative/proposal_blank_text.json")?
+    return ConsoleProposal.from_json(text).map_err((_error) => f"invalid blank-text proposal fixture")
+
+
+def load_relations() -> Result[list[RelationObservation], str]:
+    """Decode relation observations in manifest order."""
+
+    paths = ["relation_visible_sequence.json", "relation_visible_grounding.json", "relation_support_sequence.json", "relation_support_grounding.json", "relation_contradiction.json"]
+    mut result: list[RelationObservation] = []
+    for filename in paths:
+        text = read_fixture(f"workspaces/hees-console/fixtures/fictional_lesson_support/observations/{filename}")?
+        result.append(RelationObservation.from_json(text)?)
+    return Ok(result)
+
+
+def load_syntheses() -> Result[list[SynthesisObservation], str]:
+    """Decode synthesis observations in manifest order."""
+
+    paths = ["synthesis_request.json", "synthesis_explain_sequence.json", "synthesis_ground_in_lesson.json"]
+    mut result: list[SynthesisObservation] = []
+    for filename in paths:
+        text = read_fixture(f"workspaces/hees-console/fixtures/fictional_lesson_support/observations/{filename}")?
+        result.append(SynthesisObservation.from_json(text)?)
+    return Ok(result)
+
+
+def text_digest(value: str) -> DigestIdType:
+    """Hash exact UTF-8 fixture text for adversarial package mutations."""
+
+    return digest_id_type(f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}")
+
+
+def self_consistent_forged_package() -> ConsolePackage:
+    """Rebind every caller-computable digest after changing fixed package content."""
+    mut package = assert_is_ok(load_package())
+    package.mission = f"A caller-authored mission that must never become the fixed profile package."
+    package.artifact_digest = digest_package_artifact(package)
+    for index in range(len(package.atoms)):
+        mut atom = package.atoms[index]
+        atom.provenance_digest = digest_atom_provenance(package, atom)
+        package.atoms[index] = atom
+    return package
+
+
+def test_frozen_package_request_and_proposal_validate_in_incan() -> None:
+    """Accept the exact fixed package, request, and proposal identity graph."""
+
+    package = assert_is_ok(load_package())
+    request = assert_is_ok(load_request())
+    proposal = assert_is_ok(load_proposal())
+    assert_eq(validate_console_package(package).valid, true)
+    assert_eq(digest_package_artifact(package), package.artifact_digest)
+    assert_eq(validate_request_binding(request).valid, true)
+    assert_eq(validate_console_proposal(package, request, proposal).valid, true)
+
+
+def test_candidate_compilation_rebinds_integrity_before_semantic_validation() -> None:
+    """Give a reduced candidate a new valid identity before reporting its exact shape failure."""
+
+    mut package = assert_is_ok(load_package())
+    baseline_artifact_digest = package.artifact_digest
+    package.atoms = package.atoms[1:]
+    candidate = compile_console_package_candidate(package)
+    validation = validate_console_package(candidate)
+
+    assert_eq(candidate.artifact_digest == baseline_artifact_digest, false)
+    assert_eq(console_package_artifact_identity_is_valid(candidate), true)
+    assert_eq(validation.valid, false)
+    assert_eq(validation.reason, "invalid_package")
+    assert_eq(validation.errors, ["invalid_package_atoms"])
+    assert_eq(console_package_candidate_diagnostic(candidate), "invalid_package_atoms")
+
+
+def test_optional_support_evidence_absence_reaches_visible_unit_validation() -> None:
+    """Treat omitted support evidence as optional before visible-unit validation."""
+
+    package = assert_is_ok(load_package())
+    proposal = assert_is_ok(load_blank_text_proposal())
+    request = ConsoleRequestBinding(
+        request_id=proposal.request_id,
+        question="Fixture question is irrelevant to proposal-shape validation.",
+        request_digest=proposal.request_digest,
+    )
+    validation = validate_console_proposal(package, request, proposal)
+    assert_eq(validation.valid, false)
+    assert_eq(validation.reason, "invalid_visible_unit")
+
+
+def test_self_consistent_caller_package_cannot_replace_the_fixed_profile_package() -> None:
+    """Reject a fully recomputed caller package that replaces fixed authority."""
+
+    validation = validate_console_package(self_consistent_forged_package())
+    assert_eq(validation.valid, false)
+    assert_eq(validation.reason, "artifact_digest_mismatch")
+
+
+def test_source_spans_must_align_to_utf8_code_point_boundaries() -> None:
+    """Reject byte offsets that split a multibyte source code point before provenance evaluation."""
+
+    mut package = assert_is_ok(load_package())
+    mut source = package.sources[0]
+    source.text = "é".to_string()
+    source.source_fingerprint = text_digest(source.text)
+    package.sources[0] = source
+    mut atom = package.atoms[0]
+    atom.source_fingerprint = text_digest("é")
+    atom.source_span.start_utf8_byte = 1
+    atom.source_span.end_utf8_byte = 2
+    package.atoms[0] = atom
+
+    validation = validate_console_package(package)
+    assert_eq(validation.valid, false)
+    assert_eq(validation.reason, "invalid_package")
+    assert_eq(validation.errors.contains("invalid_atom_source_span"), true)
+
+
+def test_evidence_failure_precedence_is_independent_of_array_order() -> None:
+    """Keep duplicate-evidence precedence stable across mapping order."""
+
+    package = assert_is_ok(load_package())
+    request = assert_is_ok(load_request())
+    mut pending_first = assert_is_ok(load_proposal())
+    pending_first.evidence_ids = [evidence_id("evidence_public_ranking_draft"), evidence_id("evidence_unknown")]
+    mut unknown_first = assert_is_ok(load_proposal())
+    unknown_first.evidence_ids = [evidence_id("evidence_unknown"), evidence_id("evidence_public_ranking_draft")]
+    assert_eq(validate_console_proposal(package, request, pending_first).reason, "unknown_evidence")
+    assert_eq(validate_console_proposal(package, request, unknown_first).reason, "unknown_evidence")
+
+
+def test_incan_manifest_matches_all_frozen_target_digests() -> None:
+    """Freeze every Hees-authored verifier target digest in manifest order."""
+
+    package = assert_is_ok(load_package())
+    request = assert_is_ok(load_request())
+    proposal = assert_is_ok(load_proposal())
+    assert_eq(
+        digest_proposal(proposal),
+        digest_id_type("sha256:1eb12d81b9766254c61281524d9c18cd68ec9027ec65f4f059944b4638ed2b19"),
+    )
+    manifest = build_verifier_manifest(package, request, proposal)
+    assert_eq(len(manifest), 8)
+    assert_eq(
+        manifest[0].target_digest,
+        digest_id_type("sha256:271b2e6039cd713abe53435fcacb820e5a311bca6e87b99e06ea55cc09646336"),
+    )
+    assert_eq(
+        manifest[1].target_digest,
+        digest_id_type("sha256:73fadba709376ab7df86ad957e8759f0139775889c994738d6da44c2c0748267"),
+    )
+    assert_eq(
+        manifest[2].target_digest,
+        digest_id_type("sha256:6a12e4324d63e1df7a769c0262370b53e15373a7593a8f32e0164dda4855de3f"),
+    )
+    assert_eq(
+        manifest[3].target_digest,
+        digest_id_type("sha256:12ee1309d571b36b72e40cebcc641b7fd7fb292df4712aa3c317bda80ae71f00"),
+    )
+    assert_eq(
+        manifest[4].target_digest,
+        digest_id_type("sha256:f6b6878ae664c1c3cab42efe594fe81613a7cf92cac5e02d00ae16b3989281f4"),
+    )
+    assert_eq(
+        manifest[5].target_digest,
+        digest_id_type("sha256:02e512ba1eedf2d9fad53cb715b692c4a54fa470272c22873f57d2462e305046"),
+    )
+    assert_eq(
+        manifest[6].target_digest,
+        digest_id_type("sha256:bdd23fbcdcb26fe9075bfbcd2bec9898b90ac6ca49d3840fcc17dc5025d42391"),
+    )
+    assert_eq(
+        manifest[7].target_digest,
+        digest_id_type("sha256:08a4140d009e8cb48527abf891e218584f0e834951a6fbbae0a55933f66e52ee"),
+    )
+
+
+def test_public_proposal_identity_projects_only_the_hees_canonical_digest() -> None:
+    """Expose provider transport identity without exporting raw digest construction or authority."""
+
+    identity = identify_console_proposal_json(assert_is_ok(load_proposal()))
+    assert_eq(identity.contains("\"contract_version\":\"console_proposal_identity_0_1\""), true)
+    assert_eq(identity.contains("\"proposal_id\":\"proposal_valid_lantern\""), true)
+    assert_eq(
+        identity.contains(
+            "\"candidate_digest\":\"sha256:1eb12d81b9766254c61281524d9c18cd68ec9027ec65f4f059944b4638ed2b19\"",
+        ),
+        true,
+    )
+    assert_eq(identity.contains("\"decision\""), false)
+    assert_eq(identity.contains("\"classification\""), false)
+
+
+def test_public_manifest_plan_exposes_only_hees_authored_non_terminal_targets() -> None:
+    """Project a valid target plan while keeping classifications and decisions internal."""
+
+    plan = plan_console_manifest_json(
+        assert_is_ok(load_package()),
+        assert_is_ok(load_request()),
+        assert_is_ok(load_proposal()),
+    )
+    assert_eq(plan.contains("\"contract_version\":\"console_manifest_plan_0_1\""), true)
+    assert_eq(plan.contains("\"plannable\":true"), true)
+    assert_eq(plan.contains("\"target_id\":\"target_visible_unit_sequence\""), true)
+    assert_eq(plan.contains("\"decision\""), false)
+    assert_eq(plan.contains("\"classification\""), false)
+
+
+def test_public_manifest_plan_does_not_prejudge_an_unauthorized_proposal() -> None:
+    """Return no target plan and leave the exact rejection to terminal profile evaluation."""
+
+    mut proposal = assert_is_ok(load_proposal())
+    proposal.action_id = action_id("action_unknown")
+    plan = plan_console_manifest_json(assert_is_ok(load_package()), assert_is_ok(load_request()), proposal)
+    assert_eq(plan.contains("\"plannable\":false"), true)
+    assert_eq(plan.contains("\"targets\":[]"), true)
+    assert_eq(plan.contains("unknown_action"), false)
+
+
+def test_public_provider_context_contains_only_hees_admitted_memory() -> None:
+    """Project declared package context while excluding pending and rights-denied atoms."""
+
+    plan = plan_console_provider_context_json(assert_is_ok(load_package()), assert_is_ok(load_request()))
+    assert_eq(plan.contains("\"contract_version\":\"console_provider_context_plan_0_1\""), true)
+    assert_eq(plan.contains("\"plannable\":true"), true)
+    assert_eq(plan.contains("memory_lantern_sequence"), true)
+    assert_eq(plan.contains("memory_echo_markers"), true)
+    assert_eq(plan.contains("memory_pebble_reserve"), true)
+    assert_eq(plan.contains("memory_public_ranking_draft"), false)
+    assert_eq(plan.contains("Publish a learner ranking"), false)
+    assert_eq(plan.contains("\"decision\""), false)
+
+
+def test_public_provider_context_fails_closed_without_returning_an_authority_reason() -> None:
+    """Return a typed non-plannable envelope for an invalid request without a terminal reason."""
+
+    mut request = assert_is_ok(load_request())
+    request.request_digest = digest_id_type("sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+    plan = plan_console_provider_context_json(assert_is_ok(load_package()), request)
+    assert_eq(plan.contains("\"plannable\":false"), true)
+    assert_eq(plan.contains("\"context\":null"), true)
+    assert_eq(plan.contains("request_digest_mismatch"), false)
+    assert_eq(plan.contains("\"decision\""), false)
+
+
+def test_complete_observations_derive_the_frozen_supported_findings() -> None:
+    """Derive the expected finding identities and classifications from observations."""
+
+    package = assert_is_ok(load_package())
+    request = assert_is_ok(load_request())
+    proposal = assert_is_ok(load_proposal())
+    relations = assert_is_ok(load_relations())
+    syntheses = assert_is_ok(load_syntheses())
+    manifest = build_verifier_manifest(package, request, proposal)
+    validation = validate_observation_coverage(package, request, proposal, manifest, relations, syntheses)
+    assert_eq(validation.valid, true)
+    findings: list[DerivedFinding] = derive_findings(package, relations, syntheses)
+    assert_eq(len(findings), 8)
+    assert_eq(finding_id_text(findings[0].finding_id), "finding_visible_sequence")
+    assert_eq(findings[0].classification, "supported")
+    assert_eq(finding_id_text(findings[4].finding_id), "finding_proposal_contradiction")
+    assert_eq(findings[4].classification, "supported")
+    assert_eq(finding_id_text(findings[5].finding_id), "finding_request_coverage")
+    assert_eq(findings[5].classification, "covered")
+    assert_eq(finding_policy_reason(findings), "ok")
+
+
+def test_missing_observations_fail_closed_before_policy() -> None:
+    """Report unavailable observations before any finding policy is applied."""
+
+    package = assert_is_ok(load_package())
+    request = assert_is_ok(load_request())
+    proposal = assert_is_ok(load_proposal())
+    manifest = build_verifier_manifest(package, request, proposal)
+    validation = validate_observation_coverage(package, request, proposal, manifest, [], [])
+    assert_eq(validation.valid, false)
+    assert_eq(validation.reason, "observation_unavailable")
+
+
+def test_manifest_failure_precedes_an_unsupported_observation_contract() -> None:
+    """Prefer manifest construction failure over an observation contract fault."""
+
+    package = assert_is_ok(load_package())
+    request = assert_is_ok(load_request())
+    proposal = assert_is_ok(load_proposal())
+    mut manifest = build_verifier_manifest(package, request, proposal)
+    manifest_last_index = len(manifest) - 1
+    manifest.remove(manifest_last_index)
+    mut relations = assert_is_ok(load_relations())
+    mut unsupported = relations[0]
+    unsupported.contract_version = contract_id("console_relation_observation_unknown")
+    relations[0] = unsupported
+    validation = validate_observation_coverage(
+        package,
+        request,
+        proposal,
+        manifest,
+        relations,
+        assert_is_ok(load_syntheses()),
+    )
+    assert_eq(validation.reason, "manifest_construction_failed")
+
+
+def test_observation_identity_failure_precedes_coverage_failure() -> None:
+    """Prefer a bound identity mismatch over incomplete observation coverage."""
+
+    package = assert_is_ok(load_package())
+    request = assert_is_ok(load_request())
+    proposal = assert_is_ok(load_proposal())
+    manifest = build_verifier_manifest(package, request, proposal)
+    mut relations = assert_is_ok(load_relations())
+    mut mismatched = relations[0]
+    mismatched.target_digest = digest_id_type("sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+    relations[0] = mismatched
+    relation_last_index = len(relations) - 1
+    relations.remove(relation_last_index)
+    validation = validate_observation_coverage(
+        package,
+        request,
+        proposal,
+        manifest,
+        relations,
+        assert_is_ok(load_syntheses()),
+    )
+    assert_eq(validation.reason, "observation_identity_mismatch")
+
+
+def test_happy_path_reaches_the_checked_kernel_and_freezes_selected_memory() -> None:
+    """Reach structural admission and freeze exactly the supported memory atom."""
+
+    evaluation = evaluate_console_profile(
+        assert_is_ok(load_package()),
+        assert_is_ok(load_request()),
+        assert_is_ok(load_proposal()),
+        assert_is_ok(load_relations()),
+        assert_is_ok(load_syntheses()),
+    )
+    assert_eq(evaluation.spectrum.admitted, true)
+    assert_eq(evaluation.spectrum.reason_namespace, "console_admission_0_1")
+    assert_eq(evaluation.spectrum.reason, "admitted")
+    assert_eq(evaluation.spectrum.structural_reason, Some("admitted"))
+    assert_eq(evidence_id_text(evaluation.spectrum.admitted_evidence_ids[0]), "evidence_lantern_path")
+    assert_eq(memory_id_text(evaluation.spectrum.selected_memory_ids[0]), "memory_lantern_sequence")
+    assert_eq(len(evaluation.admitted_visible_units), 2)
+    assert_eq(len(evaluation.selected_memory), 1)

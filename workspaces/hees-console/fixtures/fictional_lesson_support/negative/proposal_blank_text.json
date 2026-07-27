@@ -1,0 +1,31 @@
+{
+  "contract_version": "console_proposal_0_1",
+  "profile_id": "console_profile_0_1",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "request_id": "request_negative_blank_text",
+  "proposal_id": "proposal_negative_blank_text",
+  "action_id": "explain_lesson",
+  "evidence_ids": [
+    "evidence_lantern_path"
+  ],
+  "visible_units": [
+    {
+      "unit_id": "unit_negative",
+      "text": "   ",
+      "requirement_ids": [
+        "explain_sequence"
+      ]
+    }
+  ],
+  "support_mappings": [
+    {
+      "support_claim_id": "support_negative",
+      "unit_id": "unit_negative",
+      "memory_id": "memory_lantern_sequence"
+    }
+  ],
+  "package_revision": "1.0.0",
+  "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+  "request_digest": "sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71"
+}

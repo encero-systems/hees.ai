@@ -1,0 +1,784 @@
+"""Deterministic contract tests for the native Incan OpenAI provider boundary."""
+
+from std.fs import Path
+from std.json import JsonValue
+from std.serde import json
+from std.serde.json import Deserialize, Serialize
+from std.testing import assert_eq, assert_is_err, assert_is_ok, serial
+from pub::hees_ai import (
+    ConsoleProposal,
+    RelationObservation,
+    SupportMapping,
+    SynthesisObservation,
+    VisibleUnit,
+    action_id_text,
+    digest_id_type,
+    digest_id_type_text,
+    evidence_id,
+    identify_console_proposal_json,
+    memory_id,
+    memory_id_text,
+    proposal_id,
+    proposal_id_text,
+    requirement_id,
+    support_claim_id,
+    unit_id,
+)
+from crate.evaluation import (
+    evaluate_live_sources,
+    live_context_plan_json,
+    plan_live_manifest_from_json,
+    plan_live_question_json,
+)
+from crate.provider import (
+    GPT56_MODEL,
+    MAX_COMMITTEE_CALLS,
+    MAX_LIVE_COMMITTEE_CALLS,
+    MAX_LIVE_PROVIDER_CALLS,
+    MAX_PROVIDER_REQUEST_BYTES,
+    MAX_RELATION_CALLS,
+    MAX_SYNTHESIS_CALLS,
+    OBSERVATION_OUTPUT_TOKENS,
+    PROPOSAL_OUTPUT_TOKENS,
+    PROVIDER_TIMEOUT_SECONDS,
+    LiveCanaryGate,
+    PreparedProviderCall,
+    ProviderFailure,
+    build_committee_calls,
+    build_proposal_call,
+    classify_provider_http_status,
+    decode_proposal_response,
+    decode_relation_response,
+    decode_synthesis_response,
+    evaluate_committee_json_with_transport,
+    json_nesting_is_within_limit,
+    live_proposal,
+    propose_json_with_transport,
+    propose_with_transport,
+    provider_api_key_environment,
+    provider_endpoint,
+)
+
+static injected_transport_calls: int = 0
+
+
+@derive(json)
+model FixtureContent:
+    """One raw Responses API content item used by network-free tests."""
+
+    type_ as "type": str
+    text: str
+
+
+@derive(json)
+model FixtureOutput:
+    """One raw Responses API message carrying structured output text."""
+
+    type_ as "type": str
+    content: list[FixtureContent]
+
+
+@derive(json)
+model FixtureResponse:
+    """Minimal raw Responses API envelope accepted by the provider parser."""
+
+    status: str
+    model_name as "model": str
+    output: list[FixtureOutput]
+
+
+def fixture_path(relative: str) -> Path:
+    """Resolve a fictional fixture from either repository or workspace working directories."""
+
+    repository_path = Path(f"workspaces/hees-console/fixtures/fictional_lesson_support/{relative}")
+    if repository_path.exists():
+        return repository_path
+    return Path(f"fixtures/fictional_lesson_support/{relative}")
+
+
+def contract_path(relative: str) -> Path:
+    """Resolve a Console contract from either repository or workspace working directories."""
+
+    repository_path = Path(f"workspaces/hees-console/contracts/{relative}")
+    if repository_path.exists():
+        return repository_path
+    return Path(f"contracts/{relative}")
+
+
+def read_text(path: Path) -> str:
+    """Read one UTF-8 test input and fail the test when the fixture is unavailable."""
+
+    return assert_is_ok(path.read_text("utf-8", "strict"))
+
+
+def load_proposal(relative: str = "proposals/valid_lantern.json") -> ConsoleProposal:
+    """Decode one frozen untrusted proposal through the native provider boundary."""
+
+    call = assert_is_ok(build_proposal_call(context_plan()))
+    return assert_is_ok(decode_proposal_response(call, response_with_output(read_text(fixture_path(relative)))))
+
+
+def response_with_output(output_text: str, status: str = "completed", model_name: str = GPT56_MODEL) -> str:
+    """Wrap structured output text in the minimal raw Responses API envelope."""
+
+    response = FixtureResponse(
+        status=status,
+        model_name=model_name,
+        output=[FixtureOutput(type_="message", content=[FixtureContent(type_="output_text", text=output_text)])],
+    )
+    return response.to_json()
+
+
+def require(value: JsonValue, key: str) -> JsonValue:
+    """Require one JSON object field in a test assertion."""
+
+    return assert_is_ok(value.require(key))
+
+
+def require_str(value: JsonValue, key: str) -> str:
+    """Require one JSON string field in a test assertion."""
+
+    return assert_is_ok(require(value, key).expect_str())
+
+
+def require_int(value: JsonValue, key: str) -> int:
+    """Require one JSON integer field in a test assertion."""
+
+    return assert_is_ok(require(value, key).expect_int())
+
+
+def require_bool(value: JsonValue, key: str) -> bool:
+    """Require one JSON boolean field in a test assertion."""
+
+    return assert_is_ok(require(value, key).expect_bool())
+
+
+def require_array(value: JsonValue, key: str) -> list[JsonValue]:
+    """Require one JSON array field in a test assertion."""
+
+    return assert_is_ok(require(value, key).expect_array())
+
+
+def admitted_memory_projection(atom: JsonValue) -> JsonValue:
+    """Project one approved package atom into the provider's admitted-memory shape."""
+
+    memory_fields = ["evidence_id", "memory_id", "claim", "guidance", "language", "source_ref", "source_kind", "source_fingerprint", "review_state", "review_revision", "rights_state", "authority_class", "evidence_kind"]
+    mut projection: Dict[str, JsonValue] = {}
+    for field in memory_fields:
+        projection[field] = JsonValue.str(require_str(atom, field))
+    return JsonValue.object(projection)
+
+
+def context_plan() -> str:
+    """Reproduce the frozen Hees-authored context envelope as a provider contract fixture."""
+
+    package = assert_is_ok(JsonValue.parse(read_text(fixture_path("package/package.json"))))
+    request = assert_is_ok(JsonValue.parse(read_text(fixture_path("requests/valid_lantern.json"))))
+    admitted_memory = [admitted_memory_projection(atom) for atom in require_array(package, "atoms") if require_str(
+        atom,
+        "review_state",
+    ) == "approved" and require_str(atom, "rights_state") == "allowed"]
+    context = JsonValue.object(
+        {"profile_id": JsonValue.str(require_str(package, "profile_id")), "package_id": JsonValue.str(
+            require_str(package, "package_id"),
+        ), "domain_id": JsonValue.str(require_str(package, "domain_id")), "package_revision": JsonValue.str(
+            require_str(package, "package_revision"),
+        ), "artifact_digest": JsonValue.str(require_str(package, "artifact_digest")), "mission": JsonValue.str(
+            require_str(package, "mission"),
+        ), "request": request, "declared_actions": require(package, "actions"), "requirements": require(
+            package,
+            "requirements",
+        ), "admitted_memory": JsonValue.array(admitted_memory)},
+    )
+    envelope = JsonValue.object(
+        {"contract_version": JsonValue.str("console_provider_context_plan_0_1"), "profile_id": JsonValue.str(
+            "console_profile_0_1",
+        ), "plannable": JsonValue.bool(true), "context": context},
+    )
+    return assert_is_ok(envelope.to_json())
+
+
+def proposal_input(call: PreparedProviderCall) -> JsonValue:
+    """Decode the exact user input embedded in one prepared Responses request."""
+
+    body = assert_is_ok(JsonValue.parse(call.request_body))
+    inputs = require_array(body, "input")
+    content = require_array(inputs[0], "content")
+    return assert_is_ok(JsonValue.parse(require_str(content[0], "text")))
+
+
+def assert_object_is_openai_strict(schema: JsonValue) -> None:
+    """Require one provider-facing object schema to close and require every property."""
+
+    assert_eq(require_str(schema, "type"), "object")
+    assert_eq(require_bool(schema, "additionalProperties"), false)
+    properties = assert_is_ok(require(schema, "properties").expect_object())
+    required = require_array(schema, "required")
+    assert_eq(len(required), len(properties.keys()))
+    for property_name in properties.keys():
+        mut found = false
+        for required_name in required:
+            if assert_is_ok(required_name.expect_str()) == property_name:
+                found = true
+        assert_eq(found, true)
+
+
+def fixture_transport(_request_body: str) -> Result[str, ProviderFailure]:
+    """Return the valid proposal fixture without touching the network."""
+
+    return Ok(response_with_output(read_text(fixture_path("proposals/valid_lantern.json"))))
+
+
+def duplicate_evidence_transport(request_body: str) -> Result[str, ProviderFailure]:
+    """Return one request-bound proposal whose evidence list contains a duplicate."""
+
+    body = JsonValue.parse(request_body).map_err((_error) => ProviderFailure.InvalidInput)?
+    inputs = require_array(body, "input")
+    content = require_array(inputs[0], "content")
+    context = JsonValue.parse(require_str(content[0], "text")).map_err((_error) => ProviderFailure.InvalidInput)?
+    request = require(context, "request")
+    mut proposal = JsonValue
+        .parse(read_text(fixture_path("proposals/valid_lantern.json")))
+        .map_err((_error) => ProviderFailure.InvalidInput)?
+    proposal
+        .set("request_id", JsonValue.str(require_str(request, "request_id")))
+        .map_err((_error) => ProviderFailure.InvalidInput)?
+    proposal
+        .set("request_digest", JsonValue.str(require_str(request, "request_digest")))
+        .map_err((_error) => ProviderFailure.InvalidInput)?
+    proposal
+        .set(
+            "evidence_ids",
+            JsonValue.array([JsonValue.str("evidence_lantern_path"), JsonValue.str("evidence_lantern_path")]),
+        )
+        .map_err((_error) => ProviderFailure.InvalidInput)?
+    return Ok(response_with_output(proposal.to_json().map_err((_error) => ProviderFailure.InvalidInput)?))
+
+
+def unavailable_transport(_request_body: str) -> Result[str, ProviderFailure]:
+    """Return one stable provider failure without retaining request data."""
+
+    return Err(ProviderFailure.Unavailable)
+
+
+def maximum_proposal_transport(_request_body: str) -> Result[str, ProviderFailure]:
+    """Return the maximum schema-valid proposal after exactly one injected call."""
+
+    return Ok(response_with_output(maximum_proposal().to_json()))
+
+
+def observation_response(relative: str) -> str:
+    """Remove host fingerprints from one observation fixture and wrap it as provider output."""
+
+    mut observation = assert_is_ok(JsonValue.parse(read_text(fixture_path(relative))))
+    assert_is_ok(observation.remove("model_fingerprint"))
+    assert_is_ok(observation.remove("prompt_fingerprint"))
+    assert_is_ok(observation.remove("configuration_fingerprint"))
+    return response_with_output(assert_is_ok(observation.to_json()))
+
+
+def counting_interaction_transport(request_body: str) -> Result[str, ProviderFailure]:
+    """Count and satisfy one complete injected proposal-and-committee interaction."""
+
+    injected_transport_calls += 1
+    body = JsonValue.parse(request_body).map_err((_error) => ProviderFailure.InvalidInput)?
+    schema_name = require_str(require(require(body, "text"), "format"), "name")
+    if schema_name == "console_proposal_provider_0_1":
+        return Ok(response_with_output(read_text(fixture_path("proposals/valid_lantern.json"))))
+    inputs = require_array(body, "input")
+    content = require_array(inputs[0], "content")
+    payload = JsonValue.parse(require_str(content[0], "text")).map_err((_error) => ProviderFailure.InvalidInput)?
+    target_id = require_str(require(require(payload, "target"), "body"), "target_id")
+    if target_id == "target_visible_unit_sequence":
+        return Ok(observation_response("observations/relation_visible_sequence.json"))
+    if target_id == "target_visible_unit_grounding":
+        return Ok(observation_response("observations/relation_visible_grounding.json"))
+    if target_id == "target_support_claim_sequence":
+        return Ok(observation_response("observations/relation_support_sequence.json"))
+    if target_id == "target_support_claim_grounding":
+        return Ok(observation_response("observations/relation_support_grounding.json"))
+    if target_id == "target_proposal_contradiction":
+        return Ok(observation_response("observations/relation_contradiction.json"))
+    if target_id == "target_request_coverage":
+        return Ok(observation_response("observations/synthesis_request.json"))
+    if target_id == "target_requirement_explain_sequence":
+        return Ok(observation_response("observations/synthesis_explain_sequence.json"))
+    if target_id == "target_requirement_ground_in_lesson":
+        return Ok(observation_response("observations/synthesis_ground_in_lesson.json"))
+    return Err(ProviderFailure.InvalidInput)
+
+
+def oversized_ascii_value() -> str:
+    """Build 64 KiB of ASCII without relying on host-language test helpers."""
+
+    mut value = "x"
+    for _index in range(16):
+        value = value + value
+    return value
+
+
+def target_value(index: int, evaluator_role: str, target_role: str, candidate_digest: str) -> JsonValue:
+    """Construct one read-only Hees-target projection for maximum-shape capacity tests."""
+
+    digest = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    context = require(assert_is_ok(JsonValue.parse(context_plan())), "context")
+    request = require(context, "request")
+    body = JsonValue.object(
+        {"profile_id": JsonValue.str(require_str(context, "profile_id")), "package_id": JsonValue.str(
+            require_str(context, "package_id"),
+        ), "domain_id": JsonValue.str(require_str(context, "domain_id")), "package_revision": JsonValue.str(
+            require_str(context, "package_revision"),
+        ), "artifact_digest": JsonValue.str(require_str(context, "artifact_digest")), "request_digest": JsonValue.str(
+            require_str(request, "request_digest"),
+        ), "candidate_digest": JsonValue.str(candidate_digest), "target_id": JsonValue.str(f"target_capacity_{index}"), "evaluator_role": JsonValue.str(
+            evaluator_role,
+        ), "target_role": JsonValue.str(target_role), "subject_digest": JsonValue.str(digest), "premises": JsonValue.array(
+            [],
+        )},
+    )
+    return JsonValue.object({"body": body, "target_digest": JsonValue.str(digest)})
+
+
+def manifest_plan_json(targets: list[JsonValue], plannable: bool = true) -> str:
+    """Wrap canonical targets in the exact closed Hees manifest-plan envelope."""
+
+    envelope = JsonValue.object(
+        {"contract_version": JsonValue.str("console_manifest_plan_0_1"), "profile_id": JsonValue.str(
+            "console_profile_0_1",
+        ), "plannable": JsonValue.bool(plannable), "targets": JsonValue.array(targets)},
+    )
+    return assert_is_ok(envelope.to_json())
+
+
+def fixture_manifest_json() -> str:
+    """Load the canonical happy-path targets into the closed Hees manifest envelope."""
+
+    scenario = assert_is_ok(JsonValue.parse(read_text(fixture_path("scenarios/valid_lantern.json"))))
+    targets = [assert_is_ok(JsonValue.parse(read_text(fixture_path(assert_is_ok(path.expect_str()))))) for path in require_array(
+        scenario,
+        "manifest_target_paths",
+    )]
+    return manifest_plan_json(targets)
+
+
+def proposal_candidate_digest(proposal: ConsoleProposal) -> str:
+    """Read the candidate digest from the narrow public Hees identity projection."""
+
+    identity = assert_is_ok(JsonValue.parse(identify_console_proposal_json(proposal)))
+    return require_str(identity, "candidate_digest")
+
+
+def maximum_manifest_json(proposal: ConsoleProposal) -> str:
+    """Construct the exact 17-relation and 5-synthesis maximum manifest shape."""
+
+    candidate_digest = proposal_candidate_digest(proposal)
+    visible_targets = [target_value(index + 1, "evidence_relation", "visible_unit_union", candidate_digest) for index in range(
+        8,
+    )]
+    support_targets = [target_value(index + 9, "evidence_relation", "support_claim_memory", candidate_digest) for index in range(
+        8,
+    )]
+    requirement_targets = [target_value(index + 19, "synthesis_coverage", "requirement_coverage", candidate_digest) for index in range(
+        4,
+    )]
+    targets = [*visible_targets, *support_targets, target_value(
+        17,
+        "contradiction_cross_check",
+        "proposal_union",
+        candidate_digest,
+    ), target_value(18, "synthesis_coverage", "request_coverage", candidate_digest), *requirement_targets]
+    return manifest_plan_json(targets)
+
+
+def capacity_visible_unit(number: int) -> VisibleUnit:
+    """Construct one maximum-shape visible unit with stable identifiers."""
+
+    return VisibleUnit(
+        unit_id=unit_id(f"unit_capacity_{number}"),
+        text=f"Bounded fictional answer unit {number}.",
+        requirement_ids=[requirement_id("explain_sequence")],
+    )
+
+
+def capacity_support_mapping(number: int) -> SupportMapping:
+    """Construct one maximum-shape support mapping paired to its visible unit."""
+
+    return SupportMapping(
+        support_claim_id=support_claim_id(f"support_capacity_{number}"),
+        unit_id=unit_id(f"unit_capacity_{number}"),
+        memory_id=memory_id("memory_lantern_sequence"),
+        evidence_ids=Some([evidence_id("evidence_lantern_path")]),
+    )
+
+
+def maximum_proposal() -> ConsoleProposal:
+    """Expand the frozen proposal to its visible-unit and support-mapping maxima."""
+
+    mut proposal = load_proposal()
+    proposal.visible_units = [capacity_visible_unit(index + 1) for index in range(8)]
+    proposal.support_mappings = [capacity_support_mapping(index + 1) for index in range(8)]
+    return proposal
+
+
+def maximum_context_plan() -> str:
+    """Expand a valid Hees context to the generic four-requirement profile maximum."""
+
+    mut plan = assert_is_ok(JsonValue.parse(context_plan()))
+    context = require(plan, "context")
+    clarify_example = JsonValue.object(
+        {"requirement_id": JsonValue.str("clarify_example"), "description": JsonValue.str(
+            "Clarify the fictional example.",
+        )},
+    )
+    invite_check = JsonValue.object(
+        {"requirement_id": JsonValue.str("invite_check"), "description": JsonValue.str(
+            "Invite the learner to check the sequence.",
+        )},
+    )
+    requirements = [*require_array(context, "requirements"), clarify_example, invite_check]
+    mut expanded_context = context
+    assert_is_ok(expanded_context.set("requirements", JsonValue.array(requirements)))
+    assert_is_ok(plan.set("context", expanded_context))
+    return assert_is_ok(plan.to_json())
+
+
+def test_proposal_request_is_the_exact_closed_responses_operation() -> None:
+    """Freeze endpoint, model, reasoning, tools, storage, streaming, and token bounds."""
+
+    call = assert_is_ok(build_proposal_call(context_plan()))
+    body = assert_is_ok(JsonValue.parse(call.request_body))
+    assert_eq(provider_endpoint(), "https://api.openai.com/v1/responses")
+    assert_eq(provider_api_key_environment(), "OPENAI_API_KEY")
+    assert_eq(require_str(body, "model"), "gpt-5.6-sol")
+    assert_eq(require_str(require(body, "reasoning"), "effort"), "low")
+    assert_eq(require_int(body, "max_output_tokens"), PROPOSAL_OUTPUT_TOKENS)
+    assert_eq(PROPOSAL_OUTPUT_TOKENS, 2_048)
+    assert_eq(call.request_body_bytes <= MAX_PROVIDER_REQUEST_BYTES, true)
+    assert_eq(len(require_array(body, "tools")), 0)
+    assert_eq(require_str(body, "tool_choice"), "none")
+    assert_eq(require_bool(body, "store"), false)
+    assert_eq(require_bool(body, "stream"), false)
+    assert_eq(require_str(body, "truncation"), "disabled")
+    assert_eq(body.contains_key("api_key"), false)
+    text_format = require(require(body, "text"), "format")
+    assert_eq(require_str(text_format, "type"), "json_schema")
+    assert_eq(require_str(text_format, "name"), "console_proposal_provider_0_1")
+    assert_eq(require_bool(text_format, "strict"), true)
+    schema = require(text_format, "schema")
+    assert_eq(call.request_body.contains("uniqueItems"), false)
+    assert_object_is_openai_strict(schema)
+    visible_items = require(require(require(schema, "properties"), "visible_units"), "items")
+    support_items = require(require(require(schema, "properties"), "support_mappings"), "items")
+    assert_object_is_openai_strict(visible_items)
+    assert_object_is_openai_strict(support_items)
+    mut evidence_required = false
+    for required_name in require_array(support_items, "required"):
+        if assert_is_ok(required_name.expect_str()) == "evidence_ids":
+            evidence_required = true
+    assert_eq(evidence_required, true)
+
+
+def test_proposal_input_contains_only_hees_authored_untrusted_context() -> None:
+    """Project only the Hees-authored request, declared surface, and admitted memory."""
+
+    call = assert_is_ok(build_proposal_call(context_plan()))
+    payload = proposal_input(call)
+    assert_eq(require_str(payload, "profile_id"), "console_profile_0_1")
+    assert_eq(require_str(require(payload, "request"), "request_id"), "request_valid_lantern")
+    assert_eq(len(require_array(payload, "declared_actions")), 3)
+    assert_eq(len(require_array(payload, "requirements")), 2)
+    memory = require_array(payload, "admitted_memory")
+    assert_eq(len(memory), 3)
+    memory_ids = [require_str(atom, "memory_id") for atom in memory]
+    for atom in memory:
+        assert_eq(require_str(atom, "review_state"), "approved")
+        assert_eq(require_str(atom, "rights_state"), "allowed")
+    assert_eq(memory_ids.contains("memory_public_ranking_draft"), false)
+    assert_eq(payload.contains_key("decision"), false)
+    assert_eq(payload.contains_key("receipt"), false)
+    assert_eq(payload.contains_key("content_dna"), false)
+
+
+def test_schema_valid_unauthorized_proposals_remain_pass_through_values() -> None:
+    """Leave action and memory authority to the terminal Hees evaluation."""
+
+    call = assert_is_ok(build_proposal_call(context_plan()))
+    undeclared: ConsoleProposal = assert_is_ok(
+        decode_proposal_response(call, response_with_output(read_text(fixture_path("proposals/undeclared_action.json")))),
+    )
+    assert_eq(action_id_text(undeclared.action_id), "assign_final_grade")
+    unknown_memory: ConsoleProposal = assert_is_ok(
+        decode_proposal_response(call, response_with_output(read_text(fixture_path("proposals/unknown_memory.json")))),
+    )
+    assert_eq(memory_id_text(unknown_memory.support_mappings[0].memory_id), "memory_missing_route")
+
+
+def test_propose_with_transport_is_deterministic_and_network_free() -> None:
+    """Exercise proposal request and typed decoding through an injected transport."""
+
+    proposal: ConsoleProposal = assert_is_ok(propose_with_transport(context_plan(), fixture_transport))
+    assert_eq(proposal_id_text(proposal.proposal_id), "proposal_valid_lantern")
+
+
+@serial
+def test_complete_injected_interaction_uses_exactly_one_proposal_and_eight_committee_calls() -> None:
+    """Exercise the production preflight and both injected transports under the nine-call cap."""
+
+    injected_transport_calls = 0
+    context_source = context_plan()
+    proposal_source = assert_is_ok(propose_json_with_transport(context_source, counting_interaction_transport))
+    committee_source = assert_is_ok(
+        evaluate_committee_json_with_transport(
+            context_source,
+            proposal_source,
+            fixture_manifest_json(),
+            counting_interaction_transport,
+        ),
+    )
+    committee = assert_is_ok(JsonValue.parse(committee_source))
+    assert_eq(injected_transport_calls, MAX_LIVE_PROVIDER_CALLS)
+    assert_eq(len(require_array(committee, "relations")), 5)
+    assert_eq(len(require_array(committee, "syntheses")), 3)
+
+
+def test_private_provider_envelopes_are_versioned_and_fail_closed() -> None:
+    """Reject internal proposal drift before parsing a manifest or invoking transport."""
+
+    proposal_source = assert_is_ok(propose_json_with_transport(context_plan(), fixture_transport))
+    mut proposal_envelope = assert_is_ok(JsonValue.parse(proposal_source))
+    assert_eq(require_str(proposal_envelope, "contract_version"), "console_provider_proposal_result_0_1")
+    assert_eq(require_str(proposal_envelope, "profile_id"), "console_profile_0_1")
+    committee_source = assert_is_ok(
+        evaluate_committee_json_with_transport(
+            context_plan(),
+            assert_is_ok(proposal_envelope.to_json()),
+            manifest_plan_json([], false),
+            unavailable_transport,
+        ),
+    )
+    committee_envelope = assert_is_ok(JsonValue.parse(committee_source))
+    assert_eq(require_str(committee_envelope, "contract_version"), "console_provider_committee_result_0_1")
+    assert_eq(require_str(committee_envelope, "profile_id"), "console_profile_0_1")
+    assert_is_ok(proposal_envelope.set("contract_version", JsonValue.str("console_provider_proposal_result_9_9")))
+    error = assert_is_err(
+        evaluate_committee_json_with_transport(
+            context_plan(),
+            assert_is_ok(proposal_envelope.to_json()),
+            "not inspected after an invalid proposal envelope",
+            unavailable_transport,
+        ),
+    )
+    assert_eq(error.value(), "provider_invalid_input")
+
+
+def test_provider_errors_are_stable_and_redacted() -> None:
+    """Expose a closed code without embedding request, key, response, or prompt text."""
+
+    error = assert_is_err(propose_with_transport(context_plan(), unavailable_transport))
+    assert_eq(error.value(), "provider_unavailable")
+    assert_eq(error.value().contains("lantern"), false)
+    assert_eq(error.value().contains("Bearer"), false)
+
+
+def test_live_http_failures_are_typed_without_exposing_response_detail() -> None:
+    """Distinguish actionable HTTP classes while retaining only closed failure codes."""
+
+    assert_eq(classify_provider_http_status(400).value(), "provider_request_rejected")
+    assert_eq(classify_provider_http_status(401).value(), "provider_authentication_failed")
+    assert_eq(classify_provider_http_status(403).value(), "provider_permission_denied")
+    assert_eq(classify_provider_http_status(404).value(), "provider_request_rejected")
+    assert_eq(classify_provider_http_status(422).value(), "provider_request_rejected")
+    assert_eq(classify_provider_http_status(429).value(), "provider_rate_limited")
+    assert_eq(classify_provider_http_status(500).value(), "provider_http_failure")
+    assert_eq(classify_provider_http_status(503).value(), "provider_http_failure")
+
+
+def test_malformed_extra_output_fields_fail_closed() -> None:
+    """Reject non-schema fields such as rationale before typed proposal decoding."""
+
+    call = assert_is_ok(build_proposal_call(context_plan()))
+    mut proposal = assert_is_ok(JsonValue.parse(read_text(fixture_path("proposals/valid_lantern.json"))))
+    assert_is_ok(proposal.set("rationale", JsonValue.str("forbidden hidden explanation")))
+    error = assert_is_err(decode_proposal_response(call, response_with_output(assert_is_ok(proposal.to_json()))))
+    assert_eq(error.value(), "provider_malformed_output")
+
+
+def test_json_nesting_limit_ignores_strings_and_rejects_before_provider_parsing() -> None:
+    """Bound provider input and output parsing without counting brackets inside JSON strings."""
+
+    assert_eq(json_nesting_is_within_limit("{\"value\":\"[[[[[[[[[[[[[[[[[\"}"), true)
+    assert_eq(json_nesting_is_within_limit("[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]"), true)
+    assert_eq(json_nesting_is_within_limit("[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]"), false)
+    call = assert_is_ok(build_proposal_call(context_plan()))
+    error = assert_is_err(decode_proposal_response(call, "[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]"))
+    assert_eq(error.value(), "provider_malformed_output")
+    context_error = assert_is_err(build_proposal_call("[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]"))
+    assert_eq(context_error.value(), "provider_invalid_input")
+    manifest_error = assert_is_err(
+        build_committee_calls(context_plan(), load_proposal(), "[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]"),
+    )
+    assert_eq(manifest_error.value(), "provider_invalid_input")
+
+
+def test_maximum_committee_shape_and_live_budget_are_both_exact() -> None:
+    """Keep generic target capacity while freezing the narrower Console live budget."""
+
+    proposal = maximum_proposal()
+    calls: list[PreparedProviderCall] = assert_is_ok(
+        build_committee_calls(maximum_context_plan(), proposal, maximum_manifest_json(proposal)),
+    )
+    mut relation_count = 0
+    mut synthesis_count = 0
+    for call in calls:
+        if call.operation == "synthesis":
+            synthesis_count = synthesis_count + 1
+        else:
+            relation_count = relation_count + 1
+        body = assert_is_ok(JsonValue.parse(call.request_body))
+        assert_eq(require_int(body, "max_output_tokens"), OBSERVATION_OUTPUT_TOKENS)
+        assert_eq(call.request_body_bytes <= MAX_PROVIDER_REQUEST_BYTES, true)
+    assert_eq(relation_count, 17)
+    assert_eq(synthesis_count, 5)
+    assert_eq(len(calls), 22)
+    assert_eq(MAX_RELATION_CALLS, 17)
+    assert_eq(MAX_SYNTHESIS_CALLS, 5)
+    assert_eq(MAX_COMMITTEE_CALLS, 22)
+    assert_eq(MAX_LIVE_COMMITTEE_CALLS, 8)
+    assert_eq(MAX_LIVE_PROVIDER_CALLS, 9)
+    assert_eq(MAX_LIVE_PROVIDER_CALLS, 1 + MAX_LIVE_COMMITTEE_CALLS)
+    assert_eq(OBSERVATION_OUTPUT_TOKENS, 512)
+    assert_eq(MAX_PROVIDER_REQUEST_BYTES, 65_536)
+    assert_eq(PROVIDER_TIMEOUT_SECONDS, 15)
+    assert_eq(PROVIDER_TIMEOUT_SECONDS * MAX_COMMITTEE_CALLS, 330)
+    assert_eq(PROVIDER_TIMEOUT_SECONDS * MAX_LIVE_COMMITTEE_CALLS, 120)
+    assert_eq(PROVIDER_TIMEOUT_SECONDS * MAX_LIVE_PROVIDER_CALLS, 135)
+
+
+def test_over_budget_proposal_fails_before_any_committee_transport() -> None:
+    """Allow one proposal call, then reject its 22-target plan without invoking the committee transport."""
+
+    context_source = maximum_context_plan()
+    proposal_source = assert_is_ok(propose_json_with_transport(context_source, maximum_proposal_transport))
+    proposal = maximum_proposal()
+    error = assert_is_err(
+        evaluate_committee_json_with_transport(
+            context_source,
+            proposal_source,
+            maximum_manifest_json(proposal),
+            unavailable_transport,
+        ),
+    )
+    assert_eq(error.value(), "provider_committee_too_large")
+
+
+def test_request_size_ceiling_fails_closed_before_transport() -> None:
+    """Reject a request that cannot fit the 64 KiB live request-body budget."""
+
+    mut plan = assert_is_ok(JsonValue.parse(context_plan()))
+    mut context = require(plan, "context")
+    assert_is_ok(context.set("mission", JsonValue.str(oversized_ascii_value())))
+    assert_is_ok(plan.set("context", context))
+    error = assert_is_err(build_proposal_call(assert_is_ok(plan.to_json())))
+    assert_eq(error.value(), "provider_input_too_large")
+
+
+def test_empty_manifest_skips_the_non_authoritative_committee() -> None:
+    """Allow unauthorized proposals to continue to Hees with no provider observations."""
+
+    calls: list[PreparedProviderCall] = assert_is_ok(
+        build_committee_calls(
+            context_plan(),
+            load_proposal("proposals/unknown_memory.json"),
+            manifest_plan_json([], false),
+        ),
+    )
+    assert_eq(len(calls), 0)
+    invalid = assert_is_err(build_committee_calls(context_plan(), load_proposal(), manifest_plan_json([], true)))
+    assert_eq(invalid.value(), "provider_invalid_input")
+
+
+@serial
+def test_provider_decoded_duplicate_evidence_reaches_hees_without_committee_calls() -> None:
+    """Leave provider-permitted duplicates to the real Hees structural authority boundary."""
+
+    injected_transport_calls = 0
+    live_plan = assert_is_ok(plan_live_question_json("What order should I use for the Lantern Path cards?"))
+    context_source = assert_is_ok(live_context_plan_json(live_plan))
+    proposal_source = assert_is_ok(propose_json_with_transport(context_source, duplicate_evidence_transport))
+    manifest_source = assert_is_ok(plan_live_manifest_from_json(live_plan, proposal_source))
+    manifest = assert_is_ok(JsonValue.parse(manifest_source))
+    assert_eq(require_bool(manifest, "plannable"), false)
+    assert_eq(len(require_array(manifest, "targets")), 0)
+    committee_source = assert_is_ok(
+        evaluate_committee_json_with_transport(
+            context_source,
+            proposal_source,
+            manifest_source,
+            counting_interaction_transport,
+        ),
+    )
+    assert_eq(injected_transport_calls, 0)
+    run = assert_is_ok(evaluate_live_sources(live_plan, proposal_source, committee_source))
+    assert_eq(run.result.spectrum.admitted, false)
+    assert_eq(run.result.spectrum.reason, "duplicate_evidence_reference")
+
+
+def test_committee_rejects_cross_interaction_proposals_and_targets() -> None:
+    """Never evaluate a target plan against a proposal from another request or candidate."""
+
+    mut crossed_request = load_proposal()
+    crossed_request.request_digest = digest_id_type(
+        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    )
+    request_error = assert_is_err(build_committee_calls(context_plan(), crossed_request, fixture_manifest_json()))
+    assert_eq(request_error.value(), "provider_invalid_input")
+    mut crossed_candidate = load_proposal()
+    crossed_candidate.proposal_id = proposal_id("proposal_other_interaction")
+    candidate_error = assert_is_err(build_committee_calls(context_plan(), crossed_candidate, fixture_manifest_json()))
+    assert_eq(candidate_error.value(), "provider_invalid_input")
+
+
+def test_observation_decoders_add_only_non_authoritative_fingerprints() -> None:
+    """Normalize raw evaluator scores while leaving identity and scores untrusted."""
+
+    calls: list[PreparedProviderCall] = assert_is_ok(
+        build_committee_calls(context_plan(), load_proposal(), fixture_manifest_json()),
+    )
+    mut relation_source = assert_is_ok(
+        JsonValue.parse(read_text(fixture_path("observations/relation_visible_sequence.json"))),
+    )
+    assert_is_ok(relation_source.remove("model_fingerprint"))
+    assert_is_ok(relation_source.remove("prompt_fingerprint"))
+    assert_is_ok(relation_source.remove("configuration_fingerprint"))
+    relation: RelationObservation = assert_is_ok(
+        decode_relation_response(calls[0], response_with_output(assert_is_ok(relation_source.to_json()))),
+    )
+    assert_eq(relation.support_bps, 9000)
+    assert_eq(digest_id_type_text(relation.model_fingerprint).starts_with("sha256:"), true)
+    assert_eq(len(digest_id_type_text(relation.model_fingerprint)), 71)
+    mut synthesis_source = assert_is_ok(JsonValue.parse(read_text(fixture_path("observations/synthesis_request.json"))))
+    assert_is_ok(synthesis_source.remove("model_fingerprint"))
+    assert_is_ok(synthesis_source.remove("prompt_fingerprint"))
+    assert_is_ok(synthesis_source.remove("configuration_fingerprint"))
+    synthesis: SynthesisObservation = assert_is_ok(
+        decode_synthesis_response(calls[5], response_with_output(assert_is_ok(synthesis_source.to_json()))),
+    )
+    assert_eq(synthesis.covered_bps, 9000)
+    assert_eq(len(digest_id_type_text(synthesis.configuration_fingerprint)), 71)
+
+
+def test_transport_relation_bound_matches_the_frozen_maximum() -> None:
+    """Keep the provider-facing transport contract aligned with the 17-target relation maximum."""
+
+    contract = assert_is_ok(
+        JsonValue.parse(read_text(contract_path("transport/console_runner_request_0_1.schema.json"))),
+    )
+    relations = require(require(contract, "properties"), "relation_observations")
+    assert_eq(require_int(relations, "maxItems"), 17)
+
+
+def test_live_canary_requires_explicit_activation_before_environment_or_network_access() -> None:
+    """Keep all normal and test paths credential-free and network-free."""
+
+    error = assert_is_err(live_proposal(LiveCanaryGate.Disabled, context_plan()))
+    assert_eq(error.value(), "live_canary_disabled")

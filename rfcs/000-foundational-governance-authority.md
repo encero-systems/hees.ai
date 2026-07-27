@@ -40,7 +40,7 @@ The foundation also makes model and provider substitution safe. A deployment may
 - Separate package declarations, provider nominations, non-authoritative findings, terminal decisions, traces, and receipts.
 - Preserve one model-generated visible-answer channel and prevent support or metadata from becoming substitute prose.
 - Require deterministic, fail-closed behavior and explicit identity across all governed stages.
-- Define the Workbench, implementation-package, provider, and Hees ownership boundaries.
+- Define the package-authoring, implementation-package, provider, and Hees ownership boundaries.
 - Keep the foundation stable while dedicated RFCs own detailed schemas and algorithms.
 
 ## Non-Goals
@@ -65,7 +65,7 @@ The terms Spectrum and Content DNA name public architectural responsibilities. R
 | Participant or artifact | May provide | Must not determine |
 | --- | --- | --- |
 | Governed package | Reviewed memory, policy, behavior declarations, source-safe provenance, rights and compatibility identity | The outcome of a request without Hees validation and Spectrum adjudication |
-| Workbench or another package authoring system | Candidate package artifacts, review workflow, compiled provenance, acceptance fixtures | Runtime admission, terminal action, or answer-time selected memory |
+| Package-authoring system | Candidate package artifacts, review workflow, compiled provenance, acceptance fixtures | Runtime admission, terminal action, or answer-time selected memory |
 | Retrieval provider | Ranked nominations and bounded retrieval metadata | Package authority, semantic support, selected-memory finality, or terminal outcome |
 | Language model | Bounded response candidates through the declared visible channel | Policy, provenance, support authority, Content DNA, or terminal outcome |
 | Verifier or evaluator | Typed observations or findings for exact governed targets | Truth, policy action, selected memory, or terminal outcome |
@@ -103,7 +103,7 @@ Package-authored clarification or refusal text is not model output and must be i
 
 Every terminal outcome that admits model-generated visible answer content must atomically produce valid Content DNA. The value must cover every and only the Spectrum-selected reviewed memory atoms used to admit that answer. Missing selected memory, additional unselected memory, duplicate entries, mismatched source identity, insufficient review, disallowed rights, or a digest mismatch must prevent answer admission.
 
-Content DNA must be emitted by Hees after Spectrum has established the terminal selected-memory set. It must not be authored by a model, retrieval provider, package authoring tool, caller, or receipt consumer. Workbench may compile the package-owned provenance from which Hees constructs the answer-time value, but it cannot know or predeclare the final answer-specific selection.
+Content DNA must be emitted by Hees after Spectrum has established the terminal selected-memory set. It must not be authored by a model, retrieval provider, package authoring tool, caller, or receipt consumer. Build-time tooling may compile the package-owned provenance from which Hees constructs the answer-time value, but it cannot know or predeclare the final answer-specific selection.
 
 A package-authored clarification or refusal may carry the explicit zero-entry no-answer representation defined by RFC 002. A structurally rejected operation for which trusted package or proposal identity was never established must not emit a value that resembles admitted-answer provenance.
 
@@ -151,11 +151,11 @@ RFC 002 owns the Content DNA body, entry projection, exact selected-memory cover
 
 Later RFCs own specialized contracts for governed memory, composable constraints, package admission, export-safe receipts, verification findings, behavior selection, and visible response lifecycle. Each later RFC must include a relationship section that states how it supplies Spectrum, contributes to Content DNA, or remains outside those responsibilities.
 
-### Workbench and implementation-package boundary
+### Package-authoring and implementation-package boundary
 
-Hees owns generic runtime contracts and deterministic authority transitions. Workbench may ingest sources, support human review, compile governed memory and policy declarations, create package artifacts, produce acceptance fixtures, and preserve build-time provenance. Implementation packages may provide domain-specific content, rules, provider bindings, and reviewed language resources.
+Hees owns generic runtime contracts and deterministic authority transitions. Package-authoring tooling may ingest sources, support human review, compile governed memory and policy declarations, create package artifacts, produce acceptance fixtures, and preserve build-time provenance. Implementation packages may provide domain-specific content, rules, provider bindings, and reviewed language resources.
 
-Neither Workbench nor an implementation package may precompute a terminal Spectrum result or answer-specific Content DNA and ask Hees to trust it. Hees must resolve package declarations and construct the final runtime values from exact admitted inputs.
+Neither package-authoring tooling nor an implementation package may precompute a terminal Spectrum result or answer-specific Content DNA and ask Hees to trust it. Hees must resolve package declarations and construct the final runtime values from exact admitted inputs.
 
 ### Compatibility and evolution
 
@@ -186,9 +186,9 @@ Rejected because relevance is not support, support is not policy, and one provid
 
 Rejected because subsequent contracts would already have assigned memory, policy, response, and receipt authority before the system established its terminal decision and answer-time provenance invariants.
 
-### Let Workbench or the application compose terminal results
+### Let package-authoring tooling or the application compose terminal results
 
-Rejected because deployment-specific orchestration would make authority vary between callers. Workbench owns build-time governance inputs; Hees owns runtime finality.
+Rejected because deployment-specific orchestration would make authority vary between callers. Build-time tooling owns governance inputs; Hees owns runtime finality.
 
 ## Drawbacks
 
@@ -200,7 +200,7 @@ Those constraints are deliberate. Without them, model or application behavior co
 
 - **Public architecture:** Stable definitions of package authority, provider nomination, Spectrum finality, Content DNA, and exportable explanation.
 - **Runtime contracts:** One direct authority flow across package, memory, findings, behavior, response, provenance, and receipt stages.
-- **Package and Workbench boundary:** Build-time declarations and provenance compilation without live terminal authorship.
+- **Package-authoring boundary:** Build-time declarations and provenance compilation without live terminal authorship.
 - **Provider boundary:** Bounded untrusted nominations and observations without policy or provenance authority.
 - **Compatibility:** Explicit versioning when a later contract changes an authority relationship or terminal invariant.
 - **Testing and documentation:** Cross-contract authority-negative, deterministic, privacy, and current-versus-proposed evidence.
@@ -213,7 +213,7 @@ Those constraints are deliberate. Without them, model or application behavior co
 - Every admitted visible answer requires exact selected-memory Content DNA.
 - Providers and evaluators remain non-authoritative even when their normalized output is required for admission.
 - Direct opaque values may carry in-process authority; traces and exported artifacts do not recreate it.
-- Workbench compiles governed inputs, while Hees constructs terminal decisions and answer-time provenance.
+- Build-time tooling compiles governed inputs, while Hees constructs terminal decisions and answer-time provenance.
 
 ## Unresolved questions
 

@@ -1,0 +1,19 @@
+{
+  "contract_version": "console_proposal_0_1",
+  "profile_id": "console_profile_0_1",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "package_revision": "1.0.0",
+  "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+  "request_id": "request_undeclared_action",
+  "request_digest": "sha256:649e874b195d04a10302df9702c2a4aa5e7a326f876f85a5cba0df845cace1b5",
+  "proposal_id": "proposal_undeclared_action",
+  "action_id": "assign_final_grade",
+  "evidence_ids": ["evidence_lantern_path"],
+  "visible_units": [
+    {"unit_id": "unit_grade", "text": "Assign a final grade from the lesson sequence.", "requirement_ids": ["ground_in_lesson"]}
+  ],
+  "support_mappings": [
+    {"support_claim_id": "support_grade", "unit_id": "unit_grade", "memory_id": "memory_lantern_sequence", "evidence_ids": ["evidence_lantern_path"]}
+  ]
+}

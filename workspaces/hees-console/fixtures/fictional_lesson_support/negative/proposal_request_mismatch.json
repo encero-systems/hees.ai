@@ -1,0 +1,49 @@
+{
+  "contract_version": "console_proposal_0_1",
+  "profile_id": "console_profile_0_1",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "package_revision": "1.0.0",
+  "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+  "request_id": "request_valid_lantern",
+  "request_digest": "sha256:2e347c504d750b7dc6efe86e7d1c668ec5e2e37bf503649bb2a1e25e6babd10e",
+  "proposal_id": "proposal_valid_lantern",
+  "action_id": "explain_lesson",
+  "evidence_ids": [
+    "evidence_lantern_path"
+  ],
+  "visible_units": [
+    {
+      "unit_id": "unit_sequence",
+      "text": "Place the amber card first, the blue card second, and the green card third.",
+      "requirement_ids": [
+        "explain_sequence"
+      ]
+    },
+    {
+      "unit_id": "unit_grounding",
+      "text": "Then check that order against the lesson's three-card example.",
+      "requirement_ids": [
+        "ground_in_lesson"
+      ]
+    }
+  ],
+  "support_mappings": [
+    {
+      "support_claim_id": "support_sequence",
+      "unit_id": "unit_sequence",
+      "memory_id": "memory_lantern_sequence",
+      "evidence_ids": [
+        "evidence_lantern_path"
+      ]
+    },
+    {
+      "support_claim_id": "support_grounding",
+      "unit_id": "unit_grounding",
+      "memory_id": "memory_lantern_sequence",
+      "evidence_ids": [
+        "evidence_lantern_path"
+      ]
+    }
+  ]
+}

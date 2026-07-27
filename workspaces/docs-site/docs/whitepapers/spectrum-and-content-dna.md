@@ -2,7 +2,7 @@
 
 ## Status
 
-This whitepaper explains the architectural intent behind Spectrum and Content DNA. It is not a statement of implemented Hees 0.0.1 behavior and is not a substitute for the normative contracts in [RFC 000](https://github.com/encero-systems/hees.ai/blob/main/rfcs/000-foundational-governance-authority.md), [RFC 001](https://github.com/encero-systems/hees.ai/blob/main/rfcs/001-spectrum-terminal-adjudication.md), and [RFC 002](https://github.com/encero-systems/hees.ai/blob/main/rfcs/002-content-dna-answer-time-provenance.md).
+This whitepaper explains the architectural intent behind Spectrum and Content DNA. The working `console_profile_0_1` release now exercises a bounded Spectrum operation, selected-memory finality, answer-time Content DNA, and receipts over one fictional profile. The generalized contracts continue in [RFC 000](https://github.com/encero-systems/hees.ai/blob/main/rfcs/000-foundational-governance-authority.md), [RFC 001](https://github.com/encero-systems/hees.ai/blob/main/rfcs/001-spectrum-terminal-adjudication.md), and [RFC 002](https://github.com/encero-systems/hees.ai/blob/main/rfcs/002-content-dna-answer-time-provenance.md).
 
 ## The problem is authority, not only generation
 
@@ -41,7 +41,7 @@ Content DNA contains identifiers, governance state, source-safe references, and 
 
 The proposed runtime flow is:
 
-1. Workbench or another package authoring system compiles reviewed knowledge, policy, source-safe provenance, rights state, and acceptance fixtures into a governed package.
+1. A package-authoring system compiles reviewed knowledge, policy, source-safe provenance, rights state, and acceptance fixtures into a governed package.
 2. Hees admits the exact package artifact and establishes its trusted identity.
 3. A retrieval provider nominates logical memory identifiers under a package-approved binding.
 4. Hees validates the complete retrieval result and materializes package-owned memory rather than trusting provider-returned text.
@@ -74,21 +74,21 @@ Translated and language-specific memory still requires package review, rights st
 
 ## Offline and constrained deployment
 
-The authority model does not require a network service. Package admission, provider execution, Spectrum adjudication, Content DNA construction, and receipt projection can all run locally after installation. Provider-neutral contracts allow a deployment to choose a model and retrieval implementation that fit the device without making those components authoritative.
+The authority model does not require a network service. Package admission, Spectrum adjudication, Content DNA construction, and receipt projection can run locally after installation. Provider execution can also remain local when a deployment supplies a compatible on-device model and retrieval implementation; Console `0.1.0` itself does not bundle that provider. Provider-neutral contracts keep those chosen components non-authoritative.
 
 Consumer-device constraints still shape the detailed contracts. Memory counts, finding batches, canonicalization buffers, retained repair state, Content DNA entries, and traces require absolute bounds and representative measurements alongside the resident model. Low-memory implementations may stream or fuse internal work, but truncating Content DNA, dropping selected memory, or returning the answer before provenance completion is not an acceptable optimization.
 
-## Workbench and Hees
+## Profile authoring and Hees
 
-Workbench owns build-time preparation: source intake, semantic transformation, human review, provenance compilation, rights and policy declarations, package construction, and acceptance suites. Hees owns runtime authority: package admission, provider-result validation, Spectrum adjudication, response admission, and Content DNA construction.
+Profile-authoring workflows own preparation: source intake, semantic transformation, human review, provenance compilation, rights and policy declarations, package construction, and acceptance suites. Those workflows may live in the local-first hees.ai console or another contract-compatible tool. Hees owns authority-bearing validation and runtime behavior: package admission, provider-result validation, Spectrum adjudication, response admission, and Content DNA construction.
 
-That boundary keeps runtime behavior portable. Another package authoring system can produce the same accepted package contract, and another Hees implementation can consume it, without changing who decides the live outcome. Workbench may generate synthetic expected Content DNA for fixtures, but Hees must recompute the live value from the terminal selected memory.
+That boundary keeps runtime behavior portable. Different authoring surfaces can produce the same accepted profile contract, and another Hees implementation can consume it, without changing who decides the live outcome. Authoring tools may generate synthetic expected Content DNA for fixtures, but Hees must recompute the live value from the terminal selected memory.
 
-## What the architecture does not claim
+## Current proof and assurance direction
 
-Deterministic governance does not prove that a reviewed source is objectively true. Content DNA does not grant access to restricted documents. A canonical digest does not prove who produced an artifact. A successful verifier observation does not become unrestricted truth. Spectrum does not expose hidden reasoning, and Hees does not replace the human and organizational work required to review content and policy.
+The working profile makes testable claims today: authority is explicit, provider outputs remain bounded nominations, terminal behavior follows admitted policy, admitted answers have exact selected-memory provenance, and independent implementations can be checked against the same contracts.
 
-The architecture makes narrower claims that can be tested: authority is explicit, provider outputs remain bounded nominations, terminal behavior follows admitted policy, admitted answers have exact selected-memory provenance, and independent implementations can be checked against the same contracts.
+The larger Hees direction adds semantic and factual verification, source and claim provenance, rights assurance, producer identity, conflict management, governed behavior, and richer response lifecycles to this foundation. Those assurance layers require explicit contracts and evidence. They are not replaced by a digest or evaluator score, and they do not turn hidden model reasoning into authority.
 
 ## Normative map
 

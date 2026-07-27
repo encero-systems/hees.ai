@@ -1,0 +1,190 @@
+"""Native Incan entrypoint for offline replay and optional live hees.ai console interactions."""
+
+from rust::std::env import args
+from rust::std::process import exit as process_exit
+from evaluation import evaluate_offline_scenario
+from live import evaluate_live_question
+from rendering import render_headless
+from replays import scenario_slugs
+from terminal import run_evaluated_interactive, run_interactive
+
+
+@derive(Clone)
+model CliOptions:
+    """Closed command-line selection for replay or explicitly requested live execution."""
+
+    mode: str
+    mode_explicit: bool
+    scenario: str
+    scenario_explicit: bool
+    question: Option[str]
+    question_explicit: bool
+    headless: bool
+    help: bool
+    error: Option[str]
+
+
+pub def usage() -> str:
+    """Return stable native Console command-line help."""
+
+    return ("hees.ai console 0.1.0\n" + "Usage:\n" + "  hees-console [--mode offline] [--scenario <valid|undeclared-action|unknown-evidence|unknown-memory|non-admitted-memory>] [--headless]\n" + "  hees-console --mode live --question <text> [--headless]\n" + "Offline replay requires no credentials. Live mode requires OPENAI_API_KEY and never falls back to replay.")
+
+
+def process_arguments() -> list[str]:
+    """Collect process arguments as Incan strings, excluding the executable path."""
+
+    # Rust Args is an iterator, not the list-backed iterable consumed by Incan comprehensions.
+    mut result: list[str] = []
+    mut first = true
+    for argument in args():
+        if first:
+            first = false
+        else:
+            result.append(argument.to_string())
+    return result
+
+
+def parse_cli(arguments: list[str]) -> CliOptions:
+    """Parse the exact bounded native Console flags without positional ambiguity."""
+
+    mut options = CliOptions(
+        mode="offline",
+        mode_explicit=false,
+        scenario="valid",
+        scenario_explicit=false,
+        question=None,
+        question_explicit=false,
+        headless=false,
+        help=false,
+        error=None,
+    )
+    mut index = 0
+    while index < len(arguments):
+        argument = arguments[index]
+        if argument == "--help" or argument == "-h":
+            if options.help:
+                options.error = Some("duplicate_argument")
+                return options
+            options.help = true
+        elif argument == "--headless":
+            if options.headless:
+                options.error = Some("duplicate_argument")
+                return options
+            options.headless = true
+        elif argument == "--mode":
+            if options.mode_explicit:
+                options.error = Some("duplicate_argument")
+                return options
+            if index + 1 >= len(arguments):
+                options.error = Some("missing_mode")
+                return options
+            index += 1
+            options.mode = arguments[index]
+            options.mode_explicit = true
+        elif argument == "--scenario":
+            if options.scenario_explicit:
+                options.error = Some("duplicate_argument")
+                return options
+            if index + 1 >= len(arguments):
+                options.error = Some("missing_scenario")
+                return options
+            index += 1
+            options.scenario = arguments[index]
+            options.scenario_explicit = true
+        elif argument == "--question":
+            if options.question_explicit:
+                options.error = Some("duplicate_argument")
+                return options
+            if index + 1 >= len(arguments):
+                options.error = Some("missing_question")
+                return options
+            index += 1
+            options.question = Some(arguments[index])
+            options.question_explicit = true
+        else:
+            options.error = Some("unknown_argument")
+            return options
+        index += 1
+    if options.mode != "offline" and options.mode != "live":
+        options.error = Some("unsupported_mode")
+    elif options.mode == "offline":
+        if not scenario_slugs().contains(f"{options.scenario}"):
+            options.error = Some("unknown_scenario")
+            return options
+        match options.question:
+            Some(_) =>
+                options.error = Some("question_requires_live_mode")
+            None => pass
+    else:
+        if options.scenario_explicit:
+            options.error = Some("scenario_requires_offline_mode")
+            return options
+        match options.question:
+            None =>
+                options.error = Some("missing_question")
+            Some(question) =>
+                if question.strip() == "" or len(question) > 512:
+                    options.error = Some("invalid_question")
+    return options
+
+
+pub def cli_error(arguments: list[str]) -> Option[str]:
+    """Expose only the stable validation result for native command-line tests."""
+
+    return parse_cli(arguments).error
+
+
+def run_headless(scenario: str) -> Result[None, str]:
+    """Evaluate and print one stable control-free offline scenario report."""
+
+    run = evaluate_offline_scenario(scenario)?
+    println(render_headless(run))
+    return Ok(None)
+
+
+def run_live(question: str, headless: bool) -> Result[None, str]:
+    """Evaluate one live proposal and inspect the real Hees result without replay fallback."""
+
+    run = evaluate_live_question(question)?
+    if headless:
+        println(render_headless(run))
+        return Ok(None)
+    return run_evaluated_interactive(run)
+
+
+def main() -> None:
+    """Dispatch the native executable without requiring a compiler or source checkout at runtime."""
+
+    options = parse_cli(process_arguments())
+    if options.help:
+        println(usage())
+        return
+    match options.error:
+        Some(code) =>
+            println(f"hees.ai console ERROR {code}")
+            println(usage())
+            process_exit(2)
+        None =>
+            if options.mode == "live":
+                question = match options.question:
+                    Some(value) => value
+                    None => f""
+
+                match run_live(question, options.headless):
+                    Err(code) =>
+                        println(f"hees.ai console ERROR {code}")
+                        process_exit(2)
+                    Ok(_) => return
+            else:
+                if options.headless:
+                    match run_headless(options.scenario):
+                        Err(code) =>
+                            println(f"hees.ai console ERROR {code}")
+                            process_exit(2)
+                        Ok(_) => return
+                else:
+                    match run_interactive(options.scenario):
+                        Err(code) =>
+                            println(f"hees.ai console ERROR {code}")
+                            process_exit(2)
+                        Ok(_) => return

@@ -1,0 +1,30 @@
+{
+  "body": {
+    "profile_id": "console_profile_0_1",
+    "package_id": "lantern_labs",
+    "domain_id": "fictional_lesson_support",
+    "package_revision": "1.0.0",
+    "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
+    "request_digest": "sha256:6f05d34af62a1df31dff37133580c3a57cf45fa181663a804cc35fdf0baebe71",
+    "candidate_digest": "sha256:1eb12d81b9766254c61281524d9c18cd68ec9027ec65f4f059944b4638ed2b19",
+    "target_id": "target_visible_unit_sequence",
+    "evaluator_role": "evidence_relation",
+    "target_role": "visible_unit_union",
+    "subject_digest": "sha256:814fbaf74ce627c10e04e047e7cb6d92f6f44744936a2a4a87f7c7aafcf515c4",
+    "premises": [
+      {
+        "memory_id": "memory_lantern_sequence",
+        "content_digest": "sha256:5fdcb8e4244cf408fcc2f6cfe5178187f3668446853aad952d42c9001d7f425b"
+      },
+      {
+        "memory_id": "memory_echo_markers",
+        "content_digest": "sha256:7be3a4aadc758c99d4889c6298f7971cdb9c1f9cbbd7d3aa15e26a8efa3e5b36"
+      },
+      {
+        "memory_id": "memory_pebble_reserve",
+        "content_digest": "sha256:28c1861ff48243664383967d14cb8c369139d1664957ff890d7763a865fba05e"
+      }
+    ]
+  },
+  "target_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+}

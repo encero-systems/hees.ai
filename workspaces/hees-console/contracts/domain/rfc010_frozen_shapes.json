@@ -1,0 +1,1273 @@
+{
+  "source_rfc_commit": "0ff99f7c5babd0ef86d065150df4ce6541e21650",
+  "scope": "hees_console_build_week_initial_profile",
+  "profile_id": "console_profile_0_1",
+  "reason_namespace": "console_admission_0_1",
+  "exact_shapes": {
+    "atom_candidate.schema.json": {
+      "/": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "source_ref",
+          "source_fingerprint",
+          "claim",
+          "guidance",
+          "language",
+          "candidate_digest"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "source_ref",
+          "source_fingerprint",
+          "claim",
+          "guidance",
+          "language",
+          "candidate_digest"
+        ]
+      }
+    },
+    "atom_comparison.schema.json": {
+      "/": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "candidate_digest",
+          "matched_memory_id",
+          "comparison_state",
+          "package_effect"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "candidate_digest",
+          "matched_memory_id",
+          "comparison_state",
+          "package_effect"
+        ]
+      }
+    },
+    "content_dna.schema.json": {
+      "/": {
+        "required": [
+          "body",
+          "content_dna_id"
+        ],
+        "properties": [
+          "body",
+          "content_dna_id"
+        ]
+      },
+      "/properties/body": {
+        "required": [
+          "contract_version",
+          "state",
+          "package",
+          "proposal_id",
+          "spectrum_decision_id",
+          "terminal",
+          "policy",
+          "entries",
+          "source_digests",
+          "answer_digest"
+        ],
+        "properties": [
+          "contract_version",
+          "state",
+          "package",
+          "proposal_id",
+          "spectrum_decision_id",
+          "terminal",
+          "policy",
+          "entries",
+          "source_digests",
+          "answer_digest"
+        ]
+      },
+      "/properties/body/properties/package": {
+        "required": [
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest"
+        ],
+        "properties": [
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest"
+        ]
+      },
+      "/properties/body/properties/terminal": {
+        "required": [
+          "decision",
+          "reason_namespace",
+          "reason"
+        ],
+        "properties": [
+          "decision",
+          "reason_namespace",
+          "reason"
+        ]
+      },
+      "/properties/body/properties/policy": {
+        "required": [
+          "constraint_plan_id",
+          "constraint_plan_revision",
+          "response_contract_id",
+          "response_contract_revision"
+        ],
+        "properties": [
+          "constraint_plan_id",
+          "constraint_plan_revision",
+          "response_contract_id",
+          "response_contract_revision"
+        ]
+      },
+      "/properties/body/properties/entries/items": {
+        "required": [
+          "memory_id",
+          "source_ref",
+          "source_kind",
+          "source_fingerprint",
+          "provenance_digest",
+          "review_state",
+          "review_revision",
+          "rights_state",
+          "authority_class",
+          "evidence_kind"
+        ],
+        "properties": [
+          "memory_id",
+          "source_ref",
+          "source_kind",
+          "source_fingerprint",
+          "provenance_digest",
+          "review_state",
+          "review_revision",
+          "rights_state",
+          "authority_class",
+          "evidence_kind"
+        ]
+      }
+    },
+    "derived_finding.schema.json": {
+      "/": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "finding_id",
+          "observation_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "candidate_digest",
+          "target_id",
+          "target_digest",
+          "evaluator_role",
+          "target_role",
+          "classification",
+          "constraint_plan_id",
+          "constraint_plan_revision"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "finding_id",
+          "observation_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "candidate_digest",
+          "target_id",
+          "target_digest",
+          "evaluator_role",
+          "target_role",
+          "classification",
+          "constraint_plan_id",
+          "constraint_plan_revision"
+        ]
+      }
+    },
+    "manifest_target.schema.json": {
+      "/": {
+        "required": [
+          "body",
+          "target_digest"
+        ],
+        "properties": [
+          "body",
+          "target_digest"
+        ]
+      },
+      "/properties/body": {
+        "required": [
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_digest",
+          "candidate_digest",
+          "target_id",
+          "evaluator_role",
+          "target_role",
+          "subject_digest",
+          "premises"
+        ],
+        "properties": [
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_digest",
+          "candidate_digest",
+          "target_id",
+          "evaluator_role",
+          "target_role",
+          "subject_digest",
+          "premises"
+        ]
+      },
+      "/properties/body/properties/premises/items": {
+        "required": [
+          "memory_id",
+          "content_digest"
+        ],
+        "properties": [
+          "memory_id",
+          "content_digest"
+        ]
+      }
+    },
+    "package.schema.json": {
+      "/": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "mission",
+          "sources",
+          "actions",
+          "requirements",
+          "atoms",
+          "policy"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "mission",
+          "sources",
+          "actions",
+          "requirements",
+          "atoms",
+          "policy"
+        ]
+      },
+      "/properties/sources/items": {
+        "required": [
+          "source_id",
+          "source_ref",
+          "source_kind",
+          "source_fingerprint",
+          "language",
+          "rights_state",
+          "text"
+        ],
+        "properties": [
+          "source_id",
+          "source_ref",
+          "source_kind",
+          "source_fingerprint",
+          "language",
+          "rights_state",
+          "text"
+        ]
+      },
+      "/properties/actions/items": {
+        "required": [
+          "action_id",
+          "evidence_required"
+        ],
+        "properties": [
+          "action_id",
+          "evidence_required"
+        ]
+      },
+      "/properties/requirements/items": {
+        "required": [
+          "requirement_id",
+          "description"
+        ],
+        "properties": [
+          "requirement_id",
+          "description"
+        ]
+      },
+      "/properties/atoms/items": {
+        "required": [
+          "memory_id",
+          "evidence_id",
+          "source_id",
+          "source_ref",
+          "source_kind",
+          "source_fingerprint",
+          "source_span",
+          "claim",
+          "guidance",
+          "language",
+          "review_state",
+          "review_revision",
+          "rights_state",
+          "authority_class",
+          "evidence_kind",
+          "provenance_digest"
+        ],
+        "properties": [
+          "memory_id",
+          "evidence_id",
+          "source_id",
+          "source_ref",
+          "source_kind",
+          "source_fingerprint",
+          "source_span",
+          "claim",
+          "guidance",
+          "language",
+          "review_state",
+          "review_revision",
+          "rights_state",
+          "authority_class",
+          "evidence_kind",
+          "provenance_digest"
+        ]
+      },
+      "/properties/atoms/items/properties/source_span": {
+        "required": [
+          "start_utf8_byte",
+          "end_utf8_byte"
+        ],
+        "properties": [
+          "start_utf8_byte",
+          "end_utf8_byte"
+        ]
+      },
+      "/properties/policy": {
+        "required": [
+          "constraint_plan_id",
+          "constraint_plan_revision",
+          "response_contract_id",
+          "response_contract_revision",
+          "min_support_bps",
+          "max_contradiction_bps",
+          "max_relation_unresolved_bps",
+          "min_coverage_bps",
+          "max_gap_bps",
+          "max_synthesis_unresolved_bps"
+        ],
+        "properties": [
+          "constraint_plan_id",
+          "constraint_plan_revision",
+          "response_contract_id",
+          "response_contract_revision",
+          "min_support_bps",
+          "max_contradiction_bps",
+          "max_relation_unresolved_bps",
+          "min_coverage_bps",
+          "max_gap_bps",
+          "max_synthesis_unresolved_bps"
+        ]
+      }
+    },
+    "profile_receipt.schema.json": {
+      "/": {
+        "required": [
+          "body",
+          "receipt_id"
+        ],
+        "properties": [
+          "body",
+          "receipt_id"
+        ]
+      },
+      "/properties/body/oneOf/0": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "proposal_id",
+          "candidate_digest",
+          "decision",
+          "reason_namespace",
+          "reason",
+          "structural_reason",
+          "admitted_evidence_ids",
+          "selected_memory_ids",
+          "content_dna_id"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "proposal_id",
+          "candidate_digest",
+          "decision",
+          "reason_namespace",
+          "reason",
+          "structural_reason",
+          "admitted_evidence_ids",
+          "selected_memory_ids",
+          "content_dna_id"
+        ]
+      },
+      "/properties/body/oneOf/1": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "proposal_id",
+          "candidate_digest",
+          "decision",
+          "reason_namespace",
+          "reason",
+          "structural_reason"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "proposal_id",
+          "candidate_digest",
+          "decision",
+          "reason_namespace",
+          "reason",
+          "structural_reason"
+        ]
+      }
+    },
+    "proposal.schema.json": {
+      "/": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "proposal_id",
+          "action_id",
+          "evidence_ids",
+          "visible_units",
+          "support_mappings"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "proposal_id",
+          "action_id",
+          "evidence_ids",
+          "visible_units",
+          "support_mappings"
+        ]
+      },
+      "/properties/visible_units/items": {
+        "required": [
+          "unit_id",
+          "text",
+          "requirement_ids"
+        ],
+        "properties": [
+          "unit_id",
+          "text",
+          "requirement_ids"
+        ]
+      },
+      "/properties/support_mappings/items": {
+        "required": [
+          "support_claim_id",
+          "unit_id",
+          "memory_id"
+        ],
+        "properties": [
+          "support_claim_id",
+          "unit_id",
+          "memory_id",
+          "evidence_ids"
+        ]
+      }
+    },
+    "relation_observation.schema.json": {
+      "/": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "observation_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "candidate_digest",
+          "target_id",
+          "target_digest",
+          "evaluator_role",
+          "target_role",
+          "support_bps",
+          "contradiction_bps",
+          "unresolved_bps",
+          "model_fingerprint",
+          "prompt_fingerprint",
+          "configuration_fingerprint"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "observation_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "candidate_digest",
+          "target_id",
+          "target_digest",
+          "evaluator_role",
+          "target_role",
+          "support_bps",
+          "contradiction_bps",
+          "unresolved_bps",
+          "model_fingerprint",
+          "prompt_fingerprint",
+          "configuration_fingerprint"
+        ]
+      }
+    },
+    "replay.schema.json": {
+      "/": {
+        "required": [
+          "body",
+          "replay_id"
+        ],
+        "properties": [
+          "body",
+          "replay_id"
+        ]
+      },
+      "/properties/body": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "scenario_id",
+          "request",
+          "proposal",
+          "relation_observations",
+          "synthesis_observations",
+          "schema_digests"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "scenario_id",
+          "request",
+          "proposal",
+          "relation_observations",
+          "synthesis_observations",
+          "schema_digests"
+        ]
+      },
+      "/properties/body/properties/schema_digests/items": {
+        "required": [
+          "contract_version",
+          "schema_digest"
+        ],
+        "properties": [
+          "contract_version",
+          "schema_digest"
+        ]
+      }
+    },
+    "replay_fixture_fingerprints.schema.json": {
+      "/": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "model",
+          "configuration",
+          "prompts"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "model",
+          "configuration",
+          "prompts"
+        ]
+      },
+      "/properties/model": {
+        "required": [
+          "projection",
+          "fingerprint"
+        ],
+        "properties": [
+          "projection",
+          "fingerprint"
+        ]
+      },
+      "/properties/model/properties/projection": {
+        "required": [
+          "namespace",
+          "profile_id",
+          "identity_kind",
+          "identity"
+        ],
+        "properties": [
+          "namespace",
+          "profile_id",
+          "identity_kind",
+          "identity"
+        ]
+      },
+      "/properties/configuration": {
+        "required": [
+          "projection",
+          "fingerprint"
+        ],
+        "properties": [
+          "projection",
+          "fingerprint"
+        ]
+      },
+      "/properties/configuration/properties/projection": {
+        "required": [
+          "namespace",
+          "profile_id",
+          "identity_kind",
+          "identity"
+        ],
+        "properties": [
+          "namespace",
+          "profile_id",
+          "identity_kind",
+          "identity"
+        ]
+      },
+      "/properties/prompts": {
+        "required": [
+          "evidence_relation",
+          "contradiction_cross_check",
+          "synthesis_coverage"
+        ],
+        "properties": [
+          "evidence_relation",
+          "contradiction_cross_check",
+          "synthesis_coverage"
+        ]
+      },
+      "/properties/prompts/properties/evidence_relation": {
+        "required": [
+          "projection",
+          "fingerprint"
+        ],
+        "properties": [
+          "projection",
+          "fingerprint"
+        ]
+      },
+      "/properties/prompts/properties/evidence_relation/properties/projection": {
+        "required": [
+          "namespace",
+          "profile_id",
+          "identity_kind",
+          "evaluator_role",
+          "identity"
+        ],
+        "properties": [
+          "namespace",
+          "profile_id",
+          "identity_kind",
+          "evaluator_role",
+          "identity"
+        ]
+      },
+      "/properties/prompts/properties/contradiction_cross_check": {
+        "required": [
+          "projection",
+          "fingerprint"
+        ],
+        "properties": [
+          "projection",
+          "fingerprint"
+        ]
+      },
+      "/properties/prompts/properties/contradiction_cross_check/properties/projection": {
+        "required": [
+          "namespace",
+          "profile_id",
+          "identity_kind",
+          "evaluator_role",
+          "identity"
+        ],
+        "properties": [
+          "namespace",
+          "profile_id",
+          "identity_kind",
+          "evaluator_role",
+          "identity"
+        ]
+      },
+      "/properties/prompts/properties/synthesis_coverage": {
+        "required": [
+          "projection",
+          "fingerprint"
+        ],
+        "properties": [
+          "projection",
+          "fingerprint"
+        ]
+      },
+      "/properties/prompts/properties/synthesis_coverage/properties/projection": {
+        "required": [
+          "namespace",
+          "profile_id",
+          "identity_kind",
+          "evaluator_role",
+          "identity"
+        ],
+        "properties": [
+          "namespace",
+          "profile_id",
+          "identity_kind",
+          "evaluator_role",
+          "identity"
+        ]
+      }
+    },
+    "request_binding.schema.json": {
+      "/": {
+        "required": [
+          "request_id",
+          "question",
+          "request_digest"
+        ],
+        "properties": [
+          "request_id",
+          "question",
+          "request_digest"
+        ]
+      }
+    },
+    "scenario.schema.json": {
+      "/": {
+        "required": [
+          "scenario_contract",
+          "profile_id",
+          "scenario_id",
+          "title",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_path",
+          "proposal_path",
+          "manifest_target_paths",
+          "observation_paths",
+          "expected_result"
+        ],
+        "properties": [
+          "scenario_contract",
+          "profile_id",
+          "scenario_id",
+          "title",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_path",
+          "proposal_path",
+          "manifest_target_paths",
+          "observation_paths",
+          "expected_result"
+        ]
+      },
+      "/properties/expected_result": {
+        "required": [
+          "decision",
+          "reason_namespace",
+          "reason",
+          "selected_memory_ids"
+        ],
+        "properties": [
+          "decision",
+          "reason_namespace",
+          "reason",
+          "selected_memory_ids",
+          "content_dna_path",
+          "receipt_path"
+        ]
+      }
+    },
+    "source_catalog.schema.json": {
+      "/": {
+        "required": [
+          "contract_version",
+          "sources"
+        ],
+        "properties": [
+          "contract_version",
+          "sources"
+        ]
+      },
+      "/properties/sources/items": {
+        "required": [
+          "source_id",
+          "title",
+          "language",
+          "source_ref",
+          "source_kind",
+          "content_path",
+          "source_fingerprint",
+          "content_bytes",
+          "original_author_statement",
+          "rights_state",
+          "review_state",
+          "review_revision",
+          "spans"
+        ],
+        "properties": [
+          "source_id",
+          "title",
+          "language",
+          "source_ref",
+          "source_kind",
+          "content_path",
+          "source_fingerprint",
+          "content_bytes",
+          "original_author_statement",
+          "rights_state",
+          "review_state",
+          "review_revision",
+          "spans"
+        ]
+      },
+      "/properties/sources/items/properties/spans/items": {
+        "required": [
+          "span_id",
+          "start_utf8_byte",
+          "end_utf8_byte"
+        ],
+        "properties": [
+          "span_id",
+          "start_utf8_byte",
+          "end_utf8_byte"
+        ]
+      }
+    },
+    "synthesis_observation.schema.json": {
+      "/": {
+        "required": [
+          "contract_version",
+          "profile_id",
+          "observation_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "candidate_digest",
+          "target_id",
+          "target_digest",
+          "evaluator_role",
+          "target_role",
+          "covered_bps",
+          "gap_bps",
+          "unresolved_bps",
+          "model_fingerprint",
+          "prompt_fingerprint",
+          "configuration_fingerprint"
+        ],
+        "properties": [
+          "contract_version",
+          "profile_id",
+          "observation_id",
+          "package_id",
+          "domain_id",
+          "package_revision",
+          "artifact_digest",
+          "request_id",
+          "request_digest",
+          "candidate_digest",
+          "target_id",
+          "target_digest",
+          "evaluator_role",
+          "target_role",
+          "covered_bps",
+          "gap_bps",
+          "unresolved_bps",
+          "model_fingerprint",
+          "prompt_fingerprint",
+          "configuration_fingerprint"
+        ]
+      }
+    }
+  },
+  "exact_values": {
+    "atom_candidate.schema.json": {
+      "/properties/contract_version/const": "console_atom_candidate_0_1",
+      "/properties/profile_id/const": "console_profile_0_1",
+      "/properties/language/const": "en"
+    },
+    "atom_comparison.schema.json": {
+      "/properties/contract_version/const": "console_atom_comparison_0_1",
+      "/properties/profile_id/const": "console_profile_0_1",
+      "/properties/comparison_state/enum": [
+        "exact_match",
+        "mismatch"
+      ],
+      "/properties/package_effect/const": "none"
+    },
+    "content_dna.schema.json": {
+      "/properties/body/properties/contract_version/const": "console_content_dna_0_1",
+      "/properties/body/properties/state/const": "admitted_answer",
+      "/properties/body/properties/terminal/properties/decision/const": "admit",
+      "/properties/body/properties/terminal/properties/reason_namespace/const": "console_admission_0_1",
+      "/properties/body/properties/terminal/properties/reason/const": "admitted",
+      "/properties/body/properties/entries/items/properties/source_kind/const": "fictional_lesson_note",
+      "/properties/body/properties/entries/items/properties/review_state/const": "approved",
+      "/properties/body/properties/entries/items/properties/rights_state/const": "allowed",
+      "/properties/body/properties/entries/items/properties/authority_class/const": "reviewed_fixture",
+      "/properties/body/properties/entries/items/properties/evidence_kind/enum": [
+        "lesson_fact",
+        "lesson_guidance"
+      ]
+    },
+    "derived_finding.schema.json": {
+      "/properties/contract_version/const": "console_finding_0_1",
+      "/properties/profile_id/const": "console_profile_0_1",
+      "/properties/evaluator_role/enum": [
+        "evidence_relation",
+        "contradiction_cross_check",
+        "synthesis_coverage"
+      ],
+      "/properties/target_role/enum": [
+        "visible_unit_union",
+        "support_claim_memory",
+        "proposal_union",
+        "request_coverage",
+        "requirement_coverage"
+      ],
+      "/properties/classification/enum": [
+        "supported",
+        "contradicted",
+        "uncertain",
+        "unsupported",
+        "covered",
+        "not_covered"
+      ]
+    },
+    "manifest_target.schema.json": {
+      "/properties/body/properties/profile_id/const": "console_profile_0_1",
+      "/properties/body/properties/evaluator_role/enum": [
+        "evidence_relation",
+        "contradiction_cross_check",
+        "synthesis_coverage"
+      ],
+      "/properties/body/properties/target_role/enum": [
+        "visible_unit_union",
+        "support_claim_memory",
+        "proposal_union",
+        "request_coverage",
+        "requirement_coverage"
+      ]
+    },
+    "package.schema.json": {
+      "/properties/contract_version/const": "console_package_0_1",
+      "/properties/profile_id/const": "console_profile_0_1",
+      "/properties/sources/items/properties/source_kind/const": "fictional_lesson_note",
+      "/properties/sources/items/properties/language/const": "en",
+      "/properties/sources/items/properties/rights_state/const": "fictional_use_allowed",
+      "/properties/atoms/items/properties/source_kind/const": "fictional_lesson_note",
+      "/properties/atoms/items/properties/language/const": "en",
+      "/properties/atoms/items/properties/review_state/enum": [
+        "approved",
+        "pending",
+        "rejected"
+      ],
+      "/properties/atoms/items/properties/rights_state/enum": [
+        "allowed",
+        "denied"
+      ],
+      "/properties/atoms/items/properties/authority_class/const": "reviewed_fixture",
+      "/properties/atoms/items/properties/evidence_kind/enum": [
+        "lesson_fact",
+        "lesson_guidance",
+        "discarded_draft"
+      ],
+      "/properties/policy/properties/min_support_bps/const": 6500,
+      "/properties/policy/properties/max_contradiction_bps/const": 3500,
+      "/properties/policy/properties/max_relation_unresolved_bps/const": 2500,
+      "/properties/policy/properties/min_coverage_bps/const": 6500,
+      "/properties/policy/properties/max_gap_bps/const": 3500,
+      "/properties/policy/properties/max_synthesis_unresolved_bps/const": 2500
+    },
+    "profile_receipt.schema.json": {
+      "/properties/body/oneOf/0/properties/contract_version/const": "console_profile_receipt_0_1",
+      "/properties/body/oneOf/0/properties/profile_id/const": "console_profile_0_1",
+      "/properties/body/oneOf/0/properties/decision/const": "admit",
+      "/properties/body/oneOf/0/properties/reason_namespace/const": "console_admission_0_1",
+      "/properties/body/oneOf/0/properties/reason/const": "admitted",
+      "/properties/body/oneOf/0/properties/structural_reason/enum": [
+        "invalid_package",
+        "package_id_mismatch",
+        "domain_id_mismatch",
+        "missing_visible_output",
+        "unknown_action",
+        "duplicate_evidence_reference",
+        "evidence_required",
+        "unknown_evidence",
+        "admitted",
+        null
+      ],
+      "/properties/body/oneOf/1/properties/contract_version/const": "console_profile_receipt_0_1",
+      "/properties/body/oneOf/1/properties/profile_id/const": "console_profile_0_1",
+      "/properties/body/oneOf/1/properties/decision/const": "reject",
+      "/properties/body/oneOf/1/properties/reason_namespace/const": "console_admission_0_1",
+      "/properties/body/oneOf/1/properties/reason/enum": [
+        "request_too_large",
+        "invalid_json",
+        "unsupported_request_contract",
+        "invalid_request_schema",
+        "replay_integrity_mismatch",
+        "package_unavailable",
+        "invalid_package",
+        "memory_context_invalid",
+        "package_id_mismatch",
+        "domain_id_mismatch",
+        "package_revision_mismatch",
+        "artifact_digest_mismatch",
+        "request_id_invalid",
+        "request_digest_mismatch",
+        "proposal_provider_unavailable",
+        "unsupported_proposal_contract",
+        "invalid_proposal_schema",
+        "proposal_too_large",
+        "proposal_request_mismatch",
+        "missing_visible_output",
+        "invalid_visible_unit",
+        "unknown_action",
+        "duplicate_evidence_reference",
+        "evidence_required",
+        "unknown_evidence",
+        "support_mapping_invalid",
+        "duplicate_memory_reference",
+        "unknown_memory",
+        "memory_not_admitted",
+        "manifest_construction_failed",
+        "unsupported_observation_contract",
+        "observation_identity_mismatch",
+        "observation_coverage_invalid",
+        "observation_malformed",
+        "observation_unavailable",
+        "support_not_established",
+        "contradiction_detected",
+        "synthesis_incomplete",
+        "finding_uncertain",
+        "structural_admission_rejected",
+        "selected_memory_invalid",
+        "content_dna_construction_failed",
+        "receipt_projection_failed"
+      ],
+      "/properties/body/oneOf/1/properties/structural_reason/enum": [
+        "invalid_package",
+        "package_id_mismatch",
+        "domain_id_mismatch",
+        "missing_visible_output",
+        "unknown_action",
+        "duplicate_evidence_reference",
+        "evidence_required",
+        "unknown_evidence",
+        "admitted",
+        null
+      ]
+    },
+    "proposal.schema.json": {
+      "/properties/contract_version/const": "console_proposal_0_1",
+      "/properties/profile_id/const": "console_profile_0_1"
+    },
+    "relation_observation.schema.json": {
+      "/properties/contract_version/const": "console_relation_observation_0_1",
+      "/properties/profile_id/const": "console_profile_0_1",
+      "/properties/evaluator_role/enum": [
+        "evidence_relation",
+        "contradiction_cross_check"
+      ],
+      "/properties/target_role/enum": [
+        "visible_unit_union",
+        "support_claim_memory",
+        "proposal_union"
+      ]
+    },
+    "replay.schema.json": {
+      "/properties/body/properties/contract_version/const": "console_replay_0_1",
+      "/properties/body/properties/profile_id/const": "console_profile_0_1",
+      "/properties/body/properties/schema_digests/items/properties/contract_version/enum": [
+        "console_proposal_0_1",
+        "console_relation_observation_0_1",
+        "console_synthesis_observation_0_1"
+      ]
+    },
+    "replay_fixture_fingerprints.schema.json": {
+      "/properties/contract_version/const": "console_replay_fixture_fingerprints_0_1",
+      "/properties/profile_id/const": "console_profile_0_1",
+      "/properties/model/properties/projection/properties/namespace/const": "hees_console_replay_fixture_0_1",
+      "/properties/model/properties/projection/properties/profile_id/const": "console_profile_0_1",
+      "/properties/model/properties/projection/properties/identity_kind/const": "reserved_replay_fixture_model",
+      "/properties/model/properties/projection/properties/identity/const": "hees_console_reserved_replay_model_0_1",
+      "/properties/configuration/properties/projection/properties/namespace/const": "hees_console_replay_fixture_0_1",
+      "/properties/configuration/properties/projection/properties/profile_id/const": "console_profile_0_1",
+      "/properties/configuration/properties/projection/properties/identity_kind/const": "reserved_replay_fixture_configuration",
+      "/properties/configuration/properties/projection/properties/identity/const": "hees_console_reserved_replay_configuration_0_1",
+      "/properties/prompts/properties/evidence_relation/properties/projection/properties/namespace/const": "hees_console_replay_fixture_0_1",
+      "/properties/prompts/properties/evidence_relation/properties/projection/properties/profile_id/const": "console_profile_0_1",
+      "/properties/prompts/properties/evidence_relation/properties/projection/properties/identity_kind/const": "reserved_replay_fixture_prompt",
+      "/properties/prompts/properties/evidence_relation/properties/projection/properties/evaluator_role/const": "evidence_relation",
+      "/properties/prompts/properties/evidence_relation/properties/projection/properties/identity/const": "hees_console_reserved_replay_prompt_evidence_relation_0_1",
+      "/properties/prompts/properties/contradiction_cross_check/properties/projection/properties/namespace/const": "hees_console_replay_fixture_0_1",
+      "/properties/prompts/properties/contradiction_cross_check/properties/projection/properties/profile_id/const": "console_profile_0_1",
+      "/properties/prompts/properties/contradiction_cross_check/properties/projection/properties/identity_kind/const": "reserved_replay_fixture_prompt",
+      "/properties/prompts/properties/contradiction_cross_check/properties/projection/properties/evaluator_role/const": "contradiction_cross_check",
+      "/properties/prompts/properties/contradiction_cross_check/properties/projection/properties/identity/const": "hees_console_reserved_replay_prompt_contradiction_cross_check_0_1",
+      "/properties/prompts/properties/synthesis_coverage/properties/projection/properties/namespace/const": "hees_console_replay_fixture_0_1",
+      "/properties/prompts/properties/synthesis_coverage/properties/projection/properties/profile_id/const": "console_profile_0_1",
+      "/properties/prompts/properties/synthesis_coverage/properties/projection/properties/identity_kind/const": "reserved_replay_fixture_prompt",
+      "/properties/prompts/properties/synthesis_coverage/properties/projection/properties/evaluator_role/const": "synthesis_coverage",
+      "/properties/prompts/properties/synthesis_coverage/properties/projection/properties/identity/const": "hees_console_reserved_replay_prompt_synthesis_coverage_0_1"
+    },
+    "request_binding.schema.json": {},
+    "scenario.schema.json": {
+      "/properties/scenario_contract/const": "console_scenario_0_1",
+      "/properties/profile_id/const": "console_profile_0_1",
+      "/properties/expected_result/properties/decision/enum": [
+        "admit",
+        "reject"
+      ],
+      "/properties/expected_result/properties/reason_namespace/const": "console_admission_0_1",
+      "/properties/expected_result/properties/reason/enum": [
+        "request_too_large",
+        "invalid_json",
+        "unsupported_request_contract",
+        "invalid_request_schema",
+        "replay_integrity_mismatch",
+        "package_unavailable",
+        "invalid_package",
+        "memory_context_invalid",
+        "package_id_mismatch",
+        "domain_id_mismatch",
+        "package_revision_mismatch",
+        "artifact_digest_mismatch",
+        "request_id_invalid",
+        "request_digest_mismatch",
+        "proposal_provider_unavailable",
+        "unsupported_proposal_contract",
+        "invalid_proposal_schema",
+        "proposal_too_large",
+        "proposal_request_mismatch",
+        "missing_visible_output",
+        "invalid_visible_unit",
+        "unknown_action",
+        "duplicate_evidence_reference",
+        "evidence_required",
+        "unknown_evidence",
+        "support_mapping_invalid",
+        "duplicate_memory_reference",
+        "unknown_memory",
+        "memory_not_admitted",
+        "manifest_construction_failed",
+        "unsupported_observation_contract",
+        "observation_identity_mismatch",
+        "observation_coverage_invalid",
+        "observation_malformed",
+        "observation_unavailable",
+        "support_not_established",
+        "contradiction_detected",
+        "synthesis_incomplete",
+        "finding_uncertain",
+        "structural_admission_rejected",
+        "selected_memory_invalid",
+        "content_dna_construction_failed",
+        "receipt_projection_failed",
+        "admitted"
+      ]
+    },
+    "source_catalog.schema.json": {
+      "/properties/contract_version/const": "console_source_catalog_0_1",
+      "/properties/sources/items/properties/language/const": "en",
+      "/properties/sources/items/properties/source_kind/const": "fictional_lesson_note",
+      "/properties/sources/items/properties/original_author_statement/const": "Original fictional English content authored for the public hees.ai console Build Week initial-profile fixture.",
+      "/properties/sources/items/properties/rights_state/const": "fictional_use_allowed",
+      "/properties/sources/items/properties/review_state/const": "approved"
+    },
+    "synthesis_observation.schema.json": {
+      "/properties/contract_version/const": "console_synthesis_observation_0_1",
+      "/properties/profile_id/const": "console_profile_0_1",
+      "/properties/evaluator_role/const": "synthesis_coverage",
+      "/properties/target_role/enum": [
+        "request_coverage",
+        "requirement_coverage"
+      ]
+    }
+  }
+}

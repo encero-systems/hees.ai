@@ -1,0 +1,204 @@
+name: Console draft release
+
+on:
+  push:
+    tags:
+      - hees-console-v0.1.0
+
+permissions:
+  contents: read
+
+concurrency:
+  group: console-draft-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact release tag
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_TYPE" = tag
+          test "$GITHUB_REF_NAME" = hees-console-v0.1.0
+          test "$(git tag --points-at HEAD --list "$GITHUB_REF_NAME")" = "$GITHUB_REF_NAME"
+          git show-ref --verify --quiet refs/remotes/origin/main
+          git merge-base --is-ancestor HEAD origin/main
+      - name: Install Rust 1.93
+        uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66 # 1.93.0
+      - name: Install checksum-pinned actionlint 1.7.12
+        env:
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          ACTIONLINT_URL: https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          curl --fail --location --proto '=https' --tlsv1.2 "$ACTIONLINT_URL" --output "$RUNNER_TEMP/actionlint.tar.gz"
+          printf '%s  %s\n' "$ACTIONLINT_SHA256" "$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/actionlint" actionlint
+          printf '%s\n' "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
+      - name: Validate release mechanics and workflows
+        run: make console-release-lint console-release-contract-test console-release-set-test
+      - name: Install pinned license-audit tools
+        run: |
+          cargo install cargo-deny --version 0.19.0 --locked
+          cargo install cargo-about --version 0.9.1 --locked --features cli
+      - name: Build pinned Incan for dependency audit
+        run: |
+          set -euo pipefail
+          install_root="$RUNNER_TEMP/incan-0.5.0-dev.23"
+          workspaces/hees-console/packaging/release_candidate.sh \
+            prepare-incan \
+            --platform linux-x86_64 \
+            --destination "$install_root"
+          {
+            echo "INCAN_HOME=$RUNNER_TEMP/incan-home"
+            echo "INCAN_STDLIB=$install_root/source/crates/incan_stdlib/stdlib"
+            echo "INCAN_TOOLCHAIN_CRATES_DIR=$install_root/source/crates"
+          } >> "$GITHUB_ENV"
+      - name: Audit the locked native license graph
+        run: >-
+          make console-license-audit
+          INCAN="$RUNNER_TEMP/incan-0.5.0-dev.23/bin/incan"
+
+  build:
+    needs: validate
+    name: Build ${{ matrix.platform }} release
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-24.04
+          - platform: macos-aarch64
+            runner: macos-15
+          - platform: macos-x86_64
+            runner: macos-15-intel
+    env:
+      RELEASE_PLATFORM: ${{ matrix.platform }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify tag and configure release paths
+        id: source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_TYPE" = tag
+          test "$GITHUB_REF_NAME" = hees-console-v0.1.0
+          test "$(git tag --points-at HEAD --list "$GITHUB_REF_NAME")" = "$GITHUB_REF_NAME"
+          git show-ref --verify --quiet refs/remotes/origin/main
+          git merge-base --is-ancestor HEAD origin/main
+          printf 'commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          install_root="$RUNNER_TEMP/incan-0.5.0-dev.23"
+          {
+            echo "INCAN_ROOT=$install_root"
+            echo "INCAN_HOME=$RUNNER_TEMP/incan-home"
+            echo "INCAN_STDLIB=$install_root/source/crates/incan_stdlib/stdlib"
+            echo "INCAN_TOOLCHAIN_CRATES_DIR=$install_root/source/crates"
+            echo "RELEASE_OUTPUT=$RUNNER_TEMP/hees-console-release"
+          } >> "$GITHUB_ENV"
+      - name: Install Rust 1.93
+        uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66 # 1.93.0
+      - name: Install pinned license-audit tools
+        run: |
+          cargo install cargo-deny --version 0.19.0 --locked
+          cargo install cargo-about --version 0.9.1 --locked --features cli
+      - name: Build commit-pinned Incan 0.5 development toolchain
+        run: >-
+          workspaces/hees-console/packaging/release_candidate.sh
+          prepare-incan
+          --platform "$RELEASE_PLATFORM"
+          --destination "$INCAN_ROOT"
+      - name: Build and clean-smoke the release archive
+        run: >-
+          make console-release-candidate
+          INCAN="$INCAN_ROOT/bin/incan"
+          RELEASE_PLATFORM="$RELEASE_PLATFORM"
+          RELEASE_OUTPUT="$RELEASE_OUTPUT"
+      - name: Verify immutable tagged source identity
+        env:
+          RELEASE_SOURCE_SHA: ${{ steps.source.outputs.commit }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_SOURCE_SHA"
+          grep -F '"commit":"'"$RELEASE_SOURCE_SHA"'"' \
+            "$RELEASE_OUTPUT/hees-console-0.1.0-$RELEASE_PLATFORM.manifest.json"
+      - name: Upload draft-release inputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hees-console-${{ matrix.platform }}-${{ github.run_id }}-${{ steps.source.outputs.commit }}
+          path: ${{ runner.temp }}/hees-console-release/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+          overwrite: false
+
+  draft:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact tag and release source
+        id: source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_TYPE" = tag
+          test "$GITHUB_REF_NAME" = hees-console-v0.1.0
+          test "$(git tag --points-at HEAD --list "$GITHUB_REF_NAME")" = "$GITHUB_REF_NAME"
+          git show-ref --verify --quiet refs/remotes/origin/main
+          git merge-base --is-ancestor HEAD origin/main
+          printf 'commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Download all native release inputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: hees-console-*-${{ github.run_id }}-${{ steps.source.outputs.commit }}
+          path: ${{ runner.temp }}/hees-console-release
+          merge-multiple: true
+      - name: Validate the complete release set
+        env:
+          RELEASE_SOURCE_SHA: ${{ steps.source.outputs.commit }}
+        run: >-
+          workspaces/hees-console/packaging/validate_release_set.sh
+          --directory "$RUNNER_TEMP/hees-console-release"
+          --source-commit "$RELEASE_SOURCE_SHA"
+          --tag "$GITHUB_REF_NAME"
+      - name: Write aggregate checksums
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/hees-console-release"
+          sha256sum hees-console-0.1.0-* > SHA256SUMS
+          test "$(wc -l < SHA256SUMS | tr -d ' ')" = 9
+          sha256sum --check --strict SHA256SUMS
+      - name: Create approval-gated draft Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            printf 'A GitHub Release already exists for %s; refusing to overwrite it.\n' "$GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            "$RUNNER_TEMP/hees-console-release"/* \
+            --draft \
+            --verify-tag \
+            --title "hees.ai console 0.1.0" \
+            --notes-file workspaces/hees-console/packaging/RELEASE_NOTES.md

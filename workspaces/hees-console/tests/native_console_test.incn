@@ -1,0 +1,937 @@
+"""Native Console acceptance tests over embedded replay, Hees, state, and rendering boundaries."""
+
+from std.fs import Path
+from std.json import JsonValue
+from std.regex import Regex
+from std.serde import json
+from std.testing import assert_eq, assert_is_err, assert_is_ok
+from embedded_data import (
+    non_admitted_memory_replay_json,
+    package_json,
+    undeclared_action_replay_json,
+    unknown_evidence_replay_json,
+    unknown_memory_replay_json,
+    valid_replay_json,
+)
+from evaluation import (
+    CONSOLE_TOOLCHAIN_IDENTITY,
+    ConsoleRun,
+    evaluate_offline_scenario,
+    live_context_plan_json,
+    plan_live_question_json,
+    probe_candidate_scenario,
+)
+from live import evaluate_live_with_transports
+from main import cli_error, usage
+from crate.provider import GPT56_MODEL, ProviderFailure
+from rendering import (
+    bounded_text,
+    render_headless,
+    render_screen,
+    render_screen_for_size,
+    source_text_for_display,
+    terminal_cell_width,
+    without_terminal_styles,
+)
+from replays import embedded_inputs_are_non_terminal, load_offline_scenario
+from state import (
+    apply_command,
+    candidate_evidence_catalog,
+    candidate_memory_catalog,
+    initial_inspector_state,
+    initial_state,
+    selected_inspector_name,
+    selected_scenario_slug,
+    visible_scenario_indexes,
+)
+from terminal import command_for_byte, command_for_escape_sequence, search_command_for_byte, status_command_for_byte
+
+
+@derive(json)
+model ControlPayload:
+    """JSON-decoded control sequence used to exercise terminal sanitization."""
+
+    value: str
+
+
+@derive(json)
+model ProviderFixtureContent:
+    """One structured-output text item returned by an injected provider transport."""
+
+    type_ as "type": str
+    text: str
+
+
+@derive(json)
+model ProviderFixtureOutput:
+    """One injected Responses message containing structured output text."""
+
+    type_ as "type": str
+    content: list[ProviderFixtureContent]
+
+
+@derive(json)
+model ProviderFixtureResponse:
+    """Minimal Responses envelope consumed by the native provider decoder."""
+
+    status: str
+    model_name as "model": str
+    output: list[ProviderFixtureOutput]
+
+
+def read_fixture(path: str) -> Result[str, str]:
+    """Read one checked fictional fixture relative to the Console project root."""
+
+    return Path(path).read_text("utf-8", "strict").map_err((error) => error.message())
+
+
+def canonical_json(source: str) -> Result[str, str]:
+    """Canonicalize one JSON source before comparing embedded and checked fixtures."""
+
+    value = JsonValue.parse(source).map_err((_error) => f"invalid_json")?
+    return value.to_json().map_err((_error) => f"json_serialization_failed")
+
+
+def required(value: JsonValue, key: str) -> JsonValue:
+    """Require one JSON object field in a deterministic transport fixture."""
+
+    return assert_is_ok(value.require(key))
+
+
+def required_str(value: JsonValue, key: str) -> str:
+    """Require one JSON string field in a deterministic transport fixture."""
+
+    return assert_is_ok(required(value, key).expect_str())
+
+
+def provider_payload(request_body: str) -> JsonValue:
+    """Decode the exact user payload from one prepared Responses request."""
+
+    request = assert_is_ok(JsonValue.parse(request_body))
+    inputs = assert_is_ok(required(request, "input").expect_array())
+    content = assert_is_ok(required(inputs[0], "content").expect_array())
+    return assert_is_ok(JsonValue.parse(required_str(content[0], "text")))
+
+
+def provider_response(output_text: str) -> str:
+    """Wrap structured output in the fixed live-provider response envelope."""
+
+    response = ProviderFixtureResponse(
+        status="completed",
+        model_name=GPT56_MODEL,
+        output=[ProviderFixtureOutput(
+            type_="message",
+            content=[ProviderFixtureContent(type_="output_text", text=output_text)],
+        )],
+    )
+    return response.to_json()
+
+
+def proposal_transport_from(relative: str, request_body: str) -> Result[str, ProviderFailure]:
+    """Bind one proposal fixture to the exact live request supplied by Hees."""
+
+    context = provider_payload(request_body)
+    request = required(context, "request")
+    mut proposal = assert_is_ok(JsonValue.parse(assert_is_ok(read_fixture(relative))))
+    assert_is_ok(proposal.set("request_id", JsonValue.str(required_str(request, "request_id"))))
+    assert_is_ok(proposal.set("request_digest", JsonValue.str(required_str(request, "request_digest"))))
+    return Ok(provider_response(assert_is_ok(proposal.to_json())))
+
+
+def valid_live_proposal_transport(request_body: str) -> Result[str, ProviderFailure]:
+    """Return a request-bound valid proposal without environment or network access."""
+
+    return proposal_transport_from("fixtures/fictional_lesson_support/proposals/valid_lantern.json", request_body)
+
+
+def undeclared_live_proposal_transport(request_body: str) -> Result[str, ProviderFailure]:
+    """Return a schema-valid undeclared action without environment or network access."""
+
+    return proposal_transport_from("fixtures/fictional_lesson_support/proposals/undeclared_action.json", request_body)
+
+
+def committee_transport(request_body: str) -> Result[str, ProviderFailure]:
+    """Return bound high-support scores for each exact Hees-authored committee target."""
+
+    payload = provider_payload(request_body)
+    request = required(payload, "request")
+    target = required(payload, "target")
+    target_digest = required_str(target, "target_digest")
+    body = required(target, "body")
+    evaluator_role = required_str(body, "evaluator_role")
+    mut observation = {"contract_version": JsonValue.str("console_relation_observation_0_1"), "profile_id": JsonValue.str(
+        required_str(payload, "profile_id"),
+    ), "observation_id": JsonValue.str(required_str(payload, "observation_id")), "package_id": JsonValue.str(
+        required_str(payload, "package_id"),
+    ), "domain_id": JsonValue.str(required_str(payload, "domain_id")), "package_revision": JsonValue.str(
+        required_str(payload, "package_revision"),
+    ), "artifact_digest": JsonValue.str(required_str(payload, "artifact_digest")), "request_id": JsonValue.str(
+        required_str(request, "request_id"),
+    ), "request_digest": JsonValue.str(required_str(request, "request_digest")), "candidate_digest": JsonValue.str(
+        required_str(body, "candidate_digest"),
+    ), "target_id": JsonValue.str(required_str(body, "target_id")), "target_digest": JsonValue.str(target_digest), "evaluator_role": JsonValue.str(
+        evaluator_role,
+    ), "target_role": JsonValue.str(required_str(body, "target_role"))}
+    if evaluator_role == "synthesis_coverage":
+        observation["contract_version"] = JsonValue.str("console_synthesis_observation_0_1")
+        observation["covered_bps"] = JsonValue.int(9_000)
+        observation["gap_bps"] = JsonValue.int(500)
+        observation["unresolved_bps"] = JsonValue.int(500)
+    else:
+        observation["support_bps"] = JsonValue.int(9_000)
+        observation["contradiction_bps"] = JsonValue.int(500)
+        observation["unresolved_bps"] = JsonValue.int(500)
+    return Ok(provider_response(assert_is_ok(JsonValue.object(observation).to_json())))
+
+
+def assert_fixture_parity(embedded: str, path: str) -> None:
+    """Assert one embedded replay or package is canonically identical to its fixture."""
+
+    fixture = assert_is_ok(read_fixture(path))
+    assert_eq(assert_is_ok(canonical_json(embedded)), assert_is_ok(canonical_json(fixture)))
+
+
+def assert_decision(slug: str, admitted: bool, reason: str) -> ConsoleRun:
+    """Evaluate one scenario and assert the exact Hees Spectrum outcome."""
+
+    run = assert_is_ok(evaluate_offline_scenario(slug))
+    assert_eq(run.result.spectrum.admitted, admitted)
+    assert_eq(run.result.spectrum.reason, reason)
+    return run
+
+
+def option_has_value(value: Option[str]) -> bool:
+    """Return whether one optional terminal artifact is present."""
+
+    match value:
+        Some(_) => return true
+        None => return false
+
+
+def strip_terminal_styles(value: str) -> str:
+    """Remove only application-authored SGR colour sequences for visible-width assertions."""
+
+    match Regex("\\x1B\\[[0-9;]*m"):
+        Err(_) => return value
+        Ok(pattern) => return pattern.replace_all(value, "")
+
+
+def screen_has_exact_geometry(screen: str, columns: int, rows: int) -> bool:
+    """Require every ANSI-stripped frame row to fit the declared terminal exactly."""
+
+    lines = screen.split("\n")
+    if len(lines) != rows:
+        return false
+    for line in lines:
+        if terminal_cell_width(strip_terminal_styles(line)) != columns:
+            return false
+    return true
+
+
+def test_embedded_package_and_replays_match_checked_fixtures() -> None:
+    """Prevent embedded replay data from drifting away from the reviewed fixture set."""
+
+    assert_fixture_parity(package_json(), "fixtures/fictional_lesson_support/package/package.json")
+    assert_eq(GPT56_MODEL, "gpt-5.6-sol")
+    assert_fixture_parity(valid_replay_json(), "fixtures/fictional_lesson_support/replays/valid_lantern.json")
+    assert_fixture_parity(
+        undeclared_action_replay_json(),
+        "fixtures/fictional_lesson_support/replays/undeclared_action.json",
+    )
+    assert_fixture_parity(
+        unknown_evidence_replay_json(),
+        "fixtures/fictional_lesson_support/replays/unknown_evidence.json",
+    )
+    assert_fixture_parity(unknown_memory_replay_json(), "fixtures/fictional_lesson_support/replays/unknown_memory.json")
+    assert_fixture_parity(
+        non_admitted_memory_replay_json(),
+        "fixtures/fictional_lesson_support/replays/non_admitted_memory.json",
+    )
+
+
+def test_embedded_replays_are_non_terminal_and_keep_reviewed_ids() -> None:
+    """Bind each non-terminal replay to the reviewed integrity identifier."""
+
+    assert_eq(embedded_inputs_are_non_terminal(), true)
+    assert_eq(
+        assert_is_ok(load_offline_scenario("valid")).replay_id,
+        "sha256:edf7ec8fbbaccddd523af0cecb2f9973ed755558b15b10cbbd5e354127ef9aba",
+    )
+    assert_eq(
+        assert_is_ok(load_offline_scenario("undeclared-action")).replay_id,
+        "sha256:a9dcd4301d4ebb69ab98716ce2dbb4426e3827a6bcf51270918667aaba056db5",
+    )
+    assert_eq(
+        assert_is_ok(load_offline_scenario("unknown-evidence")).replay_id,
+        "sha256:8975cb465c3f20f8c968a04ebd5a2af3fba81f54810e8b150af12f6ea56376aa",
+    )
+    assert_eq(
+        assert_is_ok(load_offline_scenario("unknown-memory")).replay_id,
+        "sha256:ee7c96d1db577798fc61650e3663dd82dda70f638c64a555983a6bb712f4aee0",
+    )
+    assert_eq(
+        assert_is_ok(load_offline_scenario("non-admitted-memory")).replay_id,
+        "sha256:25ff2f5b59fe40bb0dd6f4b034491b3c48c1bcf896a35f01d2564b2369adec04",
+    )
+
+
+def test_real_hees_evaluation_returns_all_five_terminal_outcomes() -> None:
+    """Exercise the public Hees profile for the admitted and four rejection paths."""
+
+    valid = assert_decision("valid", true, "admitted")
+    assert_eq(option_has_value(valid.result.content_dna_json), true)
+    assert_eq(option_has_value(valid.result.receipt_json), true)
+    assert_eq(len(valid.result.selected_memory), 1)
+    assert_decision("undeclared-action", false, "unknown_action")
+    assert_decision("unknown-evidence", false, "unknown_evidence")
+    assert_decision("unknown-memory", false, "unknown_memory")
+    assert_decision("non-admitted-memory", false, "memory_not_admitted")
+
+
+def test_headless_output_exposes_stable_sections_and_reasons() -> None:
+    """Keep judge-facing automation output stable across every replay outcome."""
+
+    valid = render_headless(assert_decision("valid", true, "admitted"))
+    assert_eq(valid.contains("BUILD WEEK 2026 IMPLEMENTATION PROFILE — console_profile_0_1"), true)
+    assert_eq(valid.contains("MODE REPLAY"), true)
+    assert_eq(valid.contains("FIXED PROFILE PACKAGE"), true)
+    assert_eq(valid.contains("FIXED PROFILE SOURCES"), true)
+    assert_eq(valid.contains("OPTIONAL ATOM COMPARISON"), true)
+    assert_eq(valid.contains("UNTRUSTED PROPOSAL"), true)
+    assert_eq(valid.contains("DECLARED SUPPORT"), true)
+    assert_eq(valid.contains("HEES-DERIVED VERIFIER MANIFEST"), true)
+    assert_eq(valid.contains("HEES-CLASSIFIED NON-AUTHORITATIVE FINDINGS"), true)
+    assert_eq(valid.contains("SPECTRUM ADMITTED"), true)
+    assert_eq(valid.contains("CONTENT DNA present"), true)
+    assert_eq(valid.contains("RECEIPT present"), true)
+    assert_eq(valid.contains("NON-AUTHORITATIVE EXECUTION TRACE"), true)
+    assert_eq(valid.contains("replay_integrity=verified"), true)
+    assert_eq(valid.contains("What order should I use"), false)
+    assert_eq(valid.contains("Lantern Path is a fictional"), false)
+    escape = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b\"}"))
+    assert_eq(valid.contains(escape.value), false)
+    for slug, reason in [("undeclared-action", "unknown_action"), ("unknown-evidence", "unknown_evidence"), ("unknown-memory", "unknown_memory"), ("non-admitted-memory", "memory_not_admitted")]:
+        output = render_headless(assert_decision(slug, false, reason))
+        assert_eq(output.contains("SPECTRUM REJECTED"), true)
+        assert_eq(output.contains(f"reason={reason}"), true)
+
+
+def test_state_transitions_wrap_and_select_scenarios_and_inspectors() -> None:
+    """Exercise deterministic state commands without terminal I/O."""
+
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    assert_eq(selected_scenario_slug(state), "valid")
+    assert_eq(selected_inspector_name(state), "PACKAGE")
+    assert_eq(state.surface, "profiles")
+    state = apply_command(state, "previous-scenario", states)
+    assert_eq(selected_scenario_slug(state), "non-admitted-memory")
+    state = apply_command(state, "next-scenario", states)
+    assert_eq(selected_scenario_slug(state), "valid")
+    state = apply_command(state, "scenario-3", states)
+    assert_eq(selected_scenario_slug(state), "unknown-evidence")
+    state = apply_command(state, "scenario-5", states)
+    assert_eq(selected_scenario_slug(state), "non-admitted-memory")
+    state = apply_command(state, "previous-inspector", states)
+    assert_eq(state.surface, "decisions")
+    assert_eq(selected_inspector_name(state), "TRACE")
+    state = apply_command(state, "next-inspector", states)
+    assert_eq(selected_inspector_name(state), "PACKAGE")
+    state = apply_command(state, "toggle-sidebar", states)
+    assert_eq(state.sidebar_collapsed, true)
+    state = apply_command(state, "quit", states)
+    assert_eq(state.running, false)
+
+
+def test_interaction_filters_compose_status_free_text_and_tags() -> None:
+    """Keep filtering presentation-only while composing every control deterministically."""
+
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    state = apply_command(state, "show-interactions", states)
+    state = apply_command(state, "open-status", states)
+    state = apply_command(state, "toggle-option", states)
+    assert_eq(visible_scenario_indexes(state, states), [1, 2, 3, 4])
+    state = apply_command(state, "close-control", states)
+    state = apply_command(state, "open-search", states)
+    for character in ["text:m", "text:e", "text:m", "text:o", "text:r", "text:y"]:
+        state = apply_command(state, character, states)
+    assert_eq(visible_scenario_indexes(state, states), [3, 4])
+    state = apply_command(state, "backspace", states)
+    state = apply_command(state, "clear-search", states)
+    state = apply_command(state, "next-option", states)
+    state = apply_command(state, "toggle-option", states)
+    assert_eq(state.selected_tags, ["adversarial"])
+    assert_eq(visible_scenario_indexes(state, states), [1, 2, 3, 4])
+
+    mut empty = initial_state()
+    empty = apply_command(empty, "show-interactions", states)
+    empty = apply_command(empty, "open-status", states)
+    empty = apply_command(empty, "toggle-option", states)
+    empty = apply_command(empty, "next-option", states)
+    empty = apply_command(empty, "toggle-option", states)
+    empty = apply_command(empty, "close-control", states)
+    no_visible_scenarios: list[int] = []
+    assert_eq(visible_scenario_indexes(empty, states), no_visible_scenarios)
+    empty = apply_command(empty, "next-inspector", states)
+    assert_eq(empty.surface, "interactions")
+
+
+def test_default_demo_probes_missing_lantern_evidence_without_replacing_active_authority() -> None:
+    """Unstage Lantern evidence, probe the exact rejection, and preserve shipped authority."""
+
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    assert_eq(state.surface, "profiles")
+    assert_eq(state.active_profile_id, "console_profile_0_1")
+    assert_eq(len(state.candidate_evidence_ids), 4)
+    assert_eq(len(state.candidate_memory_ids), 4)
+
+    state = apply_command(state, "show-evidence", states)
+    assert_eq(state.evidence_index, 0)
+    state = apply_command(state, "toggle-staged", states)
+    assert_eq(state.candidate_evidence_ids.contains("evidence_lantern_path"), false)
+    assert_eq(state.candidate_probe_state, "not_checked")
+
+    state = apply_command(state, "show-memory", states)
+    assert_eq(len(state.candidate_memory_ids), 4)
+    state = apply_command(state, "probe-candidate", states)
+    assert_eq(state.candidate_probe_state, "probe_rejected")
+    assert_eq(state.candidate_probe_reason, "invalid_package")
+    assert_eq(state.candidate_probe_diagnostic, "invalid_package_atoms")
+    assert_eq(state.candidate_identity_valid, true)
+    assert_eq(state.candidate_artifact_digest.starts_with("sha256:"), true)
+    probe = assert_is_ok(probe_candidate_scenario(state.candidate_evidence_ids, state.candidate_memory_ids))
+    assert_eq(probe.baseline_artifact_digest == probe.candidate_artifact_digest, false)
+    assert_eq(probe.candidate_identity_valid, true)
+    assert_eq(probe.diagnostic, "invalid_package_atoms")
+    assert_eq(
+        render_screen_for_size(state, [assert_is_ok(evaluate_offline_scenario("valid"))], 160, 44).contains(
+            "invalid_package_atoms",
+        ),
+        true,
+    )
+    assert_eq(state.active_profile_id, "console_profile_0_1")
+
+    state = apply_command(state, "attempt-activate", states)
+    assert_eq(state.candidate_activation_state, "blocked_requires_authority_api")
+    assert_eq(state.active_profile_id, "console_profile_0_1")
+
+    state = apply_command(state, "reset-candidate", states)
+    assert_eq(len(state.candidate_evidence_ids), 4)
+    assert_eq(len(state.candidate_memory_ids), 4)
+    state = apply_command(state, "probe-candidate", states)
+    assert_eq(state.candidate_probe_state, "probe_admitted")
+    assert_eq(state.candidate_probe_reason, "admitted")
+    assert_eq(
+        render_screen_for_size(state, [assert_is_ok(evaluate_offline_scenario("valid"))], 160, 44).contains(
+            "✓ PROBE ADMITTED",
+        ),
+        true,
+    )
+
+
+def test_probe_infrastructure_error_is_not_presented_as_a_hees_result() -> None:
+    """Reserve probe admission or rejection for decoded Hees results and label failures separately."""
+
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    state.candidate_evidence_ids = ["evidence_outside_fixed_profile"]
+    state = apply_command(state, "probe-candidate", states)
+    assert_eq(state.candidate_probe_state, "probe_error")
+    assert_eq(state.candidate_probe_reason, "candidate_probe_input_invalid")
+    screen = render_screen_for_size(state, [assert_is_ok(evaluate_offline_scenario("valid"))], 160, 44)
+    assert_eq(screen.contains("! PROBE ERROR"), true)
+    assert_eq(screen.contains("PROBE REJECTED"), false)
+
+
+def test_closed_profile_catalogs_exactly_match_the_embedded_package() -> None:
+    """Fail on drift between bounded session state and the package-owned atom identities."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    package_evidence_ids = [atom.evidence_id for atom in run.scenario.package.atoms]
+    package_memory_ids = [atom.memory_id for atom in run.scenario.package.atoms]
+    assert_eq(candidate_evidence_catalog(), package_evidence_ids)
+    assert_eq(candidate_memory_catalog(), package_memory_ids)
+
+
+def test_product_destinations_and_profile_controls_have_direct_keys() -> None:
+    """Expose the evidence-first product workflow as real deterministic navigation."""
+
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    for command, surface in [("show-profiles", "profiles"), ("show-evidence", "evidence"), ("show-memory", "memory"), ("show-committee", "committee"), ("show-interactions", "interactions"), ("show-decisions", "decisions"), ("show-help", "help")]:
+        state = apply_command(state, command, states)
+        assert_eq(state.surface, surface)
+    assert_eq(command_for_byte(49), "show-profiles")
+    assert_eq(command_for_byte(50), "show-evidence")
+    assert_eq(command_for_byte(51), "show-memory")
+    assert_eq(command_for_byte(52), "show-committee")
+    assert_eq(command_for_byte(53), "show-interactions")
+    assert_eq(command_for_byte(54), "show-decisions")
+    assert_eq(command_for_byte(55), "show-help")
+    assert_eq(command_for_byte(32), "toggle-staged")
+    assert_eq(command_for_byte(118), "probe-candidate")
+    assert_eq(command_for_byte(114), "reset-candidate")
+    assert_eq(command_for_byte(97), "attempt-activate")
+
+
+def test_portable_raw_key_decoder_maps_shortcuts_and_cursor_sequences() -> None:
+    """Keep raw terminal decoding deterministic without crossterm event metadata."""
+
+    assert_eq(command_for_byte(49), "show-profiles")
+    assert_eq(command_for_byte(52), "show-committee")
+    assert_eq(command_for_byte(53), "show-interactions")
+    assert_eq(command_for_byte(54), "show-decisions")
+    assert_eq(command_for_byte(55), "show-help")
+    assert_eq(command_for_byte(98), "toggle-sidebar")
+    assert_eq(command_for_byte(103), "show-interactions")
+    assert_eq(command_for_byte(47), "open-search")
+    assert_eq(command_for_byte(115), "open-status")
+    assert_eq(command_for_byte(104), "previous-context")
+    assert_eq(command_for_byte(108), "next-context")
+    assert_eq(command_for_byte(107), "previous-scenario")
+    assert_eq(command_for_byte(106), "next-scenario")
+    assert_eq(command_for_byte(9), "next-context")
+    assert_eq(command_for_byte(13), "open-inspector")
+    assert_eq(command_for_byte(113), "quit")
+    assert_eq(command_for_byte(0), "noop")
+    assert_eq(command_for_escape_sequence(91, 68), "previous-context")
+    assert_eq(command_for_escape_sequence(91, 67), "next-context")
+    assert_eq(command_for_escape_sequence(91, 65), "previous-scenario")
+    assert_eq(command_for_escape_sequence(91, 66), "next-scenario")
+    assert_eq(command_for_escape_sequence(79, 65), "noop")
+    assert_eq(search_command_for_byte(97), "text:a")
+    assert_eq(search_command_for_byte(32), "text: ")
+    assert_eq(search_command_for_byte(127), "backspace")
+    assert_eq(search_command_for_byte(9), "toggle-option")
+    assert_eq(search_command_for_byte(13), "close-control")
+    assert_eq(status_command_for_byte(32), "toggle-option")
+    assert_eq(status_command_for_byte(111), "cycle-sort")
+    assert_eq(status_command_for_byte(13), "close-control")
+
+
+def test_terminal_sanitizer_preserves_unicode_width_and_escapes_terminal_hazards() -> None:
+    """Preserve complete printable graphemes while rendering controls and bidi overrides visibly."""
+
+    payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b[31mred\\u001b[0m\"}"))
+    assert_eq(bounded_text(payload.value, 100), "[ctrl][31mred[ctrl][0m")
+    c1_payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"before\\u009b;31mafter\"}"))
+    assert_eq(bounded_text(c1_payload.value, 100), "before[ctrl];31mafter")
+    assert_eq(bounded_text("line one\nline two\tend", 100), "line one[ctrl]line two[ctrl]end")
+    assert_eq(bounded_text("isiZulu", 4), "isi~")
+    width_payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"A\\u754ce\\u0301\\u202eZ\"}"))
+    assert_eq(bounded_text(width_payload.value, 32), "A界é[bidi]Z")
+    assert_eq(terminal_cell_width("界"), 2)
+    assert_eq(terminal_cell_width("é"), 1)
+    assert_eq(terminal_cell_width("👩‍💻"), 2)
+    assert_eq(terminal_cell_width("لا"), 1)
+    assert_eq(bounded_text("界", 1), "~")
+    assert_eq(bounded_text("é", 1), "é")
+    assert_eq(bounded_text("👩‍💻", 2), "👩‍💻")
+
+
+def test_multilingual_dynamic_terminal_width_preserves_exact_geometry() -> None:
+    """Keep the frame aligned with Arabic, CJK, combining marks, and emoji in dynamic state."""
+
+    payload = assert_is_ok(
+        ControlPayload.from_json("{\"value\":\"isiZulu · لا · 界 · e\\u0301 · 👩‍💻 · \\u202eunsafe\"}"),
+    )
+    runs = [assert_is_ok(evaluate_offline_scenario("valid"))]
+    mut state = initial_state()
+    state.active_profile_id = payload.value
+    screen = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(screen.contains("isiZulu · لا · 界 · é · 👩‍💻 · [bidi]unsafe"), true)
+    assert_eq(screen_has_exact_geometry(screen, 160, 44), true)
+
+
+def test_proposal_evidence_ids_are_sanitized_before_rendering() -> None:
+    """Prevent one hostile evidence identifier from injecting terminal controls."""
+
+    payload = assert_is_ok(ControlPayload.from_json("{\"value\":\"evidence\\u001b[31m-red\"}"))
+    mut run = assert_is_ok(evaluate_offline_scenario("valid"))
+    mut scenario = run.scenario
+    mut body = scenario.body
+    mut proposal = body.proposal
+    proposal.evidence_ids = [payload.value]
+    body.proposal = proposal
+    scenario.body = body
+    run.scenario = scenario
+    output = render_headless(run)
+    assert_eq(output.contains("evidence[ctrl][31m-red"), true)
+
+
+def test_full_screen_carries_the_exact_build_week_product_line() -> None:
+    """Keep the proposal-versus-decision distinction explicit in the interactive frame."""
+
+    mut runs = []
+    for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
+        runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    browser = render_screen(state, runs)
+    assert_eq(browser.contains("[1 PROFILES]"), true)
+    assert_eq(browser.contains("PROFILE STUDIO"), true)
+    assert_eq(browser.contains("DECLARED ACTIONS"), true)
+    assert_eq(browser.contains("CANDIDATE DRAFT"), true)
+    assert_eq(browser.contains("candidate only · not active"), true)
+    assert_eq(browser.contains("general package validator."), true)
+    assert_eq(browser.contains("safe profile-activation"), true)
+    assert_eq(browser.contains("authority API."), true)
+    assert_eq(browser.ends_with("\n"), false)
+    escape = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b\"}"))
+    assert_eq(browser.contains(escape.value), true)
+    state = apply_command(state, "show-evidence", states)
+    screen = render_screen(state, runs)
+    assert_eq(screen.contains("Governed AI Profile Studio"), true)
+    assert_eq(screen.contains("console_profile_0_1"), true)
+    assert_eq(screen.contains("EVIDENCE CATALOG"), true)
+    assert_eq(screen.contains("evidence_lantern_path"), true)
+    assert_eq(screen.contains("SPACE stage/unstage"), true)
+
+
+def test_profile_studio_exposes_evidence_memory_committee_and_result_value() -> None:
+    """Keep evidence authoring and governed evaluation visible as the Console's primary value."""
+
+    mut runs: list[ConsoleRun] = []
+    for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
+        runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+
+    state = apply_command(state, "show-evidence", states)
+    evidence = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(evidence.contains("SELECTED EVIDENCE"), true)
+    assert_eq(evidence.contains("source rights"), true)
+    assert_eq(evidence.contains("source id"), true)
+    assert_eq(evidence.contains("fingerprint"), true)
+    assert_eq(evidence.contains("declared span"), true)
+    assert_eq(evidence.contains("language"), true)
+    assert_eq(evidence.contains("source text"), true)
+    assert_eq(evidence.contains("evidence_public_ranking_draft"), true)
+    assert_eq(evidence.contains("pending · rights denied"), true)
+
+    state = apply_command(state, "show-memory", states)
+    memory = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(memory.contains("SELECTED MEMORY ATOM"), true)
+    assert_eq(memory.contains("source id"), true)
+    assert_eq(memory.contains("fingerprint"), true)
+    assert_eq(memory.contains("declared span"), true)
+    assert_eq(memory.contains("language"), true)
+    assert_eq(memory.contains("authority"), true)
+    assert_eq(memory.contains("provenance"), true)
+    assert_eq(memory.contains("memory_public_ranking_draft"), true)
+    assert_eq(memory.contains("guidance"), true)
+
+    state = apply_command(state, "show-committee", states)
+    committee = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(committee.contains("TRAINING BY COMMITTEE"), true)
+    assert_eq(committee.contains("PROVIDER OBSERVATIONS"), true)
+    assert_eq(committee.contains("NON-AUTHORITATIVE"), true)
+    assert_eq(committee.contains("HEES-CLASSIFIED FINDINGS"), true)
+    assert_eq(committee.contains("owns terminal authority"), true)
+
+    state = apply_command(state, "show-decisions", states)
+    decision = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(decision.contains("SPECTRUM"), true)
+    assert_eq(decision.contains("NOT SELECTED THIS RESULT"), true)
+    assert_eq(decision.contains("CONTENT DNA      present"), true)
+    assert_eq(decision.contains("RECEIPT          present"), true)
+
+
+def test_blocked_activation_is_visible_and_never_replaces_active_authority() -> None:
+    """Make the bounded activation gap explicit after the user invokes it."""
+
+    runs = [assert_is_ok(evaluate_offline_scenario("valid"))]
+    states = [true]
+    state = apply_command(initial_state(), "attempt-activate", states)
+    screen = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(screen.contains("✕ BLOCKED · authority API unavailable"), true)
+    assert_eq(screen.contains("candidate only — not active"), true)
+    assert_eq(state.active_profile_id, "console_profile_0_1")
+
+
+def test_interaction_workspace_prioritizes_navigation_authority_and_readable_receipts() -> None:
+    """Render the selected hees.ai console design without falling back to raw JSON."""
+
+    mut runs: list[ConsoleRun] = []
+    for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
+        runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
+    states = [true, false, false, false, false]
+    mut state = initial_state()
+    state = apply_command(state, "show-interactions", states)
+    state = apply_command(state, "next-scenario", states)
+    screen = render_screen_for_size(state, runs, 160, 44)
+    assert_eq(screen.contains("hees.ai console"), true)
+    assert_eq(screen.contains("[5 INTERACTIONS]"), true)
+    assert_eq(screen.contains("UNTRUSTED PROPOSAL  MODEL"), true)
+    assert_eq(screen.contains("HEES DECISION"), true)
+    assert_eq(screen.contains("unknown_action"), true)
+    assert_eq(screen.contains("CONTEXT  EVIDENCE  MEMORY  DNA  [RECEIPT]"), true)
+    plain_screen = strip_terminal_styles(screen)
+    assert_eq(plain_screen.contains("[←→] context"), true)
+    assert_eq(plain_screen.contains("[1–7] destinations"), true)
+    assert_eq(screen.contains("SHIFT+TAB"), false)
+    assert_eq(screen.contains("direct scenario"), false)
+    assert_eq(screen.contains("{\"body\""), false)
+
+
+def test_wide_interaction_wraps_the_complete_visible_response() -> None:
+    """Keep the model-visible response readable instead of clipping it at the pane boundary."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    state = apply_command(initial_state(), "show-interactions", [true])
+    screen = strip_terminal_styles(render_screen_for_size(state, [run], 160, 44))
+    assert_eq(screen.contains("visible response  Place the amber card first"), true)
+    assert_eq(screen.contains("green card third."), true)
+    assert_eq(screen.contains("and t~"), false)
+    assert_eq(screen_has_exact_geometry(screen, 160, 44), true)
+
+
+def test_live_single_run_receipt_uses_the_actual_collection_total() -> None:
+    """Render one evaluated live interaction as receipt 1 of 1 rather than a replay-suite constant."""
+
+    run = assert_is_ok(
+        evaluate_live_with_transports(
+            "What order should I use for the Lantern Path cards?",
+            valid_live_proposal_transport,
+            committee_transport,
+        ),
+    )
+    screen = render_screen_for_size(initial_inspector_state(), [run], 160, 44)
+    assert_eq(screen.contains("RECEIPT  1 / 1"), true)
+    assert_eq(screen.contains("RECEIPT  1 / 5"), false)
+
+
+def test_dynamic_text_cannot_select_the_fixed_tui_palette() -> None:
+    """Keep colour authority attached to typed call sites even when untrusted prose contains state words."""
+
+    mut run = assert_is_ok(evaluate_offline_scenario("valid"))
+    mut scenario = run.scenario
+    mut body = scenario.body
+    mut request = body.request
+    request.question = f"dynamic REJECTED CANDIDATE PACKAGE ADMITTED sentinel"
+    body.request = request
+    scenario.body = body
+    run.scenario = scenario
+    mut state = initial_state()
+    state = apply_command(state, "show-interactions", [true])
+    screen = render_screen_for_size(state, [run], 160, 44)
+    amber = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b[38;5;221m\"}")).value
+    cyan = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b[38;5;81m\"}")).value
+    jade = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b[38;5;79m\"}")).value
+    crimson = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b[38;5;203m\"}")).value
+    dynamic = "dynamic REJECTED CANDIDATE PACKAGE ADMITTED sentinel"
+    assert_eq(screen.contains(f"{amber}{dynamic}"), false)
+    assert_eq(screen.contains(f"{cyan}{dynamic}"), false)
+    assert_eq(screen.contains(f"{jade}{dynamic}"), false)
+    assert_eq(screen.contains(f"{crimson}{dynamic}"), false)
+    assert_eq(screen.contains(f"{amber}UNTRUSTED PROPOSAL  MODEL"), true)
+    assert_eq(screen.contains(f"{cyan}DECLARED SUPPORT  PACKAGE"), true)
+    assert_eq(screen.contains(f"{jade}┌─ HEES DECISION"), true)
+
+
+def test_compact_workspace_keeps_the_decision_and_controls_visible() -> None:
+    """Keep the core judge path usable in a short or narrow terminal."""
+
+    mut runs: list[ConsoleRun] = []
+    for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
+        runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
+    mut state = apply_command(initial_state(), "show-interactions", [true, false, false, false, false])
+    state = apply_command(state, "next-scenario", [true, false, false, false, false])
+    screen = render_screen_for_size(state, runs, 100, 20)
+    assert_eq(screen.contains("COMPACT VIEW"), true)
+    assert_eq(screen.contains("HEES DECISION"), true)
+    assert_eq(screen.contains("unknown_action"), true)
+    assert_eq(strip_terminal_styles(screen).contains("[q] quit"), true)
+    assert_eq(len(screen.split("\n")), 20)
+    responsive_compact = render_screen_for_size(state, runs, 128, 28)
+    assert_eq(responsive_compact.contains("COMPACT VIEW"), true)
+    assert_eq(responsive_compact.contains("HEES DECISION"), true)
+    assert_eq(screen_has_exact_geometry(responsive_compact, 128, 28), true)
+
+
+def test_compact_profile_studio_keeps_candidate_controls_discoverable() -> None:
+    """Expose the real candidate controls before short compact bodies scroll them away."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    screen = strip_terminal_styles(render_screen_for_size(initial_state(), [run], 100, 20))
+    assert_eq(screen.contains("[SPACE] stage"), true)
+    assert_eq(screen.contains("[v] probe"), true)
+    assert_eq(screen.contains("[a] test activation"), true)
+    assert_eq(screen_has_exact_geometry(screen, 100, 20), true)
+
+
+def test_status_filter_help_fits_the_interaction_rail() -> None:
+    """Keep the status control's compact help legible in the fixed 30-column rail."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    mut state = apply_command(initial_state(), "show-interactions", [true])
+    state = apply_command(state, "open-status", [true])
+    screen = strip_terminal_styles(render_screen_for_size(state, [run], 160, 44))
+    assert_eq(screen.contains("space toggle"), true)
+    assert_eq(screen.contains("space check/ch~"), false)
+    assert_eq(screen_has_exact_geometry(screen, 160, 44), true)
+
+
+def test_compact_decisions_render_every_selected_governance_context() -> None:
+    """Make compact context navigation visibly inspect Evidence, Memory, Content DNA, and Receipt."""
+
+    runs = [assert_is_ok(evaluate_offline_scenario("valid"))]
+    mut state = apply_command(initial_state(), "show-decisions", [true])
+
+    receipt = render_screen_for_size(state, runs, 100, 20)
+    assert_eq(receipt.contains("[RECEIPT]"), true)
+    assert_eq(receipt.contains("RECEIPT  1 / 1"), true)
+    assert_eq(receipt.contains("Evidence / Memory / DNA / Receipt"), true)
+
+    state = apply_command(state, "previous-context", [true])
+    dna = render_screen_for_size(state, runs, 100, 20)
+    assert_eq(dna.contains("[DNA]"), true)
+    assert_eq(dna.contains("CONTENT DNA  present"), true)
+
+    state = apply_command(state, "previous-context", [true])
+    memory = render_screen_for_size(state, runs, 100, 20)
+    assert_eq(memory.contains("[MEMORY]"), true)
+    assert_eq(memory.contains("SELECTED MEMORY  1"), true)
+
+    state = apply_command(state, "previous-context", [true])
+    evidence = render_screen_for_size(state, runs, 100, 20)
+    assert_eq(evidence.contains("[EVIDENCE]"), true)
+    assert_eq(evidence.contains("PROPOSAL EVIDENCE  UNTRUSTED"), true)
+
+
+def test_compact_evidence_wraps_claims_to_the_available_frame_width() -> None:
+    """Keep an 80-column Evidence claim whole at word boundaries after frame padding."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    state = apply_command(initial_state(), "show-evidence", [true])
+    screen = strip_terminal_styles(render_screen_for_size(state, [run], 80, 24))
+    assert_eq(screen.contains("before te~"), false)
+    assert_eq(screen.contains("testing the route."), true)
+
+
+def test_source_text_display_omits_transport_newline_control_marker() -> None:
+    """Keep reviewed source text readable without mutating its fingerprinted package representation."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    state = apply_command(initial_state(), "show-evidence", [true])
+    screen = render_screen_for_size(state, [run], 160, 44)
+    assert_eq(screen.contains("source text"), true)
+    assert_eq(screen.contains("[ctrl]"), false)
+
+
+def test_source_text_display_preserves_non_newline_whitespace() -> None:
+    """Remove only the terminal transport newline without changing inspected evidence whitespace."""
+
+    assert_eq(source_text_for_display("  exact source  \n"), "  exact source  ")
+    assert_eq(source_text_for_display("\texact source\r\n"), "\texact source")
+    assert_eq(source_text_for_display(" exact source "), " exact source ")
+
+
+def test_terminal_style_removal_preserves_text_authority_labels() -> None:
+    """Support NO_COLOR without removing the visible words and symbols that carry authority."""
+
+    run = assert_is_ok(evaluate_offline_scenario("undeclared-action"))
+    state = apply_command(initial_state(), "show-interactions", [true])
+    styled = render_screen_for_size(state, [run], 160, 44)
+    plain = without_terminal_styles(styled)
+    assert_eq(plain.contains("\\u001b[38;5;"), false)
+    assert_eq(plain.contains("UNTRUSTED PROPOSAL  MODEL"), true)
+    assert_eq(plain.contains("✕ REJECTED"), true)
+
+
+def test_every_declared_viewport_has_exact_ansi_stripped_geometry() -> None:
+    """Keep rows, borders, and compact destinations aligned at every supported viewport."""
+
+    mut runs: list[ConsoleRun] = []
+    for slug in ["valid", "undeclared-action", "unknown-evidence", "unknown-memory", "non-admitted-memory"]:
+        runs.append(assert_is_ok(evaluate_offline_scenario(slug)))
+    mut state = initial_state()
+    for columns, rows in [(160, 44), (140, 36), (120, 30), (100, 20), (80, 24)]:
+        screen = render_screen_for_size(state, runs, columns, rows)
+        assert_eq(screen_has_exact_geometry(screen, columns, rows), true)
+    narrow = strip_terminal_styles(render_screen_for_size(state, runs, 80, 24))
+    assert_eq(narrow.contains("1 PROF"), true)
+    assert_eq(narrow.contains("7 HELP"), true)
+    assert_eq(narrow.contains("[q] quit"), true)
+    state = apply_command(state, "show-evidence", [true, false, false, false, false])
+    assert_eq(screen_has_exact_geometry(render_screen_for_size(state, runs, 160, 44), 160, 44), true)
+    state = apply_command(state, "show-memory", [true, false, false, false, false])
+    assert_eq(screen_has_exact_geometry(render_screen_for_size(state, runs, 140, 36), 140, 36), true)
+    state = apply_command(state, "show-decisions", [true, false, false, false, false])
+    assert_eq(screen_has_exact_geometry(render_screen_for_size(state, runs, 120, 30), 120, 30), true)
+
+
+def test_trace_is_separate_non_authoritative_and_redacts_interaction_content() -> None:
+    """Keep trace identities useful without copying question, source, or terminal artifacts."""
+
+    run = assert_is_ok(evaluate_offline_scenario("valid"))
+    trace = run.trace.to_json()
+    assert_eq(CONSOLE_TOOLCHAIN_IDENTITY, "incan_0_5_0_dev_23")
+    assert_eq(run.trace.toolchain_identity, CONSOLE_TOOLCHAIN_IDENTITY)
+    assert_eq(trace.contains("incan_0_5_0_dev_18"), false)
+    assert_eq(trace.contains("console_trace_0_1"), true)
+    assert_eq(trace.contains("sha256:edf7ec8fbbaccddd523af0cecb2f9973ed755558b15b10cbbd5e354127ef9aba"), true)
+    assert_eq(trace.contains("What order should I use"), false)
+    assert_eq(trace.contains("Lantern Path is a fictional"), false)
+    assert_eq(trace.contains("admitted"), false)
+
+
+def test_injected_live_composition_returns_only_the_real_hees_admission() -> None:
+    """Exercise question binding, proposal, committee, Hees evaluation, and live rendering without network access."""
+
+    question = "What order should I use for the Lantern Path cards?"
+    run = assert_is_ok(evaluate_live_with_transports(question, valid_live_proposal_transport, committee_transport))
+    assert_eq(run.scenario.mode, "LIVE")
+    assert_eq(run.scenario.body.request.question, question)
+    assert_eq(run.result.spectrum.admitted, true)
+    assert_eq(run.result.spectrum.reason, "admitted")
+    output = render_headless(run)
+    assert_eq(output.contains("MODE LIVE"), true)
+    assert_eq(output.contains("UNTRUSTED PROPOSAL"), true)
+    assert_eq(output.contains("SPECTRUM ADMITTED"), true)
+
+
+def test_injected_live_undeclared_action_reaches_the_exact_hees_rejection() -> None:
+    """Prove schema-valid provider output cannot acquire undeclared authority in the live path."""
+
+    run = assert_is_ok(
+        evaluate_live_with_transports(
+            "Can you assign my final grade?",
+            undeclared_live_proposal_transport,
+            committee_transport,
+        ),
+    )
+    assert_eq(run.result.spectrum.admitted, false)
+    assert_eq(run.result.spectrum.reason, "unknown_action")
+
+
+def test_cli_rejects_ambiguous_or_cross_mode_arguments() -> None:
+    """Keep live activation explicit and prevent last-flag-wins command ambiguity."""
+
+    assert_eq(usage().contains("hees-console --mode live"), true)
+    assert_eq(usage().contains("hees_console"), false)
+    assert_eq(cli_error(["--mode", "live", "--question", "What is the sequence?"]), None)
+    assert_eq(
+        cli_error(["--mode", "offline", "--question", "What is the sequence?"]),
+        Some("question_requires_live_mode"),
+    )
+    assert_eq(
+        cli_error(["--mode", "live", "--scenario", "valid", "--question", "Question"]),
+        Some("scenario_requires_offline_mode"),
+    )
+    assert_eq(cli_error(["--scenario", "missing", "--question", "Question"]), Some("unknown_scenario"))
+    assert_eq(cli_error(["--mode", "live", "--mode", "offline", "--question", "Question"]), Some("duplicate_argument"))
+    assert_eq(cli_error(["--mode", "live", "--question", "   "]), Some("invalid_question"))
+
+
+def test_private_live_plan_rejects_contract_drift() -> None:
+    """Fail closed before a provider call when the private composition envelope changes."""
+
+    source = assert_is_ok(plan_live_question_json("What is the Lantern Path sequence?"))
+    mut plan = assert_is_ok(JsonValue.parse(source))
+    assert_eq(required_str(plan, "contract_version"), "console_live_question_plan_0_1")
+    assert_is_ok(plan.set("contract_version", JsonValue.str("console_live_question_plan_9_9")))
+    error = assert_is_err(live_context_plan_json(assert_is_ok(plan.to_json())))
+    assert_eq(error, "live_plan_invalid")

@@ -1,0 +1,586 @@
+"""Deterministic browser, filter, navigation, and inspector state for hees.ai console."""
+
+from evaluation import probe_candidate_scenario
+from replays import scenario_slugs, scenario_tags, scenario_title
+
+const SURFACE_PROFILES: str = "profiles"
+const SURFACE_EVIDENCE: str = "evidence"
+const SURFACE_MEMORY: str = "memory"
+const SURFACE_COMMITTEE: str = "committee"
+const SURFACE_INTERACTIONS: str = "interactions"
+const SURFACE_DECISIONS: str = "decisions"
+const SURFACE_HELP: str = "help"
+const FOCUS_NONE: str = "none"
+const FOCUS_STATUS: str = "status"
+const FOCUS_SEARCH: str = "search"
+const STATUS_ORDER_SCENARIO: str = "scenario"
+const STATUS_ORDER_ADMITTED: str = "admitted-first"
+const STATUS_ORDER_REJECTED: str = "rejected-first"
+const MAX_SEARCH_CHARACTERS: int = 64
+
+
+@derive(Clone)
+pub model ConsoleState:
+    """Current browser, filter, navigation, inspector, and run-loop state."""
+
+    pub scenario_index: int
+    pub inspector_index: int
+    pub context_index: int
+    pub running: bool
+    pub surface: str
+    pub focus: str
+    pub sidebar_collapsed: bool
+    pub search_query: str
+    pub selected_tags: list[str]
+    pub tag_index: int
+    pub status_index: int
+    pub show_admitted: bool
+    pub show_rejected: bool
+    pub status_order: str
+    pub active_profile_id: str
+    pub candidate_evidence_ids: list[str]
+    pub candidate_memory_ids: list[str]
+    pub candidate_probe_state: str
+    pub candidate_probe_reason: str
+    pub candidate_probe_diagnostic: str
+    pub candidate_artifact_digest: str
+    pub candidate_identity_valid: bool
+    pub candidate_activation_state: str
+    pub evidence_index: int
+    pub memory_index: int
+
+
+pub def inspector_names() -> list[str]:
+    """Return inspector names in stable keyboard-navigation order."""
+
+    return ["PACKAGE", "SOURCES", "ATOM COMPARISON", "PROPOSAL", "SUPPORT", "MANIFEST", "OBSERVATIONS", "FINDINGS", "SPECTRUM", "SELECTED MEMORY", "CONTENT DNA", "RECEIPT", "TRACE"]
+
+
+pub def available_tags() -> list[str]:
+    """Return the bounded presentation-only scenario tag vocabulary."""
+
+    return ["happy-path", "adversarial", "action", "evidence", "memory", "review"]
+
+
+pub def candidate_evidence_catalog() -> list[str]:
+    """
+    Return the closed 0.1 profile evidence identities in package order.
+
+    The native contract test requires exact agreement with the embedded package. This bounded catalog must move behind
+    package-derived profile state before Console accepts arbitrary packages.
+    """
+
+    return ["evidence_lantern_path", "evidence_echo_map", "evidence_pebble_workshop", "evidence_public_ranking_draft"]
+
+
+pub def candidate_memory_catalog() -> list[str]:
+    """
+    Return the closed 0.1 profile memory identities in package order.
+
+    The native contract test requires exact agreement with the embedded package. This bounded catalog must move behind
+    package-derived profile state before Console accepts arbitrary packages.
+    """
+
+    return ["memory_lantern_sequence", "memory_echo_markers", "memory_pebble_reserve", "memory_public_ranking_draft"]
+
+
+pub def initial_state() -> ConsoleState:
+    """Start on the offline interaction browser with every result visible."""
+
+    return ConsoleState(
+        scenario_index=0,
+        inspector_index=0,
+        context_index=3,
+        running=true,
+        surface=SURFACE_PROFILES,
+        focus=FOCUS_NONE,
+        sidebar_collapsed=false,
+        search_query="",
+        selected_tags=[],
+        tag_index=0,
+        status_index=0,
+        show_admitted=true,
+        show_rejected=true,
+        status_order=STATUS_ORDER_SCENARIO,
+        active_profile_id="console_profile_0_1",
+        candidate_evidence_ids=candidate_evidence_catalog(),
+        candidate_memory_ids=candidate_memory_catalog(),
+        candidate_probe_state="not_checked",
+        candidate_probe_reason="not_checked",
+        candidate_probe_diagnostic="not_checked",
+        candidate_artifact_digest="not_compiled",
+        candidate_identity_valid=false,
+        candidate_activation_state="not_attempted",
+        evidence_index=0,
+        memory_index=0,
+    )
+
+
+pub def initial_inspector_state() -> ConsoleState:
+    """Start directly in the inspector for one already evaluated live interaction."""
+
+    mut state = initial_state()
+    state.surface = f"{SURFACE_DECISIONS}"
+    return state
+
+
+pub def selected_scenario_slug(state: ConsoleState) -> str:
+    """Return the stable scenario slug for the current state."""
+
+    slugs = scenario_slugs()
+    if state.scenario_index < 0 or state.scenario_index >= len(slugs):
+        return slugs[0]
+    return slugs[state.scenario_index]
+
+
+pub def selected_inspector_name(state: ConsoleState) -> str:
+    """Return the stable inspector label for the current state."""
+
+    names = inspector_names()
+    if state.inspector_index < 0 or state.inspector_index >= len(names):
+        return names[0]
+    return names[state.inspector_index]
+
+
+pub def selected_context_name(state: ConsoleState) -> str:
+    """Return the active contextual inspector tab."""
+
+    if state.context_index == 0:
+        return "EVIDENCE"
+    if state.context_index == 1:
+        return "MEMORY"
+    if state.context_index == 2:
+        return "CONTENT DNA"
+    return "RECEIPT"
+
+
+pub def selected_tag_name(state: ConsoleState) -> str:
+    """Return the tag currently highlighted inside the integrated search control."""
+
+    tags = available_tags()
+    if state.tag_index < 0 or state.tag_index >= len(tags):
+        return tags[0]
+    return tags[state.tag_index]
+
+
+def scenario_index_for_command(command: str) -> Option[int]:
+    """Map direct scenario commands to their stable indexes."""
+
+    if command == "scenario-1":
+        return Some(0)
+    if command == "scenario-2":
+        return Some(1)
+    if command == "scenario-3":
+        return Some(2)
+    if command == "scenario-4":
+        return Some(3)
+    if command == "scenario-5":
+        return Some(4)
+    return None
+
+
+def scenario_matches_query(state: ConsoleState, slug: str) -> bool:
+    """Match one scenario against free text and every selected presentation tag."""
+
+    tags = scenario_tags(slug)
+    for selected in state.selected_tags:
+        if not tags.contains(selected):
+            return false
+    query = state.search_query.strip().lower()
+    if query == "":
+        return true
+    searchable = f"{slug} {scenario_title(slug)} {" ".join(tags)}".lower()
+    return searchable.contains(query)
+
+
+def scenario_matches_status(state: ConsoleState, admitted: bool) -> bool:
+    """Apply the two closed terminal-state filters without interpreting a reason."""
+
+    if admitted:
+        return state.show_admitted
+    return state.show_rejected
+
+
+def append_visible_indexes(
+    state: ConsoleState,
+    admitted_states: list[bool],
+    admitted: bool,
+    result: list[int],
+) -> list[int]:
+    """Append matching indexes for one status while preserving scenario order."""
+
+    mut next = result
+    slugs = scenario_slugs()
+    mut index = 0
+    for slug in slugs:
+        if index < len(admitted_states) and admitted_states[index] == admitted:
+            if scenario_matches_status(state, admitted) and scenario_matches_query(state, slug):
+                next.append(index)
+        index += 1
+    return next
+
+
+pub def visible_scenario_indexes(state: ConsoleState, admitted_states: list[bool]) -> list[int]:
+    """Return filtered scenario indexes in the selected terminal-status order."""
+
+    mut result: list[int] = []
+    if state.status_order == STATUS_ORDER_ADMITTED:
+        result = append_visible_indexes(state, admitted_states, true, result)
+        return append_visible_indexes(state, admitted_states, false, result)
+    if state.status_order == STATUS_ORDER_REJECTED:
+        result = append_visible_indexes(state, admitted_states, false, result)
+        return append_visible_indexes(state, admitted_states, true, result)
+    slugs = scenario_slugs()
+    mut index = 0
+    for slug in slugs:
+        if index < len(admitted_states):
+            admitted = admitted_states[index]
+            if scenario_matches_status(state, admitted) and scenario_matches_query(state, slug):
+                result.append(index)
+        index += 1
+    return result
+
+
+def select_visible_scenario(state: ConsoleState, admitted_states: list[bool]) -> ConsoleState:
+    """Keep selection visible after a filter mutation whenever any row remains."""
+
+    mut next = state
+    visible = visible_scenario_indexes(next, admitted_states)
+    if len(visible) == 0:
+        return next
+    if not visible.contains(next.scenario_index):
+        next.scenario_index = visible[0]
+    return next
+
+
+def move_visible_scenario(state: ConsoleState, admitted_states: list[bool], offset: int) -> ConsoleState:
+    """Move through only rows that survive the active status, tag, and text filters."""
+
+    mut next = state
+    visible = visible_scenario_indexes(next, admitted_states)
+    if len(visible) == 0:
+        return next
+    mut position = 0
+    for index, scenario_index in enumerate(visible):
+        if scenario_index == next.scenario_index:
+            position = index
+    position += offset
+    if position < 0:
+        position = len(visible) - 1
+    elif position >= len(visible):
+        position = 0
+    next.scenario_index = visible[position]
+    return next
+
+
+def toggle_selected_tag(state: ConsoleState) -> ConsoleState:
+    """Check or uncheck the highlighted tag without creating another dropdown."""
+
+    mut next = state
+    target = selected_tag_name(next)
+    mut retained: list[str] = []
+    mut removed = false
+    for tag in next.selected_tags:
+        if tag == target:
+            removed = true
+        else:
+            retained.append(tag)
+    if not removed:
+        retained.append(target)
+    next.selected_tags = retained
+    return next
+
+
+def cycle_status_order(state: ConsoleState) -> ConsoleState:
+    """Cycle the Status-column ordering through scenario, admitted, and rejected order."""
+
+    mut next = state
+    if next.status_order == STATUS_ORDER_SCENARIO:
+        next.status_order = f"{STATUS_ORDER_ADMITTED}"
+    elif next.status_order == STATUS_ORDER_ADMITTED:
+        next.status_order = f"{STATUS_ORDER_REJECTED}"
+    else:
+        next.status_order = f"{STATUS_ORDER_SCENARIO}"
+    return next
+
+
+def append_search_character(state: ConsoleState, command: str) -> ConsoleState:
+    """Append one bounded printable ASCII character supplied by the terminal decoder."""
+
+    mut next = state
+    if len(next.search_query) >= MAX_SEARCH_CHARACTERS:
+        return next
+    next.search_query = f"{next.search_query}{command[5:len(command)]}"
+    return next
+
+
+def apply_search_command(state: ConsoleState, command: str, admitted_states: list[bool]) -> ConsoleState:
+    """Apply free-text and tag-selection commands while the search control owns focus."""
+
+    mut next = state
+    if command == "close-control" or command == "open-search":
+        next.focus = f"{FOCUS_NONE}"
+        return next
+    if command == "next-option":
+        next.tag_index = next.tag_index + 1
+        if next.tag_index >= len(available_tags()):
+            next.tag_index = 0
+    elif command == "previous-option":
+        next.tag_index = next.tag_index - 1
+        if next.tag_index < 0:
+            next.tag_index = len(available_tags()) - 1
+    elif command == "toggle-option":
+        next = toggle_selected_tag(next)
+    elif command == "backspace":
+        if len(next.search_query) > 0:
+            next.search_query = next.search_query[0:len(next.search_query) - 1]
+    elif command == "clear-search":
+        next.search_query = f""
+        next.selected_tags = []
+    elif command.starts_with("text:"):
+        next = append_search_character(next, command)
+    return select_visible_scenario(next, admitted_states)
+
+
+def apply_status_command(state: ConsoleState, command: str, admitted_states: list[bool]) -> ConsoleState:
+    """Apply filtering and sorting while the Status column header owns focus."""
+
+    mut next = state
+    if command == "close-control" or command == "open-status":
+        next.focus = f"{FOCUS_NONE}"
+        return next
+    if command == "next-option":
+        next.status_index = next.status_index + 1
+        if next.status_index > 2:
+            next.status_index = 0
+    elif command == "previous-option":
+        next.status_index = next.status_index - 1
+        if next.status_index < 0:
+            next.status_index = 2
+    elif command == "toggle-option":
+        if next.status_index == 0:
+            next.show_admitted = not next.show_admitted
+        elif next.status_index == 1:
+            next.show_rejected = not next.show_rejected
+        else:
+            next = cycle_status_order(next)
+    elif command == "cycle-sort":
+        next = cycle_status_order(next)
+    return select_visible_scenario(next, admitted_states)
+
+
+def selected_candidate_evidence(state: ConsoleState) -> str:
+    """Return the highlighted evidence identity with a defensive first-item fallback."""
+
+    catalog = candidate_evidence_catalog()
+    if state.evidence_index < 0 or state.evidence_index >= len(catalog):
+        return catalog[0]
+    return catalog[state.evidence_index]
+
+
+def selected_candidate_memory(state: ConsoleState) -> str:
+    """Return the highlighted memory identity with a defensive first-item fallback."""
+
+    catalog = candidate_memory_catalog()
+    if state.memory_index < 0 or state.memory_index >= len(catalog):
+        return catalog[0]
+    return catalog[state.memory_index]
+
+
+def toggled_identity(values: list[str], target: str) -> list[str]:
+    """Toggle one bounded identity without mutating the fixed catalog."""
+
+    mut retained = [value for value in values if value != target]
+    if len(retained) == len(values):
+        retained.append(target)
+    return retained
+
+
+def invalidate_candidate_probe(state: ConsoleState) -> ConsoleState:
+    """Mark a locally edited candidate as requiring a fresh shipped-scenario probe."""
+
+    mut next = state
+    next.candidate_probe_state = f"not_checked"
+    next.candidate_probe_reason = f"not_checked"
+    next.candidate_probe_diagnostic = f"not_checked"
+    next.candidate_artifact_digest = f"not_compiled"
+    next.candidate_identity_valid = false
+    next.candidate_activation_state = f"not_attempted"
+    return next
+
+
+def move_candidate_item(state: ConsoleState, offset: int) -> ConsoleState:
+    """Move the selected bounded evidence or memory row on its owning surface."""
+
+    mut next = state
+    if next.surface == SURFACE_EVIDENCE:
+        next.evidence_index += offset
+        if next.evidence_index < 0:
+            next.evidence_index = len(candidate_evidence_catalog()) - 1
+        elif next.evidence_index >= len(candidate_evidence_catalog()):
+            next.evidence_index = 0
+    elif next.surface == SURFACE_MEMORY:
+        next.memory_index += offset
+        if next.memory_index < 0:
+            next.memory_index = len(candidate_memory_catalog()) - 1
+        elif next.memory_index >= len(candidate_memory_catalog()):
+            next.memory_index = 0
+    return next
+
+
+def toggle_candidate_item(state: ConsoleState) -> ConsoleState:
+    """Stage or unstage the selected evidence or memory item in session state."""
+
+    mut next = state
+    if next.surface == SURFACE_EVIDENCE:
+        next.candidate_evidence_ids = toggled_identity(next.candidate_evidence_ids, selected_candidate_evidence(next))
+        return invalidate_candidate_probe(next)
+    if next.surface == SURFACE_MEMORY:
+        next.candidate_memory_ids = toggled_identity(next.candidate_memory_ids, selected_candidate_memory(next))
+        return invalidate_candidate_probe(next)
+    return next
+
+
+def probe_candidate_state(state: ConsoleState) -> ConsoleState:
+    """Run the current candidate through the shipped acceptance scenario and real Hees path."""
+
+    mut next = state
+    match probe_candidate_scenario(next.candidate_evidence_ids, next.candidate_memory_ids):
+        Err(reason) =>
+            next.candidate_probe_state = f"probe_error"
+            next.candidate_probe_diagnostic = f"{reason}"
+            next.candidate_probe_reason = reason
+            next.candidate_artifact_digest = f"not_compiled"
+            next.candidate_identity_valid = false
+        Ok(probe) =>
+            if probe.admitted:
+                next.candidate_probe_state = f"probe_admitted"
+            else:
+                next.candidate_probe_state = f"probe_rejected"
+            next.candidate_probe_reason = probe.reason
+            next.candidate_probe_diagnostic = probe.diagnostic
+            next.candidate_artifact_digest = probe.candidate_artifact_digest
+            next.candidate_identity_valid = probe.candidate_identity_valid
+    next.candidate_activation_state = f"not_attempted"
+    return next
+
+
+def reset_candidate_state(state: ConsoleState) -> ConsoleState:
+    """Restore the exact shipped profile as a fresh session candidate."""
+
+    mut next = state
+    next.candidate_evidence_ids = candidate_evidence_catalog()
+    next.candidate_memory_ids = candidate_memory_catalog()
+    next.evidence_index = 0
+    next.memory_index = 0
+    return invalidate_candidate_probe(next)
+
+
+pub def apply_command(state: ConsoleState, command: str, admitted_states: list[bool]) -> ConsoleState:
+    """Apply one terminal command, invoking Hees only for the explicit shipped-scenario probe."""
+
+    if state.focus == FOCUS_SEARCH:
+        return apply_search_command(state, command, admitted_states)
+    if state.focus == FOCUS_STATUS:
+        return apply_status_command(state, command, admitted_states)
+    mut next = state
+    if command == "quit":
+        next.running = false
+        return next
+    if command == "toggle-sidebar":
+        next.sidebar_collapsed = not next.sidebar_collapsed
+        return next
+    if command == "show-profiles" or command == "show-package":
+        next.surface = f"{SURFACE_PROFILES}"
+        return next
+    if command == "show-evidence":
+        next.surface = f"{SURFACE_EVIDENCE}"
+        return next
+    if command == "show-memory":
+        next.surface = f"{SURFACE_MEMORY}"
+        return next
+    if command == "show-committee":
+        next.surface = f"{SURFACE_COMMITTEE}"
+        return next
+    if command == "show-interactions":
+        next.surface = f"{SURFACE_INTERACTIONS}"
+        return next
+    if command == "show-decisions":
+        next.surface = f"{SURFACE_DECISIONS}"
+        next.inspector_index = 8
+        return next
+    if command == "show-receipts":
+        next.surface = f"{SURFACE_DECISIONS}"
+        next.inspector_index = 11
+        return next
+    if command == "show-help":
+        next.surface = f"{SURFACE_HELP}"
+        return next
+    if command == "next-context":
+        next.context_index = next.context_index + 1
+        if next.context_index > 3:
+            next.context_index = 0
+        return next
+    if command == "previous-context":
+        next.context_index = next.context_index - 1
+        if next.context_index < 0:
+            next.context_index = 3
+        return next
+    if command == "open-search" and next.surface == SURFACE_INTERACTIONS:
+        next.focus = f"{FOCUS_SEARCH}"
+        return next
+    if command == "open-status" and next.surface == SURFACE_INTERACTIONS:
+        next.focus = f"{FOCUS_STATUS}"
+        return next
+    if command == "toggle-staged":
+        return toggle_candidate_item(next)
+    if command == "probe-candidate":
+        return probe_candidate_state(next)
+    if command == "reset-candidate":
+        return reset_candidate_state(next)
+    if command == "attempt-activate":
+        next.candidate_activation_state = f"blocked_requires_authority_api"
+        return next
+    match scenario_index_for_command(command):
+        Some(index) =>
+            next.scenario_index = index
+            return next
+        None => pass
+    if command == "next-scenario":
+        if next.surface == SURFACE_EVIDENCE or next.surface == SURFACE_MEMORY:
+            return move_candidate_item(next, 1)
+        return move_visible_scenario(next, admitted_states, 1)
+    if command == "previous-scenario":
+        if next.surface == SURFACE_EVIDENCE or next.surface == SURFACE_MEMORY:
+            return move_candidate_item(next, -1)
+        return move_visible_scenario(next, admitted_states, -1)
+    if command == "open-inspector" and next.surface == SURFACE_INTERACTIONS:
+        if len(visible_scenario_indexes(next, admitted_states)) > 0:
+            next.surface = f"{SURFACE_DECISIONS}"
+            if next.context_index == 0:
+                next.inspector_index = 1
+            elif next.context_index == 1:
+                next.inspector_index = 9
+            elif next.context_index == 2:
+                next.inspector_index = 10
+            else:
+                next.inspector_index = 11
+        return next
+    if command == "next-inspector":
+        if next.surface != SURFACE_DECISIONS:
+            if len(visible_scenario_indexes(next, admitted_states)) > 0:
+                next.surface = f"{SURFACE_DECISIONS}"
+            return next
+        next.inspector_index = next.inspector_index + 1
+        if next.inspector_index >= len(inspector_names()):
+            next.inspector_index = 0
+    elif command == "previous-inspector":
+        if next.surface != SURFACE_DECISIONS:
+            if len(visible_scenario_indexes(next, admitted_states)) > 0:
+                next.surface = f"{SURFACE_DECISIONS}"
+                next.inspector_index = len(inspector_names()) - 1
+            return next
+        next.inspector_index = next.inspector_index - 1
+        if next.inspector_index < 0:
+            next.inspector_index = len(inspector_names()) - 1
+    return next

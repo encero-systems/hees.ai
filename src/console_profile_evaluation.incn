@@ -1,0 +1,195 @@
+"""Terminal evaluation orchestration for the bounded Console profile."""
+
+from crate.console_profile_models import (
+    ConsoleAtom,
+    ConsolePackage,
+    ConsoleProposal,
+    ConsoleRequestBinding,
+    DerivedFinding,
+    ManifestTarget,
+    ProfileEvaluation,
+    RelationObservation,
+    SpectrumResult,
+    StructuralAdmission,
+    SynthesisObservation,
+)
+from crate.console_profile_observations import derive_findings, finding_policy_reason, validate_observation_coverage
+from crate.console_profile_planning import build_verifier_manifest
+from crate.console_profile_validation import (
+    atom_is_admitted,
+    find_atom_by_memory,
+    has_duplicate_strings,
+    validate_console_package,
+    validate_console_proposal,
+    validate_request_binding,
+)
+from crate.identifiers import DecisionId, MemoryId, ProposalId, decision_id, memory_id_text, proposal_id_text
+from crate.runtime import (
+    action_contract,
+    admission_evidence_ids,
+    admission_is_admitted,
+    admission_reason,
+    admit_model_proposal,
+    approved_evidence_record,
+    governed_package,
+    model_proposal,
+)
+
+const REASON_NAMESPACE: str = "console_admission_0_1"
+
+
+def derive_decision_id(proposal_id: ProposalId) -> DecisionId:
+    """Derive a terminal decision identity from a validated proposal identity."""
+
+    value = proposal_id_text(proposal_id)
+    if value.startswith("proposal_"):
+        return decision_id(f"decision_{value[len("proposal_"):]}")
+    return decision_id(f"decision_{value}")
+
+
+def rejected_spectrum(proposal_id: ProposalId, reason: str, structural_reason: Option[str]) -> SpectrumResult:
+    """Construct one fail-closed Spectrum rejection without admitted identifiers."""
+
+    return SpectrumResult(
+        decision_id=derive_decision_id(proposal_id),
+        admitted=false,
+        decision="reject",
+        reason_namespace=REASON_NAMESPACE,
+        reason=reason,
+        structural_reason=structural_reason,
+        admitted_evidence_ids=[],
+        selected_memory_ids=[],
+    )
+
+
+pub def rejected_evaluation(
+    proposal_id: ProposalId,
+    reason: str,
+    structural_reason: Option[str],
+    manifest: list[ManifestTarget],
+    findings: list[DerivedFinding],
+) -> ProfileEvaluation:
+    """Construct a rejected profile evaluation with no trusted visible output or memory."""
+
+    return ProfileEvaluation(
+        manifest=manifest,
+        findings=findings,
+        spectrum=rejected_spectrum(proposal_id, reason, structural_reason),
+        admitted_visible_units=[],
+        selected_memory=[],
+    )
+
+
+def structural_admission(package: ConsolePackage, proposal: ConsoleProposal) -> StructuralAdmission:
+    """Delegate mandatory structural checks to the generic Hees kernel."""
+
+    actions = [action_contract(action.action_id, action.evidence_required) for action in package.actions]
+    evidence = [approved_evidence_record(atom.evidence_id, atom.claim, atom.guidance, atom.source_ref) for atom in package.atoms if atom_is_admitted(
+        atom,
+    )]
+    kernel_package = governed_package("0.1", package.package_id, package.domain_id, package.mission, actions, evidence)
+    visible_texts: list[str] = [unit.text for unit in proposal.visible_units]
+    kernel_proposal = model_proposal(
+        proposal.package_id,
+        proposal.domain_id,
+        proposal.action_id,
+        "\n".join(visible_texts),
+        proposal.evidence_ids,
+    )
+    raw = admit_model_proposal(kernel_package, kernel_proposal)
+    return StructuralAdmission(
+        admitted=admission_is_admitted(raw),
+        reason=admission_reason(raw),
+        evidence_ids=admission_evidence_ids(raw),
+    )
+
+
+def freeze_selected_memory(package: ConsolePackage, proposal: ConsoleProposal) -> list[ConsoleAtom]:
+    """Freeze the ordered duplicate-free admitted memory used by support mappings."""
+
+    mut selected_ids: list[str] = []
+    mut result: list[ConsoleAtom] = []
+    for mapping in proposal.support_mappings:
+        if not selected_ids.contains(memory_id_text(mapping.memory_id)):
+            match find_atom_by_memory(package.atoms, mapping.memory_id):
+                None => return []
+                Some(atom) =>
+                    if not atom_is_admitted(atom):
+                        return []
+                    selected_ids.append(memory_id_text(atom.memory_id))
+                    result.append(atom)
+    return result
+
+
+def selected_memory_id_values(atoms: list[ConsoleAtom]) -> list[MemoryId]:
+    """Preserve nominal memory identifiers in the terminal Spectrum result."""
+
+    return [atom.memory_id for atom in atoms]
+
+
+pub def evaluate_console_profile(
+    package: ConsolePackage,
+    request: ConsoleRequestBinding,
+    proposal: ConsoleProposal,
+    relations: list[RelationObservation],
+    syntheses: list[SynthesisObservation],
+) -> ProfileEvaluation:
+    """Run all pre-Content-DNA authority stages in the exact public reason precedence."""
+
+    package_validation = validate_console_package(package)
+    if not package_validation.valid:
+        return rejected_evaluation(proposal.proposal_id, package_validation.reason, None, [], [])
+    request_validation = validate_request_binding(request)
+    if not request_validation.valid:
+        return rejected_evaluation(proposal.proposal_id, request_validation.reason, None, [], [])
+    proposal_validation = validate_console_proposal(package, request, proposal)
+    if not proposal_validation.valid:
+        return rejected_evaluation(proposal.proposal_id, proposal_validation.reason, None, [], [])
+    manifest = build_verifier_manifest(package, request, proposal)
+    expected_targets = len(proposal.visible_units) + len(proposal.support_mappings) + 2 + len(package.requirements)
+    if len(manifest) != expected_targets:
+        return rejected_evaluation(proposal.proposal_id, "manifest_construction_failed", None, [], [])
+    observation_validation = validate_observation_coverage(package, request, proposal, manifest, relations, syntheses)
+    if not observation_validation.valid:
+        return rejected_evaluation(proposal.proposal_id, observation_validation.reason, None, manifest, [])
+    findings = derive_findings(package, relations, syntheses)
+    policy_reason = finding_policy_reason(findings)
+    if policy_reason != "ok":
+        return rejected_evaluation(proposal.proposal_id, policy_reason, None, manifest, findings)
+    structural = structural_admission(package, proposal)
+    if not structural.admitted:
+        return rejected_evaluation(
+            proposal.proposal_id,
+            "structural_admission_rejected",
+            Some(structural.reason),
+            manifest,
+            findings,
+        )
+    selected = freeze_selected_memory(package, proposal)
+    if len(selected) == 0 or len(selected) > 8 or has_duplicate_strings(
+        [memory_id_text(atom.memory_id) for atom in selected],
+    ):
+        return rejected_evaluation(
+            proposal.proposal_id,
+            "selected_memory_invalid",
+            Some(structural.reason),
+            manifest,
+            findings,
+        )
+    spectrum = SpectrumResult(
+        decision_id=derive_decision_id(proposal.proposal_id),
+        admitted=true,
+        decision="admit",
+        reason_namespace=REASON_NAMESPACE,
+        reason="admitted",
+        structural_reason=Some(structural.reason),
+        admitted_evidence_ids=structural.evidence_ids,
+        selected_memory_ids=selected_memory_id_values(selected),
+    )
+    return ProfileEvaluation(
+        manifest=manifest,
+        findings=findings,
+        spectrum=spectrum,
+        admitted_visible_units=proposal.visible_units,
+        selected_memory=selected,
+    )

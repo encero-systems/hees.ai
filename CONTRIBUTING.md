@@ -4,7 +4,7 @@ Hees is intentionally small. Changes should preserve an Incan-owned public bound
 
 Before opening a pull request:
 
-1. Use released Incan `0.4.0`.
+1. Use Incan `0.5.0-dev.23` at the source commit recorded in `workspaces/hees-console/packaging/release-platforms.json`.
 2. Add positive and fail-closed negative tests for contract changes.
 3. Keep `src/lib.incn` exports deliberate and documented.
 4. Run `make ci` from a clean checkout.

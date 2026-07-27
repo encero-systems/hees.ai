@@ -1,0 +1,36 @@
+"""
+Checked public facade for the bounded ``console_profile_0_1`` slice.
+
+Provider proposals and verifier observations are untrusted inputs. The evaluation, artifact, planning, observation,
+identity, validation, and model modules retain their separate responsibilities behind this deliberately small surface.
+"""
+
+pub from crate.console_profile_artifacts import evaluate_console_profile_json, evaluate_console_profile_with_artifacts
+pub from crate.console_profile_evaluation import evaluate_console_profile
+pub from crate.console_profile_identity import (
+    compile_console_package_candidate,
+    console_package_artifact_identity_is_valid,
+)
+pub from crate.console_profile_models import (
+    ConsoleAction,
+    ConsoleAtom,
+    ConsolePackage,
+    ConsolePolicy,
+    ConsoleProposal,
+    ConsoleRequestBinding,
+    ConsoleRequirement,
+    ConsoleSource,
+    ProfileValidation,
+    RelationObservation,
+    SourceSpan,
+    SupportMapping,
+    SynthesisObservation,
+    VisibleUnit,
+)
+pub from crate.console_profile_planning import (
+    bind_console_request_json,
+    identify_console_proposal_json,
+    plan_console_manifest_json,
+    plan_console_provider_context_json,
+)
+pub from crate.console_profile_validation import console_package_candidate_diagnostic, validate_console_package

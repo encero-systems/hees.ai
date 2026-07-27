@@ -1,0 +1,12 @@
+{
+  "contract_version": "console_atom_candidate_0_1",
+  "profile_id": "console_profile_0_1",
+  "package_id": "lantern_labs",
+  "domain_id": "fictional_lesson_support",
+  "source_ref": "fictional/lesson/echo_map",
+  "source_fingerprint": "sha256:54102b695f9db7819eab9d8391b382f57874e16bc1981449109775861568ac0b",
+  "claim": "A cloud icon marks a direct observation.",
+  "guidance": "Use the cloud for every direct observation.",
+  "language": "en",
+  "candidate_digest": "sha256:b2a4a4088a7c46aac786f83d284eca2312548d8b03faa3bb4612ed1848a5d3a7"
+}

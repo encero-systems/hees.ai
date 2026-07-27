@@ -2,5 +2,8 @@
 name = "hees_external_consumer"
 version = "0.0.1"
 
+[project.scripts]
+main = "src/main.incn"
+
 [dependencies]
-hees = { path = "../.." }
+hees_ai = { workspace = true }
