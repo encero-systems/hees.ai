@@ -35,9 +35,9 @@ This separation is deliberate. Retrieval can remain optimized, approximate and r
 
 `evaluate_programme_action` returns a `ProgrammeEvaluation`. Its serializable `ProgrammeDecisionTrace` explains whether the action is eligible, the closed reason, the current and next card, any session value and any requested memory operation.
 
-The trace is not a reusable authority token. An eligible result also carries private in-process state created only by the evaluator. Callers can inspect the eligible operation projection, but cannot submit a copied trace or projection as proof of package admission or terminal authority.
+The trace and operation projection are not reusable authority tokens. They are safe inspection output from the structural evaluator. A later Hees authority stage must evaluate the original admitted package, governed support and runtime state; it must not accept a caller-constructed evaluation, copied trace or copied projection as proof of admission or terminal authority.
 
-The evaluator is intentionally side-effect free. It does not render cards, retrieve memory, write progress or activate packages. A later Hees stage may consume the direct eligible operation; a rejected evaluation carries no operation forward.
+The evaluator is intentionally side-effect free. It does not render cards, retrieve memory, write progress or activate packages. A later Hees stage may use the projected operation as candidate input only while rebinding the original governed inputs; a rejected evaluation carries no operation forward.
 
 ## Progress is package-owned policy
 
@@ -57,8 +57,8 @@ An external Incan application imports the programme models and evaluator from `p
 
 ```incan
 evaluation = evaluate_programme_action(programme, frame, action)
-trace = programme_evaluation_trace(evaluation.clone())
-operation = project_eligible_programme_operation(evaluation)
+trace = evaluation.trace
+operation = evaluation.operation
 
 if trace.eligible:
     match operation:
@@ -70,4 +70,4 @@ if trace.eligible:
             pass
 ```
 
-The temporary projection functions exist because Incan issue `#952` does not yet preserve public computed properties through compiled-library manifests. Once that compiler contract is fixed, consumers should use the properties directly and the compatibility projections can be retired.
+The result uses direct public fields rather than treating object privacy as an authority boundary. The terminal integration must consume the original governed inputs and derive its own capability; it must never trust a caller-constructed `ProgrammeEvaluation`.

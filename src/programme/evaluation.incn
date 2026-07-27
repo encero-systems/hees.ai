@@ -1,10 +1,9 @@
 """
 Direct guided-programme operation evaluation.
 
-The evaluator checks one untrusted action and runtime frame against a validated programme declaration. Its public trace
-is safe to serialize and inspect, while ``ProgrammeEvaluation`` retains private backing state so a copied trace cannot
-be submitted as an eligible operation. Eligibility is not package admission or terminal Spectrum authority. No state
-or persistence mutation occurs inside this module.
+The evaluator checks one untrusted action and runtime frame against a validated programme declaration. Its result is
+safe to serialize and inspect but is not reusable authority. Eligibility is not package admission or terminal Spectrum
+authority. No state or persistence mutation occurs inside this module.
 """
 
 from crate.identifiers import GuidedCardId
@@ -16,7 +15,7 @@ from crate.programme.context import (
     progress_snapshot_reason,
     runtime_frame_reason,
 )
-from crate.programme.decision import ProgrammeEvaluation, mark_operation_eligible
+from crate.programme.decision import ProgrammeEvaluation
 from crate.programme.models import (
     GuidedProgramme,
     ProgrammeAction,
@@ -52,7 +51,7 @@ def evaluate_enter(
     match card_nomination_reason(entry_card, frame):
         Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Enter, reason, frame.current_card_id)
         None =>
-            return mark_operation_eligible(
+            return ProgrammeEvaluation.eligible(
                 ProgrammeActionKind.Enter,
                 frame.current_card_id,
                 Some(action.target_card_id),
@@ -83,7 +82,7 @@ def evaluate_advance(
     match card_nomination_reason(target_card, frame):
         Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Advance, reason, frame.current_card_id)
         None =>
-            return mark_operation_eligible(
+            return ProgrammeEvaluation.eligible(
                 ProgrammeActionKind.Advance,
                 frame.current_card_id,
                 Some(action.target_card_id),
@@ -115,7 +114,7 @@ def evaluate_backtrack(
         Some(reason) =>
             return ProgrammeEvaluation.rejected(ProgrammeActionKind.Backtrack, reason, frame.current_card_id)
         None => pass
-    return mark_operation_eligible(
+    return ProgrammeEvaluation.eligible(
         ProgrammeActionKind.Backtrack,
         frame.current_card_id,
         Some(action.target_card_id),
@@ -143,7 +142,7 @@ def evaluate_choice(
         None => pass
     match find_programme_choice(current_card, action.choice_id):
         Some(choice) =>
-            return mark_operation_eligible(
+            return ProgrammeEvaluation.eligible(
                 ProgrammeActionKind.SelectChoice,
                 frame.current_card_id,
                 frame.current_card_id,
@@ -176,7 +175,7 @@ def evaluate_complete(
             frame.current_card_id,
         )
     next_card_id: Option[GuidedCardId] = None
-    return mark_operation_eligible(
+    return ProgrammeEvaluation.eligible(
         ProgrammeActionKind.Complete,
         frame.current_card_id,
         next_card_id,
@@ -212,7 +211,7 @@ def evaluate_resume(
     match card_nomination_reason(resumed_card, frame):
         Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Resume, reason, frame.current_card_id)
         None =>
-            return mark_operation_eligible(
+            return ProgrammeEvaluation.eligible(
                 ProgrammeActionKind.Resume,
                 frame.current_card_id,
                 Some(snapshot.current_card_id),
@@ -240,7 +239,7 @@ def evaluate_memory_operation(
     match card_nomination_reason(current_card, frame):
         Some(reason) => return ProgrammeEvaluation.rejected(action_kind, reason, frame.current_card_id)
         None => pass
-    return mark_operation_eligible(action_kind, frame.current_card_id, frame.current_card_id, None, None, operation)
+    return ProgrammeEvaluation.eligible(action_kind, frame.current_card_id, frame.current_card_id, None, None, operation)
 
 
 pub def evaluate_programme_action(

@@ -115,8 +115,6 @@ pub from programme import (
     ProgrammeTransitionAction,
     ProgrammeValidation,
     evaluate_programme_action,
-    programme_evaluation_trace,
-    project_eligible_programme_operation,
     validate_guided_programme,
 )
 pub from package_loader import (

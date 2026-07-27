@@ -25,9 +25,7 @@ from pub::hees_ai import (
     package_loader_descriptor,
     package_loader_summary,
     package_id,
-    programme_evaluation_trace,
     programme_id,
-    project_eligible_programme_operation,
     revision,
     validate_package_loader_descriptor,
 )
@@ -89,7 +87,7 @@ def test_external_dependency_can_encode_and_decode_faithful_turboquant() -> None
 
 
 def test_external_dependency_can_request_a_guided_programme_operation() -> None:
-    """Prove eligibility crosses the public library boundary without exporting its private capability."""
+    """Prove a non-authoritative eligibility result crosses the public library boundary."""
 
     card_id = guided_card_id("completion")
     programme = GuidedProgramme(
@@ -128,8 +126,8 @@ def test_external_dependency_can_request_a_guided_programme_operation() -> None:
     action = ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=card_id))
 
     evaluation = evaluate_programme_action(programme, frame, action)
-    trace = programme_evaluation_trace(evaluation.clone())
-    projection = project_eligible_programme_operation(evaluation)
+    trace = evaluation.trace
+    projection = evaluation.operation
 
     assert_eq(trace.eligible, true)
     assert_eq(trace.reason, "eligible")

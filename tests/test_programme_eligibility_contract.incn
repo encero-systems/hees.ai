@@ -1,6 +1,6 @@
 """Behavioral contract tests for generic guided-programme validation and operation eligibility."""
 
-from std.serde.json import Deserialize
+from std.serde.json import Deserialize, Serialize
 from std.testing import assert_eq, assert_is_err, assert_is_ok
 from crate.identifiers import (
     EvidenceId,
@@ -211,11 +211,11 @@ def test_enters_only_at_declared_entry_with_nominated_support() -> None:
     )
     decision = evaluation.trace
 
-    assert_eq(evaluation.eligible, true)
-    assert_eq(decision.eligible, evaluation.eligible)
+    assert_eq(evaluation.trace.eligible, true)
+    assert_eq(decision.eligible, evaluation.trace.eligible)
     assert_eq(decision.next_card_id, Some(guided_card_id("introduction")))
-    assert_eq(evaluation.next_card_id, Some(guided_card_id("introduction")))
-    assert_eq(evaluation.memory_operation, ProgrammeMemoryOperation.None)
+    assert_eq(evaluation.trace.next_card_id, Some(guided_card_id("introduction")))
+    assert_eq(evaluation.trace.memory_operation, ProgrammeMemoryOperation.None)
 
 
 def test_rejects_card_when_memory_was_not_nominated() -> None:
@@ -226,7 +226,7 @@ def test_rejects_card_when_memory_was_not_nominated() -> None:
     )
     decision = evaluation.trace
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(decision.reason, "card_memory_not_nominated")
 
 
@@ -237,7 +237,7 @@ def test_rejects_card_when_evidence_was_not_nominated() -> None:
         ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=guided_card_id("introduction"))),
     )
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(evaluation.trace.reason, "card_evidence_not_nominated")
 
 
@@ -259,7 +259,7 @@ def test_rejects_language_outside_programme_catalogue() -> None:
         ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=guided_card_id("introduction"))),
     )
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(evaluation.trace.reason, "language_not_allowed")
 
 
@@ -282,7 +282,7 @@ def test_rejects_undeclared_forward_transition() -> None:
     )
     decision = evaluation.trace
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(decision.reason, "transition_not_declared")
 
 
@@ -296,10 +296,10 @@ def test_choice_returns_session_value_without_persistence() -> None:
     )
     decision = evaluation.trace
 
-    assert_eq(evaluation.eligible, true)
+    assert_eq(evaluation.trace.eligible, true)
     assert_eq(decision.session_key, Some("timing_anchor"))
     assert_eq(decision.session_value, Some("earlier"))
-    assert_eq(evaluation.memory_operation, ProgrammeMemoryOperation.None)
+    assert_eq(evaluation.trace.memory_operation, ProgrammeMemoryOperation.None)
 
 
 def test_backtracking_is_limited_to_immediately_previous_card() -> None:
@@ -315,7 +315,7 @@ def test_backtracking_is_limited_to_immediately_previous_card() -> None:
     )
     decision = evaluation.trace
 
-    assert_eq(evaluation.eligible, true)
+    assert_eq(evaluation.trace.eligible, true)
     assert_eq(decision.next_card_id, Some(guided_card_id("introduction")))
 
 
@@ -331,7 +331,7 @@ def test_backtracking_requires_nominated_support_for_the_target_card() -> None:
         ),
     )
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(evaluation.trace.reason, "card_memory_not_nominated")
 
 
@@ -344,7 +344,7 @@ def test_rejects_runtime_history_outside_declared_progression() -> None:
         ),
     )
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(evaluation.trace.reason, "history_not_declared")
 
 
@@ -355,7 +355,7 @@ def test_rejects_runtime_history_before_programme_entry() -> None:
         ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=guided_card_id("introduction"))),
     )
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(evaluation.trace.reason, "history_without_current_card")
 
 
@@ -367,7 +367,7 @@ def test_completion_requires_declared_completion_card() -> None:
     )
     decision = evaluation.trace
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(decision.reason, "completion_card_not_reached")
 
 
@@ -383,7 +383,7 @@ def test_advance_from_completion_rejects_instead_of_unwrapping_empty_transition(
         ),
     )
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(evaluation.trace.reason, "transition_not_declared")
 
 
@@ -395,7 +395,7 @@ def test_durable_progress_requires_explicit_authority() -> None:
     )
     decision = evaluation.trace
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(decision.reason, "durable_progress_not_allowed")
 
 
@@ -406,8 +406,8 @@ def test_save_progress_returns_explicit_memory_operation() -> None:
         ProgrammeAction.SaveProgress(ProgrammeCurrentCardAction(from_card_id=guided_card_id("timing"))),
     )
 
-    assert_eq(evaluation.eligible, true)
-    assert_eq(evaluation.memory_operation, ProgrammeMemoryOperation.SaveProgress)
+    assert_eq(evaluation.trace.eligible, true)
+    assert_eq(evaluation.trace.memory_operation, ProgrammeMemoryOperation.SaveProgress)
 
 
 def test_resume_rejects_stale_programme_revision() -> None:
@@ -426,7 +426,7 @@ def test_resume_rejects_stale_programme_revision() -> None:
     )
     decision = evaluation.trace
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(decision.reason, "progress_revision_mismatch")
 
 
@@ -445,7 +445,7 @@ def test_resume_rejects_unknown_history_card() -> None:
         ProgrammeAction.Resume(snapshot),
     )
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(evaluation.trace.reason, "progress_history_card_unknown")
 
 
@@ -464,7 +464,7 @@ def test_resume_rejects_history_outside_declared_progression() -> None:
         ProgrammeAction.Resume(snapshot),
     )
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(evaluation.trace.reason, "progress_history_not_declared")
 
 
@@ -487,5 +487,5 @@ def test_runtime_frame_rejects_cross_package_identity() -> None:
     )
     decision = evaluation.trace
 
-    assert_eq(evaluation.eligible, false)
+    assert_eq(evaluation.trace.eligible, false)
     assert_eq(decision.reason, "package_id_mismatch")

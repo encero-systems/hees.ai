@@ -1,12 +1,12 @@
 """
 Direct guided-programme eligibility result.
 
-The serializable trace explains one structural decision but carries no reusable authority. The direct result retains
-private backing state so callers cannot reconstruct eligibility from a copied trace or operation projection. The
-capability remains non-terminal until later Hees stages bind package admission, governed memory, Spectrum, Content DNA
-and a receipt.
+The serializable result explains one structural decision and its eligible operation, if any. It carries no reusable
+authority. Later Hees stages must evaluate the original admitted package, governed support and runtime state rather
+than accepting a caller-constructed eligibility result as package admission or terminal authority.
 """
 
+from std.serde import json
 from crate.identifiers import GuidedCardId
 from crate.programme.models import (
     ProgrammeActionKind,
@@ -16,60 +16,12 @@ from crate.programme.models import (
 )
 
 
-@derive(Clone)
-# Keep this type private: it also prevents native callers from using the generated constructor while Incan #964 is open.
-model EligibleProgrammeOperation:
-    action: ProgrammeActionKind
-    next_card_id: Option[GuidedCardId]
-    memory_operation: ProgrammeMemoryOperation
-
-
-@derive(Clone)
+@derive(Clone, json)
 pub model ProgrammeEvaluation:
-    """Direct result whose private capability distinguishes eligibility from explanation."""
+    """Inspectable eligibility result that cannot substitute for a later Hees authority decision."""
 
-    _trace: ProgrammeDecisionTrace
-    _capability: Option[EligibleProgrammeOperation]
-
-    pub property trace -> ProgrammeDecisionTrace:
-        """Return the serializable non-authoritative decision explanation."""
-
-        return self._trace.clone()
-
-    pub property eligible -> bool:
-        """Return whether the direct result carries an eligible operation capability."""
-
-        match self._capability:
-            Some(_capability) => return true
-            None => return false
-
-    pub property next_card_id -> Option[GuidedCardId]:
-        """Project the eligible navigation target, if the operation carries one."""
-
-        match self._capability:
-            Some(capability) => return capability.next_card_id
-            None => return None
-
-    pub property memory_operation -> ProgrammeMemoryOperation:
-        """Project the eligible persistence effect without accepting a copied trace as authority."""
-
-        match self._capability:
-            Some(capability) => return capability.memory_operation
-            None => return ProgrammeMemoryOperation.None
-
-    pub property operation -> Option[ProgrammeOperationProjection]:
-        """Project the eligible operation for inspection without exposing the private capability."""
-
-        match self._capability:
-            Some(capability) =>
-                return Some(
-                    ProgrammeOperationProjection(
-                        action=capability.action,
-                        next_card_id=capability.next_card_id,
-                        memory_operation=capability.memory_operation,
-                    ),
-                )
-            None => return None
+    pub trace: ProgrammeDecisionTrace
+    pub operation: Option[ProgrammeOperationProjection]
 
     @staticmethod
     def rejected(
@@ -77,10 +29,10 @@ pub model ProgrammeEvaluation:
         reason: str,
         current_card_id: Option[GuidedCardId],
     ) -> ProgrammeEvaluation:
-        """Construct one rejected direct result inside the declaring type's privacy boundary."""
+        """Construct one internally consistent, non-authoritative rejection result."""
 
         return ProgrammeEvaluation(
-            _trace=ProgrammeDecisionTrace(
+            trace=ProgrammeDecisionTrace(
                 eligible=false,
                 reason=reason,
                 action=action,
@@ -90,54 +42,32 @@ pub model ProgrammeEvaluation:
                 session_value=None,
                 memory_operation=ProgrammeMemoryOperation.None,
             ),
-            _capability=None,
+            operation=None,
         )
 
     @staticmethod
-    def from_eligible_operation(
-        capability: EligibleProgrammeOperation,
+    def eligible(
+        action: ProgrammeActionKind,
         current_card_id: Option[GuidedCardId],
+        next_card_id: Option[GuidedCardId],
         session_key: Option[str],
         session_value: Option[str],
+        memory_operation: ProgrammeMemoryOperation,
     ) -> ProgrammeEvaluation:
-        """Construct one eligible result only from the evaluator's private operation capability."""
+        """Construct one internally consistent, non-authoritative eligibility result."""
 
         return ProgrammeEvaluation(
-            _trace=ProgrammeDecisionTrace(
+            trace=ProgrammeDecisionTrace(
                 eligible=true,
                 reason="eligible",
-                action=capability.action,
+                action=action,
                 current_card_id=current_card_id,
-                next_card_id=capability.next_card_id,
+                next_card_id=next_card_id,
                 session_key=session_key,
                 session_value=session_value,
-                memory_operation=capability.memory_operation,
+                memory_operation=memory_operation,
             ),
-            _capability=Some(capability),
+            operation=Some(
+                ProgrammeOperationProjection(action=action, next_card_id=next_card_id, memory_operation=memory_operation),
+            ),
         )
-
-
-pub def programme_evaluation_trace(evaluation: ProgrammeEvaluation) -> ProgrammeDecisionTrace:
-    """Expose the decision trace until Incan #952 carries public properties through compiled-library contracts."""
-
-    return evaluation.trace
-
-
-pub def project_eligible_programme_operation(evaluation: ProgrammeEvaluation) -> Option[ProgrammeOperationProjection]:
-    """Expose an eligible operation projection without accepting a caller-constructed projection as authority."""
-
-    return evaluation.operation
-
-
-pub def mark_operation_eligible(
-    action: ProgrammeActionKind,
-    current_card_id: Option[GuidedCardId],
-    next_card_id: Option[GuidedCardId],
-    session_key: Option[str],
-    session_value: Option[str],
-    memory_operation: ProgrammeMemoryOperation,
-) -> ProgrammeEvaluation:
-    """Create the private capability that distinguishes direct eligibility from a copied public trace."""
-
-    capability = EligibleProgrammeOperation(action=action, next_card_id=next_card_id, memory_operation=memory_operation)
-    return ProgrammeEvaluation.from_eligible_operation(capability, current_card_id, session_key, session_value)
