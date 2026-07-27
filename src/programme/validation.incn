@@ -31,10 +31,7 @@ def contains_duplicate(values: list[str]) -> bool:
 def declared_card_ids(programme: GuidedProgramme) -> Dict[str, bool]:
     """Index every card identity declared by the programme."""
 
-    mut identifiers: Dict[str, bool] = {}
-    for card in programme.cards:
-        identifiers.insert(guided_card_id_text(card.card_id), true)
-    return identifiers
+    return {guided_card_id_text(card.card_id): true for card in programme.cards}
 
 
 def find_card_by_text(programme: GuidedProgramme, card_id: str) -> Option[GuidedProgrammeCard]:
@@ -77,6 +74,7 @@ def card_errors(programme: GuidedProgramme) -> list[str]:
             errors.append("duplicate_card_id")
         seen_cards.insert(canonical_card_id, true)
 
+        # Every visible card must already be reviewed, rights-allowed and scoped to the programme's catalogues.
         if card.review_status != ReviewStatus.Approved:
             errors.append("card_review_not_approved")
         if card.rights_status != RightsStatus.Allowed:
@@ -98,6 +96,7 @@ def card_errors(programme: GuidedProgramme) -> list[str]:
         if contains_duplicate([memory_id_text(value) for value in card.memory_ids]):
             errors.append("duplicate_card_memory")
 
+        # Choice identifiers are global inside one programme because progress actions refer to them independently.
         for choice in card.choices:
             canonical_choice_id = choice_id_text(choice.choice_id)
             if canonical_choice_id in seen_choices:
@@ -133,6 +132,7 @@ def progression_errors(programme: GuidedProgramme) -> list[str]:
     mut visited: Dict[str, bool] = {}
     mut current_id = entry_id
     for _step in range(len(programme.cards) + 1):
+        # The programme is deliberately linear: one path from entry through all cards to the declared completion card.
         if current_id in visited:
             errors.append("required_progression_cycle")
             return errors

@@ -46,12 +46,12 @@ def history_follows_programme(
     for history_card_id in history:
         if guided_card_id_text(history_card_id) != expected_card_id:
             return false
-        match find_programme_card(programme, history_card_id):
-            Some(card) =>
-                match card.next_card_id:
-                    Some(next_card_id) =>
-                        expected_card_id = guided_card_id_text(next_card_id)
-                    None => return false
+        maybe_card = find_programme_card(programme, history_card_id)
+        if maybe_card is None:
+            return false
+        match maybe_card.unwrap().next_card_id:
+            Some(next_card_id) =>
+                expected_card_id = guided_card_id_text(next_card_id)
             None => return false
     return guided_card_id_text(current_card_id) == expected_card_id
 
