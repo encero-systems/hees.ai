@@ -1,0 +1,35 @@
+"""
+Public guided-programme contracts.
+
+Implementation packages declare reviewed card topology, bounded choices, support identifiers and progress policy.
+Hees validates those declarations and evaluates learner-operation eligibility without rendering cards, retrieving
+memory, mutating progress or allowing a caller-supplied flag to manufacture persistence authority.
+
+The public evaluation explains an outcome and projects the eligible operation, if any. It carries no reusable authority
+and remains non-terminal until package admission, governed-memory and Spectrum integrations bind the original inputs
+into the Content DNA and receipt lifecycle. This module is not a parallel tutorial runtime.
+"""
+
+pub from crate.programme.decision import ProgrammeEvaluation
+pub from crate.programme.evaluation import evaluate_programme_action
+pub from crate.programme.models import (
+    MAX_GUIDED_PROGRAMME_CARDS,
+    MAX_GUIDED_PROGRAMME_HISTORY,
+    GuidedProgramme,
+    GuidedProgrammeCard,
+    GuidedProgrammeChoice,
+    ProgrammeAction,
+    ProgrammeActionKind,
+    ProgrammeChoiceAction,
+    ProgrammeCurrentCardAction,
+    ProgrammeDecisionTrace,
+    ProgrammeEnterAction,
+    ProgrammeMemoryOperation,
+    ProgrammeOperationProjection,
+    ProgrammeProgressPolicy,
+    ProgrammeProgressSnapshot,
+    ProgrammeRuntimeFrame,
+    ProgrammeTransitionAction,
+    ProgrammeValidation,
+)
+pub from crate.programme.validation import validate_guided_programme
