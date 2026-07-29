@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "incan_toolchain": {
-    "version": "0.5.0-dev.23",
+    "version": "0.5.0-dev.32",
     "source_repository": "https://github.com/encero-systems/incan",
-    "source_commit": "121b1b789508d8fa83aa7f9400fef52e294afa62"
+    "source_commit": "d7f6d4ab0416715b95cdfc951b19e12ee15daf14"
   },
   "platforms": {
     "linux-x86_64": {

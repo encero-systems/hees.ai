@@ -1,0 +1,192 @@
+"""
+Public contracts for terminal admission of package-declared guided-programme operations.
+
+`ProgrammeAuthorityPackage` carries the reviewed installed-package projection, including the programme, source-safe
+memory support, profile, and constraint-plan identity. `ProgrammeInteraction` carries the untrusted learner frame and
+action. `ProgrammeTerminalResult` records the closed Hees decision, while `CompleteProgrammeEvaluation` is the only
+projection an application may use to render an admitted card or inspect its selected memory, Content DNA, and receipt.
+"""
+
+from std.serde import json
+from crate.identifiers import (
+    ConstraintPlanId,
+    ContentDnaId,
+    ContractId,
+    DecisionId,
+    DigestIdType,
+    DomainId,
+    EvidenceId,
+    GuidedCardId,
+    InputId,
+    MemoryId,
+    PackageId,
+    ProfileId,
+    ProgrammeId,
+    RevisionType,
+)
+from crate.programme.models import (
+    GuidedProgramme,
+    ProgrammeAction,
+    ProgrammeActionKind,
+    ProgrammeMemoryOperation,
+    ProgrammeRuntimeFrame,
+)
+from crate.runtime import ReviewStatus, RightsStatus
+
+
+@derive(Clone, Eq, json)
+pub enum ProgrammeTerminalDecision(str):
+    """Closed terminal outcome for one guided-programme operation."""
+
+    Admit = "admit"
+    Reject = "reject"
+
+
+@derive(Clone, json)
+pub model ProgrammeSupportAtom:
+    """Reviewed source-safe memory support that a programme card may select."""
+
+    pub memory_id: MemoryId
+    pub evidence_id: EvidenceId
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: DigestIdType
+    pub provenance_digest: DigestIdType
+    pub review_status: ReviewStatus
+    pub review_revision: RevisionType
+    pub rights_status: RightsStatus
+    pub authority_class: str
+    pub evidence_kind: str
+
+
+@derive(Clone, json)
+pub model ProgrammeAuthorityPolicy:
+    """Package-declared constraint-plan identity for programme terminal decisions."""
+
+    pub constraint_plan_id: ConstraintPlanId
+    pub constraint_plan_revision: RevisionType
+
+
+@derive(Clone, json)
+pub model ProgrammeAuthorityPackage:
+    """Installed package projection evaluated by the guided-programme terminal boundary."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub programme: GuidedProgramme
+    pub support_atoms: list[ProgrammeSupportAtom]
+    pub policy: ProgrammeAuthorityPolicy
+
+
+@derive(Clone, json)
+pub model ProgrammeInteraction:
+    """Untrusted learner operation and context, bound to one caller-supplied input identity."""
+
+    pub input_id: InputId
+    pub frame: ProgrammeRuntimeFrame
+    pub action: ProgrammeAction
+
+
+@derive(Clone, json)
+pub model AdmittedProgrammeCard:
+    """Exact reviewed card projection that an application may render after terminal admission."""
+
+    pub package_id: PackageId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub programme_id: ProgrammeId
+    pub card_id: GuidedCardId
+    pub language_id: str
+    pub audience_id: str
+
+
+@derive(Clone, json)
+pub model ProgrammeTerminalResult:
+    """Terminal Hees decision over original package, interaction, and derived support."""
+
+    pub decision_id: DecisionId
+    pub admitted: bool
+    pub decision: ProgrammeTerminalDecision
+    pub reason_namespace: str
+    pub reason: str
+    pub structural_reason: Option[str]
+    pub action: ProgrammeActionKind
+    pub current_card_id: Option[GuidedCardId]
+    pub next_card_id: Option[GuidedCardId]
+    pub memory_operation: ProgrammeMemoryOperation
+    pub admitted_evidence_ids: list[EvidenceId]
+    pub selected_memory_ids: list[MemoryId]
+
+
+@derive(Clone, json)
+pub model ProgrammeContentDnaBody:
+    """Source-safe provenance body for an admitted guided-programme operation."""
+
+    pub contract_version: ContractId
+    pub state: str
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub programme_id: ProgrammeId
+    pub policy: ProgrammeAuthorityPolicy
+    pub input_id: InputId
+    pub action: ProgrammeAction
+    pub frame: ProgrammeRuntimeFrame
+    pub decision_id: DecisionId
+    pub decision: ProgrammeTerminalDecision
+    pub reason_namespace: str
+    pub reason: str
+    pub card: Option[AdmittedProgrammeCard]
+    pub selected_memory: list[ProgrammeSupportAtom]
+
+
+@derive(Clone, json)
+pub model ProgrammeContentDna:
+    """Sealed provenance envelope for an admitted guided-programme operation."""
+
+    pub body: ProgrammeContentDnaBody
+    pub content_dna_id: ContentDnaId
+
+
+@derive(Clone, json)
+pub model ProgrammeReceiptBody:
+    """Redacted terminal receipt body for an admitted or rejected programme operation."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: RevisionType
+    pub artifact_digest: DigestIdType
+    pub programme_id: ProgrammeId
+    pub policy: ProgrammeAuthorityPolicy
+    pub input_id: InputId
+    pub action: ProgrammeAction
+    pub terminal: ProgrammeTerminalResult
+    pub admitted_card: Option[AdmittedProgrammeCard]
+    pub content_dna_id: Option[ContentDnaId]
+
+
+@derive(Clone, json)
+pub model CompleteProgrammeEvaluation:
+    """Atomic terminal decision and projections available to an application shell."""
+
+    pub terminal: ProgrammeTerminalResult
+    pub selected_memory: list[ProgrammeSupportAtom]
+    pub admitted_card: Option[AdmittedProgrammeCard]
+    pub content_dna_json: Option[str]
+    pub receipt_json: Option[str]
+
+
+@derive(Clone, json)
+pub model ProgrammeAuthorityValidation:
+    """Validation result for the installed package projection before terminal evaluation."""
+
+    pub valid: bool
+    pub errors: list[str]

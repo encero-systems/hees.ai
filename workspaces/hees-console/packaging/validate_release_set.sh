@@ -94,9 +94,9 @@ validate_manifest() {
                 .source.tree_state == "clean" and
                 (.source.date_epoch | type == "number" and . >= 0) and
                 .toolchain.compiler == "incan" and
-                .toolchain.compiler_version == "0.5.0-dev.23" and
+                .toolchain.compiler_version == "0.5.0-dev.32" and
                 .toolchain.source_repository == "https://github.com/encero-systems/incan.git" and
-                .toolchain.source_commit == "121b1b789508d8fa83aa7f9400fef52e294afa62" and
+                .toolchain.source_commit == "d7f6d4ab0416715b95cdfc951b19e12ee15daf14" and
                 .dependencies.incan_lock_file == "incan.lock" and
                 (.dependencies.incan_lock_sha256 | test("^[0-9a-f]{64}$")) and
                 .guidance.running_file == "RUNNING.txt" and

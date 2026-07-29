@@ -1,16 +1,17 @@
 """
 Public guided-programme contracts.
 
-Implementation packages declare reviewed card topology, bounded choices, support identifiers and progress policy.
-Hees validates those declarations and evaluates learner-operation eligibility without rendering cards, retrieving
-memory, mutating progress or allowing a caller-supplied flag to manufacture persistence authority.
+Implementation packages declare reviewed card topology, bounded choices, source-backed support identifiers and progress
+policy. Hees validates those declarations, evaluates the original learner operation, and—through the terminal
+evaluator—derives the one admitted card, selected support, Content DNA, and receipt an application may inspect.
 
-The public evaluation explains an outcome and projects the eligible operation, if any. It carries no reusable authority
-and remains non-terminal until package admission, governed-memory and Spectrum integrations bind the original inputs
-into the Content DNA and receipt lifecycle. This module is not a parallel tutorial runtime.
+The module does not load package files, retrieve additional memory, render cards, call a model, or mutate durable
+progress. A caller-supplied frame or nomination cannot manufacture authority; the terminal evaluator derives support
+only from the installed package projection.
 """
 
 pub from crate.programme.decision import ProgrammeEvaluation
+pub from crate.programme.terminal_evaluation import evaluate_programme_terminal, validate_programme_authority_package
 pub from crate.programme.evaluation import evaluate_programme_action
 pub from crate.programme.models import (
     MAX_GUIDED_PROGRAMME_CARDS,
@@ -31,5 +32,19 @@ pub from crate.programme.models import (
     ProgrammeRuntimeFrame,
     ProgrammeTransitionAction,
     ProgrammeValidation,
+)
+pub from crate.programme.terminal_models import (
+    AdmittedProgrammeCard,
+    CompleteProgrammeEvaluation,
+    ProgrammeAuthorityPackage,
+    ProgrammeAuthorityPolicy,
+    ProgrammeAuthorityValidation,
+    ProgrammeContentDna,
+    ProgrammeContentDnaBody,
+    ProgrammeInteraction,
+    ProgrammeReceiptBody,
+    ProgrammeSupportAtom,
+    ProgrammeTerminalDecision,
+    ProgrammeTerminalResult,
 )
 pub from crate.programme.validation import validate_guided_programme
