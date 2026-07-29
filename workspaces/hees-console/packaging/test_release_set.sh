@@ -54,7 +54,7 @@ assert_pinned_incan_roots() {
     workflow_file=$1
     expected_count=$2
     workflow_name=$(basename -- "$workflow_file")
-    [ "$(grep -Fc "install_root=\"\$RUNNER_TEMP/incan-0.5.0-dev.23\"" "$workflow_file")" -eq "$expected_count" ] ||
+    [ "$(grep -Fc "install_root=\"\$RUNNER_TEMP/incan-0.5.0-dev.32\"" "$workflow_file")" -eq "$expected_count" ] ||
         fail "$workflow_name does not bind every Incan build to the pinned install root"
     [ "$(grep -Fc "echo \"INCAN_HOME=\$RUNNER_TEMP/incan-home\"" "$workflow_file")" -eq "$expected_count" ] ||
         fail "$workflow_name does not isolate every pinned Incan provider home"
@@ -75,7 +75,7 @@ write_manifest() {
     wm_running_sha256=$8
     wm_date_epoch=$9
     cat >"$wm_destination" <<EOF
-{"schema_version":1,"product":{"name":"hees-console","version":"0.1.0"},"build":{"language":"Incan","profile":"release"},"platform":"$wm_platform","source":{"commit":"$wm_source_commit","date_epoch":$wm_date_epoch,"tree_state":"clean"},"toolchain":{"compiler":"incan","compiler_version":"0.5.0-dev.23","source_repository":"https://github.com/encero-systems/incan.git","source_commit":"121b1b789508d8fa83aa7f9400fef52e294afa62"},"dependencies":{"incan_lock_file":"incan.lock","incan_lock_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"guidance":{"running_file":"RUNNING.txt","running_sha256":"$wm_running_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$wm_notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$wm_third_party_sha256"},"artifact":{"name":"hees-console","sha256":"$wm_binary_sha256","size_bytes":$wm_binary_size}}
+{"schema_version":1,"product":{"name":"hees-console","version":"0.1.0"},"build":{"language":"Incan","profile":"release"},"platform":"$wm_platform","source":{"commit":"$wm_source_commit","date_epoch":$wm_date_epoch,"tree_state":"clean"},"toolchain":{"compiler":"incan","compiler_version":"0.5.0-dev.32","source_repository":"https://github.com/encero-systems/incan.git","source_commit":"d7f6d4ab0416715b95cdfc951b19e12ee15daf14"},"dependencies":{"incan_lock_file":"incan.lock","incan_lock_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"guidance":{"running_file":"RUNNING.txt","running_sha256":"$wm_running_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$wm_notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$wm_third_party_sha256"},"artifact":{"name":"hees-console","sha256":"$wm_binary_sha256","size_bytes":$wm_binary_size}}
 EOF
 }
 
@@ -254,9 +254,9 @@ pass "draft release workflow verifies the complete aggregate checksum set"
 platform_contract="$SCRIPT_DIR/release-platforms.json"
 jq -e '
     .schema_version == 1 and
-    .incan_toolchain.version == "0.5.0-dev.23" and
+    .incan_toolchain.version == "0.5.0-dev.32" and
     .incan_toolchain.source_repository == "https://github.com/encero-systems/incan" and
-    .incan_toolchain.source_commit == "121b1b789508d8fa83aa7f9400fef52e294afa62" and
+    .incan_toolchain.source_commit == "d7f6d4ab0416715b95cdfc951b19e12ee15daf14" and
     (.platforms | keys == ["linux-x86_64", "macos-aarch64", "macos-x86_64"]) and
     .platforms["linux-x86_64"] == {"runner":"ubuntu-24.04","system":"Linux","machine":"x86_64"} and
     .platforms["macos-aarch64"] == {"runner":"macos-15","system":"Darwin","machine":"aarch64"} and

@@ -16,9 +16,9 @@ See the [Hyperquant retrieval guide](workspaces/docs-site/docs/hyperquant.md) fo
 
 ## Guided programmes
 
-The guided-programme preview defines bounded programme, card, choice, transition, progress and learner-operation contracts in Incan. A programme declaration can be validated for exact topology, reviewed and rights-allowed cards, language and audience catalogues, support references, completion and package-owned progress policy. Untrusted runtime frames and payload-enum actions can then be evaluated for operation eligibility.
+The guided-programme boundary defines bounded programme, card, choice, transition, progress and learner-operation contracts in Incan. A programme declaration is validated for exact topology, reviewed and rights-allowed cards, language and audience catalogues, support references, completion and package-owned progress policy. The terminal evaluator then rechecks the original package and interaction, derives the admitted card and selected source-backed memory, and produces Content DNA and a receipt.
 
-This is deliberately a structural precursor. Runtime support identifiers are nominations, not selected memory, and an eligible operation is not an admitted package artifact or terminal Spectrum decision. The remaining integrations are canonical package admission, governed-memory materialization, Spectrum, Content DNA and receipts.
+This is a runtime-ready package-projection boundary, not a card renderer, model provider, retrieval engine, package-file loader or durable-progress store. Runtime nominations remain untrusted; applications may render only the exact card identity and support set that the terminal Hees decision admits.
 
 See the [guided-programme guide](workspaces/docs-site/docs/guided-programmes.md) for the complete public boundary and current limitations.
 
@@ -166,7 +166,7 @@ The relevant provider contracts follow the official [GPT-5.6 Sol model](https://
 | Self-contained executable | The tagged release publishes an archive only after its native lane completes extracted offline-replay smoke. The release notes name every supported platform, architecture, minimum system requirement, artifact, and digest. Earlier candidates are historical development evidence only. |
 | Publication state | The `hees-console-v0.1.0` release is the authoritative source for current artifacts. It is not a claim that an unpublished tag or draft release is available to judges. |
 | Hosted equivalent | Not configured; any later hosted surface must run the same frozen executable in bounded, isolated, no-shell sessions |
-| Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.23`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
+| Source build | Contributor-only; commit-pinned Incan `0.5.0-dev.32`, Rust `1.93.0`, and `make ci`, with the exact release-candidate command documented below |
 
 Unsupported platforms will be stated explicitly in the final release notes. Source portability is not evidence that a self-contained artifact works on a platform.
 
@@ -237,7 +237,7 @@ Not implemented by the checked `0.0.1` library:
 
 ### Toolchain
 
-The current branch requires Incan `0.5.0-dev.23` from merged source commit [`121b1b789508d8fa83aa7f9400fef52e294afa62`](https://github.com/encero-systems/incan/commit/121b1b789508d8fa83aa7f9400fef52e294afa62). Release tooling pins that source identity separately from the canonical root `incan.lock`. The release workflow fails closed unless it obtains a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the tagged Hees head. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
+The current branch requires Incan `0.5.0-dev.32` from merged source commit [`d7f6d4ab0416715b95cdfc951b19e12ee15daf14`](https://github.com/encero-systems/incan/commit/d7f6d4ab0416715b95cdfc951b19e12ee15daf14). Release tooling pins that source identity separately from the canonical root `incan.lock`. The release workflow fails closed unless it obtains a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the tagged Hees head. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
 
 ```bash
 make ci INCAN=/path/to/incan
@@ -256,7 +256,7 @@ The current gate formats and builds the public library, runs the package and run
 The standalone Console has focused source and native smoke gates:
 
 ```bash
-make console-test console-native-smoke INCAN=/path/to/incan-0.5.0-dev.23/bin/incan
+make console-test console-native-smoke INCAN=/path/to/incan-0.5.0-dev.32/bin/incan
 ```
 
 They compile the Incan-authored Console, run the native application and provider-boundary suites, build the native artifact, and execute all five headless replay smokes against the fictional profile corpus.
@@ -265,7 +265,7 @@ The separate release-candidate lane wraps that proof in a checked archive:
 
 ```bash
 make console-release-candidate \
-  INCAN=/path/to/incan-0.5.0-dev.23/bin/incan \
+  INCAN=/path/to/incan-0.5.0-dev.32/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 ```
 

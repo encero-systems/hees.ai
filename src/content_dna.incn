@@ -165,7 +165,7 @@ def digest_text_bytes(value: str) -> DigestIdType:
     return digest_id_type(f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}")
 
 
-def digest_canonical_json(source: str) -> Result[DigestIdType, str]:
+pub def digest_canonical_json(source: str) -> Result[DigestIdType, str]:
     """Normalize arbitrary JSON with the current Incan serializer and hash the rendered bytes."""
 
     return JsonValue
@@ -217,6 +217,12 @@ pub def construct_admitted_receipt(body: AdmittedReceiptBody) -> Option[ProfileR
 pub def construct_rejected_receipt(body: RejectedReceiptBody) -> Option[ProfileReceipt]:
     """Seal one redacted rejected receipt without admitted-only members."""
     return construct_profile_receipt(body.to_json())
+
+
+pub def construct_profile_receipt_json(body_source: str) -> Option[ProfileReceipt]:
+    """Seal a profile-specific typed receipt body through the shared canonical receipt envelope."""
+
+    return construct_profile_receipt(body_source)
 
 
 pub def profile_receipt_identity(value: ProfileReceipt) -> str:

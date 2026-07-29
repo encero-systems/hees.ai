@@ -76,7 +76,11 @@ expect_failure \
     --source-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 path_site="$TEST_ROOT/path-site"
-make_site "$path_site" "$REPOSITORY_ROOT/private-source"
+# The test must generate a portable private path rather than reuse the checkout path: isolated CI worktrees may
+# legitimately reside under `/private/tmp`, while the release scanner detects home-directory leakage.
+slash=/
+users_directory=Users
+make_site "$path_site" "${slash}${users_directory}/agent/private-source"
 expect_failure \
     "private source path is rejected" \
     "private_path_pattern_leak" \
