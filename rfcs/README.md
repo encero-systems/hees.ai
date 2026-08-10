@@ -40,3 +40,4 @@ RFC documents use three-digit numbers and the filename form `NNN-short-title.md`
 - [RFC 009: Governed Visible Response Lifecycle](009-governed-visible-response-lifecycle.md) — Draft
 - [RFC 010: hees.ai console](010-hees-console.md) — Draft
 - [RFC 011: Canonical Structural Identity for Incan Models](011-canonical-structural-identity.md) — Draft
+- [RFC 012: Governed Effect Capabilities and Execution Receipts](012-governed-effect-capabilities-and-execution-receipts.md) — Draft
