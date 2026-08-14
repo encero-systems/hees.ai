@@ -24,13 +24,13 @@
 
 Hees.ai must admit a complete governed Package through a closed, profile-registered binary artifact contract that validates exact delivered bytes, reconstructs bounded typed member models, validates their complete cross-member graph, and atomically yields one authoritative `AdmittedPackage`. The contract deliberately separates the exact-byte `artifact_digest` used for installation and delivery integrity from the typed `package_semantic_identity` defined by RFC 011 and used to bind governed runtime behavior, Content DNA, and receipts.
 
-`hees_ai_package_wire_0_1` is the proposed normative identifier for the authority-bearing Package wire defined by this RFC. It is not an example name, an existing file format, or an implemented API in Hees.ai 0.0.1. The underscore is an identifier delimiter, not a product spelling: public prose, wire magic, and identity namespaces use Hees.ai. If this Planned RFC is implemented, its exact spelling, framing, and rules become the public contract for wire version `0.1`; until then, it names the proposed contract only.
+`heesai_package_wire_0_1` is the proposed normative identifier for the authority-bearing Package wire defined by this RFC. It is not an example name, an existing file format, or an implemented API in Hees.ai 0.0.1. The `heesai` identifier prefix preserves the Hees.ai name where a contract identifier cannot contain a dot; public prose, wire magic, and identity namespaces use Hees.ai. If this Planned RFC is implemented, its exact spelling, framing, and rules become the public contract for wire version `0.1`; until then, it names the proposed contract only.
 
 ## Core model
 
 1. **A Package is an authority unit, not a document.** A Package binds one domain, revision, declared profile, governance graph, experience graph, supporting material references, and eligible runtime behavior. Its admitted form is the only Package form that may supply trusted runtime authority.
 2. **Artifact integrity and semantic identity are different claims.** `artifact_digest` identifies the exact complete delivered byte stream. `package_semantic_identity` identifies the fully validated Package meaning. `package_admission_binding` derives from their exact typed pair and provides one compact reference to that admission event without replacing either claim. None proves producer authenticity, factual correctness, source rights, or policy quality by itself.
-3. **The binary artifact is closed and self-delimiting.** `hees_ai_package_wire_0_1` defines a byte preamble, a closed binary manifest, and an ordered series of bounded binary members. JSON, text exports, archives, and storage pages may carry or reconstruct the Package, but they are not its authority-bearing wire substrate.
+3. **The binary artifact is closed and self-delimiting.** `heesai_package_wire_0_1` defines a byte preamble, a closed binary manifest, and an ordered series of bounded binary members. JSON, text exports, archives, and storage pages may carry or reconstruct the Package, but they are not its authority-bearing wire substrate.
 4. **A declared profile owns topology.** Each registered Package profile declares the permitted member kinds, their exact order and multiplicity, cross-member references, resource bounds, runtime eligibility rules, and semantic-identity projection. Unknown profiles, members, fields, aliases, extension maps, or compatibility guesses must fail closed.
 5. **Admission is sequential and atomic.** Hees.ai validates the manifest, accepts exactly the next declared member bytes, validates each member against its descriptor and profile, then performs complete graph validation. No partial state is an admitted Package; any failure discards the provisional branch.
 6. **Package-relative declarations stay package-relative.** Members declare content, behavior, material, and policy without repeating the containing Package identity. Successful admission binds one trusted `AdmittedPackageIdentity` to every imported runtime object without mutation, reserialization, or caller substitution.
@@ -121,7 +121,7 @@ The manifest declares the profile and the exact ordered descriptors. A descripto
 
 ### Terms
 
-- **Package artifact:** The complete `hees_ai_package_wire_0_1` byte stream submitted for admission.
+- **Package artifact:** The complete `heesai_package_wire_0_1` byte stream submitted for admission.
 - **Artifact digest:** A nominal SHA-256 digest over the exact complete Package artifact bytes.
 - **Package profile:** A public, closed contract that owns a Package topology, member schemas, bounds, reference rules, and semantic-identity projection.
 - **Member descriptor:** The manifest record that commits to one expected member before its bytes are decoded.
@@ -132,7 +132,7 @@ The manifest declares the profile and the exact ordered descriptors. A descripto
 
 ### Normative format basis and external JSON boundary
 
-`hees_ai_package_wire_0_1` is the authority-bearing Package wire described by this RFC. It is a proposed normative identifier, not illustrative placeholder text. Its SHA-256 artifact and member digests use [FIPS 180-4, Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/upd1/final). An implementation must not substitute a locally named digest, a truncated digest, or a different hash algorithm under the same wire or profile contract.
+`heesai_package_wire_0_1` is the authority-bearing Package wire described by this RFC. It is a proposed normative identifier, not illustrative placeholder text. Its SHA-256 artifact and member digests use [FIPS 180-4, Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/upd1/final). An implementation must not substitute a locally named digest, a truncated digest, or a different hash algorithm under the same wire or profile contract.
 
 JSON remains a supported edge representation, not an ungoverned convenience format. Every registered JSON import, export, inspection, synchronization, or public-receipt envelope must declare its own exact contract and use [RFC 8259, The JavaScript Object Notation Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259) together with [RFC 7493, The I-JSON Message Format](https://www.rfc-editor.org/rfc/rfc7493). Its decoder must reject duplicate decoded property names, invalid UTF-8, a byte-order mark, unsupported numeric values, and trailing data before it constructs a closed model.
 
@@ -140,7 +140,7 @@ Where an external JSON contract needs a canonical byte representation for an exp
 
 ### Exact artifact wire
 
-`hees_ai_package_wire_0_1` must use the following fixed preamble and framing:
+`heesai_package_wire_0_1` must use the following fixed preamble and framing:
 
 ```text
 offset  size  value
@@ -481,7 +481,7 @@ An implementation may stream member bytes from any supported source, verify them
 
 ## Design Decisions
 
-- `hees_ai_package_wire_0_1` is a proposed normative, closed binary artifact contract. JSON is an external edge representation, never the Package authority substrate.
+- `heesai_package_wire_0_1` is a proposed normative, closed binary artifact contract. JSON is an external edge representation, never the Package authority substrate.
 - SHA-256 uses FIPS 180-4. RFC 8259 and RFC 7493 govern declared JSON edges, and RFC 8785 may govern a declared canonical JSON edge artifact; none of those JSON bytes becomes Package semantic identity or admission authority.
 - Artifact integrity and semantic identity are separate nominal values. The complete artifact digest spans the complete byte stream; the Package semantic identity is produced only after full typed admission under RFC 011.
 - Package Admission Binding derives from the exact semantic-identity and artifact-digest pair. Its human rendering uses check digits to detect transcription mistakes, but it never replaces either primary identity or their separate validation.
