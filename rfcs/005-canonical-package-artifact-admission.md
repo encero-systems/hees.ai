@@ -151,6 +151,27 @@ offset  size  value
 14 + N  …     member byte sequences in manifest descriptor order
 ```
 
+#### Worked artifact walk-through (non-normative)
+
+For example, assume a valid binary manifest is forty-two bytes long and declares two members, whose exact byte sequences are sixteen and eleven bytes long. The complete artifact is then eighty-three bytes. The manifest and members below are abbreviated only to make the framing visible; a real artifact must contain their complete closed binary values and pass every profile validation rule.
+
+```text
+byte range  hexadecimal bytes / contents                      meaning
+0..7        48 45 45 53 2E 41 49 00                            ASCII "HEES.AI\0" magic
+8..9        00 01                                             big-endian wire-contract number 1
+10..13      00 00 00 2A                                       big-endian manifest length: 42 bytes
+14..55      [42 complete binary-manifest bytes]               profile and ordered member descriptors
+56..71      [16 complete bytes for declared member 1]         first member selected by the manifest
+72..82      [11 complete bytes for declared member 2]         second member selected by the manifest
+```
+
+```text
+artifact bytes = preamble + manifest-length + manifest + member 1 + member 2
+SHA-256 input = every artifact byte above, in that exact order
+```
+
+The `00 00 00 2A` field is an unsigned binary number, not the text `42`. The SHA-256 digest is calculated after the complete artifact byte stream has been received; it is a separate integrity value and is not embedded in, or substituted for, the artifact framing shown above.
+
 The complete artifact digest must be `sha256:<64 lowercase hexadecimal characters>` over every byte in the preamble, length field, manifest, and member sequence. Hees.ai must compare it with the expected `ArtifactDigest` before returning an admitted Package. It must not trim, normalize, decompress, reserialize, or hash a decoded model in place of the submitted bytes.
 
 The framing has no trailing bytes. The sum of manifest and declared member lengths must equal the total submitted length using checked arithmetic. A byte sequence with a valid prefix and missing tail, extra tail, integer overflow, invalid magic, unknown wire contract, or manifest length beyond the profile-independent pre-parse ceiling must reject before a proportional allocation.
