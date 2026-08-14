@@ -1,6 +1,6 @@
 # RFC 011: Canonical Structural Identity for Incan Models
 
-- **Status:** Draft
+- **Status:** Planned
 - **Created:** 2026-07-19
 - **Author(s):** Encero Systems
 - **Related:**
@@ -10,398 +10,293 @@
     - RFC 005 (Canonical Package Artifact Admission)
     - RFC 006 (Export-Safe Governance Receipts)
     - RFC 009 (Governed Visible Response Lifecycle)
-    - RFC 010 (Hees Console)
+    - RFC 010 (hees.ai console)
+    - RFC 012 (Governed Effect Capabilities and Execution Receipts)
 - **Issue:** https://github.com/encero-systems/hees.ai/issues/18
 - **RFC PR:** —
-- **Written against:** Hees 0.0.1 / Incan 0.5.0-dev.14
+- **Written against:** Hees.ai 0.0.1 / Incan 0.5
 - **Shipped in:** —
 
 ## Summary
 
-Hees should derive authority-bearing semantic identities from successfully validated Hees-owned Incan model values through one closed, versioned canonical structural identity contract. A participating model renders an identity projection into an unambiguous structural byte stream with stable model, field, variant, type, order, absence, length, and domain semantics; Hees computes the model's typed digest from that stream without using JSON, display formatting, storage layout, reflection order, or caller-controlled serialization as the identity substrate. Wire and storage encodings remain replaceable, exact artifact-byte digests remain available for transit and storage integrity, and neither kind of digest independently creates runtime authority, semantic truth, or producer authenticity.
+Hees.ai must derive authority-bearing semantic identities from successfully validated Hees.ai-owned Incan model values through one closed, versioned structural identity contract. Each participating contract explicitly declares its identity projection, stable model and field tags, normalization, collection semantics, child composition, and bounds; Hees.ai renders that validated projection into a typed structural byte stream and computes a domain-separated digest without depending on JSON, display formatting, storage layout, reflection order, or caller-controlled serialization.
 
 ## Core model
 
-1. **Validated models own semantic identity.** Authority-bearing identity begins only after bounded ingress has constructed the exact Hees Incan model and every nominal field has passed its own validation.
-2. **Identity projection is explicit.** Each participating model declares the complete closed projection of fields that determine its semantic identity. Operational, presentation, and storage metadata remain outside that projection only when changing them cannot change governed meaning or behavior.
-3. **Structural rendering is not display rendering.** The model renders a typed, length-delimited structural stream for hashing. Ordinary `str`, debug, JSON, terminal, and documentation renderings are never canonical identity inputs.
-4. **Stable tags replace incidental order.** Stable model, field, enum, and variant tags determine structure. Source declaration order, object iteration, serializer choice, compiler layout, and storage column order do not.
-5. **Collection meaning is contract-owned.** Ordered collections preserve their admitted semantic order. A collection that is logically unordered must name one bounded canonical ordering rule before it can participate; generic runtime or locale sorting is not authority.
-6. **Nominal distinctions survive hashing.** Distinct nominal types do not become interchangeable merely because their underlying strings or integers match. Validation and type identity precede encoding.
-7. **Domain separation prevents cross-purpose reuse.** Package identities, Content DNA, answer bindings, provenance identities, decisions, and receipts use distinct registered identity domains and exact contract versions.
-8. **Artifact identity and semantic identity remain distinct.** An artifact digest identifies exact delivered bytes. A structural digest identifies the validated model projection. Equivalent models may have different artifact digests, while one exact artifact must not be treated as semantically admitted until model validation succeeds.
-9. **Recursive identity is bounded and composable.** A parent may render a bounded nested model inline or reference a separately defined child structural digest when its owning contract fixes that choice. Incremental and Merkle-style construction must produce the same contract-defined parent identity without requiring a complete textual serialization in memory.
-10. **Evolution never silently rewrites history.** Authority-bearing projection changes create a new identity contract version. Older identities remain explicitly verifiable under their original contracts and are never recomputed under a nearby version.
+1. **Identity begins after admission.** A structural identity may be created only from a fully constructed, bounded, nominally valid model whose owning contract has completed its required validation. Raw JSON, binary values, database rows, provider payloads, display strings, and generic dictionaries cannot directly create authority identity.
+2. **Every identity has a named domain and contract.** `StructuralIdentity` contains an exact domain, identity-contract version, algorithm, and digest. Package, Package Admission Binding, member, memory, Content DNA, answer, provenance, material, activity, goal, decision, effect, and receipt identities are nominally distinct even when they use the same digest algorithm.
+3. **Projection is explicit and complete.** An owning contract must enumerate every identity-bearing field and must explain every excluded field. Changing governed meaning, behavior, evidence binding, package scope, support material, learner-state rule, or terminal result must change the relevant identity.
+4. **Stable tags replace incidental order.** Model, field, variant, and enum tags come from a public append-only registry. Source declaration order, property order, compiler layout, reflection, storage columns, and map iteration are not identity inputs.
+5. **The structural stream is typed and self-delimiting.** Exact tags, lengths, type distinctions, absence, nesting, variants, collections, and child references prevent two different valid model values from producing an ambiguous preimage.
+6. **Collection meaning is contract-owned.** Ordered collections preserve the validated semantic order. A logically unordered collection must declare one bounded canonical order before it can participate. The runtime must not impose a locale, hash, or incidental storage order.
+7. **Normalization is nominal and deliberate.** Text and bytes are exact by default. An owning nominal type may define a specific normalization before validation and identity construction, but no generic Unicode, case, whitespace, or line-ending normalization is allowed.
+8. **Artifact integrity remains different.** A digest over exact delivered bytes proves an artifact claim. A structural identity proves the identity of one validated model projection. Neither proves producer authenticity, semantic truth, rights, or complete policy correctness.
+9. **Recursive composition remains bounded.** An owning contract must declare whether a nested model is rendered inline or represented by a child structural identity. The choice is identity-bearing and cannot change silently for storage or performance convenience.
+10. **Evolution never rewrites history.** A projection, tag, normalization, ordering, child-composition, or algorithm change requires a new identity contract. Older identities remain verifiable under their declared contract and must never be recomputed under a nearby contract.
 
 ## Motivation
 
-RFC 002, RFC 005, and RFC 006 currently propose RFC 8785 JSON Canonicalization Scheme bodies as the basis for Content DNA, package artifact, answer, provenance, and receipt digests. JCS is materially safer than hashing ordinary JSON because it fixes JSON property order, primitive rendering, whitespace, and UTF-8 output. It nevertheless makes an external data representation part of Hees's semantic identity contract and imports JSON and ECMAScript number and string rules into every authority-bearing model that uses it.
+Hees.ai needs durable identities for Package authority, governed memory, selected evidence, Content DNA, visible responses, supporting materials, activity bindings, time and goal state, terminal decisions, effects, and receipts. These identities must remain stable when a governed value is loaded from an installed binary Package, a compact local store, a public JSON inspection document, or another supported representation.
 
-Hees needs a stronger separation. JSON may be convenient for provider exchange, terminal inspection, fixtures, or public verification, while a constrained device may store the same package in an indexed local representation and another integration may use a binary transport. If all three construct the same validated Incan model, they should be able to establish the same semantic identity without first recreating one preferred JSON document. Conversely, matching bytes or a plausible digest must never bypass nominal validation, closed model construction, rights and review checks, or package admission.
+JSON canonicalization is safer than hashing ordinary JSON, but it still makes a transport serializer and its primitive rules the semantic identity substrate. Display output has the same problem in a different form: labels, whitespace, localization, diagnostics, and rendering improvements must remain free to evolve. The required identity is not a serialized document; it is a deliberate projection of validated authority-bearing meaning.
 
-Hashing model display output does not solve the problem. Human-readable renderings legitimately evolve through spacing, labels, field order, escaping, localization, or diagnostic improvements. The required operation is a dedicated structural rendering whose only purpose is stable identity and whose grammar is versioned independently from display and wire formats.
+This distinction is essential to governance. A matching artifact hash must not grant runtime authority before model validation. Conversely, a semantically identical Package delivered with a different approved storage layout should not lose its governing identity merely because an archive, serializer, or database page changed. Stable structural identities allow a runtime to bind evidence, memory, Content DNA, activity state, goals, and receipts to what was actually admitted rather than to an incidental representation.
 
-The distinction also improves schema evolution. A new UI label, trace annotation, index hint, or storage offset should not change a semantic digest when it cannot affect governed meaning. A new policy field, selected-memory member, rights state, visible unit, or terminal reason must change identity. An explicit model-owned identity projection makes that boundary reviewable and testable rather than inheriting whichever fields a generic serializer happens to emit.
-
-Finally, constrained hardware benefits from incremental structural hashing. Hees should be able to validate one bounded package member or memory atom, feed its canonical structural representation into a digest sink, retain a typed child identity, and release transient bytes. Requiring the complete corpus, complete JSON tree, or complete canonical JSON body to coexist with a resident model would turn identity calculation into avoidable memory pressure.
+The contract also gives future tools an inspectable, durable vocabulary for change. A source update can make a memory identity stale; a changed Package semantic identity can invalidate a prior release decision; an observation can remain clearly separate from an approved curriculum fact; and a hot local memory can activate a colder, separately identified body of governed knowledge without conflating the two. None of that requires a generic database or a model provider to become the source of truth.
 
 ## Goals
 
-- Define one Hees canonical structural identity contract for participating Incan models.
-- Require complete nominal construction, validation, normalization, and bounds enforcement before any authority-bearing semantic digest is returned.
-- Define stable model, field, variant, scalar, option, collection, nested-model, and digest-reference semantics.
-- Define a self-delimiting structural stream that cannot confuse different types, values, nesting, lengths, absence states, or collection boundaries.
-- Define exact domain separation, identity-contract versioning, digest algorithm, output syntax, and legacy verification behavior.
-- Distinguish semantic model identity from exact artifact-byte integrity, storage identity, transport identity, runtime authority, and external authenticity.
-- Let JSON, NDJSON, binary transports, and storage engines reconstruct and verify the same model identity without making any of those encodings canonical authority.
-- Support bounded incremental hashing and explicitly declared Merkle-style composition for constrained runtimes.
-- Amend the canonical identity responsibilities proposed by RFC 002, RFC 005, RFC 006, and RFC 009 without changing their separate governance responsibilities.
-- Require cross-runtime golden streams, digests, adversarial validation, evolution fixtures, and resource measurements before the contract advances.
+- Define one canonical structural identity grammar for participating Hees.ai-owned Incan models.
+- Define typed, domain-separated semantic identities independent of wire, storage, display, and provider formats.
+- Require complete model admission, nominal validation, bounds checking, and contract-owned normalization before identity construction.
+- Define stable tag registration, exact scalar and collection encoding, optional and variant semantics, child composition, and incremental hashing.
+- Define package semantic identity in coordination with RFC 005 while preserving artifact integrity as a separate exact-byte claim.
+- Define identity roles for Package members, governed memory, Content DNA, answers, provenance, supporting materials, activity bindings, temporal and goal state, decisions, effects, and receipts where their owning contracts register them.
+- Preserve cross-runtime verification through public golden structural bytes, identity values, and independent verification models.
+- Make compatibility and historic verification explicit rather than silently migrating identifiers during a compiler, storage, schema, or application update.
 
 ## Non-Goals
 
-- Selecting a Console, provider, network, package-transfer, archive, database, vector, or storage format.
-- Defining a general structural hashing facility for every Incan model outside Hees.
-- Treating automatic model serialization, compiler reflection, source declaration order, debug output, or ordinary JSON as canonical identity.
-- Replacing exact artifact-byte checks where a transport or storage boundary must verify the bytes it received.
-- Making two models semantically equivalent through inference, field renaming, lossy normalization, default guessing, or provider interpretation.
-- Proving factual correctness, semantic support, source rights, policy quality, human approval, or completeness merely because a structural digest verifies.
-- Establishing runtime authority, producer authenticity, signing, attestation, non-repudiation, replay protection, federation, or key management.
-- Negotiating a nearby identity contract or digest algorithm when the declared one is unknown.
-- Defining Content DNA membership, Spectrum decisions, package policy, visible-answer semantics, or receipt redaction; the related RFCs continue to own those contracts.
-- Silently reinterpreting or rewriting identities produced by earlier experimental or released profiles.
+- Selecting a Package archive, transport, database, vector index, cache, console, provider, renderer, or external serialization format.
+- Creating a generic public operation that hashes arbitrary values, arbitrary JSON, arbitrary field streams, or caller-selected domains into authoritative identities.
+- Replacing exact artifact-byte integrity where installation, transport, storage, or audit requires it.
+- Proving producer identity, signatures, attestation, source ownership, factual correctness, policy quality, learner competence, or runtime authority solely by verifying a digest.
+- Inferring identity fields from compiler reflection, source order, type display strings, database schemas, object properties, or model-provider output.
+- Applying implicit text normalization, sorting, default insertion, alias resolution, field migration, or compatibility fallback.
+- Defining the semantic contents of Content DNA, Package profiles, memory admission, behavior selection, visible responses, or receipts. Their owning RFCs define those semantics and register their identities through this contract.
 
 ## Guide-level explanation
 
-A caller may receive model data as JSON, from a local indexed store, or from another supported transport. Hees first applies the transport's byte and nesting bounds, rejects malformed or duplicate input where that transport permits it, constructs the exact closed Incan model, invokes every nominal constructor and validation rule, and establishes any contract-owned normalization. Only the validated model can enter structural identity construction.
-
-The proposed public shape is model-oriented rather than serializer-oriented:
+A model may arrive through different representations and still have one semantic identity. Hees.ai first applies representation bounds, constructs the exact closed Incan model, runs every nominal constructor and owning validation rule, then renders the model’s declared identity projection. The identity operation never accepts a generic dictionary or precomputed digest from the caller.
 
 ```incan
-# Proposed API shape; not implemented in Hees 0.0.1.
-atom = admit_memory_atom(candidate_atom)
+# Proposed API shape; not implemented in Hees.ai 0.0.1.
+atom = admit_memory_atom(candidate_atom)?
 identity = identify_memory_atom(atom)
 
-println(f"memory={identity.memory_id}")
-println(f"digest={identity.semantic_digest}")
+println(f"domain={identity.domain()}")
+println(f"contract={identity.contract()}")
+println(f"digest={identity.digest()}")
 ```
 
-`identify_memory_atom` does not call a generic JSON or display serializer. It applies the identity projection owned by the admitted-memory contract, feeds stable typed fields to the canonical structural sink, and returns a nominal memory digest only after successful completion. A caller cannot pass a generic dictionary, JSON tree, arbitrary field list, or pre-rendered string into that operation.
-
-Equivalent transport documents may therefore produce one semantic digest:
+Two JSON documents can therefore lead to one memory identity after they construct the same validated model:
 
 ```json
-{"memory_id":"memory-1","language":"zu","body":"Umthetho"}
+{"memory_id":"sleep_pressure","language":"en","body":"Sleep pressure builds while you are awake."}
 ```
 
 ```json
 {
-  "body": "Umthetho",
-  "language": "zu",
-  "memory_id": "memory-1"
+  "body": "Sleep pressure builds while you are awake.",
+  "language": "en",
+  "memory_id": "sleep_pressure"
 }
 ```
 
-Their exact artifact-byte digests differ. After strict parsing into the same validated model, their semantic digest is the same because JSON property order and whitespace are not model values. Changing `body`, changing the nominal `memory_id`, changing an identity-bearing review state, or changing the collection order where order is meaningful changes the structural stream and digest.
+Their artifact-byte digests differ because their bytes differ. Their `hees.memory_atom` structural identity is the same only if the same closed model validates with the same nominal values. Changing the atom body, source binding, review state, language, validity range, or another identity-bearing field changes the structural stream and identity. Changing a display color or storage offset does not.
 
-The model's structural rendering remains inspectable for compatibility testing, but it is not intended as a general wire format. Tooling may show a decoded explanation such as model domain, contract version, stable field tags, normalized values, and final digest. It must not claim that the terminal JSON projection or a human-readable explanation is itself the hashed preimage.
+Package identity illustrates the separate claims together. RFC 005 validates the full delivered Package bytes and calculates an `artifact_digest`. It then validates the profile’s complete graph and calculates `package_semantic_identity` through this RFC. Finally, it derives `package_admission_binding` from that exact typed pair. A governed response and its Content DNA are bound to the semantic Package identity; a receipt may additionally show the exact artifact digest and the derived binding that were admitted.
 
 ## Reference-level explanation
 
 ### Terminology
 
-- **Authority model:** A closed Hees-owned Incan model value whose construction, nominal values, references, and governing invariants have passed the owning contract's validation boundary.
-- **Identity projection:** The exact allowlisted semantic values from one authority model that participate in one named identity domain and contract version.
-- **Structural stream:** The versioned self-delimiting bytes rendered from an identity projection under this RFC.
-- **Structural digest:** The algorithm identifier and digest bytes computed over the complete structural stream.
-- **Artifact digest:** A digest over exact transported or stored bytes, including representation details that may not be semantic model values.
-- **Wire projection:** A JSON, NDJSON, binary, terminal, or other external representation used to exchange or inspect model data.
-- **Identity domain:** A registered fixed purpose such as a package semantic identity, Content DNA body, answer binding, provenance projection, or governance receipt.
-- **Identity contract version:** The exact version that fixes the identity projection and all structural rules for one domain.
+- **Authority model:** A closed Hees.ai-owned Incan value that has passed the owning contract’s model, nominal-type, reference, and bound validation.
+- **Identity projection:** The complete ordered set of values which an owning contract declares identity-bearing for one named domain and contract version.
+- **Structural stream:** The exact self-delimiting bytes rendered from one validated identity projection.
+- **Structural identity:** A typed record containing an identity domain, identity-contract version, algorithm, and digest over a complete structural stream.
+- **Artifact digest:** A nominal digest over exact input, transport, or stored bytes.
+- **Child identity:** A structural identity included in a parent projection instead of an inline nested model where the owner declares that composition.
 
-`Semantic` in this RFC means representation-independent identity of one exact validated model projection. It does not mean natural-language equivalence, inferred equivalence, semantic truth, or equivalence between different models that happen to render similarly.
+### Normative digest and external JSON basis
 
-### Authority and construction boundary
+Contract `0.1` uses SHA-256 as defined by [FIPS 180-4, Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/upd1/final). A structural identity implementation must not substitute a locally named digest, truncate a digest, or interpret another algorithm as `sha256`.
 
-A structural identity used by a governing operation must be constructed only from an authority model or from a private identity projection created from that model. Public verification may reconstruct the same digest from a separately defined closed verification model, but it returns only a non-authoritative identity and integrity result. No public operation may accept a generic map, arbitrary JSON value, caller-authored field sequence, caller-selected domain, caller-selected field tags, or caller-selected normalization policy and return a nominal Hees identity.
+Structural identity has no JSON dependency. Where a public inspection, import, export, or verification envelope is JSON, its boundary contract follows [RFC 8259, The JavaScript Object Notation Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259) and [RFC 7493, The I-JSON Message Format](https://www.rfc-editor.org/rfc/rfc7493). A boundary that additionally requires canonical JSON bytes may declare [RFC 8785, JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785), but those bytes may identify only that declared edge artifact. They must never become a structural identity preimage or bypass closed-model validation.
 
-Every transport decoder must enforce its declared byte, depth, collection, and scalar bounds before proportional allocation. It must reject duplicate or unknown fields according to the owning closed wire contract, construct exact nominal field types through their validating constructors, and reject the complete input if any nominal construction or cross-field invariant fails. Generated deserialization must not bypass a nominal type's constructor or `from_underlying` validation path.
+### Structural identity record
 
-A governing operation must not attach a structural identity or authority to malformed, partially decoded, provisionally normalized, or otherwise unadmitted input. A public verifier must return failure rather than a digest for an invalid verification model. A diagnostic subsystem may compute a separately named non-authoritative fingerprint over rejected bytes for bounded correlation only when another contract explicitly permits it; that value must use another nominal type and domain and cannot substitute for a semantic identity.
-
-### Identity projection completeness
-
-Each identity domain must define one closed projection from its authority model. Every field whose value can change the governed meaning, authority, admissibility, selected memory, visible response, policy effect, terminal outcome, provenance claim, or redacted receipt claim must participate directly or through a referenced child identity.
-
-A field may be excluded only when changing it cannot affect the identity domain's governed claim. Examples may include display labels, terminal colour, local cache offsets, storage page numbers, transient provider latency, or non-authoritative trace annotations. Exclusion from one identity domain does not imply exclusion from every other domain.
-
-Adding an excluded non-authority field to an authority model may preserve an existing identity contract only when the projection and all governed behavior remain unchanged. Adding, removing, retyping, renormalizing, or changing the meaning of an identity-bearing field must create a new identity contract version. An implementation must not silently include every serializable field or infer the projection through reflection.
-
-### Structural stream header
-
-Structural identity contract `0.1` proposes the following root preimage shape:
+Every structural identity must be a closed typed record:
 
 ```text
-magic || structural_version || identity_domain || identity_contract_version || root_value
+StructuralIdentity
+  domain: registered lowercase ASCII domain identifier
+  contract: exact identity contract version
+  algorithm: sha256
+  digest: exactly thirty-two digest bytes
 ```
 
-`magic` must be the eight exact bytes `48 45 45 53 2d 53 49 00`, representing `HEES-SI` followed by NUL. `structural_version` must be the unsigned big-endian 16-bit value `1`. `identity_domain` and `identity_contract_version` must use the canonical text scalar defined below. `root_value` must be one canonical record value for the participating model.
+For public text and inspection, a structural identity must render as `hees-si:<domain>:<contract>:sha256:<64 lowercase hexadecimal characters>`. The textual rendering is a presentation of the typed record; an owning model or operation must retain nominal identity types and must not accept this text through an untyped string field.
 
-An identity domain must be a fixed lower-ASCII identifier registered by the owning RFC. It must not come from provider, package, caller, environment, storage, or transport input. The identity contract version must be the exact closed version selected by the authority model's owning contract; unknown versions must fail without attempting a nearby version.
+Contract `0.1` permits only `sha256`. A future algorithm, digest size, or rendering change requires a new identity contract and an explicit verifier route; a verifier must not negotiate, guess, or retry an alternate algorithm after failure.
 
-### Canonical value grammar
+### Structural stream framing
 
-Contract `0.1` uses one-byte value tags followed by exact fixed-width or length-prefixed payloads. Every length and count is an unsigned big-endian 32-bit value and must be checked against the owning contract's smaller semantic bounds before encoding.
+Every stream begins with this exact header:
 
-| Tag | Value | Canonical payload |
-| --- | --- | --- |
-| `0x01` | `false` | No payload |
-| `0x02` | `true` | No payload |
-| `0x10` | signed integer | Exactly eight bytes, signed two's-complement big-endian |
-| `0x20` | text | UTF-8 byte length followed by exact UTF-8 bytes |
-| `0x21` | bytes | Byte length followed by exact bytes |
-| `0x22` | SHA-256 digest | Algorithm byte `0x01` followed by exactly 32 digest bytes |
-| `0x30` | absent option | No payload |
-| `0x31` | present option | One complete canonical child value |
-| `0x40` | record | Stable model tag, field count, then canonical fields in ascending stable field-tag order |
-| `0x41` | sequence | Element count followed by complete canonical child values in semantic order |
-| `0x42` | variant | Stable enum tag, stable variant tag, then absent or present canonical payload |
-| `0x43` | child identity | Canonical child domain, child contract version, and canonical SHA-256 digest value |
+```text
+ASCII bytes "HEES-SI\0"
+unsigned big-endian structural-wire number: 1
+registered domain text value
+identity-contract text value
+root value
+```
 
-A record's stable model tag, every field tag, every enum tag, and every variant tag must be an unsigned big-endian 32-bit value assigned by the owning identity contract. Each record field consists of its four-byte field tag followed by one complete canonical value. Field tags must be unique, appear in strictly ascending numeric order, and never be reused for another meaning within one identity domain lineage.
+The root value must be one declared identity-projection record. The domain and contract in the header must match the typed `StructuralIdentity` returned by the operation. A stream must not contain its final digest, display text, artifact digest, caller-provided identity, or a generic metadata field unless the owning projection declares one of those values identity-bearing under its own type.
 
-The grammar deliberately defines no generic null, floating-point, decimal, map, dictionary, object, set, path, timestamp, platform integer, or arbitrary extension value. A participating contract must map its semantics to the closed values above or define a new structural identity version. Time values, when genuinely identity-bearing, must first become one exact bounded signed integer in a contract-owned epoch and unit.
+### Typed value grammar
 
-### Scalar semantics
+Structural rendering must use these exact tags and no aliases:
 
-Boolean values must use their dedicated tags and must not encode as integers or text. Integer-bearing identity fields must fit the signed 64-bit range and must additionally satisfy their owning nominal and semantic bounds before encoding. Contract `0.1` must not hash floating-point values; scores or ratios that become authority-bearing must use contract-defined bounded integers such as basis points.
+```text
+0x01  false
+0x02  true
+0x10  signed integer: exactly eight two's-complement big-endian bytes
+0x11  unsigned integer: exactly eight big-endian bytes
+0x20  text: unsigned big-endian u32 byte length and exact UTF-8 bytes
+0x21  bytes: unsigned big-endian u32 byte length and exact bytes
+0x22  artifact digest: registered digest algorithm and exact digest bytes
+0x30  absent optional
+0x31  present optional followed by one typed value
+0x40  record: u16 model tag, u16 field count, ascending u16 field tag and typed value pairs
+0x41  sequence: u32 element count followed by typed values in semantic order
+0x42  variant: u16 variant tag followed by one declared payload
+0x43  child structural identity: complete closed `StructuralIdentity` record
+```
 
-Text values must be valid Unicode encoded as UTF-8. The default text policy is exact admitted Unicode scalar and whitespace preservation. There is no global case folding, trimming, Unicode normalization, newline rewriting, locale transformation, or URI normalization inside the structural sink.
+All tags, lengths, counts, integer values, nested depth, and aggregate byte calculations must be checked before proportional allocation. A record must contain exactly the model’s declared identity-bearing field tags in ascending order. Unknown, duplicate, omitted, or reordered field tags must reject identity construction. The grammar distinguishes an absent optional from a present default-valued optional, a text string from bytes, a direct nested record from a child identity, and a sequence from a variant.
 
-When an owning contract needs normalization, it must define a nominal normalized type and complete normalization before the authority model is established. The structural sink then encodes the resulting validated text exactly. Identifiers should use their existing bounded nominal ASCII forms; source or answer text may deliberately preserve exact code points and whitespace when those values are part of the governed claim.
+### Stable tag and identity registry
 
-Raw bytes must be bounded by the owning field contract. A SHA-256 digest field must be decoded from its nominal syntax and encoded as the algorithm tag plus 32 raw bytes; it must not be hashed as a free-form `sha256:` string. Supporting another algorithm requires a new accepted identity-contract or structural-version rule and must not be negotiated from input.
+Hees.ai must maintain one public append-only identity registry. It must contain every identity domain, identity contract, model tag, field tag, enum tag, variant tag, child-composition rule, normalization rule, collection-order rule, bound, semantic role, and golden-fixture identifier needed to verify a registered projection.
 
-### Nominal types
+The registry is the sole authority for tag allocation. A tag is never inferred from a model name, source declaration order, reflection output, field position, storage schema, compiler release, or map iteration. Entries remain reserved after retirement. An owning RFC may add a new domain or new contract only through explicit public review and must provide a complete projection and compatibility record.
 
-The structural identity layer must preserve nominal meaning. Two distinct nominal types with the same underlying scalar must not be interchangeable at the model or API boundary. The owning projection may encode their validated underlying scalar under different stable field or model tags, but a caller cannot substitute one nominal value where another is required.
+The registry must support domains for Package semantic identity, Package Admission Binding, Package members, governed memory, evidence selection, Content DNA, visible answers, provenance, supporting materials, activity bindings, temporal and goal state, terminal decisions, effects, and receipts. A domain may be registered only when its owner declares its exact identity role; a broad category name does not create a usable identity by itself.
 
-Identity-returning APIs must use domain-specific nominal digest types such as package identity, Content DNA identity, answer digest, provenance digest, decision identity, and receipt identity. A generic digest string may be used in a wire projection only after parsing into the exact expected nominal digest type. Matching syntax or bytes do not permit cross-domain substitution.
+### Projection, nominal validation, and normalization
 
-### Optionals, defaults, and variants
+An owning contract must identify every included field, its nominal type, whether it is rendered directly or through a child identity, and why its omission is safe. A field must be included when changing it can alter governed behavior, authority, evidence support, rights eligibility, review state, Package scope, material selection, activity meaning, temporal condition, goal continuity, localization semantics, terminal outcome, or receipt claim.
 
-An absent optional must encode as `0x30`. A present optional must encode as `0x31` followed by the complete canonical value, even when the contained value equals a declared default. `None` and `Some(default)` are therefore distinct model states.
+Text and bytes must be exact by default. A nominal type may declare a deterministic normalization before validation and identity construction, such as a particular Unicode or line-ending rule, only when the owning contract states the rule, version, and semantic rationale. Generic NFC, NFD, case folding, locale transformation, whitespace folding, and automatic default insertion are forbidden. Two visually similar values remain distinct unless their nominal type explicitly defines them as equivalent.
 
-When a wire contract permits an omitted field to receive a default during validated model construction, omitted and explicitly supplied default input become the same model value and must receive the same semantic identity. If omission itself has governed meaning, the model must preserve that state as an option or variant rather than relying on decoder history.
+### Collections, nesting, and composition
 
-Closed enum variants must use stable enum and variant tags rather than rendered names, source declaration order, discriminant layout, or compiler-generated integer values. Renaming a displayed variant may preserve identity only when its stable tag and governed meaning remain unchanged. Reusing a retired variant tag is forbidden.
+An ordered collection must render in its validated semantic order. An unordered collection must define one bounded ordering key made entirely from validated identity-bearing values, and must reject a collision where that key cannot produce one strict order. The runtime must not substitute database order, locale collation, hash order, or a display order.
 
-### Collections and ordering
+Every nested model must be declared inline or child-identified by its owning contract. Inline rendering is appropriate where the nested data has no independent governed lifecycle. A child structural identity is appropriate where a value is independently admitted, versioned, cached, retained, disclosed, or referenced. The same parent contract must make the same choice across all implementations. A child identity does not waive validation: its parent must validate its required domain, contract, and relationship before accepting it.
 
-A sequence must preserve the exact semantic order established by its owning contract. The structural sink must not sort it. Reordering selected memory, visible units, evidence, policy effects, findings, or any other ordered sequence changes identity even when the same elements remain.
+Merkle-style composition is permitted only through declared child identities and declared ordered references. The parent stream remains complete because it contains its domain, contract, tags, and every child identity in its required position. An implementation may calculate the child identities incrementally, but it must not omit a child, reorder children, replace a child with raw bytes, or choose a different inline form for memory convenience.
 
-Contract `0.1` defines no generic unordered collection. If a logical set participates in identity, its owning contract must first establish one bounded canonical sequence using an explicit semantic key such as a validated nominal identifier. The ordering rule, duplicate behavior, comparison semantics, and tie impossibility must be part of that contract. Locale order, hash-map order, storage order, object-property order, and caller iteration order are forbidden.
+### Package semantic identity and artifact integrity
 
-Duplicate elements must fail when the owning contract declares set semantics. A sequence that legitimately permits duplicates retains them in order. Empty sequences remain distinct from absent options because their value tags and payloads differ.
+RFC 005 owns exact Package artifact framing, profile topology, member sequence, byte digests, typed member admission, and complete graph validation. After those checks succeed, the profile renders its Package semantic-identity projection into the `hees.package` domain. The projection must include the Package, domain, revision, profile, declared mission, required topology, and ordered validated member child identities defined by the profile.
 
-### Nested models and Merkle composition
+`artifact_digest` identifies the exact complete Package byte stream. `package_semantic_identity` identifies the validated Package profile projection. `package_admission_binding` identifies the exact typed pair and is rendered only after both primary values verify. The Package semantic identity must not be calculated from an artifact digest, and a matching artifact digest must not be treated as semantic admission. A receipt, installation audit, or deployment policy may require all three typed values and must label them separately.
 
-A nested model may be rendered inline as a canonical record when the parent contract owns its complete structural shape. Alternatively, the parent may render a `0x43` child identity containing the exact registered child domain, child contract version, and child semantic digest. The owning parent contract must choose one method for each field; implementations cannot switch based on payload size, cache state, storage layout, or runtime preference.
+A human-facing binding reference may add ISO/IEC 7064 MOD 97-10 check digits to its textual rendering. Those check digits are a transcription check, not an identity algorithm. They remain outside the structural identity preimage and must never be treated as a replacement for semantic, artifact, or binding verification.
 
-Child identity references permit bounded Merkle-style package construction. A package may validate and identify one member or atom, retain its typed child identity, release transient ingress bytes, and later render the package root from the ordered child identities. The root identity changes if any referenced child domain, contract version, digest, membership, or order changes.
+### Content DNA, answers, provenance, and receipts
 
-An artifact digest must not be substituted for a child semantic identity merely because both use SHA-256. If a parent intentionally binds exact artifact bytes as an event or provenance fact, that field must use the artifact digest's nominal type and stable field tag and its inclusion must be explicit in the parent identity projection.
+RFC 002 owns Content DNA membership, selected-memory coverage, answer binding, source-safe projections, atomicity, redaction, and authority limits. This RFC owns the structural-identity mechanics used by the Content DNA body, its answer binding, and its Package provenance binding. Content DNA must bind the exact `hees.package` semantic identity of the Package that governed the answer. Its owning contract may carry an artifact digest as an explicitly named delivery-provenance fact, but an artifact change must not silently change Content DNA identity merely because a serializer or storage layout changed.
 
-### Digest construction and syntax
+RFC 006 owns safe receipt projection and public verification. A receipt body must be reconstructed as a validated closed model, and its `receipt_id` must be a `hees.receipt` structural identity. Its inspection envelope may be JSON or another approved external encoding. Reformatting the same accepted receipt model must not change its receipt identity. A receipt verifier proves the identity of the public projection, not the authority or authenticity of the original process.
 
-Structural identity contract `0.1` must compute SHA-256 over the complete structural stream beginning with the fixed header. The public syntax remains `sha256:` followed by exactly 64 lowercase hexadecimal characters. Implementations must reject uppercase, alternate prefixes, omitted leading zeroes, embedded whitespace, and unsupported algorithms at a nominal digest boundary.
+RFC 009 owns visible-unit, response, repair, clarification, and terminal-result semantics. Exact visible text, unit identifiers, unit order, support bindings, and identity-bearing terminal facts must enter its declared structural projections. Terminal colors, panel geometry, display wrapping, localization of an inspection label, and JSON property order are not answer identity inputs unless the owning response contract explicitly governs them.
 
-The structural stream may be fed incrementally to the digest implementation. Chunk boundaries, buffering strategy, platform crypto provider, and storage paging must not affect the final digest. An implementation must check all aggregate length arithmetic and semantic ceilings before overflow and must fail without returning a partial or plausible digest.
+### Public verification and disclosure
 
-The SHA-256 primitive may be supplied through an ordinary platform cryptography boundary, but the identity projection, stable tags, normalization decisions, order, version, domain, and authority checks remain Hees-owned Incan behavior. A provider, storage adapter, or serializer must not construct the authoritative preimage independently and ask Hees merely to bless its digest.
+An independent verifier must reconstruct only a registered closed public verification model, validate it, render the registered structural stream, and compare the expected `StructuralIdentity`. It must not expose a generic endpoint that accepts caller-specified fields and returns an authoritative identity. A verification result must make clear whether it proved valid public-model identity, exact artifact bytes, both, or neither.
 
-### Artifact integrity versus semantic identity
+Developer tooling may explain a structural identity through its domain, contract, participating model tag, ordered field tags, child identities, byte count, and final digest. It must follow the owning contract’s disclosure rules. Inspectability does not authorize exposing private source text, credentials, sensitive learner state, internal reasoning, or hidden policy.
 
-An artifact digest identifies exact bytes. It may cover a delivered manifest, member, archive, replay, or other closed artifact and may change when whitespace, property order, compression, framing, or another representation detail changes. Verifying that digest establishes only that the expected bytes arrived unchanged.
+### Compatibility, bounds, and failure behavior
 
-A semantic structural digest identifies the validated identity projection. Equivalent supported wire encodings may produce different artifact digests and the same structural digest. A byte-identical artifact that fails parsing, nominal construction, reference validation, review state, rights state, or another admission rule must not receive an admitted semantic identity.
+Every registered identity projection must define maximum depth, field count, sequence count, scalar bytes, child count, and aggregate structural bytes. Identity construction must use checked arithmetic and fail closed on every bound, tag, type, reference, normalization, or digest error. It must not return a partial identity, truncate input, omit a field, reuse a partial digest, fall back to artifact identity, or select a neighboring contract.
 
-RFC 005 should therefore retain byte-level manifest and member commitments where exact delivery integrity is required while introducing a separately typed package semantic identity constructed only after complete package admission. The package contract must state where an artifact digest remains an event or provenance fact and where package semantic identity governs equivalence, caching, child composition, policy binding, and Content DNA.
-
-Storage systems may index either identity and may retain a mapping between them, but storage lookup success cannot establish admission. Cache and deduplication behavior must name whether it is byte-exact or semantically exact and must not substitute one digest type for the other.
-
-### JSON and other wire projections
-
-JSON remains a permitted inspectable wire projection. It need not be canonical merely to reconstruct a semantic model, but its owning wire contract must still be closed, bounded, duplicate-safe, versioned, and fail closed. A JSON verifier parses the projection into the exact public verification model, validates it, renders the canonical structural stream, and compares the resulting nominal digest.
-
-Wire projections should carry the exact identity contract required to interpret their typed fields when that contract cannot be inferred unambiguously from the closed envelope version. They may expose domain-specific digest strings but must not expose a generic public operation that accepts arbitrary JSON and a caller-selected domain and returns an authoritative Hees identity.
-
-JCS may remain useful for exact JSON artifact identity, signed JSON ecosystems, interoperable golden projections, and debugging. It is no longer the permanent semantic identity substrate merely because the wire format is JSON.
-
-### Relationship to Content DNA and answer-time provenance
-
-RFC 002 continues to own Content DNA membership, terminal construction, selected-memory-only coverage, answer binding, source-safe entries, atomicity, redaction, and authority limits. This RFC should own the structural rendering and digest rules for the Content DNA body, answer binding, and provenance projection.
-
-The Content DNA public body may remain a closed JSON projection for inspection and export. `content_dna_id` must derive from the validated Content DNA model's structural identity projection rather than from ordinary or JCS JSON serialization. `answer_digest` must derive from the exact validated ordered visible-unit model, and `provenance_digest` must derive from the exact validated package-bound provenance model.
-
-RFC 002 must decide whether exact package artifact identity is an identity-bearing provenance fact in Content DNA in addition to package semantic identity. If it includes both, two semantically equivalent packages delivered through different artifacts intentionally produce different Content DNA. If it includes only semantic identity, exact artifact provenance must remain available through another receipt or audit projection. That choice cannot be inherited accidentally from a serializer.
-
-### Relationship to package admission
-
-RFC 005 continues to own package topology, member descriptors, exact sequencing, bounds, reference validation, atomic admission, reload integrity, and package authority. Its byte-level manifest and member digests may remain exact artifact commitments. This RFC introduces the separate semantic identity produced from the completely admitted package and its contract-owned ordered child identities.
-
-RFC 005 must not treat a semantic digest as proof that the expected artifact bytes arrived, and it must not treat a matching artifact digest as proof that the decoded package model is valid. A complete accepted package capability may carry both typed identities when downstream contracts require both.
-
-### Relationship to governance receipts
-
-RFC 006 continues to own redacted receipt kinds, safe projection, atomic emission, verification claims, and the distinction between integrity, in-process authority, and external authenticity. Its receipt body becomes a validated Incan verification model whose `receipt_id` derives from this RFC's receipt identity domain.
-
-The receipt's JSON envelope remains an export and inspection format. Reformatting an equivalent accepted projection must not change `receipt_id`; changing an identity-bearing receipt claim must. Public verification reconstructs and validates the exact receipt model before recomputing the structural digest and still cannot recreate the original in-process authority.
-
-### Relationship to visible responses
-
-RFC 009 continues to own visible units, support, response lifecycle, repair, clarification, terminal variants, and proposal identity. This RFC owns only the structural identity mechanics used when RFC 009 requires a digest over an exact validated visible-unit or proposal projection.
-
-Exact answer text, unit identifiers, unit order, and any other RFC 009 identity-bearing values remain unchanged before structural rendering unless RFC 009 explicitly assigns a normalized nominal type. Display wrapping, terminal colour, panel layout, and JSON property order remain outside answer identity.
-
-### Compatibility and schema evolution
-
-Every identity domain must publish its exact contract version, model and field tag registry, enum and variant tags, normalization policy, collection semantics, child identity choices, domain string, structural identity version, algorithm, bounds, golden structural bytes, and golden digest.
-
-An implementation upgrade that preserves all of those values must preserve identities regardless of compiler version, runtime, platform, serializer, storage engine, or internal refactoring. Compiler-generated support may reduce boilerplate but cannot infer or renumber stable tags from source order, names, reflection, memory layout, or hash-map iteration.
-
-An authority-bearing projection change must create a new exact identity contract version. Verifiers may support multiple explicit versions, but they must dispatch by exact version and never retry another version after failure. Existing values remain verifiable under their original contract; migration creates a separately governed mapping or new artifact and does not rewrite the historical identifier.
-
-Earlier profiles that define JCS-based identities remain governed by their exact named profile contracts until explicitly migrated. This RFC must not relabel their existing identifiers as structural identities or imply that identical digest syntax means identical preimages.
-
-### Bounds and constrained-resource behavior
-
-Every participating model must have fixed depth, field-count, sequence-count, scalar-byte, child-count, and aggregate structural-input ceilings derived from its owning contract. The structural sink must check bounds before proportional allocation and use checked arithmetic for every encoded length and count.
-
-Implementations should feed structural bytes incrementally into the digest primitive and should not retain a complete JSON document, generic parsed tree, display rendering, or structural stream when the validated model can be traversed safely. Merkle composition may reduce retained package state only where child identities and order are contract-owned; it must not weaken complete validation or atomic package admission.
-
-Resource failure must not return a digest, reuse a partial digest, omit a field, truncate a scalar, reduce a collection, or fall back to artifact identity. The owning governance operation must fail through its declared fail-closed path.
+An implementation change preserves identity only when it preserves the exact registered domain, contract, tags, projection, normalization, collection semantics, child choices, structural grammar, and algorithm. A changed identity rule creates a new contract. Historic values remain verifiable only under their stated contract; migration creates a separately governed new value or mapping and does not rewrite the original identity.
 
 ### Verification and acceptance evidence
 
-Before this RFC advances to Planned, a complete golden corpus must publish canonical structural bytes as hexadecimal or another exact byte projection in addition to final digests. Hash-only fixtures are insufficient because they cannot localize cross-runtime encoding disagreement.
+Every registered domain must publish golden structural bytes in an exact portable representation as well as final identities. Hash-only fixtures are insufficient because they cannot localize a cross-runtime encoding disagreement. The corpus must cover every scalar and container tag, boundary lengths and values, multilingual text, explicit normalization cases, absent and present optionals, every variant, maximum nesting, duplicate and reordered collections, inline models, child identities, every registered domain, and every identity-bearing field mutation.
 
-The corpus must cover every value tag; minimum and maximum integers; empty and maximum text and bytes; multilingual Unicode; exact versus nominally normalized strings; absent and present optionals; explicit defaults; every enum variant; empty, singleton, maximum, duplicate, and reordered collections; nested inline models; child identities; every registered domain; and every final model and field tag.
+Transport-differential fixtures must prove that multiple valid external representations and direct typed construction produce one semantic identity when they produce the same validated model. Artifact fixtures must prove that differing bytes can have distinct artifact digests while reconstructing the same semantic model. Negative fixtures must cover invalid UTF-8, malformed bounds, unknown tags, unknown contracts, duplicate fields, invalid nominal values, attempted validation bypass, incorrect child domain, child contract, or child identity, and cross-domain substitution.
 
-Transport-differential fixtures must prove that multiple valid JSON renderings and at least one non-JSON or direct-model construction produce the same semantic identity, while their exact artifact digests may differ. Negative ingress fixtures must cover malformed UTF-8, duplicate and unknown fields, invalid nominal identifiers, bypassed nominal construction, out-of-range integers, unsupported floating point, unknown tags, unknown versions, unknown algorithms, depth and count overflow, and invalid references.
-
-Mutation fixtures must change every identity-bearing field one at a time and prove that the structural stream changes. They must also change every deliberately excluded field and prove that identity remains stable without changing governed behavior. Ambiguity fixtures must prove that different type, length, nesting, option, variant, and sequence shapes cannot produce the same structural stream through concatenation.
-
-At least one independent verifier and every supported Incan runtime must reproduce the golden streams and digests. Compiler-upgrade fixtures must preserve all accepted contract `0.1` identities. Constrained-device evidence must measure peak additional memory, incremental throughput, maximum-depth behavior, package member release, failure cleanup, and verification while representative resident workloads remain active.
+At least one independent verifier and every supported Hees.ai runtime must reproduce the registered goldens. Constrained-resource evidence must measure incremental hashing, peak additional memory, bounded nested behavior, release of transient package-member data, failure cleanup, and verification while representative resident workloads remain active.
 
 ## Design details
 
 ### Ownership boundary
 
-Hees owns the identity domains, authority-model projections, stable tags, normalization choices, child composition, bounds, digest types, and fail-closed use of identities. Incan supplies the language and runtime in which those contracts are authored. A reusable Incan library capability may implement the structural sink, but it does not choose which Hees fields carry authority or make a generic model authoritative.
+Hees.ai owns identity domains, projections, tags, normalization choices, collection rules, child composition, digest types, and authority use. Incan provides the language and runtime in which those contracts are authored. Transport and storage adapters own bounded reconstruction and persistence, not semantic identity. A provider, renderer, activity, or external verification adapter may consume a verified identity but cannot determine which fields carry authority.
 
-If implementation requires new Incan language syntax, compiler derivation, nominal-deserialization guarantees, standard-library cryptography, or stable schema metadata beyond the released language contract, that capability requires its own Incan issue or RFC. This Hees RFC must remain implementable through explicit Incan-authored projections even if compiler derivation is unavailable.
+### Incan authoring requirement
 
-Transport adapters own bounded decoding into declared wire models. Storage adapters own persistence and retrieval of bytes, models, indexes, and cached identities. Neither adapter owns semantic projection rules or terminal authority.
+Identity projections and their governing model validation must be authored in Incan. A reusable Incan library may provide a bounded incremental structural sink and SHA-256 capability, but it must not infer an authority projection from reflection or serialization. If a required primitive is genuinely absent from the released Incan surface, the gap must be reduced to a minimal reproducible case and tracked in the Incan backlog before a narrow foreign boundary is introduced.
 
-### Contract registration
+### Full-scope identity continuity
 
-The accepted contract should maintain one public registry of identity domains, model tags, field tags, enum tags, variant tags, identity versions, and digest types. Entries are append-only within a version lineage; retired tags remain reserved. The registry is a compatibility artifact, not a runtime extension point.
-
-Owning RFCs should define their projection in model terms and reference the shared structural grammar. They should not duplicate byte grammar or invent local serializer rules. New domains require public review because domain choice determines cross-purpose separation and verification semantics.
-
-### Public inspection
-
-Developer tooling may render an identity explanation containing the domain, identity version, participating model type, ordered stable field tags, child identity references, total structural byte count, algorithm, and final digest. Sensitive field values remain subject to the owning projection's disclosure rules; inspectability does not authorize dumping source text, answer text, private policy, or credentials.
-
-An exact structural-byte export may be available only for fixtures and values whose disclosure is already allowed. Verification APIs should accept typed public models or closed envelopes, not arbitrary field streams, so inspection does not become an authority constructor.
+The contract is designed for an entire governed system rather than only one response path. It supports versioned Package graphs, approved memory, support material, activities, learner journeys, temporal goal keeping, observations, policy and effect execution, terminal decisions, and audit artifacts. Each area remains separately owned, typed, bounded, and registered; structural identity provides continuity across them without collapsing them into one generic document.
 
 ## Alternatives considered
 
-### Continue using RFC 8785 JCS for every semantic identity
+### Continue using JSON canonicalization for semantic identity
 
-Rejected as the permanent semantic identity substrate because it couples Hees model identity to JSON and ECMAScript serialization rules. JCS remains a credible exact JSON artifact format and interoperability tool where a contract intentionally needs canonical JSON bytes.
+Rejected because it couples semantic authority to JSON and its serializer rules. Canonical JSON remains credible for an exact JSON artifact or external inspection format but is not the permanent semantic identity substrate.
 
-### Hash raw JSON or another wire payload
+### Hash raw wire or storage bytes
 
-Rejected because semantically equivalent model values can differ in whitespace, property order, escaping, framing, compression, or other representation details. Raw byte digests remain useful as artifact identities but cannot replace validated semantic identity.
+Rejected because semantically equivalent validated models can differ in framing, escaping, ordering, compression, indexing, or storage layout. Exact-byte hashes remain artifact identities and do not replace semantic identity.
 
 ### Hash ordinary model display output
 
-Rejected because display order, spacing, labels, escaping, localization, and diagnostics are presentation concerns that should evolve without rewriting authority-bearing identities.
+Rejected because display output legitimately changes with labels, spacing, localization, diagnostics, and user-interface improvements.
 
-### Use generic compiler reflection or declaration order
+### Use compiler reflection or source declaration order
 
-Rejected because renaming, reordering, compiler upgrades, layout changes, and generated metadata could silently change identity. Stable explicit tags and projections make compatibility a reviewed contract.
+Rejected because model names, source order, layout, compiler upgrades, and generated metadata are incidental. Explicit registry tags and projections make compatibility a reviewed contract.
 
-### Adopt deterministic CBOR, Protocol Buffers, MessagePack, or another binary encoding as the universal identity format
+### Use a universal deterministic binary serialization as the identity format
 
-Rejected for contract `0.1` because choosing another serialization format would still couple semantic identity to a transport schema, unknown-field behavior, versioning rules, and implementation-specific deterministic modes. A future exact format may be useful for artifacts or wire exchange without replacing the model-owned semantic projection.
+Rejected because a universal serialization still imports transport schema, unknown-field, evolution, and implementation behavior into identity. A binary storage or transport may be useful, but the identity remains a model-owned typed structural projection.
 
-### Concatenate rendered field values
+### Generate random identifiers for authority-bearing content
 
-Rejected because values, lengths, types, nesting, optionals, and collection boundaries can become ambiguous. A typed length-delimited stream is required.
-
-### Hash every model field automatically
-
-Rejected because presentation, storage, cache, and diagnostic fields would become authority-bearing accidentally. Explicit projections cost more review effort but make governed meaning and compatibility visible.
-
-### Use random UUIDs for authority-bearing content identity
-
-Rejected because random identifiers cannot independently reproduce or verify model identity, detect semantic mutation, or support deterministic cross-runtime fixtures. Logical nominal IDs may still use UUIDs under their own contracts; they do not replace content-derived structural identity.
-
-### Let the storage engine define canonical rows
-
-Rejected because storage schemas, page layouts, indexes, compression, and migrations are implementation concerns. The same validated model must retain its semantic identity across supported storage representations.
+Rejected because random identifiers cannot independently reproduce semantic identity, detect governed mutation, or support cross-runtime verification. Logical identifiers may use other grammars under their own contracts but do not replace content-derived structural identity.
 
 ## Drawbacks
 
-The contract creates another carefully governed schema surface in addition to wire models. Stable tags, explicit projections, normalization rules, digest domains, golden bytes, and legacy verifiers require long-term maintenance and disciplined review.
+The contract adds a stable registry, typed digest values, explicit projections, golden structural bytes, historic verifiers, and cross-runtime compatibility duties. It requires more deliberate design than delegating identity to a serializer or database. Excluded-field mistakes are possible, while including too much can make harmless presentation or storage changes look semantic.
 
-Explicit projections can omit a field that should have been identity-bearing. Automatic serialization avoids that omission risk but introduces a larger accidental-authority risk. Mutation testing, authority review, and owning-RFC acceptance evidence are therefore mandatory rather than optional polish.
-
-Semantic and artifact identities may confuse consumers when both use SHA-256 syntax. Nominal digest types, domain-specific fields, documentation, and negative substitution tests are required throughout the public API and storage integrations.
-
-Unicode and text normalization remain domain-sensitive. Exact preservation is safe but may treat visually equivalent text as different; normalization can improve equivalence but may erase meaningful distinctions or depend on an unstable library. The owning nominal type must resolve that trade-off before its identity contract advances.
-
-Independent verification becomes more work than invoking a common JSON serializer. Publishing exact byte grammar and golden streams offsets that cost, but a new verifier still needs a complete safe implementation.
-
-Merkle-style composition improves bounded operation but creates more typed child identities and migration edges. A parent contract must freeze whether a child is inline or referenced, so future storage optimization cannot silently change identity shape.
+Those costs are preferable to accidental authority. Explicit projections, mutation fixtures, owner review, and independent verification make it possible to explain exactly why a value has an identity and when it must change.
 
 ## Implementation architecture
 
-This section is non-normative. A practical implementation may expose a small Incan-authored structural sink with operations for the closed scalar and container grammar. Domain-specific private projection functions traverse validated models and feed the sink in stable tag order. The sink writes directly into an incremental SHA-256 state and may optionally mirror bounded bytes for golden-fixture diagnostics.
+Hees.ai should provide an Incan-authored structural identity surface that accepts only validated domain models or closed public verification models. It should render typed values incrementally into a SHA-256 state, produce nominal structural identities, and make an optional bounded structural explanation available only where disclosure is permitted. Domain-specific model projections must remain in their owning contracts rather than in a generic serializer.
 
-The implementation should separate three capabilities: validated authority models, non-authoritative public verification models, and the private identity-construction path used by governing operations. They may share structural projection logic, but only the direct governing path can attach in-process authority to its result.
-
-Package construction may identify bounded admitted members independently, retain typed child identities and compact indexes, and construct the final semantic package identity after cross-member validation completes. Public JSON or another transport can be rendered afterward from the validated model without participating in that digest.
-
-Compiler-generated projection support may be considered only after explicit field tags, exclusions, normalization, and versioning remain visible in source and stable in generated output. Manual Incan projections are preferable to a derivation mechanism that infers authority from incidental model structure.
+An implementation may calculate registered child identities independently, retain compact typed identities, and release original bytes after validation. It may cache the resulting identity only under an explicit cache-integrity policy. It must preserve the public grammar, tag registry, nominal types, and fail-closed behavior regardless of runtime, platform, or storage representation.
 
 ## Layers affected
 
-- **Public authority contracts:** Shared distinction between artifact identity, semantic identity, integrity, runtime authority, and external authenticity.
-- **Nominal types and model construction:** Validating constructors, domain-specific digest types, normalization boundaries, and prevention of deserialization bypass.
-- **Structural identity runtime:** Closed tagged grammar, bounded incremental sink, SHA-256 boundary, domain registration, and exact verification.
-- **Package admission:** Separate exact manifest and member artifact commitments from final admitted package semantic identity and child composition.
-- **Governed memory and Content DNA:** Typed atom, answer, provenance, selected-memory, and Content DNA structural identities.
-- **Visible-response and receipt contracts:** Typed proposal, visible-unit, terminal projection, and receipt identity independent of wire rendering.
-- **Transport and storage adapters:** Strict reconstruction of validated models plus explicit handling of artifact and semantic digest types without owning identity semantics.
-- **Compatibility tooling:** Append-only tag registry, structural-byte inspection, golden corpus, independent verifier, migration fixtures, and compiler-version gates.
-- **Documentation:** Exact current-versus-proposed capability, disclosure rules, digest claims, and consumer guidance.
-- **Incan language or standard library:** A separate Incan proposal only if reusable derivation, schema metadata, nominal deserialization, or cryptographic support exceeds the released language surface.
+- **Public authority contracts:** Distinct semantic identity, artifact integrity, runtime authority, and producer-authenticity claims.
+- **Nominal models:** Validating constructors, explicit normalization, field inclusion, domain-specific identity types, and prevention of untrusted deserialization bypass.
+- **Structural identity runtime:** Closed tagged grammar, incremental hashing, registry resolution, child composition, exact verification, and failure behavior.
+- **Package admission:** Typed Package semantic identity after full profile admission, distinct complete artifact-byte integrity, and a derived Package Admission Binding for their exact pairing.
+- **Governed memory and Content DNA:** Identity continuity for atoms, selected-memory results, supporting material, answer bindings, provenance, and Content DNA.
+- **Experience and session contracts:** Typed identity for activities, media bindings, learner journeys, temporal goals, observations, assessments, and governed state transitions where their owning contracts register them.
+- **Response, effect, and receipt contracts:** Exact identity over visible units, terminal outcomes, effect declarations and receipts, and safe public receipt projections.
+- **Transport and storage adapters:** Bounded closed-model reconstruction, explicit artifact checks, cache safety, and no ownership of semantic identity.
+- **Compatibility tooling:** Public registry, golden streams, independent verifier, migration fixtures, compiler-version gates, and constrained-resource evidence.
+- **Incan language and libraries:** Incan-authored projections and reusable primitives, with separately tracked language or library gaps where needed.
 
-## Unresolved questions
+## Design Decisions
 
-- Should stable model and field tags be authored directly in each Hees identity contract, generated from an append-only public registry, or authored in both forms with a mechanical equality check?
-- Which initial domains and exact projections must be registered before contract `0.1` can replace the JCS identity clauses in RFC 002, RFC 005, RFC 006, and RFC 009?
-- Should exact string preservation remain the universal `0.1` default, with normalization available only through dedicated nominal types, or should any domain mandate Unicode NFC or line-ending normalization?
-- Does RFC 002 Content DNA bind both package semantic identity and exact package artifact identity, or should exact artifact provenance remain solely in a separate receipt or audit projection?
-- Which RFC 005 values remain byte-exact artifact digests, and what exact model and child identities compose the final admitted package semantic identity?
-- Should nested independently governed models always use child identity references, or may each owning contract choose inline versus child identity per field?
-- Is SHA-256 the only accepted algorithm for every `0.1` domain, and what explicit version transition would introduce another algorithm without runtime negotiation?
-- What public verification model permits independent reconstruction of each identity while preventing arbitrary generic field streams from masquerading as authoritative Hees values?
-- Can the complete structural sink and nominal validation path be implemented in Incan 0.5.0-dev.14, or is a separate Incan language or standard-library RFC required?
-- What exact peak-memory, input-size, depth, member-count, and compiler-version evidence is required before the contract advances from Draft to Planned?
-
-<!-- Rename this section to "Design Decisions" once all questions have been resolved. An RFC cannot move from Draft to Planned until no unresolved questions remain. -->
+- Structural identity is derived from validated typed Incan models, never from JSON, display output, storage layout, reflection, or caller-controlled serialization.
+- The public structural identity registry is append-only and authoritative for domains, tags, projection rules, normalization, collection semantics, child composition, bounds, and golden fixtures.
+- Text and bytes are exact by default. Only an explicitly named nominal type may normalize them before identity construction.
+- Each owning contract chooses and freezes inline versus child identity composition for every nested governed value.
+- `sha256` is the sole identity algorithm for contract `0.1`; any algorithm change requires a new exact identity contract and verifier route.
+- Package semantic identity is distinct from artifact digest. Content DNA binds Package semantic identity; receipts may additionally carry exact artifact provenance as a different typed field.
+- Package Admission Binding is a separate structural identity over the exact semantic-identity and artifact-digest pair. Optional human check digits detect transcription errors only and are not an authority or cryptographic substitute.
+- Public verification accepts only registered closed verification models or envelopes. It must not expose a generic arbitrary-value identity constructor.
+- Identity projections and validation are Incan-authored. A verified Incan capability gap must be tracked before a narrow foreign capability boundary is introduced.
