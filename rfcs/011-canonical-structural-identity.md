@@ -14,7 +14,7 @@
     - RFC 012 (Governed Effect Capabilities and Execution Receipts)
 - **Issue:** https://github.com/encero-systems/hees.ai/issues/18
 - **RFC PR:** —
-- **Written against:** Hees.ai 0.0.1 / Incan 0.5.0-dev.14
+- **Written against:** Hees.ai 0.0.1 / Incan 0.5
 - **Shipped in:** —
 
 ## Summary
