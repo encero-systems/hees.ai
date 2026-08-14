@@ -24,7 +24,7 @@
 
 Hees.ai must admit a complete governed Package through a closed, profile-registered binary artifact contract that validates exact delivered bytes, reconstructs bounded typed member models, validates their complete cross-member graph, and atomically yields one authoritative `AdmittedPackage`. The contract deliberately separates the exact-byte `artifact_digest` used for installation and delivery integrity from the typed `package_semantic_identity` defined by RFC 011 and used to bind governed runtime behavior, Content DNA, and receipts.
 
-`heesai_package_wire_0_1` is the proposed normative identifier for the authority-bearing Package wire defined by this RFC. It is not an example name, an existing file format, or an implemented API in Hees.ai 0.0.1. The `heesai` identifier prefix preserves the Hees.ai name where a contract identifier cannot contain a dot; public prose, wire magic, and identity namespaces use Hees.ai. If this Planned RFC is implemented, its exact spelling, framing, and rules become the public contract for wire version `0.1`; until then, it names the proposed contract only.
+`heesai_package_wire_0_1` is the proposed normative identifier for the authority-bearing Package wire defined by this RFC. It is not an example name, an existing file format, or an implemented API in Hees.ai 0.0.1. The `heesai` identifier prefix preserves the Hees.ai name where the contract needs one identifier spelling; public prose, wire magic, and identity namespaces use Hees.ai. If this Planned RFC is implemented, its exact spelling, framing, and rules become the public contract for wire version `0.1`; until then, it names the proposed contract only.
 
 ## Core model
 
