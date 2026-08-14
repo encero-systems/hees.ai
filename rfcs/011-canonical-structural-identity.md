@@ -108,6 +108,12 @@ Package identity illustrates the separate claims together. RFC 005 validates the
 - **Artifact digest:** A nominal digest over exact input, transport, or stored bytes.
 - **Child identity:** A structural identity included in a parent projection instead of an inline nested model where the owner declares that composition.
 
+### Normative digest and external JSON basis
+
+Contract `0.1` uses SHA-256 as defined by [FIPS 180-4, Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/upd1/final). A structural identity implementation must not substitute a locally named digest, truncate a digest, or interpret another algorithm as `sha256`.
+
+Structural identity has no JSON dependency. Where a public inspection, import, export, or verification envelope is JSON, its boundary contract follows [RFC 8259, The JavaScript Object Notation Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259) and [RFC 7493, The I-JSON Message Format](https://www.rfc-editor.org/rfc/rfc7493). A boundary that additionally requires canonical JSON bytes may declare [RFC 8785, JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785), but those bytes may identify only that declared edge artifact. They must never become a structural identity preimage or bypass closed-model validation.
+
 ### Structural identity record
 
 Every structural identity must be a closed typed record:
