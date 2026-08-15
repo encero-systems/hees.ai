@@ -214,6 +214,16 @@ Every Package profile must identify one exact profile contract. Profile registra
 
 No profile may inherit unknown members, use a generic payload, accept a generic map, or reinterpret another profile’s descriptor as compatible. A profile extension is a new registered contract, not a runtime negotiation.
 
+### Profile resource envelopes
+
+Each registered profile contract must own one exact closed resource envelope. The envelope is part of profile registration rather than a Package field, caller option, provider preference, or device probe. A runtime either implements the profile’s envelope or rejects the profile before admitting an artifact; it must not negotiate a wider limit or silently substitute a nearby profile.
+
+The envelope must declare checked-arithmetic ceilings for the complete artifact, manifest, one member, all members, parser depth, record and nested-collection counts, scalar text and byte values, compact cross-member indexes, provisional admission state, each profile-defined runtime request and result, public traces, and opaque retained capabilities. It must also declare the complete accounting rule for each aggregate limit, including whether an identity, field tag, wrapper, or duplicate-free lookup entry contributes to the total. A ceiling without an accounting rule is not a valid profile limit.
+
+The registry must publish, beside each envelope, a conformance corpus containing maximum-shaped valid artifacts, one-over-limit artifacts, request/result boundary fixtures, retained-state measurements, and failure-cleanup evidence. The corpus must include equivalent fixtures for every supported Incan, Rust, JavaScript, or other independent verifier. Constrained-device measurements may establish that a profile is suitable for a deployment class, but they do not change the profile envelope or create device-specific admission reasons.
+
+Different resource requirements require a distinct registered profile contract or a successor profile version. For example, a future lower-memory governed-learning profile may narrow a member or response ceiling, but it cannot present itself as `governed_core_0_1` or cause a runtime to reinterpret an already admitted `governed_core_0_1` Package. This preserves portable Package meaning while allowing evidence-backed deployment profiles to evolve explicitly.
+
 ### Manifest and descriptors
 
 The manifest must be a closed binary record with exactly these fields:

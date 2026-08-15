@@ -31,13 +31,13 @@ RFC documents use three-digit numbers and the filename form `NNN-short-title.md`
 - [RFC 000: Foundational Governance Authority](000-foundational-governance-authority.md) — Draft
 - [RFC 001: Spectrum Terminal Adjudication](001-spectrum-terminal-adjudication.md) — Draft
 - [RFC 002: Content DNA Answer-Time Provenance](002-content-dna-answer-time-provenance.md) — Draft
-- [RFC 003: Governed Memory and Retrieval Results](003-governed-memory-and-retrieval-results.md) — Draft
-- [RFC 004: Composable Governance Constraints](004-composable-governance-constraints.md) — Draft
+- [RFC 003: Governed Memory and Retrieval Results](003-governed-memory-and-retrieval-results.md) — Planned
+- [RFC 004: Composable Governance Constraints](004-composable-governance-constraints.md) — Planned
 - [RFC 005: Canonical Package Artifact Admission](005-canonical-package-artifact-admission.md) — Planned
 - [RFC 006: Export-Safe Governance Receipts](006-export-safe-governance-receipts.md) — Draft
-- [RFC 007: Evidence-Grounded Claim Verification Findings](007-evidence-grounded-claim-verification-findings.md) — Draft
-- [RFC 008: Governed Behavior Envelopes](008-governed-behavior-envelopes.md) — Draft
-- [RFC 009: Governed Visible Response Lifecycle](009-governed-visible-response-lifecycle.md) — Draft
+- [RFC 007: Evidence-Grounded Claim Verification Findings](007-evidence-grounded-claim-verification-findings.md) — Planned
+- [RFC 008: Governed Behavior Envelopes](008-governed-behavior-envelopes.md) — Planned
+- [RFC 009: Governed Visible Response Lifecycle](009-governed-visible-response-lifecycle.md) — Planned
 - [RFC 010: hees.ai console](010-hees-console.md) — Draft
 - [RFC 011: Canonical Structural Identity for Incan Models](011-canonical-structural-identity.md) — Planned
 - [RFC 012: Governed Effect Capabilities and Execution Receipts](012-governed-effect-capabilities-and-execution-receipts.md) — Draft
