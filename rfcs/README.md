@@ -39,3 +39,5 @@ RFC documents use three-digit numbers and the filename form `NNN-short-title.md`
 - [RFC 008: Governed Behavior Envelopes](008-governed-behavior-envelopes.md) — Draft
 - [RFC 009: Governed Visible Response Lifecycle](009-governed-visible-response-lifecycle.md) — Draft
 - [RFC 010: hees.ai console](010-hees-console.md) — Draft
+- [RFC 013: Governed Continuity — Goal, Schedule, and Session Admission](013-governed-continuity-goal-schedule-session-admission.md) — Draft
+- [RFC 014: Governed Memory Lifecycle Operations](014-governed-memory-lifecycle-operations.md) — Draft
