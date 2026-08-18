@@ -1,0 +1,111 @@
+"""Identity validation and Hees-owned findings for bounded committee observations."""
+
+from crate.governed_profile_identity import digest_governed_proposal
+from crate.governed_profile_models import (
+    CommitteeAssessment,
+    CommitteeObservation,
+    CommitteeVerdict,
+    GovernedAction,
+    GovernedFinding,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedRequest,
+)
+from crate.identifiers import (
+    CommitteeRoleId,
+    FindingId,
+    contract_id,
+    contract_id_text,
+    finding_id,
+    observation_id_text,
+    profile_id_text,
+)
+
+
+const OBSERVATION_CONTRACT: str = "governed_committee_observation_0_1"
+const FINDING_CONTRACT: str = "governed_committee_finding_0_1"
+const PROFILE_ID: str = "governed_profile_0_1"
+
+
+def assessment(valid: bool, reason: str, findings: list[GovernedFinding]) -> CommitteeAssessment:
+    return CommitteeAssessment(valid=valid, reason=reason, findings=findings)
+
+
+def finding_identity(observation: CommitteeObservation) -> FindingId:
+    value = observation_id_text(observation.observation_id)
+    if value.startswith("observation_"):
+        return finding_id(f"finding_{value[len("observation_"):]}")
+    return finding_id(f"finding_{value}")
+
+
+def derive_finding(
+    package: GovernedProfilePackage,
+    observation: CommitteeObservation,
+) -> GovernedFinding:
+    return GovernedFinding(
+        contract_version=contract_id(FINDING_CONTRACT),
+        profile_id=package.profile_id,
+        finding_id=finding_identity(observation),
+        observation_id=observation.observation_id,
+        role=observation.role,
+        classification=observation.verdict.value(),
+        constraint_plan_id=package.policy.constraint_plan_id,
+        constraint_plan_revision=package.policy.constraint_plan_revision,
+    )
+
+
+def roles_match_exactly(
+    required: list[CommitteeRoleId],
+    observations: list[CommitteeObservation],
+) -> bool:
+    if len(required) != len(observations):
+        return false
+    mut seen: list[CommitteeRoleId] = []
+    for observation in observations:
+        if seen.contains(observation.role) or not required.contains(observation.role):
+            return false
+        seen.append(observation.role)
+    return true
+
+
+pub def assess_committee(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    action: GovernedAction,
+    observations: list[CommitteeObservation],
+) -> CommitteeAssessment:
+    """Validate exact committee coverage and derive non-authoritative findings."""
+
+    if not action.committee_required:
+        if len(observations) > 0:
+            return assessment(false, "committee_not_allowed", [])
+        return assessment(true, "ok", [])
+    if not roles_match_exactly(package.policy.required_roles, observations):
+        return assessment(false, "committee_coverage_invalid", [])
+    candidate_digest = digest_governed_proposal(proposal)
+    mut observation_ids: list[str] = []
+    for observation in observations:
+        if contract_id_text(observation.contract_version) != OBSERVATION_CONTRACT:
+            return assessment(false, "unsupported_committee_contract", [])
+        if profile_id_text(observation.profile_id) != PROFILE_ID or observation.profile_id != package.profile_id:
+            return assessment(false, "committee_identity_mismatch", [])
+        if observation.package_id != package.package_id or observation.domain_id != package.domain_id:
+            return assessment(false, "committee_identity_mismatch", [])
+        if observation.package_revision != package.package_revision or observation.artifact_digest != package.artifact_digest:
+            return assessment(false, "committee_identity_mismatch", [])
+        if observation.request_id != request.request_id or observation.request_digest != request.request_digest:
+            return assessment(false, "committee_identity_mismatch", [])
+        if observation.candidate_digest != candidate_digest:
+            return assessment(false, "committee_identity_mismatch", [])
+        if observation_ids.contains(observation_id_text(observation.observation_id)):
+            return assessment(false, "committee_coverage_invalid", [])
+        observation_ids.append(observation_id_text(observation.observation_id))
+    findings = [derive_finding(package, observation) for observation in observations]
+    for finding in findings:
+        if finding.classification == CommitteeVerdict.Fail.value():
+            return assessment(false, "committee_rejected", findings)
+    for finding in findings:
+        if finding.classification == CommitteeVerdict.Uncertain.value():
+            return assessment(false, "committee_uncertain", findings)
+    return assessment(true, "ok", findings)

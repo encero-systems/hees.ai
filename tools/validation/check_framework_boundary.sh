@@ -97,11 +97,23 @@ required_files=(
     src/console_profile_planning.incn
     src/console_profile_validation.incn
     src/content_dna.incn
+    src/governed_continuity.incn
+    src/governed_memory_operations.incn
+    src/governed_profile.incn
+    src/governed_profile_artifacts.incn
+    src/governed_profile_committee.incn
+    src/governed_profile_evaluation.incn
+    src/governed_profile_identity.incn
+    src/governed_profile_models.incn
+    src/governed_profile_validation.incn
     src/identifiers.incn
     src/package_loader.incn
     src/runtime.incn
     tests/test_console_profile_contract.incn
     tests/test_content_dna_contract.incn
+    tests/test_governed_continuity_contract.incn
+    tests/test_governed_memory_operations.incn
+    tests/test_governed_profile_contract.incn
     tests/test_identifier_contract.incn
     tests/test_package_loader_contract.incn
     tests/test_runtime_contract.incn
@@ -133,7 +145,7 @@ done < <(find . -type f -name '*incan.lock' -print | sort)
 
 for path in src/*.incn; do
     case "$path" in
-        src/console_profile.incn | src/console_profile_artifacts.incn | src/console_profile_evaluation.incn | src/console_profile_identity.incn | src/console_profile_models.incn | src/console_profile_observations.incn | src/console_profile_planning.incn | src/console_profile_validation.incn | src/content_dna.incn | src/identifiers.incn | src/lib.incn | src/package_loader.incn | src/runtime.incn) ;;
+        src/console_profile.incn | src/console_profile_artifacts.incn | src/console_profile_evaluation.incn | src/console_profile_identity.incn | src/console_profile_models.incn | src/console_profile_observations.incn | src/console_profile_planning.incn | src/console_profile_validation.incn | src/content_dna.incn | src/governed_continuity.incn | src/governed_memory_operations.incn | src/governed_profile.incn | src/governed_profile_artifacts.incn | src/governed_profile_committee.incn | src/governed_profile_evaluation.incn | src/governed_profile_identity.incn | src/governed_profile_models.incn | src/governed_profile_validation.incn | src/identifiers.incn | src/lib.incn | src/package_loader.incn | src/runtime.incn) ;;
         *) fail "source module is outside the public allowlist: $path" ;;
     esac
 done

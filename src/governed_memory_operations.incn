@@ -1,0 +1,446 @@
+"""
+Independent admission for governed memory inspection, prompt selection, and lifecycle operations.
+
+Retrieval providers may nominate identifiers, but package declarations and Hees determine whether a record is eligible
+for the proposed operation. This prototype is adjacent to RFC 003 and does not claim to implement its retrieval ingress.
+"""
+
+from std.serde import json
+from crate.identifiers import (
+    ArtifactRevisionType,
+    DigestIdType,
+    DomainId,
+    MemoryClassId,
+    MemoryId,
+    MemoryOperationId,
+    PackageId,
+    ProfileId,
+    SessionId,
+)
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryOperationKind(str):
+    """Closed operation kinds with distinct admission semantics."""
+
+    SelectPrompt = "select_prompt"
+    Inspect = "inspect"
+    Write = "write"
+    Revoke = "revoke"
+    Supersede = "supersede"
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryOperationTerminal(str):
+    """Independent terminal result for one memory-operation proposal."""
+
+    Admitted = "admitted"
+    Rejected = "rejected"
+
+
+@derive(Clone, json)
+pub model GovernedMemoryClass:
+    """Package-owned runtime rules for one distinct memory class."""
+
+    pub memory_class_id: MemoryClassId
+    pub owner: str
+    pub prompt_eligible: bool
+    pub hyperquant_eligible: bool
+    pub runtime_writable: bool
+    pub maximum_age_seconds: Option[int]
+    pub explicit_consent_required: bool
+    pub revoke_allowed: bool
+    pub supersede_allowed: bool
+    pub allowed_keys: list[str]
+    pub required_provenance: list[str]
+
+
+@derive(Clone, json)
+pub model GovernedMemoryOperation:
+    """Package-declared class authority for one typed memory operation."""
+
+    pub operation_id: MemoryOperationId
+    pub operation_kind: MemoryOperationKind
+    pub allowed_class_ids: list[MemoryClassId]
+
+
+@derive(Clone, json)
+pub model GovernedMemoryPolicy:
+    """Integrity-bound package projection for memory-operation admission."""
+
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub artifact_digest: DigestIdType
+    pub classes: list[GovernedMemoryClass]
+    pub operations: list[GovernedMemoryOperation]
+
+
+@derive(Clone, json)
+pub model GovernedMemoryRecord:
+    """Package- or runtime-owned memory record presented for admission."""
+
+    pub memory_id: MemoryId
+    pub memory_class_id: MemoryClassId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub artifact_digest: DigestIdType
+    pub session_id: Option[SessionId]
+    pub memory_key: Option[str]
+    pub created_at_seconds: int
+    pub expires_at_seconds: Option[int]
+    pub revoked: bool
+    pub superseded_by: Option[MemoryId]
+    pub provenance_fields: list[str]
+
+
+@derive(Clone, json)
+pub model MemoryOperationProposal:
+    """Untrusted request to inspect, select, create, revoke, or supersede memory."""
+
+    pub operation_id: MemoryOperationId
+    pub operation_kind: MemoryOperationKind
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub artifact_digest: DigestIdType
+    pub session_id: Option[SessionId]
+    pub memory_class_id: MemoryClassId
+    pub target_memory_id: MemoryId
+    pub replacement_memory_id: Option[MemoryId]
+    pub memory_key: Option[str]
+    pub current_time_seconds: int
+    pub consent_present: bool
+    pub provenance_fields: list[str]
+    pub existing_record: Option[GovernedMemoryRecord]
+
+
+@derive(Clone, json)
+pub model MemoryOperationDecision:
+    """Hees terminal result, independent of answer delivery and storage mutation."""
+
+    pub terminal: MemoryOperationTerminal
+    pub reason: str
+    pub operation_id: MemoryOperationId
+    pub target_memory_id: MemoryId
+    pub replacement_memory_id: Option[MemoryId]
+
+
+@derive(Clone, json)
+pub model MemoryPolicyValidation:
+    """Closed structural validation result for memory policy declarations."""
+
+    pub valid: bool
+    pub reason: str
+
+
+def valid() -> MemoryPolicyValidation:
+    return MemoryPolicyValidation(valid=true, reason="valid")
+
+
+def invalid(reason: str) -> MemoryPolicyValidation:
+    return MemoryPolicyValidation(valid=false, reason=reason)
+
+
+def rejected(proposal: MemoryOperationProposal, reason: str) -> MemoryOperationDecision:
+    return MemoryOperationDecision(
+        terminal=MemoryOperationTerminal.Rejected,
+        reason=reason,
+        operation_id=proposal.operation_id,
+        target_memory_id=proposal.target_memory_id,
+        replacement_memory_id=None,
+    )
+
+
+def admitted(proposal: MemoryOperationProposal, reason: str) -> MemoryOperationDecision:
+    return MemoryOperationDecision(
+        terminal=MemoryOperationTerminal.Admitted,
+        reason=reason,
+        operation_id=proposal.operation_id,
+        target_memory_id=proposal.target_memory_id,
+        replacement_memory_id=proposal.replacement_memory_id,
+    )
+
+
+def find_memory_class(classes: list[GovernedMemoryClass], identifier: MemoryClassId) -> Option[GovernedMemoryClass]:
+    for memory_class in classes:
+        if memory_class.memory_class_id == identifier:
+            return Some(memory_class)
+    return None
+
+
+def find_memory_operation(
+    operations: list[GovernedMemoryOperation],
+    identifier: MemoryOperationId,
+) -> Option[GovernedMemoryOperation]:
+    for operation in operations:
+        if operation.operation_id == identifier:
+            return Some(operation)
+    return None
+
+
+def memory_class_exists(classes: list[GovernedMemoryClass], identifier: MemoryClassId) -> bool:
+    return match find_memory_class(classes, identifier):
+        None => false
+        Some(_) => true
+
+
+def memory_record_present(record: Option[GovernedMemoryRecord]) -> bool:
+    return match record:
+        None => false
+        Some(_) => true
+
+
+def has_duplicate_classes(classes: list[GovernedMemoryClass]) -> bool:
+    mut seen: list[MemoryClassId] = []
+    for memory_class in classes:
+        if seen.contains(memory_class.memory_class_id):
+            return true
+        seen.append(memory_class.memory_class_id)
+    return false
+
+
+def has_duplicate_operations(operations: list[GovernedMemoryOperation]) -> bool:
+    mut seen: list[MemoryOperationId] = []
+    for operation in operations:
+        if seen.contains(operation.operation_id):
+            return true
+        seen.append(operation.operation_id)
+    return false
+
+
+def has_duplicate_strings(values: list[str]) -> bool:
+    mut seen: list[str] = []
+    for value in values:
+        if seen.contains(value):
+            return true
+        seen.append(value)
+    return false
+
+
+def memory_class_is_valid(memory_class: GovernedMemoryClass) -> MemoryPolicyValidation:
+    if not ["package", "session", "learner", "runtime"].contains(memory_class.owner):
+        return invalid("unknown_memory_owner")
+    if memory_class.hyperquant_eligible and not memory_class.prompt_eligible:
+        return invalid("hyperquant_memory_not_prompt_eligible")
+    if has_duplicate_strings(memory_class.allowed_keys) or has_duplicate_strings(memory_class.required_provenance):
+        return invalid("duplicate_memory_class_declaration")
+    for value in memory_class.allowed_keys + memory_class.required_provenance:
+        if value == "" or len(value) > 128:
+            return invalid("invalid_memory_class_value")
+    match memory_class.maximum_age_seconds:
+        None => pass
+        Some(value) =>
+            if value <= 0:
+                return invalid("invalid_memory_maximum_age")
+    if not memory_class.runtime_writable and (memory_class.revoke_allowed or memory_class.supersede_allowed):
+        return invalid("immutable_memory_has_lifecycle_mutation")
+    return valid()
+
+
+pub def validate_governed_memory_policy(policy: GovernedMemoryPolicy) -> MemoryPolicyValidation:
+    """Validate class and operation declarations without admitting a runtime operation."""
+
+    if len(policy.classes) == 0 or len(policy.operations) == 0:
+        return invalid("memory_policy_empty")
+    if has_duplicate_classes(policy.classes):
+        return invalid("duplicate_memory_class_id")
+    if has_duplicate_operations(policy.operations):
+        return invalid("duplicate_memory_operation_id")
+    for memory_class in policy.classes:
+        class_validation = memory_class_is_valid(memory_class)
+        if not class_validation.valid:
+            return class_validation
+    mut operation_kinds: list[str] = []
+    for operation in policy.operations:
+        if operation_kinds.contains(f"{operation.operation_kind}"):
+            return invalid("duplicate_memory_operation_kind")
+        operation_kinds.append(f"{operation.operation_kind}")
+        if len(operation.allowed_class_ids) == 0:
+            return invalid("memory_operation_classes_empty")
+        mut seen: list[MemoryClassId] = []
+        for memory_class_id in operation.allowed_class_ids:
+            if seen.contains(memory_class_id):
+                return invalid("duplicate_operation_memory_class")
+            seen.append(memory_class_id)
+            if not memory_class_exists(policy.classes, memory_class_id):
+                return invalid("operation_memory_class_unknown")
+    return valid()
+
+
+def proposal_identity_matches(policy: GovernedMemoryPolicy, proposal: MemoryOperationProposal) -> bool:
+    return (
+        proposal.profile_id == policy.profile_id
+        and proposal.package_id == policy.package_id
+        and proposal.domain_id == policy.domain_id
+        and proposal.package_revision == policy.package_revision
+        and proposal.artifact_digest == policy.artifact_digest
+    )
+
+
+def record_identity_matches(proposal: MemoryOperationProposal, record: GovernedMemoryRecord) -> bool:
+    if (
+        record.profile_id != proposal.profile_id
+        or record.package_id != proposal.package_id
+        or record.domain_id != proposal.domain_id
+        or record.package_revision != proposal.package_revision
+        or record.artifact_digest != proposal.artifact_digest
+        or record.memory_class_id != proposal.memory_class_id
+        or record.memory_id != proposal.target_memory_id
+    ):
+        return false
+    return match (record.session_id, proposal.session_id):
+        (None, _) => true
+        (Some(_), None) => false
+        (Some(record_session), Some(proposal_session)) => record_session == proposal_session
+
+
+def contains_all(required: list[str], supplied: list[str]) -> bool:
+    for value in required:
+        if not supplied.contains(value):
+            return false
+    return true
+
+
+def record_is_eligible(
+    proposal: MemoryOperationProposal,
+    record: GovernedMemoryRecord,
+    memory_class: GovernedMemoryClass,
+) -> Option[str]:
+    if not record_identity_matches(proposal, record):
+        return Some("memory_record_identity_mismatch")
+    if record.created_at_seconds < 0 or record.created_at_seconds > proposal.current_time_seconds:
+        return Some("memory_record_time_invalid")
+    match memory_class.maximum_age_seconds:
+        None => pass
+        Some(maximum_age_seconds) =>
+            if proposal.current_time_seconds - record.created_at_seconds > maximum_age_seconds:
+                return Some("memory_expired")
+    if not contains_all(memory_class.required_provenance, record.provenance_fields):
+        return Some("memory_record_provenance_incomplete")
+    if record.revoked:
+        return Some("memory_revoked")
+    match record.superseded_by:
+        None => pass
+        Some(_) => return Some("memory_superseded")
+    match record.expires_at_seconds:
+        None => pass
+        Some(value) =>
+            if value <= proposal.current_time_seconds:
+                return Some("memory_expired")
+    return None
+
+
+def key_is_allowed(memory_class: GovernedMemoryClass, memory_key: Option[str]) -> bool:
+    if len(memory_class.allowed_keys) == 0:
+        return true
+    return match memory_key:
+        None => false
+        Some(value) => memory_class.allowed_keys.contains(value)
+
+
+def evaluate_eligible_record(
+    proposal: MemoryOperationProposal,
+    memory_class: GovernedMemoryClass,
+    record: GovernedMemoryRecord,
+) -> MemoryOperationDecision:
+    eligibility_reason = record_is_eligible(proposal, record, memory_class)
+    match eligibility_reason:
+        None => pass
+        Some(reason) => return rejected(proposal, reason)
+
+    if proposal.operation_kind == MemoryOperationKind.Inspect:
+        return admitted(proposal, "declared_memory_inspection")
+    if proposal.operation_kind == MemoryOperationKind.SelectPrompt:
+        if not memory_class.prompt_eligible:
+            return rejected(proposal, "memory_not_prompt_eligible")
+        return admitted(proposal, "declared_memory_read")
+    if proposal.operation_kind == MemoryOperationKind.Revoke:
+        if not memory_class.revoke_allowed:
+            return rejected(proposal, "memory_revoke_not_allowed")
+        return admitted(proposal, "declared_memory_revoke")
+    if proposal.operation_kind == MemoryOperationKind.Supersede:
+        if not memory_class.supersede_allowed:
+            return rejected(proposal, "memory_supersede_not_allowed")
+        if memory_class.explicit_consent_required and not proposal.consent_present:
+            return rejected(proposal, "explicit_consent_required")
+        match proposal.replacement_memory_id:
+            None => return rejected(proposal, "replacement_memory_required")
+            Some(value) =>
+                if value == proposal.target_memory_id:
+                    return rejected(proposal, "replacement_memory_must_differ")
+        if not key_is_allowed(memory_class, proposal.memory_key):
+            return rejected(proposal, "memory_key_not_allowed")
+        if not contains_all(memory_class.required_provenance, proposal.provenance_fields):
+            return rejected(proposal, "memory_provenance_incomplete")
+        return admitted(proposal, "declared_memory_supersede")
+    return rejected(proposal, "unknown_memory_operation")
+
+
+def evaluate_existing_record(
+    proposal: MemoryOperationProposal,
+    memory_class: GovernedMemoryClass,
+) -> MemoryOperationDecision:
+    return match proposal.existing_record:
+        None => rejected(proposal, "memory_record_required")
+        Some(record) => evaluate_eligible_record(proposal, memory_class, record)
+
+
+def evaluate_write(proposal: MemoryOperationProposal, memory_class: GovernedMemoryClass) -> MemoryOperationDecision:
+    if memory_record_present(proposal.existing_record.clone()):
+        return rejected(proposal, "memory_already_exists")
+    if not memory_class.runtime_writable:
+        return rejected(proposal, "memory_class_not_writable")
+    if memory_class.explicit_consent_required and not proposal.consent_present:
+        return rejected(proposal, "explicit_consent_required")
+    if not key_is_allowed(memory_class, proposal.memory_key):
+        return rejected(proposal, "memory_key_not_allowed")
+    if not contains_all(memory_class.required_provenance, proposal.provenance_fields):
+        return rejected(proposal, "memory_provenance_incomplete")
+    return admitted(proposal, "declared_memory_write")
+
+
+def evaluate_with_class(
+    operation: GovernedMemoryOperation,
+    memory_class: GovernedMemoryClass,
+    proposal: MemoryOperationProposal,
+) -> MemoryOperationDecision:
+    if operation.operation_kind != proposal.operation_kind:
+        return rejected(proposal, "memory_operation_kind_mismatch")
+    if not operation.allowed_class_ids.contains(proposal.memory_class_id):
+        return rejected(proposal, "memory_class_not_allowed_for_operation")
+    if proposal.operation_kind == MemoryOperationKind.Write:
+        return evaluate_write(proposal, memory_class)
+    return evaluate_existing_record(proposal, memory_class)
+
+
+def evaluate_with_operation(
+    policy: GovernedMemoryPolicy,
+    operation: GovernedMemoryOperation,
+    proposal: MemoryOperationProposal,
+) -> MemoryOperationDecision:
+    return match find_memory_class(policy.classes, proposal.memory_class_id):
+        None => rejected(proposal, "unknown_memory_class")
+        Some(memory_class) => evaluate_with_class(operation, memory_class, proposal)
+
+
+pub def evaluate_memory_operation(
+    policy: GovernedMemoryPolicy,
+    proposal: MemoryOperationProposal,
+) -> MemoryOperationDecision:
+    """Admit one memory operation without performing storage mutation or answer delivery."""
+
+    policy_validation = validate_governed_memory_policy(policy)
+    if not policy_validation.valid:
+        return rejected(proposal, "invalid_memory_policy")
+    if not proposal_identity_matches(policy, proposal):
+        return rejected(proposal, "package_identity_mismatch")
+    if proposal.current_time_seconds < 0:
+        return rejected(proposal, "invalid_evaluation_time")
+    return match find_memory_operation(policy.operations, proposal.operation_id):
+        None => rejected(proposal, "unknown_memory_operation")
+        Some(operation) => evaluate_with_operation(policy, operation, proposal)

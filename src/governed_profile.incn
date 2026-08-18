@@ -1,0 +1,37 @@
+"""
+Checked public facade for generic package-governed interactions.
+
+Callers may supply package projections, requests, proposals, and committee observations. Hees validates their exact
+relationships and returns one atomic terminal result. This surface does not author packages, retrieve memory, invoke
+models, or materialize guided payloads.
+"""
+
+pub from crate.governed_profile_evaluation import (
+    evaluate_governed_profile_json,
+    evaluate_governed_profile_with_artifacts,
+)
+pub from crate.governed_profile_identity import (
+    bind_governed_request,
+    committee_observation,
+    digest_governed_proposal,
+    governed_proposal,
+)
+pub from crate.governed_profile_models import (
+    AdmittedGuidedMaterial,
+    CommitteeObservation,
+    CommitteeVerdict,
+    CompleteGovernedEvaluation,
+    GovernedAction,
+    GovernedEvidence,
+    GovernedFinding,
+    GovernedMemory,
+    GovernedOutcomeKind,
+    GovernedPolicy,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedRequest,
+    GovernedSpectrumResult,
+    GuidedMaterial,
+    GuidedTransition,
+)
+pub from crate.governed_profile_validation import validate_governed_profile_package

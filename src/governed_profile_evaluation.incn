@@ -1,0 +1,451 @@
+"""Atomic terminal evaluation for generic package-governed interactions."""
+
+from std.serde.json import Serialize
+from crate.governed_profile_artifacts import (
+    construct_governed_content_dna,
+    construct_governed_receipt,
+)
+from crate.governed_profile_committee import assess_committee
+from crate.governed_profile_models import (
+    AdmittedGuidedMaterial,
+    CommitteeObservation,
+    CompleteGovernedEvaluation,
+    GovernedAction,
+    GovernedFinding,
+    GovernedMemory,
+    GovernedOutcomeKind,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedRequest,
+    GovernedSpectrumResult,
+    GovernedStructuralAdmission,
+    GovernedTerminalClass,
+)
+from crate.governed_profile_validation import (
+    find_governed_action,
+    find_governed_memory,
+    find_guided_material,
+    validate_governed_profile_package,
+    validate_governed_proposal,
+    validate_governed_proposal_identity,
+    validate_governed_request,
+)
+from crate.identifiers import (
+    ContentDnaId,
+    DecisionId,
+    EvidenceId,
+    GuidedMaterialId,
+    MemoryId,
+    ProposalId,
+    decision_id,
+    proposal_id_text,
+)
+from crate.runtime import (
+    action_contract,
+    admission_evidence_ids,
+    admission_is_admitted,
+    admission_reason,
+    admit_model_proposal,
+    approved_evidence_record,
+    governed_package,
+    model_proposal,
+)
+
+
+const REASON_NAMESPACE: str = "governed_profile_admission_0_1"
+
+
+def no_content_dna_id() -> Option[ContentDnaId]:
+    """Return an explicitly typed absent Content DNA identity for rejected receipts."""
+
+    return None
+
+
+def derive_decision_id(proposal_id: ProposalId) -> DecisionId:
+    value = proposal_id_text(proposal_id)
+    if value.startswith("proposal_"):
+        return decision_id(f"decision_{value[len("proposal_"):]}")
+    return decision_id(f"decision_{value}")
+
+
+def spectrum(
+    proposal_id: ProposalId,
+    admitted: bool,
+    decision: str,
+    reason: str,
+    structural_reason: Option[str],
+    evidence_ids: list[EvidenceId],
+    memory_ids: list[MemoryId],
+    guided_material_id: Option[GuidedMaterialId],
+) -> GovernedSpectrumResult:
+    return GovernedSpectrumResult(
+        decision_id=derive_decision_id(proposal_id),
+        admitted=admitted,
+        decision=decision,
+        reason_namespace=REASON_NAMESPACE,
+        reason=reason,
+        structural_reason=structural_reason,
+        admitted_evidence_ids=evidence_ids,
+        selected_memory_ids=memory_ids,
+        admitted_guided_material_id=guided_material_id,
+    )
+
+
+def rejected_spectrum(
+    proposal: GovernedProposal,
+    reason: str,
+    structural_reason: Option[str],
+) -> GovernedSpectrumResult:
+    return spectrum(proposal.proposal_id, false, "reject", reason, structural_reason, [], [], None)
+
+
+def complete(
+    findings: list[GovernedFinding],
+    spectrum: GovernedSpectrumResult,
+    visible_output: Option[str],
+    selected_memory: list[GovernedMemory],
+    guided_material: Option[AdmittedGuidedMaterial],
+    content_dna_json: Option[str],
+    receipt_json: Option[str],
+) -> CompleteGovernedEvaluation:
+    return CompleteGovernedEvaluation(
+        findings=findings,
+        spectrum=spectrum,
+        admitted_visible_output=visible_output,
+        selected_memory=selected_memory,
+        admitted_guided_material=guided_material,
+        content_dna_json=content_dna_json,
+        receipt_json=receipt_json,
+    )
+
+
+def rejected_without_receipt(
+    proposal: GovernedProposal,
+    reason: str,
+    structural_reason: Option[str],
+    findings: list[GovernedFinding],
+) -> CompleteGovernedEvaluation:
+    return complete(
+        findings,
+        rejected_spectrum(proposal, reason, structural_reason),
+        None,
+        [],
+        None,
+        None,
+        None,
+    )
+
+
+def rejected_with_receipt(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    reason: str,
+    structural_reason: Option[str],
+    findings: list[GovernedFinding],
+) -> CompleteGovernedEvaluation:
+    terminal = rejected_spectrum(proposal, reason, structural_reason)
+    receipt_json = match construct_governed_receipt(
+        package,
+        request,
+        proposal,
+        terminal,
+        None,
+        no_content_dna_id(),
+    ):
+        None => None
+        Some(receipt) => Some(receipt.to_json())
+    return complete(findings, terminal, None, [], None, None, receipt_json)
+
+
+def reject_after_identity(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    reason: str,
+    structural_reason: Option[str],
+    findings: list[GovernedFinding],
+) -> CompleteGovernedEvaluation:
+    if not validate_governed_proposal_identity(package, request, proposal).valid:
+        return rejected_without_receipt(proposal, reason, structural_reason, findings)
+    return rejected_with_receipt(package, request, proposal, reason, structural_reason, findings)
+
+
+def structural_admission(
+    package: GovernedProfilePackage,
+    proposal: GovernedProposal,
+) -> GovernedStructuralAdmission:
+    """Delegate declared-action and reviewed-evidence checks to the generic Hees kernel."""
+
+    actions = [action_contract(value.action_id, value.evidence_required) for value in package.actions]
+    evidence = [
+        approved_evidence_record(
+            value.evidence_id,
+            value.claim,
+            value.guidance,
+            value.source_ref,
+        )
+        for value in package.evidence
+    ]
+    kernel_package = governed_package(
+        "0.1",
+        package.package_id,
+        package.domain_id,
+        package.mission,
+        actions,
+        evidence,
+    )
+    kernel_proposal = model_proposal(
+        proposal.package_id,
+        proposal.domain_id,
+        proposal.action_id,
+        proposal.visible_output,
+        proposal.evidence_ids,
+    )
+    raw = admit_model_proposal(kernel_package, kernel_proposal)
+    return GovernedStructuralAdmission(
+        admitted=admission_is_admitted(raw),
+        reason=admission_reason(raw),
+        evidence_ids=admission_evidence_ids(raw),
+    )
+
+
+def selected_memory(
+    package: GovernedProfilePackage,
+    memory_ids: list[MemoryId],
+) -> list[GovernedMemory]:
+    mut result: list[GovernedMemory] = []
+    for memory_id in memory_ids:
+        match find_governed_memory(package.memory, memory_id):
+            None => return []
+            Some(atom) => result.append(atom)
+    return result
+
+
+def admitted_guided_material(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+) -> Option[AdmittedGuidedMaterial]:
+    match proposal.guided_material_id:
+        None => return None
+        Some(identifier) =>
+            match find_guided_material(package.guided_material, identifier):
+                None => return None
+                Some(material) =>
+                    return Some(
+                        AdmittedGuidedMaterial(
+                            package_id=package.package_id,
+                            package_revision=package.package_revision,
+                            package_artifact_digest=package.artifact_digest,
+                            guided_material_id=material.guided_material_id,
+                            artifact_revision=material.artifact_revision,
+                            artifact_digest=material.artifact_digest,
+                            language=request.language,
+                            audience=request.audience,
+                        ),
+                    )
+
+
+def terminal_decision(action: GovernedAction) -> GovernedTerminalClass:
+    if action.outcome_kind == GovernedOutcomeKind.Refusal:
+        return GovernedTerminalClass(decision="refuse", reason="unsupported_by_package")
+    if action.outcome_kind == GovernedOutcomeKind.Escalation:
+        return GovernedTerminalClass(decision="escalate", reason="clinical_authority_not_declared")
+    return GovernedTerminalClass(decision="deliver", reason="supported_by_package")
+
+
+def guided_projection_is_valid(
+    proposal: GovernedProposal,
+    admitted_material: Option[AdmittedGuidedMaterial],
+) -> bool:
+    match proposal.guided_material_id:
+        None => return true
+        Some(_) =>
+            match admitted_material:
+                None => return false
+                Some(_) => return true
+
+
+def complete_deliverable(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    structural: GovernedStructuralAdmission,
+    findings: list[GovernedFinding],
+    terminal: GovernedSpectrumResult,
+    selected: list[GovernedMemory],
+    admitted_material: Option[AdmittedGuidedMaterial],
+) -> CompleteGovernedEvaluation:
+    match construct_governed_content_dna(
+        package,
+        request,
+        proposal,
+        terminal,
+        selected,
+        admitted_material,
+    ):
+        None =>
+            return reject_after_identity(
+                package,
+                request,
+                proposal,
+                "content_dna_projection_failed",
+                Some(structural.reason),
+                findings,
+            )
+        Some(content_dna) =>
+            match construct_governed_receipt(
+                package,
+                request,
+                proposal,
+                terminal,
+                admitted_material,
+                Some(content_dna.content_dna_id),
+            ):
+                None =>
+                    return rejected_without_receipt(
+                        proposal,
+                        "receipt_projection_failed",
+                        Some(structural.reason),
+                        findings,
+                    )
+                Some(receipt) =>
+                    return complete(
+                        findings,
+                        terminal,
+                        Some(proposal.visible_output),
+                        selected,
+                        admitted_material,
+                        Some(content_dna.to_json()),
+                        Some(receipt.to_json()),
+                    )
+
+
+def evaluate_validated_action(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observations: list[CommitteeObservation],
+    action: GovernedAction,
+) -> CompleteGovernedEvaluation:
+    structural = structural_admission(package, proposal)
+    if not structural.admitted:
+        return reject_after_identity(
+            package,
+            request,
+            proposal,
+            "structural_admission_rejected",
+            Some(structural.reason),
+            [],
+        )
+    committee = assess_committee(package, request, proposal, action, observations)
+    if not committee.valid:
+        return reject_after_identity(
+            package,
+            request,
+            proposal,
+            committee.reason,
+            Some(structural.reason),
+            committee.findings,
+        )
+    selected = selected_memory(package, proposal.memory_ids)
+    if len(selected) != len(proposal.memory_ids):
+        return reject_after_identity(
+            package,
+            request,
+            proposal,
+            "selected_memory_invalid",
+            Some(structural.reason),
+            committee.findings,
+        )
+    admitted_material = admitted_guided_material(package, request, proposal)
+    if not guided_projection_is_valid(proposal, admitted_material):
+        return reject_after_identity(
+            package,
+            request,
+            proposal,
+            "guided_material_projection_failed",
+            Some(structural.reason),
+            committee.findings,
+        )
+    decision = terminal_decision(action)
+    terminal = spectrum(
+        proposal.proposal_id,
+        true,
+        decision.decision,
+        decision.reason,
+        Some(structural.reason),
+        structural.evidence_ids,
+        proposal.memory_ids,
+        proposal.guided_material_id,
+    )
+    if decision.decision != "deliver":
+        match construct_governed_receipt(
+            package,
+            request,
+            proposal,
+            terminal,
+            None,
+            no_content_dna_id(),
+        ):
+            None =>
+                return rejected_without_receipt(
+                    proposal,
+                    "receipt_projection_failed",
+                    Some(structural.reason),
+                    committee.findings,
+                )
+            Some(receipt) =>
+                return complete(
+                    committee.findings,
+                    terminal,
+                    Some(proposal.visible_output),
+                    [],
+                    None,
+                    None,
+                    Some(receipt.to_json()),
+                )
+    return complete_deliverable(
+        package,
+        request,
+        proposal,
+        structural,
+        committee.findings,
+        terminal,
+        selected,
+        admitted_material,
+    )
+
+
+pub def evaluate_governed_profile_with_artifacts(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observations: list[CommitteeObservation],
+) -> CompleteGovernedEvaluation:
+    """Evaluate one proposal and expose only one internally consistent terminal result."""
+
+    package_validation = validate_governed_profile_package(package)
+    if not package_validation.valid:
+        return rejected_without_receipt(proposal, package_validation.reason, None, [])
+    request_validation = validate_governed_request(request)
+    if not request_validation.valid:
+        return rejected_without_receipt(proposal, request_validation.reason, None, [])
+    proposal_validation = validate_governed_proposal(package, request, proposal)
+    if not proposal_validation.valid:
+        return reject_after_identity(package, request, proposal, proposal_validation.reason, None, [])
+    match find_governed_action(package.actions, proposal.action_id):
+        None => return reject_after_identity(package, request, proposal, "unknown_action", None, [])
+        Some(action) => return evaluate_validated_action(package, request, proposal, observations, action)
+
+
+pub def evaluate_governed_profile_json(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observations: list[CommitteeObservation],
+) -> str:
+    """Return one complete terminal evaluation as canonical JSON across the public ABI."""
+
+    return evaluate_governed_profile_with_artifacts(package, request, proposal, observations).to_json()

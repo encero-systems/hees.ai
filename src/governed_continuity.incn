@@ -1,0 +1,480 @@
+"""
+Generic goal, schedule, and session-continuity admission.
+
+The caller supplies time and proposes each operation. Hees validates declared authority and returns one terminal
+decision; it does not read a clock, choose a goal, or persist session state.
+"""
+
+from std.serde import json
+from crate.identifiers import (
+    ActionId,
+    ArtifactRevisionType,
+    DigestIdType,
+    DomainId,
+    GoalId,
+    PackageId,
+    PhaseId,
+    ProfileId,
+    ScheduleId,
+    SessionEventId,
+    SessionId,
+)
+
+
+@derive(Clone, Eq, json)
+pub enum ContinuityOperationKind(str):
+    """Closed operation set for a proposed continuity event."""
+
+    Start = "start"
+    Continue = "continue"
+    Transition = "transition"
+    Close = "close"
+
+
+@derive(Clone, Eq, json)
+pub enum ContinuityTerminal(str):
+    """Independent terminal result for a continuity proposal."""
+
+    Admitted = "admitted"
+    Rejected = "rejected"
+
+
+@derive(Clone, json)
+pub model GovernedGoal:
+    """Package-declared goal and its bounded action authority."""
+
+    pub goal_id: GoalId
+    pub entry_phase_id: PhaseId
+    pub completion_phase_ids: list[PhaseId]
+    pub allowed_action_ids: list[ActionId]
+
+
+@derive(Clone, json)
+pub model GovernedPhase:
+    """One phase and its package-declared time and transition bounds."""
+
+    pub phase_id: PhaseId
+    pub minimum_seconds: int
+    pub target_seconds: int
+    pub maximum_seconds: int
+    pub allowed_action_ids: list[ActionId]
+    pub next_phase_ids: list[PhaseId]
+
+
+@derive(Clone, json)
+pub model GovernedSchedule:
+    """Package-declared phase graph evaluated against caller-supplied monotonic time."""
+
+    pub schedule_id: ScheduleId
+    pub goal_id: GoalId
+    pub total_target_seconds: int
+    pub allowed_clock_sources: list[str]
+    pub phases: list[GovernedPhase]
+
+
+@derive(Clone, json)
+pub model ContinuityPackage:
+    """Integrity-bound package projection for goal and continuity admission."""
+
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub artifact_digest: DigestIdType
+    pub goals: list[GovernedGoal]
+    pub schedules: list[GovernedSchedule]
+
+
+@derive(Clone, json)
+pub model SessionContinuityState:
+    """State reconstructed only from previously admitted continuity events."""
+
+    pub session_id: SessionId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub artifact_digest: DigestIdType
+    pub goal_id: GoalId
+    pub schedule_id: ScheduleId
+    pub phase_id: PhaseId
+    pub started_at_seconds: int
+    pub phase_started_at_seconds: int
+    pub last_clock_seconds: int
+    pub last_event_index: int
+    pub closed: bool
+
+
+@derive(Clone, json)
+pub model ContinuityProposal:
+    """Untrusted proposal for one state transition."""
+
+    pub operation: ContinuityOperationKind
+    pub session_id: SessionId
+    pub event_id: SessionEventId
+    pub event_index: int
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub artifact_digest: DigestIdType
+    pub goal_id: GoalId
+    pub schedule_id: ScheduleId
+    pub proposed_phase_id: PhaseId
+    pub proposed_action_id: ActionId
+    pub clock_source: str
+    pub current_clock_seconds: int
+    pub prior_state: Option[SessionContinuityState]
+
+
+@derive(Clone, json)
+pub model ContinuityDecision:
+    """Hees terminal result, independent of answer delivery and persistence."""
+
+    pub terminal: ContinuityTerminal
+    pub reason: str
+    pub event_id: SessionEventId
+    pub resulting_state: Option[SessionContinuityState]
+
+
+@derive(Clone, json)
+pub model ContinuityValidation:
+    """Closed structural validation result for package continuity declarations."""
+
+    pub valid: bool
+    pub reason: str
+
+
+def valid() -> ContinuityValidation:
+    return ContinuityValidation(valid=true, reason="valid")
+
+
+def invalid(reason: str) -> ContinuityValidation:
+    return ContinuityValidation(valid=false, reason=reason)
+
+
+def rejected(proposal: ContinuityProposal, reason: str) -> ContinuityDecision:
+    return ContinuityDecision(
+        terminal=ContinuityTerminal.Rejected,
+        reason=reason,
+        event_id=proposal.event_id,
+        resulting_state=None,
+    )
+
+
+def admitted(proposal: ContinuityProposal, reason: str, state: SessionContinuityState) -> ContinuityDecision:
+    return ContinuityDecision(
+        terminal=ContinuityTerminal.Admitted,
+        reason=reason,
+        event_id=proposal.event_id,
+        resulting_state=Some(state),
+    )
+
+
+def has_duplicate_goals(goals: list[GovernedGoal]) -> bool:
+    mut seen: list[GoalId] = []
+    for goal in goals:
+        if seen.contains(goal.goal_id):
+            return true
+        seen.append(goal.goal_id)
+    return false
+
+
+def has_duplicate_schedules(schedules: list[GovernedSchedule]) -> bool:
+    mut seen: list[ScheduleId] = []
+    for schedule in schedules:
+        if seen.contains(schedule.schedule_id):
+            return true
+        seen.append(schedule.schedule_id)
+    return false
+
+
+def has_duplicate_phases(phases: list[GovernedPhase]) -> bool:
+    mut seen: list[PhaseId] = []
+    for phase in phases:
+        if seen.contains(phase.phase_id):
+            return true
+        seen.append(phase.phase_id)
+    return false
+
+
+def find_goal(goals: list[GovernedGoal], identifier: GoalId) -> Option[GovernedGoal]:
+    for goal in goals:
+        if goal.goal_id == identifier:
+            return Some(goal)
+    return None
+
+
+def find_schedule(schedules: list[GovernedSchedule], identifier: ScheduleId) -> Option[GovernedSchedule]:
+    for schedule in schedules:
+        if schedule.schedule_id == identifier:
+            return Some(schedule)
+    return None
+
+
+def find_phase(phases: list[GovernedPhase], identifier: PhaseId) -> Option[GovernedPhase]:
+    for phase in phases:
+        if phase.phase_id == identifier:
+            return Some(phase)
+    return None
+
+
+def phase_exists(phases: list[GovernedPhase], identifier: PhaseId) -> bool:
+    return match find_phase(phases, identifier):
+        None => false
+        Some(_) => true
+
+
+def goal_exists(goals: list[GovernedGoal], identifier: GoalId) -> bool:
+    return match find_goal(goals, identifier):
+        None => false
+        Some(_) => true
+
+
+def continuity_state_present(state: Option[SessionContinuityState]) -> bool:
+    return match state:
+        None => false
+        Some(_) => true
+
+
+def phase_position(phases: list[GovernedPhase], identifier: PhaseId) -> Option[int]:
+    mut position = 0
+    for phase in phases:
+        if phase.phase_id == identifier:
+            return Some(position)
+        position = position + 1
+    return None
+
+
+def validate_goal(goal: GovernedGoal, schedules: list[GovernedSchedule]) -> ContinuityValidation:
+    if len(goal.completion_phase_ids) == 0 or len(goal.allowed_action_ids) == 0:
+        return invalid("goal_declaration_empty")
+    mut matching_schedule = false
+    for schedule in schedules:
+        if schedule.goal_id == goal.goal_id:
+            matching_schedule = true
+            if not phase_exists(schedule.phases, goal.entry_phase_id):
+                return invalid("goal_entry_phase_unknown")
+            for completion_phase_id in goal.completion_phase_ids:
+                if not phase_exists(schedule.phases, completion_phase_id):
+                    return invalid("goal_completion_phase_unknown")
+    if not matching_schedule:
+        return invalid("goal_schedule_missing")
+    return valid()
+
+
+def validate_schedule(schedule: GovernedSchedule) -> ContinuityValidation:
+    if schedule.total_target_seconds <= 0 or len(schedule.allowed_clock_sources) == 0 or len(schedule.phases) == 0:
+        return invalid("schedule_declaration_empty")
+    if has_duplicate_phases(schedule.phases):
+        return invalid("duplicate_phase_id")
+    mut phase_index = 0
+    for phase in schedule.phases:
+        if (
+            phase.minimum_seconds < 0
+            or phase.target_seconds < phase.minimum_seconds
+            or phase.maximum_seconds < phase.target_seconds
+        ):
+            return invalid("invalid_phase_budget")
+        if len(phase.allowed_action_ids) == 0:
+            return invalid("phase_actions_empty")
+        if phase.next_phase_ids.contains(phase.phase_id):
+            return invalid("phase_self_cycle")
+        for next_phase_id in phase.next_phase_ids:
+            match phase_position(schedule.phases, next_phase_id):
+                None => return invalid("unknown_next_phase")
+                Some(next_index) =>
+                    if next_index <= phase_index:
+                        return invalid("phase_graph_not_topological")
+        phase_index = phase_index + 1
+    return valid()
+
+
+pub def validate_continuity_package(package: ContinuityPackage) -> ContinuityValidation:
+    """Validate the package-owned continuity graph without selecting runtime behavior."""
+
+    if len(package.goals) == 0 or len(package.schedules) == 0:
+        return invalid("continuity_declarations_empty")
+    if has_duplicate_goals(package.goals):
+        return invalid("duplicate_goal_id")
+    if has_duplicate_schedules(package.schedules):
+        return invalid("duplicate_schedule_id")
+    for schedule in package.schedules:
+        if not goal_exists(package.goals, schedule.goal_id):
+            return invalid("schedule_goal_unknown")
+        schedule_validation = validate_schedule(schedule)
+        if not schedule_validation.valid:
+            return schedule_validation
+    for goal in package.goals:
+        goal_validation = validate_goal(goal, package.schedules)
+        if not goal_validation.valid:
+            return goal_validation
+    return valid()
+
+
+def proposal_identity_matches(package: ContinuityPackage, proposal: ContinuityProposal) -> bool:
+    return (
+        proposal.profile_id == package.profile_id
+        and proposal.package_id == package.package_id
+        and proposal.domain_id == package.domain_id
+        and proposal.package_revision == package.package_revision
+        and proposal.artifact_digest == package.artifact_digest
+    )
+
+
+def prior_identity_matches(proposal: ContinuityProposal, prior: SessionContinuityState) -> bool:
+    return (
+        prior.session_id == proposal.session_id
+        and prior.profile_id == proposal.profile_id
+        and prior.package_id == proposal.package_id
+        and prior.domain_id == proposal.domain_id
+        and prior.package_revision == proposal.package_revision
+        and prior.artifact_digest == proposal.artifact_digest
+        and prior.goal_id == proposal.goal_id
+        and prior.schedule_id == proposal.schedule_id
+    )
+
+
+def resulting_state(
+    proposal: ContinuityProposal,
+    started_at_seconds: int,
+    phase_started_at_seconds: int,
+    closed: bool,
+) -> SessionContinuityState:
+    return SessionContinuityState(
+        session_id=proposal.session_id,
+        profile_id=proposal.profile_id,
+        package_id=proposal.package_id,
+        domain_id=proposal.domain_id,
+        package_revision=proposal.package_revision,
+        artifact_digest=proposal.artifact_digest,
+        goal_id=proposal.goal_id,
+        schedule_id=proposal.schedule_id,
+        phase_id=proposal.proposed_phase_id,
+        started_at_seconds=started_at_seconds,
+        phase_started_at_seconds=phase_started_at_seconds,
+        last_clock_seconds=proposal.current_clock_seconds,
+        last_event_index=proposal.event_index,
+        closed=closed,
+    )
+
+
+def evaluate_with_prior(
+    goal: GovernedGoal,
+    schedule: GovernedSchedule,
+    proposed_phase: GovernedPhase,
+    proposal: ContinuityProposal,
+    prior: SessionContinuityState,
+) -> ContinuityDecision:
+    if not prior_identity_matches(proposal, prior):
+        return rejected(proposal, "prior_state_identity_mismatch")
+    if prior.closed:
+        return rejected(proposal, "session_already_closed")
+    if proposal.event_index != prior.last_event_index + 1:
+        return rejected(proposal, "event_index_not_monotonic")
+    if proposal.current_clock_seconds < prior.last_clock_seconds:
+        return rejected(proposal, "clock_regression")
+
+    return match find_phase(schedule.phases, prior.phase_id):
+        None => rejected(proposal, "prior_phase_unknown")
+        Some(prior_phase) =>
+            if proposal.operation == ContinuityOperationKind.Continue:
+                if proposal.proposed_phase_id != prior.phase_id:
+                    return rejected(proposal, "continue_phase_mismatch")
+                return admitted(
+                    proposal,
+                    "continue_current_phase",
+                    resulting_state(proposal, prior.started_at_seconds, prior.phase_started_at_seconds, false),
+                )
+
+            if proposal.operation == ContinuityOperationKind.Transition:
+                if not prior_phase.next_phase_ids.contains(proposal.proposed_phase_id):
+                    return rejected(proposal, "phase_transition_not_declared")
+                if proposal.current_clock_seconds - prior.phase_started_at_seconds < prior_phase.minimum_seconds:
+                    return rejected(proposal, "phase_minimum_not_met")
+                return admitted(
+                    proposal,
+                    "declared_phase_transition",
+                    resulting_state(proposal, prior.started_at_seconds, proposal.current_clock_seconds, false),
+                )
+
+            if proposal.operation == ContinuityOperationKind.Close:
+                if (proposed_phase.phase_id != prior.phase_id or not goal.completion_phase_ids.contains(prior.phase_id)):
+                    return rejected(proposal, "goal_close_not_declared")
+                if proposal.current_clock_seconds - prior.started_at_seconds < schedule.total_target_seconds:
+                    return rejected(proposal, "goal_budget_not_reached")
+                return admitted(
+                    proposal,
+                    "declared_goal_closed",
+                    resulting_state(proposal, prior.started_at_seconds, prior.phase_started_at_seconds, true),
+                )
+
+            return rejected(proposal, "unknown_continuity_operation")
+
+
+def evaluate_with_phase(
+    goal: GovernedGoal,
+    schedule: GovernedSchedule,
+    proposed_phase: GovernedPhase,
+    proposal: ContinuityProposal,
+) -> ContinuityDecision:
+    if not goal.allowed_action_ids.contains(proposal.proposed_action_id):
+        return rejected(proposal, "action_not_allowed_for_goal")
+    if not proposed_phase.allowed_action_ids.contains(proposal.proposed_action_id):
+        return rejected(proposal, "action_not_allowed_for_phase")
+    if proposal.current_clock_seconds < 0 or proposal.event_index < 0:
+        return rejected(proposal, "invalid_event_coordinates")
+
+    if proposal.operation == ContinuityOperationKind.Start:
+        if continuity_state_present(proposal.prior_state.clone()):
+            return rejected(proposal, "start_requires_empty_state")
+        if proposal.event_index != 0:
+            return rejected(proposal, "start_event_index_invalid")
+        if proposal.proposed_phase_id != goal.entry_phase_id:
+            return rejected(proposal, "start_phase_not_declared")
+        return admitted(
+            proposal,
+            "declared_goal_started",
+            resulting_state(proposal, proposal.current_clock_seconds, proposal.current_clock_seconds, false),
+        )
+
+    return match proposal.prior_state:
+        None => rejected(proposal, "prior_state_required")
+        Some(prior) => evaluate_with_prior(goal, schedule, proposed_phase, proposal, prior)
+
+
+def evaluate_with_schedule(
+    goal: GovernedGoal,
+    schedule: GovernedSchedule,
+    proposal: ContinuityProposal,
+) -> ContinuityDecision:
+    if schedule.goal_id != goal.goal_id:
+        return rejected(proposal, "schedule_goal_mismatch")
+    if not schedule.allowed_clock_sources.contains(f"{proposal.clock_source}"):
+        return rejected(proposal, "clock_source_not_allowed")
+    return match find_phase(schedule.phases, proposal.proposed_phase_id):
+        None => rejected(proposal, "unknown_phase")
+        Some(proposed_phase) => evaluate_with_phase(goal, schedule, proposed_phase, proposal)
+
+
+def evaluate_with_goal(
+    package: ContinuityPackage,
+    goal: GovernedGoal,
+    proposal: ContinuityProposal,
+) -> ContinuityDecision:
+    return match find_schedule(package.schedules, proposal.schedule_id):
+        None => rejected(proposal, "unknown_schedule")
+        Some(schedule) => evaluate_with_schedule(goal, schedule, proposal)
+
+
+pub def evaluate_continuity(package: ContinuityPackage, proposal: ContinuityProposal) -> ContinuityDecision:
+    """Admit one caller-proposed continuity event against package-declared authority."""
+
+    package_validation = validate_continuity_package(package)
+    if not package_validation.valid:
+        return rejected(proposal, "invalid_continuity_package")
+    if not proposal_identity_matches(package, proposal):
+        return rejected(proposal, "package_identity_mismatch")
+    return match find_goal(package.goals, proposal.goal_id):
+        None => rejected(proposal, "unknown_goal")
+        Some(goal) => evaluate_with_goal(package, goal, proposal)
