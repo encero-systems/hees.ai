@@ -175,7 +175,7 @@ def structural_admission(
     package: GovernedProfilePackage,
     proposal: GovernedProposal,
 ) -> GovernedStructuralAdmission:
-    """Delegate declared-action and reviewed-evidence checks to the generic Hees kernel."""
+    """Delegate declared-action and reviewed-evidence checks to the generic Hees.ai kernel."""
 
     actions = [action_contract(value.action_id, value.evidence_required) for value in package.actions]
     evidence = [

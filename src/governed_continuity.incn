@@ -1,7 +1,7 @@
 """
 Generic goal, schedule, and session-continuity admission.
 
-The caller supplies time and proposes each operation. Hees validates declared authority and returns one terminal
+The caller supplies time and proposes each operation. Hees.ai validates declared authority and returns one terminal
 decision; it does not read a clock, choose a goal, or persist session state.
 """
 
@@ -129,7 +129,7 @@ pub model ContinuityProposal:
 
 @derive(Clone, json)
 pub model ContinuityDecision:
-    """Hees terminal result, independent of answer delivery and persistence."""
+    """Hees.ai terminal result, independent of answer delivery and persistence."""
 
     pub terminal: ContinuityTerminal
     pub reason: str

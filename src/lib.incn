@@ -1,4 +1,4 @@
-"""Checked public surface for the Hees kernel and bounded Console profile."""
+"""Checked public surface for the Hees.ai kernel and bounded Console profile."""
 
 pub from identifiers import (
     ActionId,

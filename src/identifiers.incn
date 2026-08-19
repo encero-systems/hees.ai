@@ -1,4 +1,4 @@
-"""Validated nominal identifier vocabulary shared by every public Hees contract."""
+"""Validated nominal identifier vocabulary shared by every public Hees.ai contract."""
 
 from std.serde import json
 
@@ -170,7 +170,7 @@ pub type ContractId = newtype SymbolicIdType:
 
 @derive(Clone, Eq, json)
 pub type DecisionId = newtype SymbolicIdType:
-    """Nominal identity for one deterministic Hees decision."""
+    """Nominal identity for one deterministic Hees.ai decision."""
 
 
 @derive(Clone, Eq, json)
@@ -240,7 +240,7 @@ pub type PhaseId = newtype SymbolicIdType:
 
 @derive(Clone, Eq, json)
 pub type ProfileId = newtype SymbolicIdType:
-    """Nominal identity for one Hees evaluation profile."""
+    """Nominal identity for one Hees.ai evaluation profile."""
 
 
 @derive(Clone, Eq, json)
@@ -275,7 +275,7 @@ pub type ProviderId = newtype SymbolicIdType:
 
 @derive(Clone, Eq, json)
 pub type ReceiptId = newtype DigestIdType:
-    """Content-addressed identity for one Hees decision receipt."""
+    """Content-addressed identity for one Hees.ai decision receipt."""
 
 
 @derive(Clone, Eq, json)

@@ -118,7 +118,7 @@ pub model GuidedMaterial:
 
 @derive(Clone, json)
 pub model GovernedPolicy:
-    """Package-owned committee requirements evaluated by Hees."""
+    """Package-owned committee requirements evaluated by Hees.ai."""
 
     pub constraint_plan_id: ConstraintPlanId
     pub constraint_plan_revision: RevisionType
@@ -198,7 +198,7 @@ pub model CommitteeObservation:
 
 @derive(Clone, json)
 pub model GovernedFinding:
-    """Hees-owned finding derived from one validated committee observation."""
+    """Hees.ai-owned finding derived from one validated committee observation."""
 
     pub contract_version: ContractId
     pub profile_id: ProfileId
@@ -226,7 +226,7 @@ pub model AdmittedGuidedMaterial:
 
 @derive(Clone, json)
 pub model GovernedSpectrumResult:
-    """Terminal Hees decision over proposal, committee findings, and package relationships."""
+    """Terminal Hees.ai decision over proposal, committee findings, and package relationships."""
 
     pub decision_id: DecisionId
     pub admitted: bool

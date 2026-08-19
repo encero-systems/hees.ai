@@ -1,7 +1,7 @@
 """
 Independent admission for governed memory inspection, prompt selection, and lifecycle operations.
 
-Retrieval providers may nominate identifiers, but package declarations and Hees determine whether a record is eligible
+Retrieval providers may nominate identifiers, but package declarations and Hees.ai determine whether a record is eligible
 for the proposed operation. This prototype is adjacent to RFC 003 and does not claim to implement its retrieval ingress.
 """
 
@@ -121,7 +121,7 @@ pub model MemoryOperationProposal:
 
 @derive(Clone, json)
 pub model MemoryOperationDecision:
-    """Hees terminal result, independent of answer delivery and storage mutation."""
+    """Hees.ai terminal result, independent of answer delivery and storage mutation."""
 
     pub terminal: MemoryOperationTerminal
     pub reason: str

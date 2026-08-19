@@ -1,7 +1,7 @@
 """
 Checked public facade for generic package-governed interactions.
 
-Callers may supply package projections, requests, proposals, and committee observations. Hees validates their exact
+Callers may supply package projections, requests, proposals, and committee observations. Hees.ai validates their exact
 relationships and returns one atomic terminal result. This surface does not author packages, retrieve memory, invoke
 models, or materialize guided payloads.
 """

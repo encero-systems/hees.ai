@@ -1,4 +1,4 @@
-"""Identity validation and Hees-owned findings for bounded committee observations."""
+"""Identity validation and Hees.ai-owned findings for bounded committee observations."""
 
 from crate.governed_profile_identity import digest_governed_proposal
 from crate.governed_profile_models import (
