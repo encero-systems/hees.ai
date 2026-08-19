@@ -213,7 +213,7 @@ Three real Draft RFCs (001, 002, 006) already claim ownership of the general sha
 ## Open questions
 
 - Should `GovernedSpectrumResult` be renamed to avoid implying RFC 001 conformance, given this module's real relationship to RFC 001 is "narrower analog," not "implementation"?
-- Does RFC 010's eventual stabilization come to depend on this module (replacing `console_profile_0_1`'s bespoke evaluation with a call to `evaluate_governed_profile_with_artifacts`), or do they remain independent siblings? This is the central editorial question flagged in `governed_profile_scoping_notes.md` and this RFC does not resolve it — it only makes the technical relationship precise enough for that decision to be made.
+- Does RFC 010's eventual stabilization come to depend on this module (replacing `console_profile_0_1`'s bespoke evaluation with a call to `evaluate_governed_profile_with_artifacts`), or do they remain independent siblings? This RFC does not resolve it — it only makes the technical relationship precise enough for that decision to be made.
 - Should the single `"admitted_delivery"` Content DNA state gain an explicit `no_answer`-style counterpart for `refuse`/`escalate` outcomes, matching RFC 002, or is "simply absent" an acceptable permanent simplification?
 - Should this RFC define exact byte-size/collection bounds, given the current implementation does not enforce any beyond structural non-emptiness (mirroring RFC 013/014's same open question)?
 - Proposal issue [#37](https://github.com/encero-systems/hees.ai/issues/37) is now filed; given the density of relationships to Draft RFCs 001/002/006/010, that discussion is more load-bearing here than it was for RFC 013/014, and this document should stay `Draft` until it resolves.
