@@ -21,7 +21,6 @@ from crate.identifiers import (
     profile_id_text,
 )
 
-
 const OBSERVATION_CONTRACT: str = "governed_committee_observation_0_1"
 const FINDING_CONTRACT: str = "governed_committee_finding_0_1"
 const PROFILE_ID: str = "governed_profile_0_1"
@@ -38,10 +37,7 @@ def finding_identity(observation: CommitteeObservation) -> FindingId:
     return finding_id(f"finding_{value}")
 
 
-def derive_finding(
-    package: GovernedProfilePackage,
-    observation: CommitteeObservation,
-) -> GovernedFinding:
+def derive_finding(package: GovernedProfilePackage, observation: CommitteeObservation) -> GovernedFinding:
     return GovernedFinding(
         contract_version=contract_id(FINDING_CONTRACT),
         profile_id=package.profile_id,
@@ -54,10 +50,7 @@ def derive_finding(
     )
 
 
-def roles_match_exactly(
-    required: list[CommitteeRoleId],
-    observations: list[CommitteeObservation],
-) -> bool:
+def roles_match_exactly(required: list[CommitteeRoleId], observations: list[CommitteeObservation]) -> bool:
     if len(required) != len(observations):
         return false
     mut seen: list[CommitteeRoleId] = []

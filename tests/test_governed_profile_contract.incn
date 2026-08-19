@@ -42,7 +42,6 @@ from crate.identifiers import (
     revision,
 )
 
-
 const PACKAGE_DIGEST: str = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 const SOURCE_DIGEST: str = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 const PROVENANCE_DIGEST: str = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
@@ -105,85 +104,68 @@ def sleep_package() -> GovernedProfilePackage:
         package_revision=artifact_revision("0.1.0-candidate.1"),
         artifact_digest=digest_id_type(PACKAGE_DIGEST),
         mission="Provide bounded sleep education from reviewed package material.",
-        actions=[
-            action("answer_from_package", GovernedOutcomeKind.Answer, true, true),
-            action("present_guided_card", GovernedOutcomeKind.GuidedMaterial, true, true),
-            action("navigate_guided_card", GovernedOutcomeKind.GuidedNavigation, true, true),
-            action("refuse_unsupported", GovernedOutcomeKind.Refusal, false, false),
-            action("escalate_clinical_request", GovernedOutcomeKind.Escalation, false, false),
-        ],
-        evidence=[
-            evidence("sleep_evidence_evening_screens", "sleep_source_sleep_smarter:20-22"),
-            evidence("sleep_evidence_regular_timing", "sleep_source_sleep_smarter:129-130"),
-            evidence("sleep_evidence_relaxation_elements", "sleep_source_relaxation_response:76-79"),
-        ],
-        memory=[
-            memory("sleep_atom_evening_screens", "sleep_evidence_evening_screens"),
-            memory("sleep_atom_regular_timing", "sleep_evidence_regular_timing"),
-            memory("sleep_atom_relaxation_elements", "sleep_evidence_relaxation_elements"),
-        ],
-        guided_material=[
-            GuidedMaterial(
-                guided_material_id=guided_material_id("sleep_guide_wind_down_0_1"),
-                artifact_revision=artifact_revision("0.1.0"),
-                artifact_digest=digest_id_type(CARD_DIGEST),
-                language="en",
-                audience=audience_id("general_adult_learner"),
-                evidence_ids=[
-                    evidence_id("sleep_evidence_evening_screens"),
-                    evidence_id("sleep_evidence_regular_timing"),
-                    evidence_id("sleep_evidence_relaxation_elements"),
-                ],
-                memory_ids=[
-                    memory_id("sleep_atom_evening_screens"),
-                    memory_id("sleep_atom_regular_timing"),
-                    memory_id("sleep_atom_relaxation_elements"),
-                ],
-                presentation_action_id=action_id("present_guided_card"),
-                navigation_action_id=action_id("navigate_guided_card"),
-                steps=[
-                    guided_step_id("choose_timing_anchor"),
-                    guided_step_id("choose_screen_transition"),
-                    guided_step_id("choose_calm_activity"),
-                ],
-                transitions=[
-                    GuidedTransition(
-                        current_step_id=guided_step_id("choose_timing_anchor"),
-                        next_step_id=guided_step_id("choose_screen_transition"),
-                    ),
-                    GuidedTransition(
-                        current_step_id=guided_step_id("choose_screen_transition"),
-                        next_step_id=guided_step_id("choose_calm_activity"),
-                    ),
-                ],
-                review_state="approved",
-                review_revision=revision("1.0.0"),
-                rights_state="allowed",
-            ),
-        ],
+        actions=[action("answer_from_package", GovernedOutcomeKind.Answer, true, true), action(
+            "present_guided_card",
+            GovernedOutcomeKind.GuidedMaterial,
+            true,
+            true,
+        ), action("navigate_guided_card", GovernedOutcomeKind.GuidedNavigation, true, true), action(
+            "refuse_unsupported",
+            GovernedOutcomeKind.Refusal,
+            false,
+            false,
+        ), action("escalate_clinical_request", GovernedOutcomeKind.Escalation, false, false)],
+        evidence=[evidence("sleep_evidence_evening_screens", "sleep_source_sleep_smarter:20-22"), evidence(
+            "sleep_evidence_regular_timing",
+            "sleep_source_sleep_smarter:129-130",
+        ), evidence("sleep_evidence_relaxation_elements", "sleep_source_relaxation_response:76-79")],
+        memory=[memory("sleep_atom_evening_screens", "sleep_evidence_evening_screens"), memory(
+            "sleep_atom_regular_timing",
+            "sleep_evidence_regular_timing",
+        ), memory("sleep_atom_relaxation_elements", "sleep_evidence_relaxation_elements")],
+        guided_material=[GuidedMaterial(
+            guided_material_id=guided_material_id("sleep_guide_wind_down_0_1"),
+            artifact_revision=artifact_revision("0.1.0"),
+            artifact_digest=digest_id_type(CARD_DIGEST),
+            language="en",
+            audience=audience_id("general_adult_learner"),
+            evidence_ids=[evidence_id("sleep_evidence_evening_screens"), evidence_id("sleep_evidence_regular_timing"), evidence_id(
+                "sleep_evidence_relaxation_elements",
+            )],
+            memory_ids=[memory_id("sleep_atom_evening_screens"), memory_id("sleep_atom_regular_timing"), memory_id(
+                "sleep_atom_relaxation_elements",
+            )],
+            presentation_action_id=action_id("present_guided_card"),
+            navigation_action_id=action_id("navigate_guided_card"),
+            steps=[guided_step_id("choose_timing_anchor"), guided_step_id("choose_screen_transition"), guided_step_id(
+                "choose_calm_activity",
+            )],
+            transitions=[GuidedTransition(
+                current_step_id=guided_step_id("choose_timing_anchor"),
+                next_step_id=guided_step_id("choose_screen_transition"),
+            ), GuidedTransition(
+                current_step_id=guided_step_id("choose_screen_transition"),
+                next_step_id=guided_step_id("choose_calm_activity"),
+            )],
+            review_state="approved",
+            review_revision=revision("1.0.0"),
+            rights_state="allowed",
+        )],
         policy=GovernedPolicy(
             constraint_plan_id=constraint_plan_id("sleep_demo_committee_policy"),
             constraint_plan_revision=revision("1.0.0"),
-            required_roles=[
-                committee_role_id("evidence_support"),
-                committee_role_id("scope"),
-                committee_role_id("clinical_safety"),
-                committee_role_id("question_fit"),
-                committee_role_id("language_clarity"),
-                committee_role_id("contextual_tone"),
-            ],
+            required_roles=[committee_role_id("evidence_support"), committee_role_id("scope"), committee_role_id(
+                "clinical_safety",
+            ), committee_role_id("question_fit"), committee_role_id("language_clarity"), committee_role_id(
+                "contextual_tone",
+            )],
             require_all_passed=true,
         ),
     )
 
 
 def request(question: str) -> GovernedRequest:
-    return bind_governed_request(
-        request_id("request_sleep_demo"),
-        question,
-        "en",
-        audience_id("general_adult_learner"),
-    )
+    return bind_governed_request(request_id("request_sleep_demo"), question, "en", audience_id("general_adult_learner"))
 
 
 def answer_proposal(package: GovernedProfilePackage, bound: GovernedRequest) -> GovernedProposal:
@@ -193,10 +175,7 @@ def answer_proposal(package: GovernedProfilePackage, bound: GovernedRequest) -> 
         proposal_id("proposal_sleep_answer"),
         action_id("answer_from_package"),
         "Reducing stimulating screen exposure and keeping a steadier schedule are two options supported by the reviewed material.",
-        [
-            evidence_id("sleep_evidence_evening_screens"),
-            evidence_id("sleep_evidence_regular_timing"),
-        ],
+        [evidence_id("sleep_evidence_evening_screens"), evidence_id("sleep_evidence_regular_timing")],
         [memory_id("sleep_atom_evening_screens"), memory_id("sleep_atom_regular_timing")],
         no_guided_material(),
         no_guided_step(),
@@ -209,26 +188,16 @@ def passed_committee(
     bound: GovernedRequest,
     proposal: GovernedProposal,
 ) -> list[CommitteeObservation]:
-    roles = [
-        "evidence_support",
-        "scope",
-        "clinical_safety",
-        "question_fit",
-        "language_clarity",
-        "contextual_tone",
-    ]
-    return [
-        committee_observation(
-            package,
-            bound,
-            proposal,
-            f"observation_{role}",
-            committee_role_id(role),
-            CommitteeVerdict.Pass,
-            digest_id_type(EVALUATOR_DIGEST),
-        )
-        for role in roles
-    ]
+    roles = ["evidence_support", "scope", "clinical_safety", "question_fit", "language_clarity", "contextual_tone"]
+    return [committee_observation(
+        package,
+        bound,
+        proposal,
+        f"observation_{role}",
+        committee_role_id(role),
+        CommitteeVerdict.Pass,
+        digest_id_type(EVALUATOR_DIGEST),
+    ) for role in roles]
 
 
 def test_supported_answer_requires_and_binds_committee_memory_content_dna_and_receipt() -> None:
@@ -279,16 +248,12 @@ def test_guided_material_is_admitted_only_as_an_exact_package_owned_identity() -
         proposal_id("proposal_sleep_guide"),
         action_id("present_guided_card"),
         "The reviewed package contains a short wind-down guide.",
-        [
-            evidence_id("sleep_evidence_evening_screens"),
-            evidence_id("sleep_evidence_regular_timing"),
-            evidence_id("sleep_evidence_relaxation_elements"),
-        ],
-        [
-            memory_id("sleep_atom_evening_screens"),
-            memory_id("sleep_atom_regular_timing"),
-            memory_id("sleep_atom_relaxation_elements"),
-        ],
+        [evidence_id("sleep_evidence_evening_screens"), evidence_id("sleep_evidence_regular_timing"), evidence_id(
+            "sleep_evidence_relaxation_elements",
+        )],
+        [memory_id("sleep_atom_evening_screens"), memory_id("sleep_atom_regular_timing"), memory_id(
+            "sleep_atom_relaxation_elements",
+        )],
         Some(guided_material_id("sleep_guide_wind_down_0_1")),
         no_guided_step(),
         no_guided_step(),
@@ -359,16 +324,12 @@ def test_guided_language_audience_and_navigation_are_governed() -> None:
         proposal_id("proposal_wrong_language"),
         action_id("present_guided_card"),
         "Show the guide.",
-        [
-            evidence_id("sleep_evidence_evening_screens"),
-            evidence_id("sleep_evidence_regular_timing"),
-            evidence_id("sleep_evidence_relaxation_elements"),
-        ],
-        [
-            memory_id("sleep_atom_evening_screens"),
-            memory_id("sleep_atom_regular_timing"),
-            memory_id("sleep_atom_relaxation_elements"),
-        ],
+        [evidence_id("sleep_evidence_evening_screens"), evidence_id("sleep_evidence_regular_timing"), evidence_id(
+            "sleep_evidence_relaxation_elements",
+        )],
+        [memory_id("sleep_atom_evening_screens"), memory_id("sleep_atom_regular_timing"), memory_id(
+            "sleep_atom_relaxation_elements",
+        )],
         Some(guided_material_id("sleep_guide_wind_down_0_1")),
         no_guided_step(),
         no_guided_step(),
@@ -385,16 +346,12 @@ def test_guided_language_audience_and_navigation_are_governed() -> None:
         proposal_id("proposal_invalid_navigation"),
         action_id("navigate_guided_card"),
         "Move to the requested guide step.",
-        [
-            evidence_id("sleep_evidence_evening_screens"),
-            evidence_id("sleep_evidence_regular_timing"),
-            evidence_id("sleep_evidence_relaxation_elements"),
-        ],
-        [
-            memory_id("sleep_atom_evening_screens"),
-            memory_id("sleep_atom_regular_timing"),
-            memory_id("sleep_atom_relaxation_elements"),
-        ],
+        [evidence_id("sleep_evidence_evening_screens"), evidence_id("sleep_evidence_regular_timing"), evidence_id(
+            "sleep_evidence_relaxation_elements",
+        )],
+        [memory_id("sleep_atom_evening_screens"), memory_id("sleep_atom_regular_timing"), memory_id(
+            "sleep_atom_relaxation_elements",
+        )],
         Some(guided_material_id("sleep_guide_wind_down_0_1")),
         Some(guided_step_id("choose_timing_anchor")),
         Some(guided_step_id("choose_calm_activity")),

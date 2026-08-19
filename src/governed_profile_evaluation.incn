@@ -1,10 +1,7 @@
 """Atomic terminal evaluation for generic package-governed interactions."""
 
 from std.serde.json import Serialize
-from crate.governed_profile_artifacts import (
-    construct_governed_content_dna,
-    construct_governed_receipt,
-)
+from crate.governed_profile_artifacts import construct_governed_content_dna, construct_governed_receipt
 from crate.governed_profile_committee import assess_committee
 from crate.governed_profile_models import (
     AdmittedGuidedMaterial,
@@ -50,7 +47,6 @@ from crate.runtime import (
     governed_package,
     model_proposal,
 )
-
 
 const REASON_NAMESPACE: str = "governed_profile_admission_0_1"
 
@@ -125,15 +121,7 @@ def rejected_without_receipt(
     structural_reason: Option[str],
     findings: list[GovernedFinding],
 ) -> CompleteGovernedEvaluation:
-    return complete(
-        findings,
-        rejected_spectrum(proposal, reason, structural_reason),
-        None,
-        [],
-        None,
-        None,
-        None,
-    )
+    return complete(findings, rejected_spectrum(proposal, reason, structural_reason), None, [], None, None, None)
 
 
 def rejected_with_receipt(
@@ -145,16 +133,10 @@ def rejected_with_receipt(
     findings: list[GovernedFinding],
 ) -> CompleteGovernedEvaluation:
     terminal = rejected_spectrum(proposal, reason, structural_reason)
-    receipt_json = match construct_governed_receipt(
-        package,
-        request,
-        proposal,
-        terminal,
-        None,
-        no_content_dna_id(),
-    ):
+    receipt_json = match construct_governed_receipt(package, request, proposal, terminal, None, no_content_dna_id()):
         None => None
         Some(receipt) => Some(receipt.to_json())
+
     return complete(findings, terminal, None, [], None, None, receipt_json)
 
 
@@ -171,30 +153,12 @@ def reject_after_identity(
     return rejected_with_receipt(package, request, proposal, reason, structural_reason, findings)
 
 
-def structural_admission(
-    package: GovernedProfilePackage,
-    proposal: GovernedProposal,
-) -> GovernedStructuralAdmission:
+def structural_admission(package: GovernedProfilePackage, proposal: GovernedProposal) -> GovernedStructuralAdmission:
     """Delegate declared-action and reviewed-evidence checks to the generic Hees.ai kernel."""
 
     actions = [action_contract(value.action_id, value.evidence_required) for value in package.actions]
-    evidence = [
-        approved_evidence_record(
-            value.evidence_id,
-            value.claim,
-            value.guidance,
-            value.source_ref,
-        )
-        for value in package.evidence
-    ]
-    kernel_package = governed_package(
-        "0.1",
-        package.package_id,
-        package.domain_id,
-        package.mission,
-        actions,
-        evidence,
-    )
+    evidence = [approved_evidence_record(value.evidence_id, value.claim, value.guidance, value.source_ref) for value in package.evidence]
+    kernel_package = governed_package("0.1", package.package_id, package.domain_id, package.mission, actions, evidence)
     kernel_proposal = model_proposal(
         proposal.package_id,
         proposal.domain_id,
@@ -210,10 +174,7 @@ def structural_admission(
     )
 
 
-def selected_memory(
-    package: GovernedProfilePackage,
-    memory_ids: list[MemoryId],
-) -> list[GovernedMemory]:
+def selected_memory(package: GovernedProfilePackage, memory_ids: list[MemoryId]) -> list[GovernedMemory]:
     mut result: list[GovernedMemory] = []
     for memory_id in memory_ids:
         match find_governed_memory(package.memory, memory_id):
@@ -255,10 +216,7 @@ def terminal_decision(action: GovernedAction) -> GovernedTerminalClass:
     return GovernedTerminalClass(decision="deliver", reason="supported_by_package")
 
 
-def guided_projection_is_valid(
-    proposal: GovernedProposal,
-    admitted_material: Option[AdmittedGuidedMaterial],
-) -> bool:
+def guided_projection_is_valid(proposal: GovernedProposal, admitted_material: Option[AdmittedGuidedMaterial]) -> bool:
     match proposal.guided_material_id:
         None => return true
         Some(_) =>
@@ -277,14 +235,7 @@ def complete_deliverable(
     selected: list[GovernedMemory],
     admitted_material: Option[AdmittedGuidedMaterial],
 ) -> CompleteGovernedEvaluation:
-    match construct_governed_content_dna(
-        package,
-        request,
-        proposal,
-        terminal,
-        selected,
-        admitted_material,
-    ):
+    match construct_governed_content_dna(package, request, proposal, terminal, selected, admitted_material):
         None =>
             return reject_after_identity(
                 package,
@@ -381,14 +332,7 @@ def evaluate_validated_action(
         proposal.guided_material_id,
     )
     if decision.decision != "deliver":
-        match construct_governed_receipt(
-            package,
-            request,
-            proposal,
-            terminal,
-            None,
-            no_content_dna_id(),
-        ):
+        match construct_governed_receipt(package, request, proposal, terminal, None, no_content_dna_id()):
             None =>
                 return rejected_without_receipt(
                     proposal,

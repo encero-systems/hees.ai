@@ -18,11 +18,7 @@ from crate.governed_profile_models import (
     GovernedSpectrumResult,
 )
 from crate.governed_profile_validation import find_governed_evidence
-from crate.identifiers import (
-    ContentDnaId,
-    ReceiptId,
-    contract_id,
-)
+from crate.identifiers import ContentDnaId, ReceiptId, contract_id
 
 
 def package_identity(package: GovernedProfilePackage) -> GovernedPackageIdentity:

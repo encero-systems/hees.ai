@@ -40,7 +40,6 @@ from crate.identifiers import (
     request_id_text,
 )
 
-
 const PACKAGE_CONTRACT: str = "governed_profile_package_0_1"
 const PROPOSAL_CONTRACT: str = "governed_profile_proposal_0_1"
 const PROFILE_ID: str = "governed_profile_0_1"
@@ -108,18 +107,14 @@ def memory_identity_is_safe(memory: GovernedMemory) -> bool:
 
 
 def guided_identity_is_safe(material: GuidedMaterial) -> bool:
-    return (
-        identifier_text_is_safe(guided_material_id_text(material.guided_material_id))
-        and artifact_revision_text_is_safe(artifact_revision_text(material.artifact_revision))
-        and digest_id_text_is_safe(digest_id_type_text(material.artifact_digest))
-        and identifier_text_is_safe(audience_id_text(material.audience))
-    )
+    return (identifier_text_is_safe(guided_material_id_text(material.guided_material_id)) and artifact_revision_text_is_safe(
+        artifact_revision_text(material.artifact_revision),
+    ) and digest_id_text_is_safe(digest_id_type_text(material.artifact_digest)) and identifier_text_is_safe(
+        audience_id_text(material.audience),
+    ))
 
 
-pub def find_governed_action(
-    actions: list[GovernedAction],
-    action_id: ActionId,
-) -> Option[GovernedAction]:
+pub def find_governed_action(actions: list[GovernedAction], action_id: ActionId) -> Option[GovernedAction]:
     """Resolve one package-declared action by nominal identity."""
 
     for action in actions:
@@ -128,10 +123,7 @@ pub def find_governed_action(
     return None
 
 
-pub def find_governed_evidence(
-    evidence: list[GovernedEvidence],
-    evidence_id: EvidenceId,
-) -> Option[GovernedEvidence]:
+pub def find_governed_evidence(evidence: list[GovernedEvidence], evidence_id: EvidenceId) -> Option[GovernedEvidence]:
     """Resolve one package evidence record by nominal identity."""
 
     for record in evidence:
@@ -140,10 +132,7 @@ pub def find_governed_evidence(
     return None
 
 
-pub def find_governed_memory(
-    memory: list[GovernedMemory],
-    memory_id: MemoryId,
-) -> Option[GovernedMemory]:
+pub def find_governed_memory(memory: list[GovernedMemory], memory_id: MemoryId) -> Option[GovernedMemory]:
     """Resolve one governed memory atom by nominal identity."""
 
     for atom in memory:
@@ -182,10 +171,7 @@ def memory_ids_equal_set(left: list[MemoryId], right: list[MemoryId]) -> bool:
     return true
 
 
-def selected_evidence_for_memory(
-    package: GovernedProfilePackage,
-    memory_ids: list[MemoryId],
-) -> list[EvidenceId]:
+def selected_evidence_for_memory(package: GovernedProfilePackage, memory_ids: list[MemoryId]) -> list[EvidenceId]:
     """Collect the duplicate-free evidence union of selected memory in package order."""
 
     mut result: list[EvidenceId] = []
@@ -232,9 +218,7 @@ def validate_package_shape(package: GovernedProfilePackage) -> GovernedValidatio
         return governed_validation_error("invalid_package", "duplicate_evidence_id")
     if has_duplicate_strings([memory_id_text(value.memory_id) for value in package.memory]):
         return governed_validation_error("invalid_package", "duplicate_memory_id")
-    if has_duplicate_strings(
-        [guided_material_id_text(value.guided_material_id) for value in package.guided_material],
-    ):
+    if has_duplicate_strings([guided_material_id_text(value.guided_material_id) for value in package.guided_material]):
         return governed_validation_error("invalid_package", "duplicate_guided_material_id")
     return governed_validation_ok()
 
@@ -245,11 +229,7 @@ def validate_action(action: GovernedAction) -> GovernedValidation:
     if action.outcome_kind in [GovernedOutcomeKind.Refusal, GovernedOutcomeKind.Escalation]:
         if action.evidence_required or action.committee_required:
             return governed_validation_error("invalid_package", "terminal_boundary_action_requires_support")
-    if action.outcome_kind in [
-        GovernedOutcomeKind.Answer,
-        GovernedOutcomeKind.GuidedMaterial,
-        GovernedOutcomeKind.GuidedNavigation,
-    ]:
+    if action.outcome_kind in [GovernedOutcomeKind.Answer, GovernedOutcomeKind.GuidedMaterial, GovernedOutcomeKind.GuidedNavigation]:
         if not action.evidence_required:
             return governed_validation_error("invalid_package", "deliverable_action_missing_evidence_requirement")
     return governed_validation_ok()
@@ -312,10 +292,7 @@ def validate_transition(material: GuidedMaterial, transition: GuidedTransition) 
     return governed_validation_ok()
 
 
-def validate_guided_material(
-    package: GovernedProfilePackage,
-    material: GuidedMaterial,
-) -> GovernedValidation:
+def validate_guided_material(package: GovernedProfilePackage, material: GuidedMaterial) -> GovernedValidation:
     if not guided_identity_is_safe(material):
         return governed_validation_error("invalid_package", "invalid_guided_material_identity")
     if not language_is_safe(material.language):
@@ -338,10 +315,7 @@ def validate_guided_material(
         match find_governed_evidence(package.evidence, evidence_id):
             None => return governed_validation_error("invalid_package", "unknown_guided_evidence")
             Some(_) => pass
-    if not evidence_ids_equal_set(
-        material.evidence_ids,
-        selected_evidence_for_memory(package, material.memory_ids),
-    ):
+    if not evidence_ids_equal_set(material.evidence_ids, selected_evidence_for_memory(package, material.memory_ids)):
         return governed_validation_error("invalid_package", "guided_memory_evidence_mismatch")
     match find_governed_action(package.actions, material.presentation_action_id):
         None => return governed_validation_error("invalid_package", "unknown_guided_presentation_action")
@@ -422,12 +396,7 @@ pub def validate_governed_request(request: GovernedRequest) -> GovernedValidatio
         return governed_validation_error("invalid_request", "invalid_request_language")
     if not identifier_text_is_safe(audience_id_text(request.audience)):
         return governed_validation_error("invalid_request", "invalid_request_audience")
-    expected = digest_governed_request_fields(
-        request.request_id,
-        request.question,
-        request.language,
-        request.audience,
-    )
+    expected = digest_governed_request_fields(request.request_id, request.question, request.language, request.audience)
     if expected != request.request_digest:
         return governed_validation_error("request_digest_mismatch", "request_digest_mismatch")
     return governed_validation_ok()
@@ -522,10 +491,7 @@ def validate_guided_nomination(
                             )
                         match proposal.current_step_id:
                             None =>
-                                return governed_validation_error(
-                                    "invalid_guided_transition",
-                                    "current_step_required",
-                                )
+                                return governed_validation_error("invalid_guided_transition", "current_step_required")
                             Some(current) =>
                                 match proposal.next_step_id:
                                     None =>
@@ -540,10 +506,7 @@ def validate_guided_nomination(
                                                 "transition_not_declared",
                                             )
                                         return governed_validation_ok()
-                    return governed_validation_error(
-                        "guided_material_not_allowed",
-                        "guided_material_not_allowed",
-                    )
+                    return governed_validation_error("guided_material_not_allowed", "guided_material_not_allowed")
 
 
 def validate_proposal_for_action(
@@ -583,14 +546,14 @@ def validate_proposal_for_action(
             Some(_) => pass
     if action.evidence_required and (len(proposal.evidence_ids) == 0 or len(proposal.memory_ids) == 0):
         return governed_validation_error("evidence_required", "evidence_and_memory_required")
-    if not evidence_ids_equal_set(
-        proposal.evidence_ids,
-        selected_evidence_for_memory(package, proposal.memory_ids),
-    ):
+    if not evidence_ids_equal_set(proposal.evidence_ids, selected_evidence_for_memory(package, proposal.memory_ids)):
         return governed_validation_error("memory_evidence_mismatch", "memory_evidence_mismatch")
     if action.outcome_kind in [GovernedOutcomeKind.Refusal, GovernedOutcomeKind.Escalation]:
         if len(proposal.evidence_ids) > 0 or len(proposal.memory_ids) > 0:
-            return governed_validation_error("terminal_boundary_support_not_allowed", "terminal_boundary_support_not_allowed")
+            return governed_validation_error(
+                "terminal_boundary_support_not_allowed",
+                "terminal_boundary_support_not_allowed",
+            )
         return governed_validation_ok()
     if action.outcome_kind in [GovernedOutcomeKind.GuidedMaterial, GovernedOutcomeKind.GuidedNavigation]:
         return validate_guided_nomination(package, request, proposal, action)
