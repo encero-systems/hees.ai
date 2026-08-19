@@ -1,5 +1,8 @@
-from std.testing import assert_eq, assert_is_ok
+from std.testing import assert_eq, assert_is_ok, assert_is_some
 from pub::hees_ai import (
+    ProgrammeAuthorityPackage,
+    ProgrammeAuthorityPolicy,
+    ProgrammeInteraction,
     GuidedProgramme,
     GuidedProgrammeCard,
     HyperquantEntry,
@@ -16,6 +19,11 @@ from pub::hees_ai import (
     RightsStatus,
     TurboquantConfiguration,
     evaluate_programme_action,
+    evaluate_programme_terminal,
+    constraint_plan_id,
+    contract_id,
+    digest_id_type,
+    domain_id,
     exact_index,
     exact_query,
     guided_card_id,
@@ -25,8 +33,10 @@ from pub::hees_ai import (
     package_loader_descriptor,
     package_loader_summary,
     package_id,
+    profile_id,
     programme_id,
     revision,
+    input_id,
     validate_package_loader_descriptor,
 )
 
@@ -137,3 +147,67 @@ def test_external_dependency_can_request_a_guided_programme_operation() -> None:
             assert_eq(operation.next_card_id, Some(card_id))
             assert_eq(operation.memory_operation, ProgrammeMemoryOperation.None)
         None => assert_eq(true, false)
+
+
+def test_external_dependency_can_admit_a_terminal_guided_programme_operation() -> None:
+    """Prove the terminal authority boundary is usable through the generated public-library manifest."""
+
+    card_id = guided_card_id("completion")
+    programme = GuidedProgramme(
+        programme_id=programme_id("one_card_programme"),
+        package_id=package_id("consumer_fixture"),
+        revision=revision("1.0.0"),
+        language_ids=["en"],
+        audience_ids=["adult_learner"],
+        entry_card_id=card_id,
+        completion_card_id=card_id,
+        progress_policy=ProgrammeProgressPolicy.SessionOnly,
+        cards=[GuidedProgrammeCard(
+            card_id=card_id,
+            evidence_ids=[],
+            memory_ids=[],
+            language_ids=["en"],
+            audience_ids=["adult_learner"],
+            choices=[],
+            next_card_id=None,
+            completion=true,
+            review_status=ReviewStatus.Approved,
+            rights_status=RightsStatus.Allowed,
+        )],
+    )
+    package = ProgrammeAuthorityPackage(
+        contract_version=contract_id("guided_programme_authority_0_1"),
+        profile_id=profile_id("consumer_profile"),
+        package_id=package_id("consumer_fixture"),
+        domain_id=domain_id("consumer_domain"),
+        package_revision=revision("1.0.0"),
+        artifact_digest=digest_id_type("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+        programme=programme,
+        support_atoms=[],
+        policy=ProgrammeAuthorityPolicy(
+            constraint_plan_id=constraint_plan_id("consumer_policy"),
+            constraint_plan_revision=revision("1.0.0"),
+        ),
+    )
+    interaction = ProgrammeInteraction(
+        input_id=input_id("consumer_interaction"),
+        frame=ProgrammeRuntimeFrame(
+            package_id=package_id("consumer_fixture"),
+            programme_id=programme_id("one_card_programme"),
+            revision=revision("1.0.0"),
+            current_card_id=None,
+            history=[],
+            language_id="en",
+            audience_id="adult_learner",
+            nominated_memory_ids=[],
+            nominated_evidence_ids=[],
+        ),
+        action=ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=card_id)),
+    )
+
+    evaluation = evaluate_programme_terminal(package, interaction)
+
+    assert_eq(evaluation.terminal.admitted, true)
+    assert_eq(assert_is_some(evaluation.admitted_card).card_id, card_id)
+    assert_is_some(evaluation.content_dna_json)
+    assert_is_some(evaluation.receipt_json)

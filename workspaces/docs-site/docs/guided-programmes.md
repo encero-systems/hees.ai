@@ -29,45 +29,45 @@ The evaluator rejects extra fields that do not belong to the proposed action. Va
 
 Hyperquant may nominate memory identifiers for a learner interaction. It does not decide that a card is supported and it does not authorize navigation. The programme boundary checks that every memory and evidence identifier required by the active card appears in the support nominations supplied for the interaction.
 
-This separation is deliberate. Retrieval can remain optimized, approximate and replaceable while programme eligibility remains deterministic and declaration-driven. A high similarity score cannot make an undeclared card, transition or source eligible. The nominations still require governed-memory admission before they may become terminally selected support.
+This separation is deliberate. Retrieval can remain optimized, approximate and replaceable while programme eligibility remains deterministic and declaration-driven. A high similarity score cannot make an undeclared card, transition or source eligible. At terminal admission, Hees derives selected support only from the declared card and independently validates its reviewed, rights-allowed package support projection.
 
 ## Operation eligibility
 
 `evaluate_programme_action` returns a `ProgrammeEvaluation`. Its serializable `ProgrammeDecisionTrace` explains whether the action is eligible, the closed reason, the current and next card, any session value and any requested memory operation.
 
-The trace and operation projection are not reusable authority tokens. They are safe inspection output from the structural evaluator. A later Hees authority stage must evaluate the original admitted package, governed support and runtime state; it must not accept a caller-constructed evaluation, copied trace or copied projection as proof of admission or terminal authority.
+The trace and operation projection are not reusable authority tokens. They are safe inspection output from the structural evaluator. `evaluate_programme_terminal` evaluates the original package projection, reviewed support and runtime state again; it never accepts a caller-constructed evaluation, copied trace or copied projection as proof of admission.
 
-The evaluator is intentionally side-effect free. It does not render cards, retrieve memory, write progress or activate packages. A later Hees stage may use the projected operation as candidate input only while rebinding the original governed inputs; a rejected evaluation carries no operation forward.
+Both evaluators are intentionally side-effect free. They do not render cards, retrieve memory, write progress or activate packages. The terminal evaluator produces an authoritative decision and provenance projections, but a separate package installation path remains responsible for verifying the artifact on disk and a separate progress store remains responsible for persisting any admitted operation.
 
 ## Progress is package-owned policy
 
-`SessionOnly` allows navigation and session choices without durable progress operations. `ExplicitSave` makes save and discard operations eligible for later authority evaluation. The host cannot enable persistence by setting a runtime boolean.
+`SessionOnly` allows navigation and session choices without durable progress operations. `ExplicitSave` makes save and discard operations structurally eligible for terminal admission. The host cannot enable persistence by setting a runtime boolean.
 
 Resume input remains untrusted. Hees verifies its package, programme and revision identities, current card and complete bounded history before making the resume operation eligible.
 
-## Current integration boundary
+## Terminal programme admission
 
-The public contract currently proves declaration validation and direct operation eligibility across the generated Hees library boundary. It does not claim that a caller-constructed programme is an admitted package artifact, that nominated support is governed memory, or that an eligible programme operation is a terminal Spectrum decision.
+`evaluate_programme_terminal` is the terminal boundary for a guided-programme operation. It accepts the original `ProgrammeAuthorityPackage` and `ProgrammeInteraction`, validates the programme and source-safe support projection again, evaluates the original action, and derives the exact admitted card and selected memory from the declared card. It never accepts a caller-constructed `ProgrammeEvaluation` as a substitute for that work.
 
-Those are the next authority integrations: bind the declaration to an admitted package, bind nominations to the governed-memory result, then carry the eligible operation through the terminal Spectrum, Content DNA and receipt lifecycle. Until those bindings exist, applications should describe this surface as guided-programme validation and operation eligibility.
+On admission, Hees emits the card identity an application may render, the ordered selected-memory and evidence identifiers, a Content DNA envelope and a receipt. A rejected operation has no admitted card, no selected memory and no Content DNA. When the installed package projection itself is malformed, Hees withholds a receipt as well because there is no established package identity to attest to.
+
+The current boundary accepts a runtime-ready package projection. It does not yet implement a package-file loader that verifies the artifact digest on disk, invoke Hyperquant itself, render the card payload, write durable progress or make a clinical or semantic truth claim. Those responsibilities remain separate; the application and retrieval layers must supply the original inputs, while Hees remains the authority that decides whether the declared operation may proceed.
 
 ## Minimal public use
 
-An external Incan application imports the programme models and evaluator from `pub::hees_ai`, builds or loads a package-owned declaration, supplies the current runtime frame and proposed action, and then inspects the evaluation:
+An external Incan application imports the programme models and terminal evaluator from `pub::hees_ai`, supplies the installed package projection and original learner interaction, then renders only an admitted card projection:
 
 ```incan
-evaluation = evaluate_programme_action(programme, frame, action)
-trace = evaluation.trace
-operation = evaluation.operation
+evaluation = evaluate_programme_terminal(package, interaction)
 
-if trace.eligible:
-    match operation:
-        Some(eligible) =>
-            # Submit this direct eligible operation to the later Hees authority stage.
+if evaluation.terminal.admitted:
+    match evaluation.admitted_card:
+        Some(card) =>
+            # Render the exact package card identified by this projection.
             pass
         None =>
-            # An eligible trace without an operation cannot advance.
+            # A renderable operation cannot proceed without an admitted card.
             pass
 ```
 
-The result uses direct public fields rather than treating object privacy as an authority boundary. The terminal integration must consume the original governed inputs and derive its own capability; it must never trust a caller-constructed `ProgrammeEvaluation`.
+The result uses direct public fields rather than treating object privacy as an authority boundary. The terminal evaluator consumes the original governed inputs and derives its own decision; it never trusts a caller-constructed `ProgrammeEvaluation`.

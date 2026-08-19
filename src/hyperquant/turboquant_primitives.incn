@@ -188,8 +188,9 @@ def read_big_u64(reader: _BytesIO) -> Result[u64, IoError]:
     """
     Select the unsigned 64-bit `BinaryRead` implementation before error translation.
 
-    Incan 0.5.0-dev.23 cannot resolve this overloaded read from a nested `Result[u64, IoError]` context; issue #955
-    tracks the compiler fix.
+    Bind the overloaded read explicitly inside the nested `Result[u64, IoError]` context. Issue #955 tracks the
+    remaining type-inference gap; keeping the binding makes the binary-format boundary unambiguous regardless of
+    compiler inference improvements.
     """
 
     value: u64 = reader.read(Endian.Big)?
