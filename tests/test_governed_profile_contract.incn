@@ -1,0 +1,524 @@
+"""Contract tests for generic governed-profile admission and guided material."""
+
+from std.testing import assert_eq, assert_is_none, assert_is_some
+from crate.governed_profile import (
+    CommitteeObservation,
+    CommitteeVerdict,
+    GovernedAction,
+    GovernedEvidence,
+    GovernedMemory,
+    GovernedOutcomeKind,
+    GovernedPolicy,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedRequest,
+    GuidedMaterial,
+    GuidedTransition,
+    bind_governed_request,
+    committee_observation,
+    digest_governed_memory_provenance,
+    digest_governed_profile_package,
+    evaluate_governed_profile_with_artifacts,
+    governed_proposal,
+    validate_governed_profile_package,
+)
+from crate.identifiers import (
+    GuidedMaterialId,
+    GuidedStepId,
+    action_id,
+    artifact_revision,
+    audience_id,
+    committee_role_id,
+    constraint_plan_id,
+    contract_id,
+    digest_id_type,
+    domain_id,
+    evidence_id,
+    guided_material_id,
+    guided_material_id_text,
+    guided_step_id,
+    memory_id,
+    package_id,
+    profile_id,
+    proposal_id,
+    request_id,
+    revision,
+)
+
+const PACKAGE_DIGEST: str = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+const SOURCE_DIGEST: str = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+const PROVENANCE_DIGEST: str = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+const CARD_DIGEST: str = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+const EVALUATOR_DIGEST: str = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+
+
+def no_guided_material() -> Option[GuidedMaterialId]:
+    return None
+
+
+def no_guided_step() -> Option[GuidedStepId]:
+    return None
+
+
+def action(id: str, kind: GovernedOutcomeKind, evidence_required: bool, committee_required: bool) -> GovernedAction:
+    return GovernedAction(
+        action_id=action_id(id),
+        outcome_kind=kind,
+        evidence_required=evidence_required,
+        committee_required=committee_required,
+    )
+
+
+def evidence(id: str, source_ref: str) -> GovernedEvidence:
+    return GovernedEvidence(
+        evidence_id=evidence_id(id),
+        claim=f"Reviewed claim for {id}.",
+        guidance=f"Reviewed guidance for {id}.",
+        source_ref=source_ref,
+        source_kind="book_pdf",
+        source_fingerprint=digest_id_type(SOURCE_DIGEST),
+        language="en",
+        review_state="approved",
+        review_revision=revision("1.0.0"),
+        rights_state="allowed",
+        authority_class="reviewed_package",
+        evidence_kind="bounded_paraphrase",
+    )
+
+
+def unwitnessed_memory(id: str, evidence_value: str) -> GovernedMemory:
+    return GovernedMemory(
+        memory_id=memory_id(id),
+        concept=f"Reviewed concept for {id}.",
+        evidence_ids=[evidence_id(evidence_value)],
+        review_state="approved",
+        review_revision=revision("1.0.0"),
+        rights_state="allowed",
+        provenance_digest=digest_id_type(PROVENANCE_DIGEST),
+    )
+
+
+def unwitnessed_package(memory_atoms: list[GovernedMemory]) -> GovernedProfilePackage:
+    return GovernedProfilePackage(
+        contract_version=contract_id("governed_profile_package_0_1"),
+        profile_id=profile_id("governed_profile_0_1"),
+        package_id=package_id("sleep_learning_demo"),
+        domain_id=domain_id("sleep_learning"),
+        package_revision=artifact_revision("0.1.0-candidate.1"),
+        artifact_digest=digest_id_type(PACKAGE_DIGEST),
+        mission="Provide bounded sleep education from reviewed package material.",
+        actions=[action("answer_from_package", GovernedOutcomeKind.Answer, true, true), action(
+            "present_guided_card",
+            GovernedOutcomeKind.GuidedMaterial,
+            true,
+            true,
+        ), action("navigate_guided_card", GovernedOutcomeKind.GuidedNavigation, true, true), action(
+            "refuse_unsupported",
+            GovernedOutcomeKind.Refusal,
+            false,
+            false,
+        ), action("escalate_clinical_request", GovernedOutcomeKind.Escalation, false, false)],
+        evidence=[evidence("sleep_evidence_evening_screens", "sleep_source_sleep_smarter:20-22"), evidence(
+            "sleep_evidence_regular_timing",
+            "sleep_source_sleep_smarter:129-130",
+        ), evidence("sleep_evidence_relaxation_elements", "sleep_source_relaxation_response:76-79")],
+        memory=memory_atoms,
+        guided_material=[GuidedMaterial(
+            guided_material_id=guided_material_id("sleep_guide_wind_down_0_1"),
+            artifact_revision=artifact_revision("0.1.0"),
+            artifact_digest=digest_id_type(CARD_DIGEST),
+            language="en",
+            audience=audience_id("general_adult_learner"),
+            evidence_ids=[evidence_id("sleep_evidence_evening_screens"), evidence_id("sleep_evidence_regular_timing"), evidence_id(
+                "sleep_evidence_relaxation_elements",
+            )],
+            memory_ids=[memory_id("sleep_atom_evening_screens"), memory_id("sleep_atom_regular_timing"), memory_id(
+                "sleep_atom_relaxation_elements",
+            )],
+            presentation_action_id=action_id("present_guided_card"),
+            navigation_action_id=action_id("navigate_guided_card"),
+            steps=[guided_step_id("choose_timing_anchor"), guided_step_id("choose_screen_transition"), guided_step_id(
+                "choose_calm_activity",
+            )],
+            transitions=[GuidedTransition(
+                current_step_id=guided_step_id("choose_timing_anchor"),
+                next_step_id=guided_step_id("choose_screen_transition"),
+            ), GuidedTransition(
+                current_step_id=guided_step_id("choose_screen_transition"),
+                next_step_id=guided_step_id("choose_calm_activity"),
+            )],
+            review_state="approved",
+            review_revision=revision("1.0.0"),
+            rights_state="allowed",
+        )],
+        policy=GovernedPolicy(
+            constraint_plan_id=constraint_plan_id("sleep_demo_committee_policy"),
+            constraint_plan_revision=revision("1.0.0"),
+            required_roles=[committee_role_id("evidence_support"), committee_role_id("scope"), committee_role_id(
+                "clinical_safety",
+            ), committee_role_id("question_fit"), committee_role_id("language_clarity"), committee_role_id(
+                "contextual_tone",
+            )],
+            require_all_passed=true,
+        ),
+    )
+
+
+def sleep_package() -> GovernedProfilePackage:
+    unwitnessed_atoms = [unwitnessed_memory("sleep_atom_evening_screens", "sleep_evidence_evening_screens"), unwitnessed_memory(
+        "sleep_atom_regular_timing",
+        "sleep_evidence_regular_timing",
+    ), unwitnessed_memory("sleep_atom_relaxation_elements", "sleep_evidence_relaxation_elements")]
+    unwitnessed = unwitnessed_package(unwitnessed_atoms)
+    mut package = unwitnessed.clone()
+    package.artifact_digest = digest_governed_profile_package(unwitnessed)
+    mut witnessed_atoms: list[GovernedMemory] = []
+    for atom in package.memory:
+        mut witnessed_atom = atom.clone()
+        witnessed_atom.provenance_digest = digest_governed_memory_provenance(package, atom)
+        witnessed_atoms.append(witnessed_atom)
+    package.memory = witnessed_atoms
+    return package
+
+
+def request(question: str) -> GovernedRequest:
+    return bind_governed_request(request_id("request_sleep_demo"), question, "en", audience_id("general_adult_learner"))
+
+
+def answer_proposal(package: GovernedProfilePackage, bound: GovernedRequest) -> GovernedProposal:
+    return governed_proposal(
+        package,
+        bound,
+        proposal_id("proposal_sleep_answer"),
+        action_id("answer_from_package"),
+        "Reducing stimulating screen exposure and keeping a steadier schedule are two options supported by the reviewed material.",
+        [evidence_id("sleep_evidence_evening_screens"), evidence_id("sleep_evidence_regular_timing")],
+        [memory_id("sleep_atom_evening_screens"), memory_id("sleep_atom_regular_timing")],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+
+
+def passed_committee(
+    package: GovernedProfilePackage,
+    bound: GovernedRequest,
+    proposal: GovernedProposal,
+) -> list[CommitteeObservation]:
+    roles = ["evidence_support", "scope", "clinical_safety", "question_fit", "language_clarity", "contextual_tone"]
+    return [committee_observation(
+        package,
+        bound,
+        proposal,
+        f"observation_{role}",
+        committee_role_id(role),
+        CommitteeVerdict.Pass,
+        digest_id_type(EVALUATOR_DIGEST),
+    ) for role in roles]
+
+
+def test_supported_answer_requires_and_binds_committee_memory_content_dna_and_receipt() -> None:
+    package = sleep_package()
+    bound = request("What small changes could I consider if I use screens late and sleep at irregular times?")
+    proposal = answer_proposal(package, bound)
+    result = evaluate_governed_profile_with_artifacts(
+        package,
+        bound,
+        proposal,
+        passed_committee(package, bound, proposal),
+    )
+    assert_eq(result.spectrum.admitted, true)
+    assert_eq(result.spectrum.decision, "deliver")
+    assert_eq(result.spectrum.reason, "supported_by_package")
+    assert_eq(len(result.findings), 6)
+    assert_eq(len(result.selected_memory), 2)
+    assert_eq(result.admitted_visible_output, Some(proposal.visible_output))
+    assert_is_none(result.admitted_guided_material)
+    assert_is_some(result.content_dna_json)
+    assert_is_some(result.receipt_json)
+
+
+def test_failed_committee_observation_rejects_all_deliverable_projection() -> None:
+    package = sleep_package()
+    bound = request("What small changes could I consider?")
+    proposal = answer_proposal(package, bound)
+    observations = passed_committee(package, bound, proposal)
+    mut failed = observations[0]
+    failed.verdict = CommitteeVerdict.Fail
+    observations[0] = failed
+    result = evaluate_governed_profile_with_artifacts(package, bound, proposal, observations)
+    assert_eq(result.spectrum.admitted, false)
+    assert_eq(result.spectrum.reason, "committee_rejected")
+    assert_eq(len(result.selected_memory), 0)
+    assert_is_none(result.admitted_visible_output)
+    assert_is_none(result.admitted_guided_material)
+    assert_is_none(result.content_dna_json)
+    assert_is_some(result.receipt_json)
+
+
+def test_guided_material_is_admitted_only_as_an_exact_package_owned_identity() -> None:
+    package = sleep_package()
+    bound = request("Help me build a simple wind-down routine.")
+    proposal = governed_proposal(
+        package,
+        bound,
+        proposal_id("proposal_sleep_guide"),
+        action_id("present_guided_card"),
+        "The reviewed package contains a short wind-down guide.",
+        [evidence_id("sleep_evidence_evening_screens"), evidence_id("sleep_evidence_regular_timing"), evidence_id(
+            "sleep_evidence_relaxation_elements",
+        )],
+        [memory_id("sleep_atom_evening_screens"), memory_id("sleep_atom_regular_timing"), memory_id(
+            "sleep_atom_relaxation_elements",
+        )],
+        Some(guided_material_id("sleep_guide_wind_down_0_1")),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    result = evaluate_governed_profile_with_artifacts(
+        package,
+        bound,
+        proposal,
+        passed_committee(package, bound, proposal),
+    )
+    admitted = assert_is_some(result.admitted_guided_material)
+    assert_eq(result.spectrum.decision, "deliver")
+    assert_eq(guided_material_id_text(admitted.guided_material_id), "sleep_guide_wind_down_0_1")
+    assert_eq(admitted.artifact_revision, artifact_revision("0.1.0"))
+    assert_eq(admitted.artifact_digest, digest_id_type(CARD_DIGEST))
+    assert_eq(assert_is_some(result.content_dna_json).contains("sleep_guide_wind_down_0_1"), true)
+    assert_eq(assert_is_some(result.receipt_json).contains("sleep_guide_wind_down_0_1"), true)
+
+
+def test_unknown_guided_material_and_undeclared_action_fail_closed() -> None:
+    package = sleep_package()
+    bound = request("Show a guide.")
+    unknown_card = governed_proposal(
+        package,
+        bound,
+        proposal_id("proposal_unknown_card"),
+        action_id("present_guided_card"),
+        "Show this guide.",
+        [],
+        [],
+        Some(guided_material_id("sleep_guide_unknown")),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    unknown_action = governed_proposal(
+        package,
+        bound,
+        proposal_id("proposal_unknown_action"),
+        action_id("diagnose_sleep_disorder"),
+        "A diagnosis.",
+        [],
+        [],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_eq(
+        evaluate_governed_profile_with_artifacts(package, bound, unknown_card, []).spectrum.reason,
+        "unknown_guided_material",
+    )
+    assert_eq(
+        evaluate_governed_profile_with_artifacts(package, bound, unknown_action, []).spectrum.reason,
+        "unknown_action",
+    )
+
+
+def test_guided_language_audience_and_navigation_are_governed() -> None:
+    package = sleep_package()
+    wrong_language = bind_governed_request(
+        request_id("request_wrong_language"),
+        "Help me build a routine.",
+        "af",
+        audience_id("general_adult_learner"),
+    )
+    guide = governed_proposal(
+        package,
+        wrong_language,
+        proposal_id("proposal_wrong_language"),
+        action_id("present_guided_card"),
+        "Show the guide.",
+        [evidence_id("sleep_evidence_evening_screens"), evidence_id("sleep_evidence_regular_timing"), evidence_id(
+            "sleep_evidence_relaxation_elements",
+        )],
+        [memory_id("sleep_atom_evening_screens"), memory_id("sleep_atom_regular_timing"), memory_id(
+            "sleep_atom_relaxation_elements",
+        )],
+        Some(guided_material_id("sleep_guide_wind_down_0_1")),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_eq(
+        evaluate_governed_profile_with_artifacts(package, wrong_language, guide, []).spectrum.reason,
+        "guided_material_language_mismatch",
+    )
+
+    bound = request("Show me the next step.")
+    invalid_navigation = governed_proposal(
+        package,
+        bound,
+        proposal_id("proposal_invalid_navigation"),
+        action_id("navigate_guided_card"),
+        "Move to the requested guide step.",
+        [evidence_id("sleep_evidence_evening_screens"), evidence_id("sleep_evidence_regular_timing"), evidence_id(
+            "sleep_evidence_relaxation_elements",
+        )],
+        [memory_id("sleep_atom_evening_screens"), memory_id("sleep_atom_regular_timing"), memory_id(
+            "sleep_atom_relaxation_elements",
+        )],
+        Some(guided_material_id("sleep_guide_wind_down_0_1")),
+        Some(guided_step_id("choose_timing_anchor")),
+        Some(guided_step_id("choose_calm_activity")),
+    )
+    assert_eq(
+        evaluate_governed_profile_with_artifacts(package, bound, invalid_navigation, []).spectrum.reason,
+        "invalid_guided_transition",
+    )
+
+
+def test_package_declared_refusal_and_escalation_are_safe_terminal_outcomes() -> None:
+    package = sleep_package()
+    bound = request("Give me an apple pie recipe.")
+    refusal = governed_proposal(
+        package,
+        bound,
+        proposal_id("proposal_refusal"),
+        action_id("refuse_unsupported"),
+        "The active reviewed sleep material does not support that request.",
+        [],
+        [],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    refused = evaluate_governed_profile_with_artifacts(package, bound, refusal, [])
+    assert_eq(refused.spectrum.admitted, true)
+    assert_eq(refused.spectrum.decision, "refuse")
+    assert_eq(refused.spectrum.reason, "unsupported_by_package")
+    assert_is_none(refused.content_dna_json)
+    assert_is_some(refused.receipt_json)
+
+    clinical = governed_proposal(
+        package,
+        bound,
+        proposal_id("proposal_clinical"),
+        action_id("escalate_clinical_request"),
+        "This package cannot diagnose or recommend medication. Please consult a qualified health professional.",
+        [],
+        [],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    escalated = evaluate_governed_profile_with_artifacts(package, bound, clinical, [])
+    assert_eq(escalated.spectrum.admitted, true)
+    assert_eq(escalated.spectrum.decision, "escalate")
+    assert_eq(escalated.spectrum.reason, "clinical_authority_not_declared")
+    assert_is_some(escalated.receipt_json)
+
+
+def test_unknown_evidence_and_memory_relationship_mismatch_are_rejected() -> None:
+    package = sleep_package()
+    bound = request("What could I change?")
+    unknown_evidence = governed_proposal(
+        package,
+        bound,
+        proposal_id("proposal_unknown_evidence"),
+        action_id("answer_from_package"),
+        "An answer.",
+        [evidence_id("sleep_evidence_unknown")],
+        [memory_id("sleep_atom_evening_screens")],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    mismatch = governed_proposal(
+        package,
+        bound,
+        proposal_id("proposal_mismatch"),
+        action_id("answer_from_package"),
+        "An answer.",
+        [evidence_id("sleep_evidence_regular_timing")],
+        [memory_id("sleep_atom_evening_screens")],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_eq(
+        evaluate_governed_profile_with_artifacts(package, bound, unknown_evidence, []).spectrum.reason,
+        "unknown_evidence",
+    )
+    assert_eq(
+        evaluate_governed_profile_with_artifacts(package, bound, mismatch, []).spectrum.reason,
+        "memory_evidence_mismatch",
+    )
+
+
+def test_genuine_package_digest_is_valid() -> None:
+    assert_eq(validate_governed_profile_package(sleep_package()).valid, true)
+
+
+def test_stale_digest_after_action_change_is_rejected() -> None:
+    mut mutated = sleep_package()
+    mut first_action = mutated.actions[0]
+    first_action.committee_required = not first_action.committee_required
+    mutated.actions[0] = first_action
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "artifact_digest_mismatch")
+
+
+def test_stale_digest_after_evidence_change_is_rejected() -> None:
+    mut mutated = sleep_package()
+    mut first_evidence = mutated.evidence[0]
+    first_evidence.claim = f"A different, unreviewed claim."
+    mutated.evidence[0] = first_evidence
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "artifact_digest_mismatch")
+
+
+def test_stale_digest_after_memory_change_is_rejected() -> None:
+    mut mutated = sleep_package()
+    mut first_memory = mutated.memory[0]
+    first_memory.concept = f"A different, unreviewed concept."
+    mutated.memory[0] = first_memory
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "artifact_digest_mismatch")
+
+
+def test_stale_digest_after_policy_change_is_rejected() -> None:
+    mut mutated = sleep_package()
+    mut policy = mutated.policy
+    policy.require_all_passed = false
+    mutated.policy = policy
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "artifact_digest_mismatch")
+
+
+def test_stale_digest_after_guided_material_change_is_rejected() -> None:
+    mut mutated = sleep_package()
+    mut first_guide = mutated.guided_material[0]
+    first_guide.language = f"af"
+    mutated.guided_material[0] = first_guide
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "artifact_digest_mismatch")
+
+
+def test_stale_memory_provenance_digest_is_rejected_independent_of_package_digest() -> None:
+    genuine = sleep_package()
+    mut tampered = genuine.clone()
+    mut first_memory = tampered.memory[0]
+    first_memory.concept = f"A retargeted concept, package digest recomputed but provenance left stale."
+    tampered.memory[0] = first_memory
+    mut package = tampered.clone()
+    package.artifact_digest = digest_governed_profile_package(tampered)
+    result = validate_governed_profile_package(package)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "memory_provenance_mismatch")

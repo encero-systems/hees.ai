@@ -1,0 +1,260 @@
+"""Contract tests for package-declared goals, schedules, and replayable session continuity."""
+
+from std.testing import assert_eq, assert_is_some
+from crate.governed_continuity import (
+    ContinuityOperationKind,
+    ContinuityPackage,
+    ContinuityProposal,
+    ContinuityTerminal,
+    GovernedGoal,
+    GovernedPhase,
+    GovernedSchedule,
+    SessionContinuityState,
+    digest_continuity_package,
+    digest_continuity_state_witness,
+    evaluate_continuity,
+    validate_continuity_package,
+)
+from crate.identifiers import (
+    action_id,
+    artifact_revision,
+    digest_id_type,
+    domain_id,
+    goal_id,
+    package_id,
+    phase_id,
+    profile_id,
+    schedule_id,
+    session_event_id,
+    session_id,
+)
+
+
+def digest() -> str:
+    return "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+
+def unwitnessed_continuity_package() -> ContinuityPackage:
+    return ContinuityPackage(
+        profile_id=profile_id("profile_one"),
+        package_id=package_id("package_one"),
+        domain_id=domain_id("domain_one"),
+        package_revision=artifact_revision("1.0.0"),
+        artifact_digest=digest_id_type(digest()),
+        goals=[GovernedGoal(
+            goal_id=goal_id("goal_one"),
+            entry_phase_id=phase_id("phase_one"),
+            completion_phase_ids=[phase_id("phase_two")],
+            allowed_action_ids=[action_id("answer"), action_id("guide")],
+        )],
+        schedules=[GovernedSchedule(
+            schedule_id=schedule_id("schedule_one"),
+            goal_id=goal_id("goal_one"),
+            total_target_seconds=720,
+            allowed_clock_sources=["host_monotonic", "external_monotonic"],
+            phases=[GovernedPhase(
+                phase_id=phase_id("phase_one"),
+                minimum_seconds=0,
+                target_seconds=120,
+                maximum_seconds=240,
+                allowed_action_ids=[action_id("answer"), action_id("guide")],
+                next_phase_ids=[phase_id("phase_two")],
+            ), GovernedPhase(
+                phase_id=phase_id("phase_two"),
+                minimum_seconds=60,
+                target_seconds=600,
+                maximum_seconds=900,
+                allowed_action_ids=[action_id("answer")],
+                next_phase_ids=[],
+            )],
+        )],
+    )
+
+
+def continuity_package() -> ContinuityPackage:
+    unwitnessed = unwitnessed_continuity_package()
+    mut package = unwitnessed.clone()
+    package.artifact_digest = digest_continuity_package(unwitnessed)
+    return package
+
+
+def witnessed(unwitnessed: SessionContinuityState) -> SessionContinuityState:
+    mut result = unwitnessed.clone()
+    result.state_witness = digest_continuity_state_witness(unwitnessed)
+    return result
+
+
+def state(clock: int, event_index: int) -> SessionContinuityState:
+    package = continuity_package()
+    return witnessed(
+        SessionContinuityState(
+            session_id=session_id("session_one"),
+            profile_id=package.profile_id,
+            package_id=package.package_id,
+            domain_id=package.domain_id,
+            package_revision=package.package_revision,
+            artifact_digest=package.artifact_digest,
+            goal_id=goal_id("goal_one"),
+            schedule_id=schedule_id("schedule_one"),
+            phase_id=phase_id("phase_one"),
+            started_at_seconds=1000,
+            phase_started_at_seconds=1000,
+            last_clock_seconds=clock,
+            last_event_index=event_index,
+            closed=false,
+            state_witness=digest_id_type(digest()),
+        ),
+    )
+
+
+def proposal(
+    operation: ContinuityOperationKind,
+    prior: Option[SessionContinuityState],
+    proposed_phase: str,
+    clock: int,
+    event_index: int,
+) -> ContinuityProposal:
+    package = continuity_package()
+    return ContinuityProposal(
+        operation=operation,
+        session_id=session_id("session_one"),
+        event_id=session_event_id(f"event_{event_index}"),
+        event_index=event_index,
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        goal_id=goal_id("goal_one"),
+        schedule_id=schedule_id("schedule_one"),
+        proposed_phase_id=phase_id(proposed_phase),
+        proposed_action_id=action_id("answer"),
+        clock_source="host_monotonic",
+        current_clock_seconds=clock,
+        prior_state=prior,
+    )
+
+
+def test_declared_start_and_transition_are_admitted() -> None:
+    package = continuity_package()
+    assert_eq(validate_continuity_package(package).valid, true)
+    started = evaluate_continuity(package, proposal(ContinuityOperationKind.Start, None, "phase_one", 1000, 0))
+    assert_eq(started.terminal, ContinuityTerminal.Admitted)
+    assert_eq(started.reason, "declared_goal_started")
+    transitioned = evaluate_continuity(
+        package,
+        proposal(ContinuityOperationKind.Transition, Some(state(1150, 0)), "phase_two", 1200, 1),
+    )
+    assert_eq(transitioned.terminal, ContinuityTerminal.Admitted)
+    assert_eq(assert_is_some(transitioned.resulting_state).phase_id, phase_id("phase_two"))
+
+
+def test_clock_regression_goal_drift_and_event_replay_fail_closed() -> None:
+    package = continuity_package()
+    regression = evaluate_continuity(
+        package,
+        proposal(ContinuityOperationKind.Continue, Some(state(1400, 0)), "phase_one", 1399, 1),
+    )
+    assert_eq(regression.reason, "clock_regression")
+
+    mut drift = proposal(ContinuityOperationKind.Continue, Some(state(1400, 0)), "phase_one", 1401, 1)
+    drift.goal_id = goal_id("other_goal")
+    assert_eq(evaluate_continuity(package, drift).reason, "unknown_goal")
+
+    replay = evaluate_continuity(
+        package,
+        proposal(ContinuityOperationKind.Continue, Some(state(1400, 3)), "phase_one", 1401, 3),
+    )
+    assert_eq(replay.reason, "event_index_not_monotonic")
+
+    mut foreign_state = state(1400, 0)
+    foreign_state.package_id = package_id("other_package")
+    cross_package = evaluate_continuity(
+        package,
+        proposal(ContinuityOperationKind.Continue, Some(foreign_state), "phase_one", 1401, 1),
+    )
+    assert_eq(cross_package.reason, "prior_state_identity_mismatch")
+
+
+def test_continue_at_exact_phase_maximum_is_admitted() -> None:
+    package = continuity_package()
+    at_maximum = evaluate_continuity(
+        package,
+        proposal(ContinuityOperationKind.Continue, Some(state(1000, 0)), "phase_one", 1240, 1),
+    )
+    assert_eq(at_maximum.terminal, ContinuityTerminal.Admitted)
+
+
+def test_continue_one_second_past_phase_maximum_is_rejected() -> None:
+    package = continuity_package()
+    past_maximum = evaluate_continuity(
+        package,
+        proposal(ContinuityOperationKind.Continue, Some(state(1000, 0)), "phase_one", 1241, 1),
+    )
+    assert_eq(past_maximum.reason, "phase_maximum_exceeded")
+
+
+def test_transition_past_phase_maximum_is_rejected() -> None:
+    package = continuity_package()
+    past_maximum = evaluate_continuity(
+        package,
+        proposal(ContinuityOperationKind.Transition, Some(state(1000, 0)), "phase_two", 1241, 1),
+    )
+    assert_eq(past_maximum.reason, "phase_maximum_exceeded")
+
+
+def test_close_past_phase_maximum_is_rejected() -> None:
+    package = continuity_package()
+    started_review = state(1900, 5)
+    mut in_review = started_review.clone()
+    in_review.phase_id = phase_id("phase_two")
+    in_review.started_at_seconds = 1000
+    in_review.phase_started_at_seconds = 1300
+    in_review = witnessed(in_review)
+    past_maximum = evaluate_continuity(
+        package,
+        proposal(ContinuityOperationKind.Close, Some(in_review), "phase_two", 2201, 6),
+    )
+    assert_eq(past_maximum.reason, "phase_maximum_exceeded")
+
+
+def test_hand_assembled_prior_state_with_forged_witness_is_rejected() -> None:
+    package = continuity_package()
+    mut tampered = state(1150, 0)
+    tampered.last_event_index = 4
+    forged = evaluate_continuity(
+        package,
+        proposal(ContinuityOperationKind.Continue, Some(tampered), "phase_one", 1200, 5),
+    )
+    assert_eq(forged.reason, "prior_state_witness_invalid")
+
+
+def test_genuine_continuity_package_digest_is_valid() -> None:
+    assert_eq(validate_continuity_package(continuity_package()).valid, true)
+
+
+def test_stale_continuity_package_digest_after_schedule_change_is_rejected() -> None:
+    mut mutated = continuity_package()
+    mut first_schedule = mutated.schedules[0]
+    first_schedule.total_target_seconds = first_schedule.total_target_seconds + 1
+    mutated.schedules[0] = first_schedule
+    assert_eq(validate_continuity_package(mutated).reason, "artifact_digest_mismatch")
+
+
+def test_stale_continuity_package_digest_after_goal_change_is_rejected() -> None:
+    mut mutated = continuity_package()
+    mut first_goal = mutated.goals[0]
+    first_goal.allowed_action_ids = [action_id("answer")]
+    mutated.goals[0] = first_goal
+    assert_eq(validate_continuity_package(mutated).reason, "artifact_digest_mismatch")
+
+
+def test_phase_graph_must_be_declared_in_topological_order() -> None:
+    mut package = continuity_package()
+    mut schedule = package.schedules[0]
+    mut terminal_phase = schedule.phases[1]
+    terminal_phase.next_phase_ids = [phase_id("phase_one")]
+    schedule.phases[1] = terminal_phase
+    package.schedules[0] = schedule
+    package.artifact_digest = digest_continuity_package(package)
+    assert_eq(validate_continuity_package(package).reason, "phase_graph_not_topological")

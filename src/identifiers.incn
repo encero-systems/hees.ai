@@ -11,7 +11,7 @@ def id_text_is_safe(value: str) -> bool:
     return value != "" and len(value) <= MAX_IDENTIFIER_LENGTH and value.strip() == value
 
 
-def identifier_text_is_safe(value: str) -> bool:
+pub def identifier_text_is_safe(value: str) -> bool:
     """Accept one bounded lowercase ASCII identifier in canonical form."""
 
     if not id_text_is_safe(value):
@@ -24,7 +24,7 @@ def identifier_text_is_safe(value: str) -> bool:
     return true
 
 
-def digest_id_text_is_safe(value: str) -> bool:
+pub def digest_id_text_is_safe(value: str) -> bool:
     """Accept one exact lowercase SHA-256 identity."""
 
     if len(value) != 71 or not value.startswith("sha256:"):
@@ -49,6 +49,19 @@ def revision_text_is_safe(value: str) -> bool:
         for character in part:
             if not "0123456789".contains(character):
                 return false
+    return true
+
+
+pub def artifact_revision_text_is_safe(value: str) -> bool:
+    """Accept one bounded lowercase artifact revision with an optional prerelease suffix."""
+
+    if value == "" or len(value) > 64 or not "0123456789".contains(value[0:1]):
+        return false
+    if ".-".contains(value[len(value) - 1:]) or value.contains("..") or value.contains("--"):
+        return false
+    for character in value:
+        if not "abcdefghijklmnopqrstuvwxyz0123456789.-".contains(character):
+            return false
     return true
 
 
@@ -78,6 +91,23 @@ pub type SymbolicIdType = newtype IdType:
                 ValidationError(message="identifier must match ^[a-z0-9][a-z0-9_-]{0,127}$", code="invalid_symbolic_id"),
             )
         return Ok(SymbolicIdType(value))
+
+
+@derive(Clone, Eq, json)
+pub type ArtifactRevisionType = newtype IdType:
+    """Bounded package or artifact revision with an optional lowercase prerelease suffix."""
+
+    def from_underlying(value: IdType) -> Result[Self, ValidationError]:
+        """Validate the revision grammar over shared bounded identifier storage."""
+
+        if not artifact_revision_text_is_safe(value.0):
+            return Err(
+                ValidationError(
+                    message="artifact revision must be 1 to 64 lowercase semantic-version characters",
+                    code="invalid_artifact_revision",
+                ),
+            )
+        return Ok(ArtifactRevisionType(value))
 
 
 @derive(Clone, Eq, json)
@@ -111,6 +141,16 @@ pub type RevisionType = newtype str:
 @derive(Clone, Eq, json)
 pub type ActionId = newtype SymbolicIdType:
     """Nominal identity for one action declared by a governed package."""
+
+
+@derive(Clone, Eq, json)
+pub type AudienceId = newtype SymbolicIdType:
+    """Nominal identity for one package-declared audience."""
+
+
+@derive(Clone, Eq, json)
+pub type CommitteeRoleId = newtype SymbolicIdType:
+    """Nominal identity for one bounded committee evaluator role."""
 
 
 @derive(Clone, Eq, json)
@@ -149,6 +189,21 @@ pub type FindingId = newtype SymbolicIdType:
 
 
 @derive(Clone, Eq, json)
+pub type GoalId = newtype SymbolicIdType:
+    """Nominal identity for one package-declared goal."""
+
+
+@derive(Clone, Eq, json)
+pub type GuidedMaterialId = newtype SymbolicIdType:
+    """Nominal identity for one package-owned guided artifact."""
+
+
+@derive(Clone, Eq, json)
+pub type GuidedStepId = newtype SymbolicIdType:
+    """Nominal identity for one step inside package-owned guided material."""
+
+
+@derive(Clone, Eq, json)
 pub type InputId = newtype SymbolicIdType:
     """Nominal identity for one governed runtime input."""
 
@@ -159,6 +214,16 @@ pub type MemoryId = newtype SymbolicIdType:
 
 
 @derive(Clone, Eq, json)
+pub type MemoryClassId = newtype SymbolicIdType:
+    """Nominal identity for one package-declared memory class."""
+
+
+@derive(Clone, Eq, json)
+pub type MemoryOperationId = newtype SymbolicIdType:
+    """Nominal identity for one package-declared memory operation."""
+
+
+@derive(Clone, Eq, json)
 pub type ObservationId = newtype SymbolicIdType:
     """Nominal identity for one non-authoritative verifier observation."""
 
@@ -166,6 +231,11 @@ pub type ObservationId = newtype SymbolicIdType:
 @derive(Clone, Eq, json)
 pub type PackageId = newtype SymbolicIdType:
     """Nominal identity for one governed package."""
+
+
+@derive(Clone, Eq, json)
+pub type PhaseId = newtype SymbolicIdType:
+    """Nominal identity for one phase inside a package-declared schedule."""
 
 
 @derive(Clone, Eq, json)
@@ -229,6 +299,21 @@ pub type ScenarioId = newtype SymbolicIdType:
 
 
 @derive(Clone, Eq, json)
+pub type ScheduleId = newtype SymbolicIdType:
+    """Nominal identity for one package-declared schedule."""
+
+
+@derive(Clone, Eq, json)
+pub type SessionEventId = newtype SymbolicIdType:
+    """Nominal identity for one admitted session event."""
+
+
+@derive(Clone, Eq, json)
+pub type SessionId = newtype SymbolicIdType:
+    """Nominal identity for one replayable governed session."""
+
+
+@derive(Clone, Eq, json)
 pub type SourceId = newtype SymbolicIdType:
     """Nominal identity for one reviewed source artifact."""
 
@@ -267,10 +352,29 @@ def trusted_digest_id(value: str) -> DigestIdType:
     return DigestIdType.from_underlying(bounded).unwrap()
 
 
+pub def artifact_revision(value: str) -> ArtifactRevisionType:
+    """Construct a trusted package or artifact revision through validated storage."""
+
+    bounded = IdType.from_underlying(value).unwrap()
+    return ArtifactRevisionType.from_underlying(bounded).unwrap()
+
+
 pub def action_id(value: str) -> ActionId:
     """Wrap trusted canonical text as an action identity."""
 
     return ActionId(trusted_symbolic_id(value))
+
+
+pub def audience_id(value: str) -> AudienceId:
+    """Wrap trusted canonical text as an audience identity."""
+
+    return AudienceId(trusted_symbolic_id(value))
+
+
+pub def committee_role_id(value: str) -> CommitteeRoleId:
+    """Wrap trusted canonical text as a committee-role identity."""
+
+    return CommitteeRoleId(trusted_symbolic_id(value))
 
 
 pub def constraint_plan_id(value: str) -> ConstraintPlanId:
@@ -321,6 +425,24 @@ pub def finding_id(value: str) -> FindingId:
     return FindingId(trusted_symbolic_id(value))
 
 
+pub def goal_id(value: str) -> GoalId:
+    """Wrap trusted canonical text as a goal identity."""
+
+    return GoalId(trusted_symbolic_id(value))
+
+
+pub def guided_material_id(value: str) -> GuidedMaterialId:
+    """Wrap trusted canonical text as a guided-material identity."""
+
+    return GuidedMaterialId(trusted_symbolic_id(value))
+
+
+pub def guided_step_id(value: str) -> GuidedStepId:
+    """Wrap trusted canonical text as a guided-step identity."""
+
+    return GuidedStepId(trusted_symbolic_id(value))
+
+
 pub def input_id(value: str) -> InputId:
     """Wrap trusted canonical text as an input identity."""
 
@@ -333,6 +455,18 @@ pub def memory_id(value: str) -> MemoryId:
     return MemoryId(trusted_symbolic_id(value))
 
 
+pub def memory_class_id(value: str) -> MemoryClassId:
+    """Wrap trusted canonical text as a memory-class identity."""
+
+    return MemoryClassId(trusted_symbolic_id(value))
+
+
+pub def memory_operation_id(value: str) -> MemoryOperationId:
+    """Wrap trusted canonical text as a memory-operation identity."""
+
+    return MemoryOperationId(trusted_symbolic_id(value))
+
+
 pub def observation_id(value: str) -> ObservationId:
     """Wrap trusted canonical text as an observation identity."""
 
@@ -343,6 +477,12 @@ pub def package_id(value: str) -> PackageId:
     """Wrap trusted canonical text as a package identity."""
 
     return PackageId(trusted_symbolic_id(value))
+
+
+pub def phase_id(value: str) -> PhaseId:
+    """Wrap trusted canonical text as a phase identity."""
+
+    return PhaseId(trusted_symbolic_id(value))
 
 
 pub def profile_id(value: str) -> ProfileId:
@@ -429,6 +569,24 @@ pub def scenario_id(value: str) -> ScenarioId:
     return ScenarioId(trusted_symbolic_id(value))
 
 
+pub def schedule_id(value: str) -> ScheduleId:
+    """Wrap trusted canonical text as a schedule identity."""
+
+    return ScheduleId(trusted_symbolic_id(value))
+
+
+pub def session_event_id(value: str) -> SessionEventId:
+    """Wrap trusted canonical text as a session-event identity."""
+
+    return SessionEventId(trusted_symbolic_id(value))
+
+
+pub def session_id(value: str) -> SessionId:
+    """Wrap trusted canonical text as a session identity."""
+
+    return SessionId(trusted_symbolic_id(value))
+
+
 pub def source_id(value: str) -> SourceId:
     """Wrap trusted canonical text as a source identity."""
 
@@ -483,6 +641,24 @@ pub def action_id_text(identifier: ActionId) -> str:
     return symbolic_id_type_text(identifier.0)
 
 
+pub def artifact_revision_text(value: ArtifactRevisionType) -> str:
+    """Expose an artifact revision at serialization and presentation boundaries."""
+
+    return id_type_text(value.0)
+
+
+pub def audience_id_text(identifier: AudienceId) -> str:
+    """Project an audience identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def committee_role_id_text(identifier: CommitteeRoleId) -> str:
+    """Project a committee-role identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
 pub def constraint_plan_id_text(identifier: ConstraintPlanId) -> str:
     """Project a constraint-plan identity into canonical wire text."""
 
@@ -525,6 +701,24 @@ pub def finding_id_text(identifier: FindingId) -> str:
     return symbolic_id_type_text(identifier.0)
 
 
+pub def goal_id_text(identifier: GoalId) -> str:
+    """Project a goal identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def guided_material_id_text(identifier: GuidedMaterialId) -> str:
+    """Project a guided-material identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def guided_step_id_text(identifier: GuidedStepId) -> str:
+    """Project a guided-step identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
 pub def input_id_text(identifier: InputId) -> str:
     """Project an input identity into canonical wire text."""
 
@@ -537,6 +731,18 @@ pub def memory_id_text(identifier: MemoryId) -> str:
     return symbolic_id_type_text(identifier.0)
 
 
+pub def memory_class_id_text(identifier: MemoryClassId) -> str:
+    """Project a memory-class identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def memory_operation_id_text(identifier: MemoryOperationId) -> str:
+    """Project a memory-operation identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
 pub def observation_id_text(identifier: ObservationId) -> str:
     """Project an observation identity into canonical wire text."""
 
@@ -545,6 +751,12 @@ pub def observation_id_text(identifier: ObservationId) -> str:
 
 pub def package_id_text(identifier: PackageId) -> str:
     """Project a package identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def phase_id_text(identifier: PhaseId) -> str:
+    """Project a phase identity into canonical wire text."""
 
     return symbolic_id_type_text(identifier.0)
 
@@ -617,6 +829,24 @@ pub def response_contract_id_text(identifier: ResponseContractId) -> str:
 
 pub def scenario_id_text(identifier: ScenarioId) -> str:
     """Project a scenario identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def schedule_id_text(identifier: ScheduleId) -> str:
+    """Project a schedule identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def session_event_id_text(identifier: SessionEventId) -> str:
+    """Project a session-event identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def session_id_text(identifier: SessionId) -> str:
+    """Project a session identity into canonical wire text."""
 
     return symbolic_id_type_text(identifier.0)
 

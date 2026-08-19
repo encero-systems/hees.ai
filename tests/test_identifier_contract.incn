@@ -10,6 +10,20 @@ from crate.identifiers import (
     action_id_text,
     evidence_id,
     evidence_id_text,
+    goal_id,
+    goal_id_text,
+    memory_class_id,
+    memory_class_id_text,
+    memory_operation_id,
+    memory_operation_id_text,
+    phase_id,
+    phase_id_text,
+    schedule_id,
+    schedule_id_text,
+    session_event_id,
+    session_event_id_text,
+    session_id,
+    session_id_text,
 )
 
 
@@ -48,3 +62,13 @@ def test_revision_type_owns_revision_validation() -> None:
     revision = assert_is_ok(RevisionType.from_underlying("1.0.0"))
     assert_eq(revision.0, "1.0.0")
     assert_is_err(RevisionType.from_underlying("one.zero.zero"))
+
+
+def test_continuity_and_memory_namespaces_are_nominal_and_bounded() -> None:
+    assert_eq(goal_id_text(goal_id("goal_one")), "goal_one")
+    assert_eq(phase_id_text(phase_id("phase_one")), "phase_one")
+    assert_eq(schedule_id_text(schedule_id("schedule_one")), "schedule_one")
+    assert_eq(session_id_text(session_id("session_one")), "session_one")
+    assert_eq(session_event_id_text(session_event_id("event_one")), "event_one")
+    assert_eq(memory_class_id_text(memory_class_id("learner_memory")), "learner_memory")
+    assert_eq(memory_operation_id_text(memory_operation_id("write_memory")), "write_memory")

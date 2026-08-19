@@ -1,0 +1,196 @@
+"""Canonical identity helpers for generic governed-profile inputs and artifacts."""
+
+from std.serde.json import Serialize
+from crate.content_dna import digest_canonical_json
+from crate.governed_profile_models import (
+    CommitteeObservation,
+    CommitteeVerdict,
+    GovernedAnswerProjection,
+    GovernedMemory,
+    GovernedMemoryArtifactProjection,
+    GovernedMemoryProvenanceProjection,
+    GovernedProfilePackage,
+    GovernedProfilePackageArtifactProjection,
+    GovernedProposal,
+    GovernedRequest,
+    GovernedRequestDigestProjection,
+)
+from crate.identifiers import (
+    ActionId,
+    AudienceId,
+    CommitteeRoleId,
+    DigestIdType,
+    EvidenceId,
+    GuidedMaterialId,
+    GuidedStepId,
+    MemoryId,
+    ProposalId,
+    RequestId,
+    contract_id,
+    observation_id,
+)
+
+
+def digest_serialized_json(source: str) -> DigestIdType:
+    """
+    Digest JSON emitted by this module's own serializer calls.
+
+    This helper accepts only serializer-produced model output, so parse failure is a broken invariant rather than an
+    invalid digest value. It does not claim a durable cross-version canonical encoding. A caller accepting arbitrary
+    external JSON must use ``digest_canonical_json`` directly and handle its ``Result``.
+    """
+
+    return digest_canonical_json(source).unwrap()
+
+
+pub def digest_governed_profile_package(package: GovernedProfilePackage) -> DigestIdType:
+    """Recompute the package digest over every field except ``artifact_digest`` and each atom's ``provenance_digest``."""
+
+    memory: list[GovernedMemoryArtifactProjection] = [GovernedMemoryArtifactProjection(
+        memory_id=atom.memory_id,
+        concept=atom.concept,
+        evidence_ids=atom.evidence_ids,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+    ) for atom in package.memory]
+    projection = GovernedProfilePackageArtifactProjection(
+        contract_version=package.contract_version,
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        mission=package.mission,
+        actions=package.actions,
+        evidence=package.evidence,
+        memory=memory,
+        guided_material=package.guided_material,
+        policy=package.policy,
+    )
+    return digest_serialized_json(projection.to_json())
+
+
+pub def digest_governed_memory_provenance(package: GovernedProfilePackage, atom: GovernedMemory) -> DigestIdType:
+    """Bind one memory atom's core fields to the exact, already-established package identity."""
+
+    projection = GovernedMemoryProvenanceProjection(
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        memory_id=atom.memory_id,
+        concept=atom.concept,
+        evidence_ids=atom.evidence_ids,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+    )
+    return digest_serialized_json(projection.to_json())
+
+
+pub def digest_governed_request_fields(
+    request_id: RequestId,
+    question: str,
+    language: str,
+    audience: AudienceId,
+) -> DigestIdType:
+    """Bind exact trusted request fields before the complete request exists."""
+
+    projection = GovernedRequestDigestProjection(
+        request_id=request_id,
+        question=question,
+        language=language,
+        audience=audience,
+    )
+    return digest_serialized_json(projection.to_json())
+
+
+pub def bind_governed_request(
+    request_id: RequestId,
+    question: str,
+    language: str,
+    audience: AudienceId,
+) -> GovernedRequest:
+    """Construct one request whose digest binds its exact trusted context."""
+
+    return GovernedRequest(
+        request_id=request_id,
+        question=question,
+        language=language,
+        audience=audience,
+        request_digest=digest_governed_request_fields(request_id, question, language, audience),
+    )
+
+
+pub def digest_governed_proposal(proposal: GovernedProposal) -> DigestIdType:
+    """Bind the complete untrusted proposal to one canonical candidate identity."""
+
+    return digest_serialized_json(proposal.to_json())
+
+
+pub def digest_governed_answer(visible_output: str) -> DigestIdType:
+    """Bind exact admitted visible output without normalizing its prose."""
+
+    return digest_serialized_json(GovernedAnswerProjection(visible_output=visible_output).to_json())
+
+
+pub def governed_proposal(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal_id: ProposalId,
+    action_id: ActionId,
+    visible_output: str,
+    evidence_ids: list[EvidenceId],
+    memory_ids: list[MemoryId],
+    guided_material_id: Option[GuidedMaterialId],
+    current_step_id: Option[GuidedStepId],
+    next_step_id: Option[GuidedStepId],
+) -> GovernedProposal:
+    """Construct an untrusted proposal bound to the caller-supplied package and request identity."""
+
+    return GovernedProposal(
+        contract_version=contract_id("governed_profile_proposal_0_1"),
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        request_id=request.request_id,
+        request_digest=request.request_digest,
+        proposal_id=proposal_id,
+        action_id=action_id,
+        visible_output=visible_output,
+        evidence_ids=evidence_ids,
+        memory_ids=memory_ids,
+        guided_material_id=guided_material_id,
+        current_step_id=current_step_id,
+        next_step_id=next_step_id,
+    )
+
+
+pub def committee_observation(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observation_id_source: str,
+    role: CommitteeRoleId,
+    verdict: CommitteeVerdict,
+    evaluator_fingerprint: DigestIdType,
+) -> CommitteeObservation:
+    """Bind one non-authoritative verdict to its exact package, request, and candidate."""
+
+    return CommitteeObservation(
+        contract_version=contract_id("governed_committee_observation_0_1"),
+        profile_id=package.profile_id,
+        observation_id=observation_id(observation_id_source),
+        role=role,
+        verdict=verdict,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        request_id=request.request_id,
+        request_digest=request.request_digest,
+        candidate_digest=digest_governed_proposal(proposal),
+        evaluator_fingerprint=evaluator_fingerprint,
+    )

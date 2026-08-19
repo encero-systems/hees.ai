@@ -1,0 +1,128 @@
+"""Content DNA and receipt construction for terminal governed-profile decisions."""
+
+from std.serde.json import Serialize
+from crate.content_dna import digest_canonical_json
+from crate.governed_profile_identity import digest_governed_answer, digest_governed_proposal
+from crate.governed_profile_models import (
+    AdmittedGuidedMaterial,
+    GovernedContentDna,
+    GovernedContentDnaBody,
+    GovernedContentDnaEntry,
+    GovernedMemory,
+    GovernedPackageIdentity,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedReceipt,
+    GovernedReceiptBody,
+    GovernedRequest,
+    GovernedSpectrumResult,
+)
+from crate.governed_profile_validation import find_governed_evidence
+from crate.identifiers import ContentDnaId, ReceiptId, contract_id
+
+
+def package_identity(package: GovernedProfilePackage) -> GovernedPackageIdentity:
+    return GovernedPackageIdentity(
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+    )
+
+
+def content_dna_entries(
+    package: GovernedProfilePackage,
+    selected_memory: list[GovernedMemory],
+) -> list[GovernedContentDnaEntry]:
+    """Project selected memory and exact evidence provenance without payload text."""
+
+    mut result: list[GovernedContentDnaEntry] = []
+    for atom in selected_memory:
+        for evidence_id in atom.evidence_ids:
+            match find_governed_evidence(package.evidence, evidence_id):
+                None => return []
+                Some(evidence) =>
+                    result.append(
+                        GovernedContentDnaEntry(
+                            memory_id=atom.memory_id,
+                            evidence_id=evidence.evidence_id,
+                            source_ref=evidence.source_ref,
+                            source_kind=evidence.source_kind,
+                            source_fingerprint=evidence.source_fingerprint,
+                            provenance_digest=atom.provenance_digest,
+                            review_state=evidence.review_state,
+                            review_revision=evidence.review_revision,
+                            rights_state=evidence.rights_state,
+                            authority_class=evidence.authority_class,
+                            evidence_kind=evidence.evidence_kind,
+                        ),
+                    )
+    return result
+
+
+pub def construct_governed_content_dna(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    spectrum: GovernedSpectrumResult,
+    selected_memory: list[GovernedMemory],
+    guided_material: Option[AdmittedGuidedMaterial],
+) -> Option[GovernedContentDna]:
+    """Seal exact admitted output, memory, package, and optional guided-artifact identity."""
+
+    entries = content_dna_entries(package, selected_memory)
+    if len(entries) == 0:
+        return None
+    body = GovernedContentDnaBody(
+        contract_version=contract_id("governed_content_dna_0_1"),
+        state="admitted_delivery",
+        package=package_identity(package),
+        request_id=request.request_id,
+        request_digest=request.request_digest,
+        proposal_id=proposal.proposal_id,
+        candidate_digest=digest_governed_proposal(proposal),
+        spectrum_decision_id=spectrum.decision_id,
+        terminal_decision=spectrum.decision,
+        terminal_reason=spectrum.reason,
+        constraint_plan_id=package.policy.constraint_plan_id,
+        constraint_plan_revision=package.policy.constraint_plan_revision,
+        entries=entries,
+        answer_digest=digest_governed_answer(proposal.visible_output),
+        guided_material=guided_material,
+    )
+    match digest_canonical_json(body.to_json()):
+        Err(_) => return None
+        Ok(identity) => return Some(GovernedContentDna(body=body, content_dna_id=ContentDnaId(identity)))
+
+
+pub def construct_governed_receipt(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    spectrum: GovernedSpectrumResult,
+    guided_material: Option[AdmittedGuidedMaterial],
+    content_dna_id: Option[ContentDnaId],
+) -> Option[GovernedReceipt]:
+    """Seal one redacted terminal result under an Incan-authored receipt identity."""
+
+    body = GovernedReceiptBody(
+        contract_version=contract_id("governed_profile_receipt_0_1"),
+        profile_id=package.profile_id,
+        package=package_identity(package),
+        request_id=request.request_id,
+        request_digest=request.request_digest,
+        proposal_id=proposal.proposal_id,
+        candidate_digest=digest_governed_proposal(proposal),
+        decision_id=spectrum.decision_id,
+        decision=spectrum.decision,
+        reason_namespace=spectrum.reason_namespace,
+        reason=spectrum.reason,
+        structural_reason=spectrum.structural_reason,
+        admitted_evidence_ids=spectrum.admitted_evidence_ids,
+        selected_memory_ids=spectrum.selected_memory_ids,
+        admitted_guided_material=guided_material,
+        content_dna_id=content_dna_id,
+    )
+    match digest_canonical_json(body.to_json()):
+        Err(_) => return None
+        Ok(identity) => return Some(GovernedReceipt(body=body, receipt_id=ReceiptId(identity)))

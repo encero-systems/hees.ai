@@ -1,0 +1,342 @@
+"""Contract tests for independent governed memory inspection, selection, and lifecycle operations."""
+
+from std.testing import assert_eq
+from crate.governed_memory_operations import (
+    GovernedMemoryClass,
+    GovernedMemoryOperation,
+    GovernedMemoryPolicy,
+    GovernedMemoryRecord,
+    MemoryOperationKind,
+    MemoryOperationProposal,
+    MemoryOperationTerminal,
+    digest_governed_memory_policy,
+    digest_memory_record_witness,
+    evaluate_memory_operation,
+    validate_governed_memory_policy,
+)
+from crate.identifiers import (
+    artifact_revision,
+    digest_id_type,
+    domain_id,
+    memory_class_id,
+    memory_id,
+    memory_operation_id,
+    package_id,
+    profile_id,
+    session_id,
+)
+
+
+def digest() -> str:
+    return "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+
+def unwitnessed_memory_policy() -> GovernedMemoryPolicy:
+    return GovernedMemoryPolicy(
+        profile_id=profile_id("profile_one"),
+        package_id=package_id("package_one"),
+        domain_id=domain_id("domain_one"),
+        package_revision=artifact_revision("1.0.0"),
+        artifact_digest=digest_id_type(digest()),
+        classes=[GovernedMemoryClass(
+            memory_class_id=memory_class_id("reviewed_package_memory"),
+            owner="package",
+            prompt_eligible=true,
+            hyperquant_eligible=true,
+            runtime_writable=false,
+            maximum_age_seconds=None,
+            explicit_consent_required=false,
+            revoke_allowed=false,
+            supersede_allowed=false,
+            allowed_keys=[],
+            required_provenance=["evidence_ids", "package_revision"],
+        ), GovernedMemoryClass(
+            memory_class_id=memory_class_id("learner_preference_memory"),
+            owner="learner",
+            prompt_eligible=true,
+            hyperquant_eligible=false,
+            runtime_writable=true,
+            maximum_age_seconds=Some(31536000),
+            explicit_consent_required=true,
+            revoke_allowed=true,
+            supersede_allowed=true,
+            allowed_keys=["preferred_language"],
+            required_provenance=["consent_receipt_id"],
+        ), GovernedMemoryClass(
+            memory_class_id=memory_class_id("operational_trace"),
+            owner="runtime",
+            prompt_eligible=false,
+            hyperquant_eligible=false,
+            runtime_writable=true,
+            maximum_age_seconds=Some(2592000),
+            explicit_consent_required=false,
+            revoke_allowed=false,
+            supersede_allowed=false,
+            allowed_keys=[],
+            required_provenance=["terminal_receipt_id"],
+        )],
+        operations=[GovernedMemoryOperation(
+            operation_id=memory_operation_id("select_prompt_memory"),
+            operation_kind=MemoryOperationKind.SelectPrompt,
+            allowed_class_ids=[memory_class_id("reviewed_package_memory"), memory_class_id("learner_preference_memory"), memory_class_id(
+                "operational_trace",
+            )],
+        ), GovernedMemoryOperation(
+            operation_id=memory_operation_id("inspect_memory"),
+            operation_kind=MemoryOperationKind.Inspect,
+            allowed_class_ids=[memory_class_id("reviewed_package_memory"), memory_class_id("learner_preference_memory"), memory_class_id(
+                "operational_trace",
+            )],
+        ), GovernedMemoryOperation(
+            operation_id=memory_operation_id("write_memory"),
+            operation_kind=MemoryOperationKind.Write,
+            allowed_class_ids=[memory_class_id("learner_preference_memory"), memory_class_id("operational_trace")],
+        ), GovernedMemoryOperation(
+            operation_id=memory_operation_id("revoke_memory"),
+            operation_kind=MemoryOperationKind.Revoke,
+            allowed_class_ids=[memory_class_id("learner_preference_memory")],
+        ), GovernedMemoryOperation(
+            operation_id=memory_operation_id("supersede_memory"),
+            operation_kind=MemoryOperationKind.Supersede,
+            allowed_class_ids=[memory_class_id("learner_preference_memory")],
+        )],
+    )
+
+
+def memory_policy() -> GovernedMemoryPolicy:
+    unwitnessed = unwitnessed_memory_policy()
+    mut policy = unwitnessed.clone()
+    policy.artifact_digest = digest_governed_memory_policy(unwitnessed)
+    return policy
+
+
+def witnessed(unwitnessed: GovernedMemoryRecord) -> GovernedMemoryRecord:
+    mut result = unwitnessed.clone()
+    result.record_witness = digest_memory_record_witness(unwitnessed)
+    return result
+
+
+def record(class_name: str, revoked: bool, expires_at: Option[int]) -> GovernedMemoryRecord:
+    policy = memory_policy()
+    mut provenance_fields = ["consent_receipt_id"]
+    mut memory_key: Option[str] = Some("preferred_language")
+    if class_name == "operational_trace":
+        provenance_fields = ["terminal_receipt_id"]
+        memory_key = None
+    return witnessed(
+        GovernedMemoryRecord(
+            memory_id=memory_id("memory_one"),
+            memory_class_id=memory_class_id(class_name),
+            profile_id=policy.profile_id,
+            package_id=policy.package_id,
+            domain_id=policy.domain_id,
+            package_revision=policy.package_revision,
+            artifact_digest=policy.artifact_digest,
+            session_id=Some(session_id("session_one")),
+            memory_key=memory_key,
+            created_at_seconds=1000,
+            expires_at_seconds=expires_at,
+            revoked=revoked,
+            superseded_by=None,
+            provenance_fields=provenance_fields,
+            record_witness=digest_id_type(digest()),
+        ),
+    )
+
+
+def proposal(
+    operation_name: str,
+    kind: MemoryOperationKind,
+    class_name: str,
+    existing: Option[GovernedMemoryRecord],
+    consent: bool,
+) -> MemoryOperationProposal:
+    policy = memory_policy()
+    return MemoryOperationProposal(
+        operation_id=memory_operation_id(operation_name),
+        operation_kind=kind,
+        profile_id=policy.profile_id,
+        package_id=policy.package_id,
+        domain_id=policy.domain_id,
+        package_revision=policy.package_revision,
+        artifact_digest=policy.artifact_digest,
+        session_id=Some(session_id("session_one")),
+        memory_class_id=memory_class_id(class_name),
+        target_memory_id=memory_id("memory_one"),
+        replacement_memory_id=None,
+        memory_key=Some("preferred_language"),
+        current_time_seconds=1100,
+        consent_present=consent,
+        provenance_fields=["consent_receipt_id"],
+        existing_record=existing,
+    )
+
+
+def test_inspection_and_prompt_selection_are_distinct() -> None:
+    policy = memory_policy()
+    trace = record("operational_trace", false, Some(2000))
+    inspected = evaluate_memory_operation(
+        policy,
+        proposal("inspect_memory", MemoryOperationKind.Inspect, "operational_trace", Some(trace), false),
+    )
+    assert_eq(inspected.terminal, MemoryOperationTerminal.Admitted)
+    selected = evaluate_memory_operation(
+        policy,
+        proposal("select_prompt_memory", MemoryOperationKind.SelectPrompt, "operational_trace", Some(trace), false),
+    )
+    assert_eq(selected.reason, "memory_not_prompt_eligible")
+
+
+def test_write_revoke_and_supersede_have_independent_fail_closed_rules() -> None:
+    policy = memory_policy()
+    assert_eq(validate_governed_memory_policy(policy).valid, true)
+    without_consent = evaluate_memory_operation(
+        policy,
+        proposal("write_memory", MemoryOperationKind.Write, "learner_preference_memory", None, false),
+    )
+    assert_eq(without_consent.reason, "explicit_consent_required")
+
+    revoked = evaluate_memory_operation(
+        policy,
+        proposal(
+            "revoke_memory",
+            MemoryOperationKind.Revoke,
+            "learner_preference_memory",
+            Some(record("learner_preference_memory", false, Some(2000))),
+            false,
+        ),
+    )
+    assert_eq(revoked.terminal, MemoryOperationTerminal.Admitted)
+
+    mut supersede = proposal(
+        "supersede_memory",
+        MemoryOperationKind.Supersede,
+        "learner_preference_memory",
+        Some(record("learner_preference_memory", false, Some(2000))),
+        true,
+    )
+    supersede.replacement_memory_id = Some(memory_id("memory_two"))
+    assert_eq(evaluate_memory_operation(policy, supersede).terminal, MemoryOperationTerminal.Admitted)
+
+
+def test_revoked_expired_cross_package_and_invented_memory_fail_closed() -> None:
+    policy = memory_policy()
+    revoked = evaluate_memory_operation(
+        policy,
+        proposal(
+            "select_prompt_memory",
+            MemoryOperationKind.SelectPrompt,
+            "learner_preference_memory",
+            Some(record("learner_preference_memory", true, Some(2000))),
+            false,
+        ),
+    )
+    assert_eq(revoked.reason, "memory_revoked")
+
+    expired = evaluate_memory_operation(
+        policy,
+        proposal(
+            "select_prompt_memory",
+            MemoryOperationKind.SelectPrompt,
+            "learner_preference_memory",
+            Some(record("learner_preference_memory", false, Some(1099))),
+            false,
+        ),
+    )
+    assert_eq(expired.reason, "memory_expired")
+
+    mut beyond_class_age = proposal(
+        "select_prompt_memory",
+        MemoryOperationKind.SelectPrompt,
+        "learner_preference_memory",
+        Some(record("learner_preference_memory", false, None)),
+        false,
+    )
+    beyond_class_age.current_time_seconds = 31537001
+    assert_eq(evaluate_memory_operation(policy, beyond_class_age).reason, "memory_expired")
+
+    invented = evaluate_memory_operation(
+        policy,
+        proposal("select_prompt_memory", MemoryOperationKind.SelectPrompt, "learner_preference_memory", None, false),
+    )
+    assert_eq(invented.reason, "memory_record_required")
+
+    mut cross_package = record("learner_preference_memory", false, Some(2000))
+    cross_package.package_id = package_id("other_package")
+    mismatch = evaluate_memory_operation(
+        policy,
+        proposal(
+            "select_prompt_memory",
+            MemoryOperationKind.SelectPrompt,
+            "learner_preference_memory",
+            Some(cross_package),
+            false,
+        ),
+    )
+    assert_eq(mismatch.reason, "memory_record_identity_mismatch")
+
+    mut superseded_record = record("learner_preference_memory", false, Some(2000))
+    superseded_record.superseded_by = Some(memory_id("memory_two"))
+    superseded_record = witnessed(superseded_record)
+    superseded = evaluate_memory_operation(
+        policy,
+        proposal(
+            "select_prompt_memory",
+            MemoryOperationKind.SelectPrompt,
+            "learner_preference_memory",
+            Some(superseded_record),
+            false,
+        ),
+    )
+    assert_eq(superseded.reason, "memory_superseded")
+
+    mut other_session = record("learner_preference_memory", false, Some(2000))
+    other_session.session_id = Some(session_id("session_two"))
+    session_mismatch = evaluate_memory_operation(
+        policy,
+        proposal(
+            "select_prompt_memory",
+            MemoryOperationKind.SelectPrompt,
+            "learner_preference_memory",
+            Some(other_session),
+            false,
+        ),
+    )
+    assert_eq(session_mismatch.reason, "memory_record_identity_mismatch")
+
+
+def test_hand_assembled_existing_record_with_forged_witness_is_rejected() -> None:
+    policy = memory_policy()
+    mut tampered = record("learner_preference_memory", false, Some(2000))
+    tampered.revoked = true
+    forged = evaluate_memory_operation(
+        policy,
+        proposal(
+            "select_prompt_memory",
+            MemoryOperationKind.SelectPrompt,
+            "learner_preference_memory",
+            Some(tampered),
+            false,
+        ),
+    )
+    assert_eq(forged.reason, "memory_record_witness_invalid")
+
+
+def test_genuine_memory_policy_digest_is_valid() -> None:
+    assert_eq(validate_governed_memory_policy(memory_policy()).valid, true)
+
+
+def test_stale_memory_policy_digest_after_class_change_is_rejected() -> None:
+    mut mutated = memory_policy()
+    mut first_class = mutated.classes[0]
+    first_class.prompt_eligible = not first_class.prompt_eligible
+    mutated.classes[0] = first_class
+    assert_eq(validate_governed_memory_policy(mutated).reason, "artifact_digest_mismatch")
+
+
+def test_stale_memory_policy_digest_after_operation_change_is_rejected() -> None:
+    mut mutated = memory_policy()
+    mut first_operation = mutated.operations[0]
+    first_operation.allowed_class_ids = [memory_class_id("operational_trace")]
+    mutated.operations[0] = first_operation
+    assert_eq(validate_governed_memory_policy(mutated).reason, "artifact_digest_mismatch")

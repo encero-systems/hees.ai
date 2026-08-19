@@ -41,3 +41,6 @@ RFC documents use three-digit numbers and the filename form `NNN-short-title.md`
 - [RFC 010: hees.ai console](010-hees-console.md) — Draft
 - [RFC 011: Canonical Structural Identity for Incan Models](011-canonical-structural-identity.md) — Planned
 - [RFC 012: Governed Effect Capabilities and Execution Receipts](012-governed-effect-capabilities-and-execution-receipts.md) — Draft
+- [RFC 013: Governed Continuity — Goal, Schedule, and Session Admission](013-governed-continuity-goal-schedule-session-admission.md) — Draft
+- [RFC 014: Governed Memory Lifecycle Operations](014-governed-memory-lifecycle-operations.md) — Draft
+- [RFC 015: Generic Governed Profile Evaluation](015-generic-governed-profile-evaluation.md) — Draft
