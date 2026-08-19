@@ -1,4 +1,4 @@
-"""Prove the Build Week initial-profile fixture reaches checked Hees 0.0.1."""
+"""Prove the Build Week initial-profile fixture reaches checked Hees.ai 0.0.1."""
 
 from rust::std::process import exit
 from std.fs import Path
@@ -93,7 +93,7 @@ def verify_fixture_parsing() -> Result[None, str]:
 
 
 def main() -> None:
-    """Run fixture parsing before exercising checked Hees 0.0.1 admission."""
+    """Run fixture parsing before exercising checked Hees.ai 0.0.1 admission."""
     match verify_fixture_parsing():
         Ok(_) => println("fixtures=parsed")
         Err(err) =>
@@ -104,7 +104,7 @@ def main() -> None:
         "0.1",
         package_id("lantern_labs"),
         domain_id("fictional_lesson_support"),
-        "Support the Hees Console Build Week initial profile with bounded explanations and practice steps using only this package's original fictional lesson records.",
+        "Support the Hees.ai Console Build Week initial profile with bounded explanations and practice steps using only this package's original fictional lesson records.",
         [action_contract(action_id("explain_lesson"), true), action_contract(action_id("compare_observations"), true), action_contract(
             action_id("propose_practice_step"),
             true,

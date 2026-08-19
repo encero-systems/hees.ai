@@ -302,7 +302,7 @@ def test_evidence_failure_precedence_is_independent_of_array_order() -> None:
 
 
 def test_incan_manifest_matches_all_frozen_target_digests() -> None:
-    """Freeze every Hees-authored verifier target digest in manifest order."""
+    """Freeze every Hees.ai-authored verifier target digest in manifest order."""
 
     package = assert_is_ok(load_package())
     request = assert_is_ok(load_request())

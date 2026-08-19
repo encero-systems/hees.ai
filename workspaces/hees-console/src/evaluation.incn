@@ -1,7 +1,7 @@
 """
-Direct public-Hees evaluation boundary for the native Console.
+Direct public-Hees.ai evaluation boundary for the native Console.
 
-This module transports typed offline inputs into the Incan-authored Hees profile and decodes its complete projection for inspection. It owns no admission policy and cannot construct a terminal decision.
+This module transports typed offline inputs into the Incan-authored Hees.ai profile and decodes its complete projection for inspection. It owns no admission policy and cannot construct a terminal decision.
 """
 
 from pub::hees_ai import (
@@ -48,7 +48,7 @@ pub const CONSOLE_TOOLCHAIN_IDENTITY: str = "incan_0_5_0_dev_23"
 
 @derive(Clone, json)
 pub model PremiseIdentityProjection:
-    """Digest-only memory premise returned in a Hees verifier target."""
+    """Digest-only memory premise returned in a Hees.ai verifier target."""
 
     pub memory_id: str
     pub content_digest: str
@@ -56,7 +56,7 @@ pub model PremiseIdentityProjection:
 
 @derive(Clone, json)
 pub model ManifestTargetBodyProjection:
-    """Hees-authored target body available to the Console inspector."""
+    """Hees.ai-authored target body available to the Console inspector."""
 
     pub profile_id: str
     pub package_id: str
@@ -74,7 +74,7 @@ pub model ManifestTargetBodyProjection:
 
 @derive(Clone, json)
 pub model ManifestTargetProjection:
-    """Canonical verifier target envelope returned by Hees."""
+    """Canonical verifier target envelope returned by Hees.ai."""
 
     pub body: ManifestTargetBodyProjection
     pub target_digest: str
@@ -82,7 +82,7 @@ pub model ManifestTargetProjection:
 
 @derive(Clone, json)
 pub model FindingProjection:
-    """Hees-classified result derived from one non-authoritative observation."""
+    """Hees.ai-classified result derived from one non-authoritative observation."""
 
     pub contract_version: str
     pub profile_id: str
@@ -106,7 +106,7 @@ pub model FindingProjection:
 
 @derive(Clone, json)
 pub model SpectrumProjection:
-    """Terminal admission or rejection returned only by the Hees profile."""
+    """Terminal admission or rejection returned only by the Hees.ai profile."""
 
     pub decision_id: str
     pub admitted: bool
@@ -145,7 +145,7 @@ pub model ConsoleInteraction:
 
 @derive(Clone)
 pub model ConsoleRun:
-    """One evaluated Console interaction and its Hees-authored terminal projection."""
+    """One evaluated Console interaction and its Hees.ai-authored terminal projection."""
 
     pub scenario: ConsoleInteraction
     pub result: CompleteProfileProjection
@@ -154,7 +154,7 @@ pub model ConsoleRun:
 
 @derive(Clone, json)
 pub model ConsoleTraceProjection:
-    """Bounded non-authoritative execution identities kept outside the Hees result."""
+    """Bounded non-authoritative execution identities kept outside the Hees.ai result."""
 
     pub contract_version: str
     pub profile_id: str
@@ -229,7 +229,7 @@ pub model PolicyInspectionProjection:
 
 @derive(Clone)
 pub model PackageInspectionProjection:
-    """Non-authoritative package display projection kept beside the typed Hees input."""
+    """Non-authoritative package display projection kept beside the typed Hees.ai input."""
 
     pub contract_version: str
     pub profile_id: str
@@ -250,7 +250,7 @@ pub model PackageInspectionProjection:
 
 @derive(Clone, json)
 pub model MemoryAtomProjection:
-    """Source-safe memory atom projected from a package or terminal Hees result."""
+    """Source-safe memory atom projected from a package or terminal Hees.ai result."""
 
     pub memory_id: str
     pub evidence_id: str
@@ -272,7 +272,7 @@ pub model MemoryAtomProjection:
 
 @derive(Clone)
 pub model CandidateScenarioProbe:
-    """Result of running one candidate through the shipped acceptance scenario and public Hees boundary."""
+    """Result of running one candidate through the shipped acceptance scenario and public Hees.ai boundary."""
 
     pub admitted: bool
     pub reason: str
@@ -285,7 +285,7 @@ pub model CandidateScenarioProbe:
 
 @derive(Clone, json)
 model AuthorityInputProjection:
-    """Local JSON bridge from embedded replay projections to public Hees input types."""
+    """Local JSON bridge from embedded replay projections to public Hees.ai input types."""
 
     package: JsonValue
     request: RequestProjection
@@ -296,7 +296,7 @@ model AuthorityInputProjection:
 
 @derive(Clone, json)
 model HeesAuthorityInput:
-    """Typed public-Hees inputs decoded together through one local serde boundary."""
+    """Typed public-Hees.ai inputs decoded together through one local serde boundary."""
 
     package: ConsolePackage
     request: ConsoleRequestBinding
@@ -321,7 +321,7 @@ model InteractionBodyProjection:
 
 @derive(Clone, json)
 model LiveRequestPlan:
-    """Closed request plan decoded from the public Hees request-binding projection."""
+    """Closed request plan decoded from the public Hees.ai request-binding projection."""
 
     contract_version: str
     profile_id: str
@@ -449,7 +449,7 @@ def package_inspection(package: ConsolePackage) -> Result[PackageInspectionProje
 
 
 pub def probe_candidate_scenario(evidence_ids: list[str], memory_ids: list[str]) -> Result[CandidateScenarioProbe, str]:
-    """Run the shipped valid scenario with one session candidate through the real Hees path."""
+    """Run the shipped valid scenario with one session candidate through the real Hees.ai path."""
 
     scenario = load_offline_scenario("valid")?
     inputs = decode_authority_input(scenario)?
@@ -579,7 +579,7 @@ def trace_projection(interaction: ConsoleInteraction, result: CompleteProfilePro
 
 
 def evaluate_inputs(interaction: ConsoleInteraction, inputs: HeesAuthorityInput) -> Result[ConsoleRun, str]:
-    """Call the terminal Hees profile once and decode only its complete public projection."""
+    """Call the terminal Hees.ai profile once and decode only its complete public projection."""
 
     source = evaluate_console_profile_json(
         inputs.package,
@@ -594,7 +594,7 @@ def evaluate_inputs(interaction: ConsoleInteraction, inputs: HeesAuthorityInput)
 
 
 pub def evaluate_offline_scenario(slug: str) -> Result[ConsoleRun, str]:
-    """Evaluate one embedded input through the real public Hees profile exactly once."""
+    """Evaluate one embedded input through the real public Hees.ai profile exactly once."""
 
     if not embedded_inputs_are_non_terminal():
         return Err("embedded_terminal_result")
@@ -675,14 +675,14 @@ pub def plan_live_question_json(question: str) -> Result[str, str]:
 
 
 pub def live_context_plan_json(live_plan_json: str) -> Result[str, str]:
-    """Read the exact Hees-authored provider context from one private live plan."""
+    """Read the exact Hees.ai-authored provider context from one private live plan."""
 
     plan = decode_live_plan(live_plan_json)?
     return Ok(plan.context_plan_json)
 
 
 pub def plan_live_manifest_from_json(live_plan_json: str, proposal_json: str) -> Result[str, str]:
-    """Plan verifier targets in Hees from typed live inputs and an untrusted proposal source."""
+    """Plan verifier targets in Hees.ai from typed live inputs and an untrusted proposal source."""
 
     plan = decode_live_plan(live_plan_json)?
     proposal = decode_provider_proposal(proposal_json)?
@@ -690,7 +690,7 @@ pub def plan_live_manifest_from_json(live_plan_json: str, proposal_json: str) ->
 
 
 pub def evaluate_live_sources(live_plan_json: str, proposal_json: str, committee_json: str) -> Result[ConsoleRun, str]:
-    """Decode untrusted provider sources and return their only terminal evaluation to Hees."""
+    """Decode untrusted provider sources and return their only terminal evaluation to Hees.ai."""
 
     plan = decode_live_plan(live_plan_json)?
     proposal = decode_provider_proposal(proposal_json)?

@@ -120,7 +120,7 @@ pub def validate_observation_coverage(
     relations: list[RelationObservation],
     syntheses: list[SynthesisObservation],
 ) -> ProfileValidation:
-    """Require closed contracts and exact set-and-order coverage of the Hees manifest."""
+    """Require closed contracts and exact set-and-order coverage of the Hees.ai manifest."""
     relation_count = len(proposal.visible_units) + len(proposal.support_mappings) + 1
     synthesis_count = 1 + len(package.requirements)
     if len(manifest) != relation_count + synthesis_count:

@@ -228,7 +228,7 @@ def evaluate_memory_operation(
     action_kind: ProgrammeActionKind,
     operation: ProgrammeMemoryOperation,
 ) -> ProgrammeEvaluation:
-    """Make an explicit progress effect eligible without mutating persistence inside Hees."""
+    """Make an explicit progress effect eligible without mutating persistence inside Hees.ai."""
 
     match action_origin_reason(frame, action.from_card_id):
         Some(reason) => return ProgrammeEvaluation.rejected(action_kind, reason, frame.current_card_id)

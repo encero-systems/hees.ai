@@ -136,7 +136,7 @@ model ProposalProjection:
 
 @derive(Clone, json)
 model PremiseIdentityProjection:
-    """Transport-local premise identity returned by the closed Hees evaluation."""
+    """Transport-local premise identity returned by the closed Hees.ai evaluation."""
 
     pub memory_id: str
     pub content_digest: str
@@ -144,7 +144,7 @@ model PremiseIdentityProjection:
 
 @derive(Clone, json)
 model ManifestTargetBodyProjection:
-    """Transport-local verifier target body returned by the closed Hees evaluation."""
+    """Transport-local verifier target body returned by the closed Hees.ai evaluation."""
 
     pub profile_id: str
     pub package_id: str
@@ -162,7 +162,7 @@ model ManifestTargetBodyProjection:
 
 @derive(Clone, json)
 model ManifestTargetProjection:
-    """Transport-local canonical target envelope returned by Hees."""
+    """Transport-local canonical target envelope returned by Hees.ai."""
 
     pub body: ManifestTargetBodyProjection
     pub target_digest: str
@@ -170,7 +170,7 @@ model ManifestTargetProjection:
 
 @derive(Clone, json)
 model DerivedFindingProjection:
-    """Transport-local copy of one Hees-classified finding."""
+    """Transport-local copy of one Hees.ai-classified finding."""
 
     pub contract_version: str
     pub profile_id: str
@@ -194,7 +194,7 @@ model DerivedFindingProjection:
 
 @derive(Clone, json)
 model SpectrumProjection:
-    """Transport-local terminal decision returned by the closed Hees evaluation."""
+    """Transport-local terminal decision returned by the closed Hees.ai evaluation."""
 
     pub decision_id: str
     pub admitted: bool
@@ -269,7 +269,7 @@ model ConsoleTrace:
 
 @derive(json)
 model RunnerResponse:
-    """Closed transport projection of one Hees terminal evaluation."""
+    """Closed transport projection of one Hees.ai terminal evaluation."""
 
     pub contract_version: str
     pub profile_id: str
@@ -639,7 +639,7 @@ def established_identity(
 
 
 def projected_json(source: Option[str]) -> Option[JsonValue]:
-    """Parse one Hees-authored projection into this runner's JSON value type."""
+    """Parse one Hees.ai-authored projection into this runner's JSON value type."""
     match source:
         None => return None
         Some(value) =>
@@ -655,7 +655,7 @@ def evaluated_response(
     proposal: ConsoleProposal,
     evaluation_source: str,
 ) -> Result[RunnerResponse, str]:
-    """Serialize one complete Hees evaluation without reconstructing authority."""
+    """Serialize one complete Hees.ai evaluation without reconstructing authority."""
 
     evaluation = CompleteProfileProjection
         .from_json(evaluation_source)

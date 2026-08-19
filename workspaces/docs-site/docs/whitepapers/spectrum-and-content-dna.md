@@ -8,13 +8,13 @@ This whitepaper explains the architectural intent behind Spectrum and Content DN
 
 A language model can produce useful explanations, but fluent generation does not establish that an answer follows reviewed knowledge, respects policy, handles conflicting material consistently, or can be traced to the exact sources that governed it. Retrieval alone does not solve this problem. A retrieved passage is a nomination: it may be relevant without supporting the answer, may be outdated or rights-restricted, and may conflict with another reviewed source.
 
-Hees separates language generation from governance. Packages contain reviewed knowledge and policy. Providers nominate bounded results. The model proposes visible language. Hees validates those inputs and applies deterministic contracts. Spectrum owns the terminal decision, while Content DNA records the exact reviewed memory selected for the admitted answer.
+Hees.ai separates language generation from governance. Packages contain reviewed knowledge and policy. Providers nominate bounded results. The model proposes visible language. Hees.ai validates those inputs and applies deterministic contracts. Spectrum owns the terminal decision, while Content DNA records the exact reviewed memory selected for the admitted answer.
 
 This separation matters most when the deployment must behave consistently across different models, providers, languages, and devices. The model can change without silently acquiring authority over policy or provenance.
 
 ## Spectrum
 
-Spectrum is the Hees adjudication core that turns admitted governed inputs into one terminal outcome. It does not generate content and does not author policy. It applies the policy and reviewed memory already admitted from a package, composes bounded non-authoritative findings, resolves declared conflicts, selects the memory that may govern the response, and chooses the final response path.
+Spectrum is the Hees.ai adjudication core that turns admitted governed inputs into one terminal outcome. It does not generate content and does not author policy. It applies the policy and reviewed memory already admitted from a package, composes bounded non-authoritative findings, resolves declared conflicts, selects the memory that may govern the response, and chooses the final response path.
 
 The word terminal is important. A retrieval provider may rank memory, a verifier may score a claim-premise relationship, a constraint evaluator may nominate an action, and a behavior selector may choose an eligible frame. None of those intermediate results can admit an answer. Spectrum is the single point at which those results become one governed decision.
 
@@ -27,13 +27,13 @@ Spectrum preserves several distinctions that conventional orchestration often co
 - A trace is not an authority capability.
 - A receipt is not proof of unrestricted truth.
 
-For an admitted answer, Spectrum freezes the exact ordered selected-memory set and the complementary discarded-memory set. This terminal selection is the source from which Hees constructs Content DNA.
+For an admitted answer, Spectrum freezes the exact ordered selected-memory set and the complementary discarded-memory set. This terminal selection is the source from which Hees.ai constructs Content DNA.
 
 ## Content DNA
 
 Content DNA is answer-time provenance. It binds one terminal answer to every and only the reviewed governed-memory atoms selected by Spectrum, together with their source-safe provenance, review state, rights state, package identity, governing policy, proposal identity, and Spectrum decision.
 
-It is not a list of model-authored citations. It is also not a copy of a build-time source manifest. A package authoring system can know where reviewed memory came from, but it cannot know which memory a future live answer will use. A model can name sources, but it cannot author its own provenance authority. Only Hees has both the admitted package facts and the terminal Spectrum selection required to construct the answer-specific value.
+It is not a list of model-authored citations. It is also not a copy of a build-time source manifest. A package authoring system can know where reviewed memory came from, but it cannot know which memory a future live answer will use. A model can name sources, but it cannot author its own provenance authority. Only Hees.ai has both the admitted package facts and the terminal Spectrum selection required to construct the answer-specific value.
 
 Content DNA contains identifiers, governance state, source-safe references, and canonical digests rather than source passages or answer prose. The visible answer is bound by digest, and authorized applications can resolve the source-safe references independently. This avoids creating a second content channel while still making the relationship deterministic and auditable.
 
@@ -42,13 +42,13 @@ Content DNA contains identifiers, governance state, source-safe references, and 
 The proposed runtime flow is:
 
 1. A package-authoring system compiles reviewed knowledge, policy, source-safe provenance, rights state, and acceptance fixtures into a governed package.
-2. Hees admits the exact package artifact and establishes its trusted identity.
+2. Hees.ai admits the exact package artifact and establishes its trusted identity.
 3. A retrieval provider nominates logical memory identifiers under a package-approved binding.
-4. Hees validates the complete retrieval result and materializes package-owned memory rather than trusting provider-returned text.
+4. Hees.ai validates the complete retrieval result and materializes package-owned memory rather than trusting provider-returned text.
 5. A model proposes bounded behavior and visible response values through the declared provider contract.
 6. Verifiers and other evaluators return bounded observations for exact governed targets.
 7. Spectrum applies package policy, resolves the response lifecycle, and freezes the terminal selected-memory set.
-8. Hees constructs and validates Content DNA from the selected package-owned memory.
+8. Hees.ai constructs and validates Content DNA from the selected package-owned memory.
 9. The admitted visible answer and Content DNA are returned atomically; if provenance construction fails, the answer is not admitted.
 10. Export-safe receipts or traces may explain the outcome without becoming a second terminal authority.
 
@@ -78,17 +78,17 @@ The authority model does not require a network service. Package admission, Spect
 
 Consumer-device constraints still shape the detailed contracts. Memory counts, finding batches, canonicalization buffers, retained repair state, Content DNA entries, and traces require absolute bounds and representative measurements alongside the resident model. Low-memory implementations may stream or fuse internal work, but truncating Content DNA, dropping selected memory, or returning the answer before provenance completion is not an acceptable optimization.
 
-## Profile authoring and Hees
+## Profile authoring and Hees.ai
 
-Profile-authoring workflows own preparation: source intake, semantic transformation, human review, provenance compilation, rights and policy declarations, package construction, and acceptance suites. Those workflows may live in the local-first hees.ai console or another contract-compatible tool. Hees owns authority-bearing validation and runtime behavior: package admission, provider-result validation, Spectrum adjudication, response admission, and Content DNA construction.
+Profile-authoring workflows own preparation: source intake, semantic transformation, human review, provenance compilation, rights and policy declarations, package construction, and acceptance suites. Those workflows may live in the local-first hees.ai console or another contract-compatible tool. Hees.ai owns authority-bearing validation and runtime behavior: package admission, provider-result validation, Spectrum adjudication, response admission, and Content DNA construction.
 
-That boundary keeps runtime behavior portable. Different authoring surfaces can produce the same accepted profile contract, and another Hees implementation can consume it, without changing who decides the live outcome. Authoring tools may generate synthetic expected Content DNA for fixtures, but Hees must recompute the live value from the terminal selected memory.
+That boundary keeps runtime behavior portable. Different authoring surfaces can produce the same accepted profile contract, and another Hees.ai implementation can consume it, without changing who decides the live outcome. Authoring tools may generate synthetic expected Content DNA for fixtures, but Hees.ai must recompute the live value from the terminal selected memory.
 
 ## Current proof and assurance direction
 
 The working profile makes testable claims today: authority is explicit, provider outputs remain bounded nominations, terminal behavior follows admitted policy, admitted answers have exact selected-memory provenance, and independent implementations can be checked against the same contracts.
 
-The larger Hees direction adds semantic and factual verification, source and claim provenance, rights assurance, producer identity, conflict management, governed behavior, and richer response lifecycles to this foundation. Those assurance layers require explicit contracts and evidence. They are not replaced by a digest or evaluator score, and they do not turn hidden model reasoning into authority.
+The larger Hees.ai direction adds semantic and factual verification, source and claim provenance, rights assurance, producer identity, conflict management, governed behavior, and richer response lifecycles to this foundation. Those assurance layers require explicit contracts and evidence. They are not replaced by a digest or evaluator score, and they do not turn hidden model reasoning into authority.
 
 ## Normative map
 

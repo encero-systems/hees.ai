@@ -12,20 +12,20 @@
     - RFC 009 (Governed Visible Response Lifecycle)
 - **Issue:** https://github.com/encero-systems/hees.ai/issues/3
 - **RFC PR:** —
-- **Written against:** Hees 0.0.1 / Incan 0.4.0
+- **Written against:** Hees.ai 0.0.1 / Incan 0.4.0
 - **Shipped in:** —
 
 ## Summary
 
-Hees should construct deterministic Content DNA at answer time from every and only the reviewed governed-memory atoms selected by Spectrum for one terminal response. An admitted visible answer and its Content DNA must be returned atomically. The Content DNA value binds the answer, request, proposal, package, policy, Spectrum decision, selected memory, source-safe provenance, review state, rights state, and canonical digest without reproducing source text, answer prose, provider scores, hidden reasoning, or build-time review history. Models, providers, callers, packages, and build-time tooling may supply governed inputs, but none may author the terminal Content DNA projection.
+Hees.ai should construct deterministic Content DNA at answer time from every and only the reviewed governed-memory atoms selected by Spectrum for one terminal response. An admitted visible answer and its Content DNA must be returned atomically. The Content DNA value binds the answer, request, proposal, package, policy, Spectrum decision, selected memory, source-safe provenance, review state, rights state, and canonical digest without reproducing source text, answer prose, provider scores, hidden reasoning, or build-time review history. Models, providers, callers, packages, and build-time tooling may supply governed inputs, but none may author the terminal Content DNA projection.
 
 ## Core model
 
 1. **Content DNA is answer-time provenance.** It records which reviewed memory made one terminal answer admissible; it is not a corpus-ingestion manifest or model citation format.
 2. **Spectrum fixes the membership.** Every admitted-answer entry corresponds to one Spectrum-selected memory atom, in the exact terminal order, with no omissions or additions.
 3. **The package supplies provenance facts.** Source-safe references, source fingerprints, review and rights state, authority classification, and provenance identity come from the exact RFC 005-admitted package.
-4. **Hees constructs the projection.** A model, retrieval provider, verifier, caller, package-authoring process, or package field cannot submit a completed Content DNA value for admission.
-5. **The answer and provenance are atomic.** Hees must not expose admitted visible prose if Content DNA construction, validation, canonicalization, or digest computation fails.
+4. **Hees.ai constructs the projection.** A model, retrieval provider, verifier, caller, package-authoring process, or package field cannot submit a completed Content DNA value for admission.
+5. **The answer and provenance are atomic.** Hees.ai must not expose admitted visible prose if Content DNA construction, validation, canonicalization, or digest computation fails.
 6. **No-answer outcomes are explicit.** A package-authored clarification, or a future package-authored refusal, may carry a closed zero-entry no-answer value; rejection does not masquerade as answer provenance.
 7. **Canonical identity is not terminal authority.** A Content DNA identifier proves deterministic content identity and integrity for the covered body, but a copied or verified document cannot recreate the original Spectrum capability.
 8. **The public projection is source-safe.** Raw memory, source passages, answer text, hidden reasoning, provider payloads, private review notes, and unrestricted locators remain outside the contract.
@@ -34,9 +34,9 @@ Hees should construct deterministic Content DNA at answer time from every and on
 
 Conventional retrieval-augmented generation often exposes citations assembled by the model or application. Such citations can be incomplete, can name retrieved passages that did not actually govern the answer, and can survive even when the runtime rejects or replaces the response. Build-time provenance is necessary but also insufficient: it explains where package memory came from, not which reviewed memories made one particular answer admissible.
 
-Hees needs a terminal provenance contract that is tied to the same authority that admits the answer. Spectrum knows the complete admitted context, the final selected-memory subset, the applied package policy, the terminal response, and the exact proposal identity. Content DNA is the deterministic projection of those trusted facts. It lets applications explain and audit an answer without treating model-authored citation prose, retrieval rank, or a generic support record as provenance authority.
+Hees.ai needs a terminal provenance contract that is tied to the same authority that admits the answer. Spectrum knows the complete admitted context, the final selected-memory subset, the applied package policy, the terminal response, and the exact proposal identity. Content DNA is the deterministic projection of those trusted facts. It lets applications explain and audit an answer without treating model-authored citation prose, retrieval rank, or a generic support record as provenance authority.
 
-Content DNA also closes an important failure mode in which the visible answer is returned successfully but provenance emission fails afterward. By making the answer and Content DNA one atomic result, Hees fails closed before an untraceable answer can become visible.
+Content DNA also closes an important failure mode in which the visible answer is returned successfully but provenance emission fails afterward. By making the answer and Content DNA one atomic result, Hees.ai fails closed before an untraceable answer can become visible.
 
 ## Goals
 
@@ -62,7 +62,7 @@ Content DNA also closes an important failure mode in which the visible answer is
 
 ## Guide-level explanation
 
-When Spectrum admits an answer, Hees already knows the exact package, proposal, policy, visible answer, and ordered memory selected for that answer. Hees projects each selected atom's source-safe provenance, review state, rights state, and governance identity into one Content DNA entry, binds the visible answer by digest, canonicalizes the closed body, and returns the answer and Content DNA atomically.
+When Spectrum admits an answer, Hees.ai already knows the exact package, proposal, policy, visible answer, and ordered memory selected for that answer. Hees.ai projects each selected atom's source-safe provenance, review state, rights state, and governance identity into one Content DNA entry, binds the visible answer by digest, canonicalizes the closed body, and returns the answer and Content DNA atomically.
 
 Applications may display authorized source references or retain the Content DNA envelope for audit. The artifact contains no source passages or answer prose, and successful public digest verification does not turn it into a live Spectrum capability. A package-authored clarification uses the explicit zero-entry no-answer form so an empty provenance list can never be mistaken for a source-free admitted answer.
 
@@ -72,7 +72,7 @@ Applications may display authorized source references or retain the Content DNA 
 
 Content DNA must be constructed inside the terminal Spectrum operation from direct trusted values. The construction function may accept only the trusted RFC 001 decision state, the exact RFC 009 terminal response state, and the RFC 005-admitted package view needed to project selected RFC 003 memory provenance. It must not accept a caller-authored entry list, caller-authored source reference, caller-authored answer digest, or prebuilt Content DNA body.
 
-The package must not contain an answer-specific Content DNA object. It may contain the reviewed source-safe provenance fields from which Hees later constructs entries. Package-authoring tooling may compile and validate those package fields and may create synthetic expected outputs for acceptance fixtures, but it cannot declare the memory selected for a live answer.
+The package must not contain an answer-specific Content DNA object. It may contain the reviewed source-safe provenance fields from which Hees.ai later constructs entries. Package-authoring tooling may compile and validate those package fields and may create synthetic expected outputs for acceptance fixtures, but it cannot declare the memory selected for a live answer.
 
 A model may emit visible answer units and identifier-only support through RFC 009. It must not emit Content DNA fields, entry order, provenance digests, review status, rights claims, source references, or the Content DNA identifier. A retrieval provider may nominate memory identifiers but cannot determine terminal membership. A verifier may classify exact target-premise relations but cannot author entries.
 
@@ -121,7 +121,7 @@ Content DNA does not copy complete policy definitions, findings, thresholds, pro
 
 For admitted_answer, answer_digest must equal SHA-256 over the RFC 005 JCS canonical bytes of a closed answer-binding object containing the exact ordered RFC 009 visible answer units and no support, findings, provider fields, or presentation metadata. The digest string must use the lowercase sha256 prefix and lowercase hexadecimal form required by RFC 005.
 
-The Content DNA body must not contain the answer-binding object or visible text. An application that is already authorized to display the answer may independently recompute answer_digest from the exact trusted visible units returned atomically by Hees. Whitespace, Unicode code points, unit order, and unit identifiers are identity-bearing exactly as RFC 009 defines them; Content DNA must not normalize or reinterpret them.
+The Content DNA body must not contain the answer-binding object or visible text. An application that is already authorized to display the answer may independently recompute answer_digest from the exact trusted visible units returned atomically by Hees.ai. Whitespace, Unicode code points, unit order, and unit identifiers are identity-bearing exactly as RFC 009 defines them; Content DNA must not normalize or reinterpret them.
 
 For no_answer, answer_digest must be absent. Hashing an empty string would be ambiguous because it could suggest that empty model output was admitted.
 
@@ -174,17 +174,17 @@ For no_answer, selected memory, entries, and source_digests must all be empty, a
 
 The Content DNA identifier must be the lowercase string sha256 followed by a colon and the SHA-256 digest of the canonical Content DNA body bytes. The returned exportable value is a closed object containing exactly body and content_dna_id. Verification must canonicalize body under the RFC 005 profile, recompute the identifier, and validate every closed-schema and state rule that does not require private in-process capabilities.
 
-The identifier establishes deterministic content identity and detects body modification. It does not prove that Hees produced the value, that a live Spectrum operation occurred, that the package artifact is available, or that reviewed memory is objectively true. External authenticity requires a later signature or attestation contract.
+The identifier establishes deterministic content identity and detects body modification. It does not prove that Hees.ai produced the value, that a live Spectrum operation occurred, that the package artifact is available, or that reviewed memory is objectively true. External authenticity requires a later signature or attestation contract.
 
-The direct terminal Hees return remains authoritative inside the running operation. A caller-created body with a valid digest, a copied Content DNA envelope, or a value that passes public verification must not be accepted where a direct RFC 001 capability is required.
+The direct terminal Hees.ai return remains authoritative inside the running operation. A caller-created body with a valid digest, a copied Content DNA envelope, or a value that passes public verification must not be accepted where a direct RFC 001 capability is required.
 
 ### Atomic construction and failure behavior
 
-Spectrum must freeze the terminal response, selected-memory order, package and policy identity, and decision identity before Content DNA construction. Hees must then project entries from the direct accepted package, validate state and exact coverage, compute provenance and answer digests, canonicalize the body, compute content_dna_id, and return the visible answer and Content DNA together.
+Spectrum must freeze the terminal response, selected-memory order, package and policy identity, and decision identity before Content DNA construction. Hees.ai must then project entries from the direct accepted package, validate state and exact coverage, compute provenance and answer digests, canonicalize the body, compute content_dna_id, and return the visible answer and Content DNA together.
 
 If any step fails, the admitted answer must not be returned. The failure must map through the exact RFC 009 response policy and public-reason precedence rather than producing an admitted result with absent or partial provenance. Implementations must not retry with fewer entries, remove a failing source, downgrade review or rights requirements, substitute a generic citation, or emit the answer before repair or rejection is selected.
 
-A construction failure caused by an invalid response candidate may be candidate-correctable only where RFC 009 explicitly permits one repair and the repair can change model-controlled values. Package provenance, selected-memory identity, digest calculation, review state, rights state, or internal Hees failure is not model-correctable and must not be sent to the model as a repair request.
+A construction failure caused by an invalid response candidate may be candidate-correctable only where RFC 009 explicitly permits one repair and the repair can change model-controlled values. Package provenance, selected-memory identity, digest calculation, review state, rights state, or internal Hees.ai failure is not model-correctable and must not be sent to the model as a repair request.
 
 ### Relationship to export-safe receipts
 
@@ -198,9 +198,9 @@ A proposal receipt and Content DNA answer different questions. The receipt recor
 
 Package-authoring tooling may transform approved source material into governed-memory atoms, collect source-safe references and fingerprints, record review and rights state, assign package-owned authority and evidence classifications, compute build-time provenance fixtures, and compile those values into an RFC 005 package artifact.
 
-Package-authoring tooling must not place answer-specific Content DNA, a live Spectrum decision identifier, a response answer digest, or a terminal selected-memory list into the package. It may generate synthetic expected Content DNA for acceptance fixtures only when the fixture is clearly non-authoritative and Hees recomputes the runtime value independently.
+Package-authoring tooling must not place answer-specific Content DNA, a live Spectrum decision identifier, a response answer digest, or a terminal selected-memory list into the package. It may generate synthetic expected Content DNA for acceptance fixtures only when the fixture is clearly non-authoritative and Hees.ai recomputes the runtime value independently.
 
-Package validation must reject provenance fields that contain raw source text, local paths, credentials, unrestricted private locators, unbounded review notes, or unknown extensions. Source-rights review remains a package-authoring responsibility; Hees validates only the admitted state and policy semantics defined by the contract.
+Package validation must reject provenance fields that contain raw source text, local paths, credentials, unrestricted private locators, unbounded review notes, or unknown extensions. Source-rights review remains a package-authoring responsibility; Hees.ai validates only the admitted state and policy semantics defined by the contract.
 
 ### Privacy and redaction
 
@@ -237,7 +237,7 @@ Public Content DNA verification may establish only that:
 - content_dna_id matches the canonical body bytes; and
 - terminal variant and state are a permitted pair under the supported contract.
 
-Public verification without the admitted package and direct Spectrum result cannot prove that the entries equal the live selected-memory set, that source fields match the package, that the review and rights claims are genuine, or that Hees emitted the artifact. Applications must describe that distinction accurately.
+Public verification without the admitted package and direct Spectrum result cannot prove that the entries equal the live selected-memory set, that source fields match the package, that the review and rights claims are genuine, or that Hees.ai emitted the artifact. Applications must describe that distinction accurately.
 
 ## Design details
 
@@ -245,7 +245,7 @@ Public verification without the admitted package and direct Spectrum result cann
 
 #### Relationship to RFC 000
 
-RFC 000 makes Content DNA mandatory for admitted visible answers and establishes that only Hees may author answer-time provenance. This RFC defines the detailed value and validation rules that realize that invariant.
+RFC 000 makes Content DNA mandatory for admitted visible answers and establishes that only Hees.ai may author answer-time provenance. This RFC defines the detailed value and validation rules that realize that invariant.
 
 #### Relationship to RFC 001
 
@@ -293,7 +293,7 @@ Rejected because a package is built before a live request and cannot know the an
 
 ### Let package-authoring tooling emit the final value
 
-Rejected because package-authoring tooling owns build-time review and compilation rather than runtime terminal authority. It may create fixtures but Hees must recompute the live result.
+Rejected because package-authoring tooling owns build-time review and compilation rather than runtime terminal authority. It may create fixtures but Hees.ai must recompute the live result.
 
 ### Use only the generic proposal receipt
 
@@ -330,7 +330,7 @@ Those costs are necessary for a system that claims answer-specific governed prov
 - Every admitted visible answer requires non-empty exact selected-memory coverage.
 - Package-authored clarification uses a closed zero-entry no-answer representation; repair-requested and rejected outcomes emit no Content DNA.
 - Entries contain source-safe provenance and governance identity but no source or answer text.
-- Hees constructs Content DNA inside Spectrum; no external component may submit a completed value.
+- Hees.ai constructs Content DNA inside Spectrum; no external component may submit a completed value.
 - The Content DNA body and identifier are distinct from the generic governance receipt body and identifier.
 - Proposal receipts reference content_dna_id for admitted answers.
 - Canonical identity establishes content integrity, not producer authenticity or real-world truth.

@@ -13,10 +13,10 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 | Codex collaboration | Timestamped Codex evidence, dated commits, and README lineage | Cite the public implementation record and the Build Week lineage; add the `/feedback` Session ID only in Devpost. |
 | Majority core-functionality task | Codex `/feedback` Session ID | Danny runs `/feedback` in the core task and enters the resulting account-bound Session ID in Devpost. |
 | Working Incan-authored decision path | Runner source, generated artifact identity, integration tests, and valid/adversarial run evidence | Verify the tagged source, CI, golden runs, and release artifact agree before recording. |
-| Working Profile Studio | Evidence and memory staging, real Hees candidate acceptance probe, separate public reason and exact profile diagnostic, blocked activation, reset, and active-profile preservation | Capture and record this flow from the tagged artifact; retain run evidence in the private submission ledger. |
+| Working Profile Studio | Evidence and memory staging, real Hees.ai candidate acceptance probe, separate public reason and exact profile diagnostic, blocked activation, reset, and active-profile preservation | Capture and record this flow from the tagged artifact; retain run evidence in the private submission ledger. |
 | Explained profile contract | Public field-level Lantern Labs package/profile guide with ownership and validation path | [Governance profiles guide](../workspaces/docs-site/docs/governance-profiles.md) and published documentation site. |
-| Bounded Training by Committee slice | Target derivation, complete observation coverage, Hees classification, and authority-negative tests | Verify tagged-source tests and a matching recorded run before recording. |
-| Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` adapter reaching the same runner, with model/configuration identity and public result | [Sanitized local observation](evidence/live-gpt56-proposal-2026-07-20.json): the native proposal path passed separately in 8.34 seconds; a six-call native live committee completed in 40.06 seconds with zero retries and reached an admitted real-Hees result; the combined frozen release-binary path remains unproven |
+| Bounded Training by Committee slice | Target derivation, complete observation coverage, Hees.ai classification, and authority-negative tests | Verify tagged-source tests and a matching recorded run before recording. |
+| Optional live GPT-5.6 | Secret-gated `gpt-5.6-sol` adapter reaching the same runner, with model/configuration identity and public result | [Sanitized local observation](evidence/live-gpt56-proposal-2026-07-20.json): the native proposal path passed separately in 8.34 seconds; a six-call native live committee completed in 40.06 seconds with zero retries and reached an admitted real-Hees.ai result; the combined frozen release-binary path remains unproven |
 | No-rebuild judge path | Hosted sandbox or functioning test build, supported platforms, clean-system smoke test, access window | Publish a tested archive in the `hees-console-v0.1.0` Release and verify extracted replay smoke on every claimed platform. |
 | Release integrity | Tag, immutable commit, asset names, SHA-256 values, provenance, dependency licenses | Verify the published Release's tag, `SHA256SUMS`, manifests, provenance, and notices against the tagged source. |
 | Product behavior | Frozen golden outputs for valid action, undeclared action, and scenario `3` unknown evidence | Verify golden tests and recorded release-binary runs agree before publication. |
@@ -31,7 +31,7 @@ Nothing in this document confirms that hees.ai console has been released, hosted
 
 - [ ] The implementation slices have returned and an evidence-based completion audit has passed against the exact release candidate.
 - [ ] The valid and adversarial scenarios rerun through the compiled Incan-authored runner; replay files contain no stored terminal result.
-- [ ] Evidence and Memory staging mutate real session-local candidate state, `v` invokes the Hees acceptance probe, a rejected candidate cannot become active, and `r` restores the shipped profile.
+- [ ] Evidence and Memory staging mutate real session-local candidate state, `v` invokes the Hees.ai acceptance probe, a rejected candidate cannot become active, and `r` restores the shipped profile.
 - [ ] Replay and optional live mode are described as transports normalized into the same compiled validation, findings, Spectrum, memory-selection, Content DNA, and receipt path.
 - [ ] Scenario `3` is frozen as `Unknown evidence reference`, namespace `console_admission_0_1`, public reason `unknown_evidence`, with a golden output and test link.
 - [ ] The release artifact has passed a clean-system, no-rebuild smoke test on every claimed platform.
@@ -68,7 +68,7 @@ The command verifies the staged `SOURCE_COMMIT`, checks that the source checkout
 
 - [ ] The frozen project uses both Codex and GPT-5.6 and fits the selected Developer Tools category.
 - [ ] It installs and runs consistently on every claimed platform and behaves exactly as described and shown.
-- [ ] Public documentation separates pre-July-13 Hees and Incan work from the meaningful extension built during the July 13–21 submission period.
+- [ ] Public documentation separates pre-July-13 Hees.ai and Incan work from the meaningful extension built during the July 13–21 submission period.
 - [ ] Dated commits, PRs, and Codex evidence support that distinction, and the entry asks judges to evaluate only the event-period extension.
 
 ### Required submission material

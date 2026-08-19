@@ -7,7 +7,7 @@
 | Field | Value |
 | --- | --- |
 | Title | hees.ai console |
-| Tagline | GPT-5.6 proposes. Hees decides. |
+| Tagline | GPT-5.6 proposes. Hees.ai decides. |
 | Category | Developer Tools |
 | Entrant | Danny Meijer, individual |
 | Repository | [Hees.ai](https://github.com/encero-systems/hees.ai/tree/hees-console-v0.1.0), at the tagged release revision |
@@ -21,7 +21,7 @@ The available categories are Developer Tools, Apps for Your Life, Work and Produ
 
 ## Short description
 
-hees.ai console is the evidence-first development environment for governed AI. Its product direction helps developers turn sources into candidate memory, govern those atoms, and assemble reusable profiles that declare rights, actions, policy and evaluator roles. This Build Week release delivers the working bounded slice: a native Incan Profile Studio over supplied fictional evidence where developers inspect evidence and memory, stage or unstage a session-local candidate, validate it through Hees, pressure-test proposals through Training by Committee, and inspect Spectrum, selected memory, Content DNA and receipts. GPT-5.6 proposes. Hees decides.
+hees.ai console is the evidence-first development environment for governed AI. Its product direction helps developers turn sources into candidate memory, govern those atoms, and assemble reusable profiles that declare rights, actions, policy and evaluator roles. This Build Week release delivers the working bounded slice: a native Incan Profile Studio over supplied fictional evidence where developers inspect evidence and memory, stage or unstage a session-local candidate, validate it through Hees.ai, pressure-test proposals through Training by Committee, and inspect Spectrum, selected memory, Content DNA and receipts. GPT-5.6 proposes. Hees.ai decides.
 
 ## The problem
 
@@ -46,13 +46,13 @@ The working release begins with a supplied fictional evidence package and a sess
 2. Turn bounded source spans into candidate memory atoms without treating model suggestions as reviewed material.
 3. Establish package-owned provenance, review, rights, authority, and evidence declarations.
 4. Define permitted actions, answer requirements, policy thresholds, and evaluator roles.
-5. Validate the governance profile through Hees.
+5. Validate the governance profile through Hees.ai.
 6. Pressure-test memory, proposals, prompts, and policy through Training by Committee.
 7. Run live or saved inputs through the active compiled profile.
-8. Inspect the proposal, observations, Hees findings, Spectrum result, selected memory, Content DNA, receipt, and trace.
+8. Inspect the proposal, observations, Hees.ai findings, Spectrum result, selected memory, Content DNA, receipt, and trace.
 9. Compare, replay, and export bounded evidence without turning historical output into current authority.
 
-The Build Week release makes that workflow tangible with a fictional Lantern Labs Profile Studio. Developers can browse the supplied sources and reviewed memory with their identity, provenance, review, rights, and authority metadata; stage or unstage material in a session-local candidate; rerun the shipped acceptance interaction against that candidate through the real Hees-owned boundary; and reset it. A missing required atom returns stable public reason `invalid_package` plus exact profile diagnostic `invalid_package_atoms`. Candidate activation remains explicitly blocked because this first public profile does not yet expose a safe activation-authority API. The active shipped profile cannot be silently replaced by UI state.
+The Build Week release makes that workflow tangible with a fictional Lantern Labs Profile Studio. Developers can browse the supplied sources and reviewed memory with their identity, provenance, review, rights, and authority metadata; stage or unstage material in a session-local candidate; rerun the shipped acceptance interaction against that candidate through the real Hees.ai-owned boundary; and reset it. A missing required atom returns stable public reason `invalid_package` plus exact profile diagnostic `invalid_package_atoms`. Candidate activation remains explicitly blocked because this first public profile does not yet expose a safe activation-authority API. The active shipped profile cannot be silently replaced by UI state.
 
 After profile work, the same Console runs one admitted and four adversarial interactions. It keeps `UNTRUSTED PROPOSAL`, evaluator observations, `HEES-CLASSIFIED FINDINGS`, terminal decision, selected memory, Content DNA, receipt, and trace visually separate.
 
@@ -68,12 +68,12 @@ The fictional `console_profile_0_1` package makes the contract concrete:
 | Source | `source_lantern_path`, English fictional lesson note, exact fingerprint | Establishes the source bytes and source-safe identity available to the profile. |
 | Reviewed memory | `memory_lantern_sequence`, evidence `evidence_lantern_path`, exact source span, `approved`, `allowed` | Makes package-declared review, rights, provenance, and answer eligibility explicit; this release validates those declarations and their governed use, not external ownership or licensing facts. |
 | Permitted action | `explain_lesson` | Causes the plausible but undeclared `assign_final_grade` action to fail as `unknown_action`. |
-| Requirements | `explain_sequence`, `ground_in_lesson` | Defines the visible-answer coverage targets Hees derives. |
-| Policy | minimum support `6500` basis points; maximum contradiction `3500` basis points | Converts bounded observations into deterministic Hees findings. |
-| Committee roles | evidence relation, contradiction cross-check, synthesis coverage | Restricts evaluators to exact Hees-derived targets; no provider vote chooses the result. |
+| Requirements | `explain_sequence`, `ground_in_lesson` | Defines the visible-answer coverage targets Hees.ai derives. |
+| Policy | minimum support `6500` basis points; maximum contradiction `3500` basis points | Converts bounded observations into deterministic Hees.ai findings. |
+| Committee roles | evidence relation, contradiction cross-check, synthesis coverage | Restricts evaluators to exact Hees.ai-derived targets; no provider vote chooses the result. |
 | Terminal artifacts | Spectrum result, selected memory, Content DNA, receipt | Makes the governed outcome inspectable and exportable. |
 
-The package also contains `memory_public_ranking_draft`, with review state `pending` and rights state `denied`. It is intentionally visible but ineligible. The distinction demonstrates a central Hees idea: material can be known to a workspace without being permitted to enter a governed answer.
+The package also contains `memory_public_ranking_draft`, with review state `pending` and rights state `denied`. It is intentionally visible but ineligible. The distinction demonstrates a central Hees.ai idea: material can be known to a workspace without being permitted to enter a governed answer.
 
 ## How it works
 
@@ -91,7 +91,7 @@ saved replay inputs ─┐
                     ├─> proposal -> Training by Committee observations
 live GPT-5.6 inputs ─┘                    |
                                          v
-                         compiled Incan-authored Hees profile
+                         compiled Incan-authored Hees.ai profile
                      validation -> findings -> bounded Spectrum
                                          |
                               governed terminal decision
@@ -103,27 +103,27 @@ Replay and live mode are transports into one authority path. Replay fixtures con
 
 One live invocation is preflight-limited to one proposal call plus at most eight sequential committee calls. Each request has a configured 15-second timeout, so nine calls carry 135 seconds of aggregate configured timeout budget, with no retries. This is not a global wall-clock ceiling because `ureq` 2.12.1 cannot interrupt DNS resolution. Every provider request body is limited to 65,536 UTF-8 bytes. These limits constrain the optional transport; they do not transfer governance authority to the provider.
 
-The Console owns native terminal interaction, bounded transport, secret isolation, escaping, and session state. It calls the public Incan-authored Hees profile directly. Presentation code cannot reconstruct or reinterpret terminal authority.
+The Console owns native terminal interaction, bounded transport, secret isolation, escaping, and session state. It calls the public Incan-authored Hees.ai profile directly. Presentation code cannot reconstruct or reinterpret terminal authority.
 
 ## Training by Committee
 
-Training by Committee is governed pressure testing, not provider voting or model-weight training. Hees derives the exact relation, contradiction, and synthesis targets from the package, request, and proposal. Provider-neutral evaluator roles return bounded observations against those targets. Hees verifies identity and complete coverage, interprets the scores through profile-owned thresholds, and produces the findings used by Spectrum.
+Training by Committee is governed pressure testing, not provider voting or model-weight training. Hees.ai derives the exact relation, contradiction, and synthesis targets from the package, request, and proposal. Provider-neutral evaluator roles return bounded observations against those targets. Hees.ai verifies identity and complete coverage, interprets the scores through profile-owned thresholds, and produces the findings used by Spectrum.
 
 This separation lets developers use model evaluators to challenge material and proposals without granting those evaluators the right to approve themselves. The provider-neutral design can extend to multiple models; this release's live adapter is pinned to `gpt-5.6-sol`.
 
 ## The demonstrated interactions
 
-- **Admitted:** `explain_lesson` uses declared evidence and reviewed, rights-allowed memory. Hees admits it, selects `memory_lantern_sequence`, constructs Content DNA, and emits a receipt.
-- **Unknown evidence:** the proposal cites schema-valid `evidence_missing_lantern`. Hees rejects `unknown_evidence`; syntax cannot create provenance or authority.
-- **Undeclared action:** the proposal requests `assign_final_grade`. Hees rejects `unknown_action`; the model cannot invent permission.
-- **Unknown memory:** the proposal references memory outside the package. Hees rejects `unknown_memory`.
-- **Non-admitted memory:** the proposal references the known but pending and rights-denied ranking draft. Hees rejects `memory_not_admitted`.
+- **Admitted:** `explain_lesson` uses declared evidence and reviewed, rights-allowed memory. Hees.ai admits it, selects `memory_lantern_sequence`, constructs Content DNA, and emits a receipt.
+- **Unknown evidence:** the proposal cites schema-valid `evidence_missing_lantern`. Hees.ai rejects `unknown_evidence`; syntax cannot create provenance or authority.
+- **Undeclared action:** the proposal requests `assign_final_grade`. Hees.ai rejects `unknown_action`; the model cannot invent permission.
+- **Unknown memory:** the proposal references memory outside the package. Hees.ai rejects `unknown_memory`.
+- **Non-admitted memory:** the proposal references the known but pending and rights-denied ranking draft. Hees.ai rejects `memory_not_admitted`.
 
 ## Why it matters
 
 Governed AI should not depend on hoping that a system prompt survives contact with a model. A reusable profile gives developers a testable object that can move across providers and environments while preserving declared evidence, memory eligibility, behavior, policy, and terminal authority.
 
-The Build Week release proves a practical foundation: native profile and evidence exploration, real candidate-state validation, deterministic happy and adversarial runs, provider-neutral pressure testing, selected-memory attribution through Content DNA, receipts, and offline no-rebuild replay through the actual Hees implementation. Its visible refusals demonstrate the concrete boundary: a well-formed model proposal still cannot borrow evidence or action authority that the profile never granted.
+The Build Week release proves a practical foundation: native profile and evidence exploration, real candidate-state validation, deterministic happy and adversarial runs, provider-neutral pressure testing, selected-memory attribution through Content DNA, receipts, and offline no-rebuild replay through the actual Hees.ai implementation. Its visible refusals demonstrate the concrete boundary: a well-formed model proposal still cannot borrow evidence or action authority that the profile never granted.
 
 The product direction builds from this foundation toward semantic and factual assurance, source and claim provenance, rights assurance, conflict management, richer Spectrum adjudication, governed behavior envelopes, durable IncQL-DB-backed workspaces, and reusable profiles across domains and languages. The current slice does not pretend that journey is complete; it demonstrates why the architecture can support it.
 
@@ -147,24 +147,24 @@ Wide terminals use a framed three-pane workspace with one source of truth for wi
 
 - native hees.ai console application authored in Incan;
 - commit-pinned Incan compiler and lockfile;
-- direct call into the public Incan-authored Hees profile;
+- direct call into the public Incan-authored Hees.ai profile;
 - strict typed repository contracts, with the OpenAI-supported strict JSON Schema subset at the provider edge;
 - SHA-256 identities across package, request, proposal, targets, observations, replay inputs, Content DNA, and receipts;
 - `crossterm` through explicit Incan interop for native terminal primitives;
 - `ureq` through explicit Incan interop for the optional HTTPS boundary;
-- five deterministic offline scenarios that rerun the real Hees path;
+- five deterministic offline scenarios that rerun the real Hees.ai path;
 - bounded `gpt-5.6-sol` Responses API adapter for optional live proposals and evaluator observations; and
-- native tests, Hees profile tests, provider-boundary tests, public-consumer checks, packaging gates, and extracted-archive smoke tests.
+- native tests, Hees.ai profile tests, provider-boundary tests, public-consumer checks, packaging gates, and extracted-archive smoke tests.
 
 **Verification:** Link the exact tagged source revision, release checksums and manifests, CI runs, and clean extracted-archive smoke evidence from the published release.
 
 ## How Codex and GPT-5.6 were used
 
-Incan and Hees were not invented during Build Week. Incan is a long-running, human-directed language and compiler project developed with substantial GPT assistance. Danny's Hees research, governance architecture, Spectrum, Content DNA, and profile direction also predate this submission period.
+Incan and Hees.ai were not invented during Build Week. Incan is a long-running, human-directed language and compiler project developed with substantial GPT assistance. Danny's Hees.ai research, governance architecture, Spectrum, Content DNA, and profile direction also predate this submission period.
 
-During Build Week, Codex with GPT-5.6 helped turn that long-running Hees research into a coherent, usable public package within days. It accelerated repository boundary work, RFC refinement, product design, native Incan implementation, test generation, adversarial review, compiler bug isolation, release engineering, documentation, architecture visuals, and submission preparation.
+During Build Week, Codex with GPT-5.6 helped turn that long-running Hees.ai research into a coherent, usable public package within days. It accelerated repository boundary work, RFC refinement, product design, native Incan implementation, test generation, adversarial review, compiler bug isolation, release engineering, documentation, architecture visuals, and submission preparation.
 
-Danny remained the decision-maker. He defined the evidence-first product direction, kept models non-authoritative, made governance profiles the product unit, required Hees to own terminal decisions, selected the fictional publication-safe domain, chose the native Incan showcase, directed the TUI redesign, approved the release posture, and retains final review and submission authority.
+Danny remained the decision-maker. He defined the evidence-first product direction, kept models non-authoritative, made governance profiles the product unit, required Hees.ai to own terminal decisions, selected the fictional publication-safe domain, chose the native Incan showcase, directed the TUI redesign, approved the release posture, and retains final review and submission authority.
 
 At runtime, GPT-5.6 has a narrower role. It may produce bounded proposal and evaluator-observation inputs. It cannot set review or rights state, declare package authority, classify findings, select memory, construct Content DNA, or issue the decision and receipt.
 
@@ -177,7 +177,7 @@ The primary judge path is the native offline release. It requires no Incan compi
 1. Download the archive for the judge's platform from the [published `hees-console-v0.1.0` release](https://github.com/encero-systems/hees.ai/releases/tag/hees-console-v0.1.0).
 2. Verify it against that release's `SHA256SUMS` asset and the selected platform manifest.
 3. Extract the archive and launch `./hees-console`.
-4. Open Evidence with `2`, unstage a record with `Space`, and validate with `v`. Confirm that Hees rejects the incomplete candidate with public reason `invalid_package` and exact diagnostic `invalid_package_atoms` while the active profile remains unchanged.
+4. Open Evidence with `2`, unstage a record with `Space`, and validate with `v`. Confirm that Hees.ai rejects the incomplete candidate with public reason `invalid_package` and exact diagnostic `invalid_package_atoms` while the active profile remains unchanged.
 5. Reset with `r`, validate again, and inspect the restored candidate in Profiles with `1`.
 6. Open Interactions with `5` and run the admitted scenario.
 7. Open Decisions with `6` and inspect selected memory, Content DNA, and the receipt.
@@ -197,16 +197,16 @@ Complete platform, macOS signing posture, expected-result, and troubleshooting i
 | Offline replay plus optional live GPT-5.6 transport | Additional remote and local model adapters using the same profile authority boundary |
 | Historical pre-redesign candidates on Linux x86-64, macOS Apple Silicon, and macOS Intel | Platforms listed in the tagged Release after extracted no-rebuild smoke; macOS builds are not Developer ID-signed and not notarized, and linker ad-hoc signing conveys no publisher identity |
 
-Optional live GPT-5.6 was verified in two bounded native diagnostics: one proposal call, followed separately by six committee calls using that proposal and a real Hees admission with six classified findings, selected memory, Content DNA and a receipt. These were separate diagnostics, not one frozen-binary run. The judge path therefore remains offline replay, which stores integrity-checked inputs—not decisions—and reruns the compiled Hees authority path. The [sanitized local observation](evidence/live-gpt56-proposal-2026-07-20.json) preserves the exact evidence and limitations.
+Optional live GPT-5.6 was verified in two bounded native diagnostics: one proposal call, followed separately by six committee calls using that proposal and a real Hees.ai admission with six classified findings, selected memory, Content DNA and a receipt. These were separate diagnostics, not one frozen-binary run. The judge path therefore remains offline replay, which stores integrity-checked inputs—not decisions—and reruns the compiled Hees.ai authority path. The [sanitized local observation](evidence/live-gpt56-proposal-2026-07-20.json) preserves the exact evidence and limitations.
 
 ## Judging-criteria map
 
 | Criterion | Evidence |
 | --- | --- |
-| Technological Implementation | Native Incan application, real Hees acceptance probe and terminal authority, replay/live transport normalization, strict contracts, adversarial scenarios, and extracted native release evidence |
+| Technological Implementation | Native Incan application, real Hees.ai acceptance probe and terminal authority, replay/live transport normalization, strict contracts, adversarial scenarios, and extracted native release evidence |
 | Design | Evidence-first navigation, working candidate-profile action, explicit authority hierarchy, responsive native TUI, no-rebuild judge path, and recorded captures |
 | Potential Impact | Reusable governance profiles make evidence, rights, policy, model behavior, and decisions testable across providers; demonstrate this through the profile flow in the video. |
-| Quality of the Idea | Training by Committee remains non-authoritative; Spectrum, selected memory, Content DNA, and receipts remain Hees-owned; link the architecture page and tagged run evidence. |
+| Quality of the Idea | Training by Committee remains non-authoritative; Spectrum, selected memory, Content DNA, and receipts remain Hees.ai-owned; link the architecture page and tagged run evidence. |
 
 ## Public links
 

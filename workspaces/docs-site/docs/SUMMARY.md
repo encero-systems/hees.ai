@@ -1,6 +1,6 @@
 # Summary
 
-- [Hees](index.md)
+- [Hees.ai](index.md)
 - [hees.ai console](console.md)
 - [Governance profiles](governance-profiles.md)
 - [Guided programmes](guided-programmes.md)

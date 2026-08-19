@@ -32,7 +32,7 @@ model NormativeSource:
 
 @derive(Deserialize)
 model ReferenceDecision:
-    """Record one Hees portability decision not fixed by the paper."""
+    """Record one Hees.ai portability decision not fixed by the paper."""
 
     id: str
     summary: str

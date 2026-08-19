@@ -228,7 +228,7 @@ pub def plan_console_manifest_json(
     request: ConsoleRequestBinding,
     proposal: ConsoleProposal,
 ) -> str:
-    """Return Hees-authored evaluator targets without exposing internal target types as public authority."""
+    """Return Hees.ai-authored evaluator targets without exposing internal target types as public authority."""
 
     if not validate_console_package(package).valid:
         return ConsoleManifestPlan(
@@ -261,7 +261,7 @@ pub def plan_console_manifest_json(
 
 
 def provider_memory(atom: ConsoleAtom) -> ConsoleProviderMemory:
-    """Project one Hees-admitted atom without exposing source text or terminal authority."""
+    """Project one Hees.ai-admitted atom without exposing source text or terminal authority."""
 
     return ConsoleProviderMemory(
         evidence_id=atom.evidence_id,
@@ -314,7 +314,7 @@ pub def bind_console_request_json(request_id_value: str, question: str) -> str:
 
 
 pub def identify_console_proposal_json(proposal: ConsoleProposal) -> str:
-    """Project the Hees-canonical proposal digest without exposing the raw digest helper as a root operation."""
+    """Project the Hees.ai-canonical proposal digest without exposing the raw digest helper as a root operation."""
 
     return ConsoleProposalIdentity(
         contract_version=contract_id(f"{PROPOSAL_IDENTITY_CONTRACT}"),
@@ -325,7 +325,7 @@ pub def identify_console_proposal_json(proposal: ConsoleProposal) -> str:
 
 
 pub def plan_console_provider_context_json(package: ConsolePackage, request: ConsoleRequestBinding) -> str:
-    """Return only the validated package surface and Hees-admitted memory needed by an untrusted proposal call."""
+    """Return only the validated package surface and Hees.ai-admitted memory needed by an untrusted proposal call."""
 
     if not validate_console_package(package).valid or not validate_request_binding(request).valid:
         return ConsoleProviderContextPlan(

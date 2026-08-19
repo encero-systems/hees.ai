@@ -4,7 +4,7 @@ Deterministic mathematical and bit-packing primitives for the faithful TurboQuan
 This module owns the reproducibility choices that the TurboQuant paper does not freeze: a domain-separated
 SHA-256 counter stream, Box-Muller Gaussian sampling, positive-diagonal Householder QR, and
 most-significant-bit-first packing with zero tail padding. `turboquant.incn` composes these primitives into the
-versioned Hees configuration and code envelopes.
+versioned Hees.ai configuration and code envelopes.
 
 The matrix implementation is intentionally dense, direct, and pure Incan. It is a bounded conformance reference,
 not the future SIMD or sparse production kernel. Flat row-major storage keeps coordinate access explicit and avoids
@@ -96,7 +96,7 @@ pub class GeneratedMatrix:
     Reproducible random-stream evidence and its generated matrix.
 
     The uniform and Gaussian streams are exposed for conformance testing, while the matrix can be inspected row by
-    row or transferred into the codec. These properties are package-internal public surface; external Hees
+    row or transferred into the codec. These properties are package-internal public surface; external Hees.ai
     consumers receive only the higher-level TurboQuant configuration API.
     """
 
@@ -232,7 +232,7 @@ def normal_samples(uniforms: list[float]) -> Result[list[float], HyperquantError
     """
     Convert an even uniform stream to standard Gaussian samples using Box-Muller pairs.
 
-    Pair order and binary64 operation order are part of the Hees reproducibility contract.
+    Pair order and binary64 operation order are part of the Hees.ai reproducibility contract.
     """
 
     if len(uniforms) % 2 != 0:

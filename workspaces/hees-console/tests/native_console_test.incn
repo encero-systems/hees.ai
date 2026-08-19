@@ -1,4 +1,4 @@
-"""Native Console acceptance tests over embedded replay, Hees, state, and rendering boundaries."""
+"""Native Console acceptance tests over embedded replay, Hees.ai, state, and rendering boundaries."""
 
 from std.fs import Path
 from std.json import JsonValue
@@ -128,7 +128,7 @@ def provider_response(output_text: str) -> str:
 
 
 def proposal_transport_from(relative: str, request_body: str) -> Result[str, ProviderFailure]:
-    """Bind one proposal fixture to the exact live request supplied by Hees."""
+    """Bind one proposal fixture to the exact live request supplied by Hees.ai."""
 
     context = provider_payload(request_body)
     request = required(context, "request")
@@ -151,7 +151,7 @@ def undeclared_live_proposal_transport(request_body: str) -> Result[str, Provide
 
 
 def committee_transport(request_body: str) -> Result[str, ProviderFailure]:
-    """Return bound high-support scores for each exact Hees-authored committee target."""
+    """Return bound high-support scores for each exact Hees.ai-authored committee target."""
 
     payload = provider_payload(request_body)
     request = required(payload, "request")
@@ -192,7 +192,7 @@ def assert_fixture_parity(embedded: str, path: str) -> None:
 
 
 def assert_decision(slug: str, admitted: bool, reason: str) -> ConsoleRun:
-    """Evaluate one scenario and assert the exact Hees Spectrum outcome."""
+    """Evaluate one scenario and assert the exact Hees.ai Spectrum outcome."""
 
     run = assert_is_ok(evaluate_offline_scenario(slug))
     assert_eq(run.result.spectrum.admitted, admitted)
@@ -276,7 +276,7 @@ def test_embedded_replays_are_non_terminal_and_keep_reviewed_ids() -> None:
 
 
 def test_real_hees_evaluation_returns_all_five_terminal_outcomes() -> None:
-    """Exercise the public Hees profile for the admitted and four rejection paths."""
+    """Exercise the public Hees.ai profile for the admitted and four rejection paths."""
 
     valid = assert_decision("valid", true, "admitted")
     assert_eq(option_has_value(valid.result.content_dna_json), true)
@@ -432,7 +432,7 @@ def test_default_demo_probes_missing_lantern_evidence_without_replacing_active_a
 
 
 def test_probe_infrastructure_error_is_not_presented_as_a_hees_result() -> None:
-    """Reserve probe admission or rejection for decoded Hees results and label failures separately."""
+    """Reserve probe admission or rejection for decoded Hees.ai results and label failures separately."""
 
     states = [true, false, false, false, false]
     mut state = initial_state()
@@ -879,7 +879,7 @@ def test_trace_is_separate_non_authoritative_and_redacts_interaction_content() -
 
 
 def test_injected_live_composition_returns_only_the_real_hees_admission() -> None:
-    """Exercise question binding, proposal, committee, Hees evaluation, and live rendering without network access."""
+    """Exercise question binding, proposal, committee, Hees.ai evaluation, and live rendering without network access."""
 
     question = "What order should I use for the Lantern Path cards?"
     run = assert_is_ok(evaluate_live_with_transports(question, valid_live_proposal_transport, committee_transport))

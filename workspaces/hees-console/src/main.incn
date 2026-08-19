@@ -143,7 +143,7 @@ def run_headless(scenario: str) -> Result[None, str]:
 
 
 def run_live(question: str, headless: bool) -> Result[None, str]:
-    """Evaluate one live proposal and inspect the real Hees result without replay fallback."""
+    """Evaluate one live proposal and inspect the real Hees.ai result without replay fallback."""
 
     run = evaluate_live_question(question)?
     if headless:

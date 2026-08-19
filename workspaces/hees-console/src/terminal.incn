@@ -271,7 +271,7 @@ def live_safe_command(command: str) -> str:
 
 
 def admitted_states(runs: list[ConsoleRun]) -> list[bool]:
-    """Project terminal Hees states for presentation-only browser filtering."""
+    """Project terminal Hees.ai states for presentation-only browser filtering."""
 
     return [run.result.spectrum.admitted for run in runs]
 

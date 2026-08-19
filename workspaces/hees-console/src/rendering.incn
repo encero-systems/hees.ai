@@ -259,7 +259,7 @@ def premise_ids(run: ConsoleRun, target_index: int) -> str:
 
 
 def manifest_lines(run: ConsoleRun) -> list[str]:
-    """Render the exact Hees-derived verifier targets and their digest identities."""
+    """Render the exact Hees.ai-derived verifier targets and their digest identities."""
 
     manifest = run.result.manifest
     mut lines = [f"HEES-DERIVED VERIFIER MANIFEST count={len(manifest)}"]
@@ -314,7 +314,7 @@ def observation_lines(run: ConsoleRun) -> list[str]:
 
 
 def finding_line(finding: FindingProjection) -> str:
-    """Render one Hees-owned finding classification and its target role."""
+    """Render one Hees.ai-owned finding classification and its target role."""
 
     return (f"  {bounded_text(finding.finding_id, 128)} classification={bounded_text(finding.classification, 64)} " + f"role={bounded_text(
         finding.evaluator_role,
@@ -323,7 +323,7 @@ def finding_line(finding: FindingProjection) -> str:
 
 
 def finding_lines(run: ConsoleRun) -> list[str]:
-    """Render bounded Hees-derived findings in manifest order."""
+    """Render bounded Hees.ai-derived findings in manifest order."""
 
     mut lines = [f"HEES-CLASSIFIED NON-AUTHORITATIVE FINDINGS count={len(run.result.findings)}"]
     mut count = 0
@@ -337,7 +337,7 @@ def finding_lines(run: ConsoleRun) -> list[str]:
 
 
 def spectrum_lines(run: ConsoleRun) -> list[str]:
-    """Render the exact Hees terminal Spectrum decision and reasons."""
+    """Render the exact Hees.ai terminal Spectrum decision and reasons."""
 
     spectrum = run.result.spectrum
     structural = match spectrum.structural_reason:
@@ -354,7 +354,7 @@ def spectrum_lines(run: ConsoleRun) -> list[str]:
 
 
 def memory_lines(run: ConsoleRun) -> list[str]:
-    """Render only memory selected by the terminal Hees evaluation."""
+    """Render only memory selected by the terminal Hees.ai evaluation."""
 
     mut lines = [f"SELECTED MEMORY count={len(run.result.selected_memory)}"]
     mut count = 0
@@ -399,7 +399,7 @@ def visible_mode_label(mode: str) -> str:
 
 
 def replay_integrity_line(run: ConsoleRun) -> str:
-    """Describe whether replay integrity was verified before Hees evaluation."""
+    """Describe whether replay integrity was verified before Hees.ai evaluation."""
 
     if run.scenario.mode == "OFFLINE":
         return f"replay_integrity=verified replay_id={bounded_text(run.scenario.input_id, 96)}"
@@ -407,7 +407,7 @@ def replay_integrity_line(run: ConsoleRun) -> str:
 
 
 def trace_lines(run: ConsoleRun) -> list[str]:
-    """Render the bounded non-authoritative trace separately from the Hees result."""
+    """Render the bounded non-authoritative trace separately from the Hees.ai result."""
 
     trace = run.trace
     mut lines = ["NON-AUTHORITATIVE EXECUTION TRACE", f"contract={bounded_text(trace.contract_version, 64)} profile={bounded_text(
@@ -423,7 +423,7 @@ def trace_lines(run: ConsoleRun) -> list[str]:
         trace.synthesis_observation_ids,
     )} findings={len(trace.finding_ids)}", f"model_fingerprints=[{bounded_identifiers(trace.model_fingerprints)}]", f"prompt_fingerprints=[{bounded_identifiers(
         trace.prompt_fingerprints,
-    )}]", f"configuration_fingerprints=[{bounded_identifiers(trace.configuration_fingerprints)}]", "Trace construction and display cannot change the terminal Hees result."]
+    )}]", f"configuration_fingerprints=[{bounded_identifiers(trace.configuration_fingerprints)}]", "Trace construction and display cannot change the terminal Hees.ai result."]
     mut count = 0
     for schema in trace.schema_digests:
         if count >= MAX_INSPECTOR_ITEMS:
@@ -560,7 +560,7 @@ def checkbox(selected: bool) -> str:
 
 
 def admitted_states(runs: list[ConsoleRun]) -> list[bool]:
-    """Project real Hees terminal states for browser rendering."""
+    """Project real Hees.ai terminal states for browser rendering."""
 
     return [run.result.spectrum.admitted for run in runs]
 
@@ -658,7 +658,7 @@ def plain_rows(values: list[str]) -> list[StyledRow]:
 
 
 def decision_row(value: str, admitted: bool) -> StyledRow:
-    """Assign terminal-decision colour from the typed Hees result only."""
+    """Assign terminal-decision colour from the typed Hees.ai result only."""
 
     if admitted:
         return StyledRow.Admitted(value)
@@ -810,7 +810,7 @@ def decision_detail_lines(run: ConsoleRun) -> list[str]:
 
     reason = run.result.spectrum.reason
     if reason == "admitted":
-        return ["The proposal used declared authority and structurally admissible", "support. Hees admitted the visible response and produced a receipt."]
+        return ["The proposal used declared authority and structurally admissible", "support. Hees.ai admitted the visible response and produced a receipt."]
     if reason == "unknown_action":
         return ["The proposed action is not declared by the package.", "Acting would exceed the proposal's declared authority."]
     if reason == "unknown_evidence":
@@ -819,7 +819,7 @@ def decision_detail_lines(run: ConsoleRun) -> list[str]:
         return ["The proposal references memory that the package does not", "contain. Unknown memory cannot enter the selected-memory result."]
     if reason == "memory_not_admitted":
         return ["The proposal relies on memory that did not pass the governed", "admission path. The visible response therefore remains unadmitted."]
-    return [f"Hees returned the terminal reason {bounded_text(reason, 96)}."]
+    return [f"Hees.ai returned the terminal reason {bounded_text(reason, 96)}."]
 
 
 def scenario_rail_rows(state: ConsoleState, runs: list[ConsoleRun]) -> list[StyledRow]:
@@ -875,7 +875,7 @@ def visible_response_rows(run: ConsoleRun, content_width: int) -> list[StyledRow
 
 
 def interaction_center_rows(run: ConsoleRun, content_width: int) -> list[StyledRow]:
-    """Render proposal, package support, and Hees authority with explicit typed row styles."""
+    """Render proposal, package support, and Hees.ai authority with explicit typed row styles."""
 
     proposal = run.scenario.body.proposal
     mut rows = [StyledRow.Plain(f"INTERACTION  {bounded_text(run.scenario.slug, 48)}"), decision_row(
@@ -992,7 +992,7 @@ def evidence_context_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
 
 
 def memory_context_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
-    """Render only memory selected by the terminal Hees decision."""
+    """Render only memory selected by the terminal Hees.ai decision."""
 
     mut lines = [context_header(state), "────────────────────────────────────────────", f"SELECTED MEMORY  {len(
         run.result.selected_memory,
@@ -1037,7 +1037,7 @@ def context_panel_lines(state: ConsoleState, run: ConsoleRun, scenario_index: in
 def help_center_lines() -> list[str]:
     """Render exact keyboard help for the evidence-first product workflow."""
 
-    return ["HELP", "────────────────────────────────────────────────────────────", "1  Profiles", "2  Evidence", "3  Memory", "4  Committee", "5  Interactions", "6  Decisions", "7  Help", "", "↑ / ↓   Select evidence, memory, or interaction", "← / →   Change decision context", "Space   Stage or unstage selected evidence or memory", "v       Run the shipped-scenario Hees probe", "r       Reset candidate to the shipped profile", "a       Attempt activation; this bounded profile refuses it", "/       Search interactions and tags", "s       Filter or sort interactions by terminal status", "b       Collapse or expand the workflow rail", "q       Quit", "", "Colour never carries authority alone. Every state has text and a symbol."]
+    return ["HELP", "────────────────────────────────────────────────────────────", "1  Profiles", "2  Evidence", "3  Memory", "4  Committee", "5  Interactions", "6  Decisions", "7  Help", "", "↑ / ↓   Select evidence, memory, or interaction", "← / →   Change decision context", "Space   Stage or unstage selected evidence or memory", "v       Run the shipped-scenario Hees.ai probe", "r       Reset candidate to the shipped profile", "a       Attempt activation; this bounded profile refuses it", "/       Search interactions and tags", "s       Filter or sort interactions by terminal status", "b       Collapse or expand the workflow rail", "q       Quit", "", "Colour never carries authority alone. Every state has text and a symbol."]
 
 
 def probe_label(state: ConsoleState) -> str:
@@ -1061,7 +1061,7 @@ def activation_label(state: ConsoleState) -> str:
 
 
 def candidate_identity_label(state: ConsoleState) -> str:
-    """Report candidate artifact integrity only after a completed Hees probe."""
+    """Report candidate artifact integrity only after a completed Hees.ai probe."""
 
     if state.candidate_identity_valid:
         return "verified"
@@ -1123,7 +1123,7 @@ def profile_center_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRow]
         f"probe result     {probe_label(state)}",
         state,
     ), probe_row(f"probe reason     {state.candidate_probe_reason}", state), probe_row(
-        f"Hees diagnostic {state.candidate_probe_diagnostic}",
+        f"Hees.ai diagnostic {state.candidate_probe_diagnostic}",
         state,
     ), StyledRow.Candidate(f"artifact identity {candidate_identity_label(state)}"), StyledRow.Candidate(
         f"candidate digest  {bounded_text(state.candidate_artifact_digest, 38)}",
@@ -1160,7 +1160,7 @@ def candidate_status_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRo
     ), probe_row(f"probe result  {probe_label(state)}", state), probe_row(
         f"probe reason  {state.candidate_probe_reason}",
         state,
-    ), probe_row(f"Hees diagnostic  {state.candidate_probe_diagnostic}", state), StyledRow.Candidate(
+    ), probe_row(f"Hees.ai diagnostic  {state.candidate_probe_diagnostic}", state), StyledRow.Candidate(
         f"identity      {candidate_identity_label(state)}",
     ), StyledRow.Candidate(
         f"evidence      {len(state.candidate_evidence_ids)} / {len(run.scenario.package.atoms)} staged",
@@ -1171,7 +1171,7 @@ def candidate_status_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRo
     ), activation_row(f"activation    {activation_label(state)}", state), StyledRow.Plain("")]
     rows.extend(
         [StyledRow.Plain(line) for line in wrapped_text_lines(
-            "This runs one shipped acceptance scenario through the compiled Hees path. It is not a general package validator.",
+            "This runs one shipped acceptance scenario through the compiled Hees.ai path. It is not a general package validator.",
             44,
             180,
         )],
@@ -1179,7 +1179,7 @@ def candidate_status_rows(state: ConsoleState, run: ConsoleRun) -> list[StyledRo
     rows.append(StyledRow.Plain(""))
     rows.extend(
         [StyledRow.Plain(line) for line in wrapped_text_lines(
-            "Activation is intentionally unavailable until Hees exposes a safe profile-activation authority API.",
+            "Activation is intentionally unavailable until Hees.ai exposes a safe profile-activation authority API.",
             44,
             160,
         )],
@@ -1289,9 +1289,9 @@ def memory_center_lines(state: ConsoleState, run: ConsoleRun) -> list[str]:
 
 
 def committee_center_lines(run: ConsoleRun) -> list[str]:
-    """Render evaluator targets, observations, and Hees-owned classifications together."""
+    """Render evaluator targets, observations, and Hees.ai-owned classifications together."""
 
-    mut lines = ["TRAINING BY COMMITTEE", "────────────────────────────────────────────────────────────", "Evaluators observe. Hees validates coverage and classifies findings.", "Only Spectrum makes the terminal decision.", "", f"HEES-DERIVED TARGETS  {len(
+    mut lines = ["TRAINING BY COMMITTEE", "────────────────────────────────────────────────────────────", "Evaluators observe. Hees.ai validates coverage and classifies findings.", "Only Spectrum makes the terminal decision.", "", f"HEES-DERIVED TARGETS  {len(
         run.result.manifest,
     )}"]
     mut count = 0
@@ -1420,7 +1420,7 @@ def compact_workflow_lines(state: ConsoleState, run: ConsoleRun, total: int, con
             run.result.manifest,
         )}", f"observations  {len(run.scenario.body.relation_observations) + len(
             run.scenario.body.synthesis_observations,
-        )}", f"Hees findings {len(run.result.findings)}", "", f"min support   {package.policy.min_support_bps} bps", f"min coverage  {package.policy.min_coverage_bps} bps", "", "Hees binds targets, validates coverage,", "classifies findings, and owns the decision."]
+        )}", f"Hees.ai findings {len(run.result.findings)}", "", f"min support   {package.policy.min_support_bps} bps", f"min coverage  {package.policy.min_coverage_bps} bps", "", "Hees.ai binds targets, validates coverage,", "classifies findings, and owns the decision."]
     if state.surface == "interactions":
         proposal = run.scenario.body.proposal
         return [f"INTERACTION  {run.scenario.slug}", f"mode          {mode_label(run)}", f"question      {bounded_text(

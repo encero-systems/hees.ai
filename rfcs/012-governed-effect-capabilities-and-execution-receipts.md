@@ -13,19 +13,19 @@
     - RFC 011 (Canonical Structural Identity for Incan Models)
 - **Issue:** https://github.com/encero-systems/hees.ai/issues/27
 - **RFC PR:** —
-- **Written against:** Hees 0.0.1 / Incan 0.5.0-dev.14
+- **Written against:** Hees.ai 0.0.1 / Incan 0.5.0-dev.14
 - **Shipped in:** —
 
 ## Summary
 
-This RFC defines a capability-grant and receipt boundary for real-world effects proposed by a model or agent through Hees. A model may propose an action, but it cannot grant authority, select a secret-bearing transport, execute an effect, approve itself, or author the resulting receipt. Hees accepts an effect only when an admitted package-bound grant, deterministic constraint decision, and any required external approval authorize the exact bounded request. The trusted executor returns a redacted execution receipt that preserves what was requested, permitted, decided, attempted, and observed without exposing credentials, raw tool payloads, private content, or hidden reasoning.
+This RFC defines a capability-grant and receipt boundary for real-world effects proposed by a model or agent through Hees.ai. A model may propose an action, but it cannot grant authority, select a secret-bearing transport, execute an effect, approve itself, or author the resulting receipt. Hees.ai accepts an effect only when an admitted package-bound grant, deterministic constraint decision, and any required external approval authorize the exact bounded request. The trusted executor returns a redacted execution receipt that preserves what was requested, permitted, decided, attempted, and observed without exposing credentials, raw tool payloads, private content, or hidden reasoning.
 
 ## Core model
 
 1. **Content and authority are separate.** A visible response, model proposal, or agent plan can describe a desired action but has no effect authority.
 2. **Grants are explicit and bounded.** Authority comes only from a package-bound capability grant that names the operation class, target constraints, data and locality constraints, approval rule, budget, and expiry or invalidation condition.
 3. **The requested effect is immutable.** The executor receives one canonical action request identity that binds the proposal, admitted package, selected capability grant, parameters, and idempotency semantics.
-4. **Hees decides before execution.** Constraints and required approvals produce an allow, deny, approval-required, expired, or verification-failed decision before an executor is invoked.
+4. **Hees.ai decides before execution.** Constraints and required approvals produce an allow, deny, approval-required, expired, or verification-failed decision before an executor is invoked.
 5. **Execution is not adjudication.** An executor performs only an allowed request through its own host capability. It cannot reinterpret a broad grant, mint a new grant, or upgrade a failed decision.
 6. **Receipts are owned evidence.** The trusted boundary produces the execution receipt atomically with the terminal execution result; models, providers, applications, and executors cannot manufacture an authoritative substitute.
 7. **Every effect remains replay-aware.** A capability contract states whether the request is idempotent, deduplicated by an idempotency key, or non-repeatable. Retrying a request is never silently equivalent to a first attempt.
@@ -33,11 +33,11 @@ This RFC defines a capability-grant and receipt boundary for real-world effects 
 
 ## Motivation
 
-Hees already distinguishes untrusted proposals from governed outcomes and keeps visible answer content, package admission, constraints, and export-safe receipts under separate contracts. That still leaves a material gap: a system can safely decide what response to show while being unable to prove whether a suggested action was actually authorized and performed.
+Hees.ai already distinguishes untrusted proposals from governed outcomes and keeps visible answer content, package admission, constraints, and export-safe receipts under separate contracts. That still leaves a material gap: a system can safely decide what response to show while being unable to prove whether a suggested action was actually authorized and performed.
 
 Treating a model's tool call as authorization would collapse that boundary. The model may have inferred a target incorrectly, the requested action may exceed the intended scope, the local runtime may not have the required host capability, or a prior approval may have expired. A generic audit log is also insufficient: it normally cannot say which package-bound grant covered the exact effect, whether a deterministic verifier ran, or whether a retry duplicated a non-idempotent operation.
 
-Hees needs a small authority-plane contract that composes with existing governance rather than becoming an agent framework, an IAM system, or an executor product.
+Hees.ai needs a small authority-plane contract that composes with existing governance rather than becoming an agent framework, an IAM system, or an executor product.
 
 ## Goals
 
@@ -64,7 +64,7 @@ Hees needs a small authority-plane contract that composes with existing governan
 A package may declare that a governed proposal can request a bounded action such as saving a reviewed progress record, writing a project-scoped artifact, or invoking a named local integration. It does not contain the secret needed by that integration and it does not grant blanket access to a provider or filesystem.
 
 ```incan
-# Proposed contract shape; not implemented in Hees 0.0.1.
+# Proposed contract shape; not implemented in Hees.ai 0.0.1.
 grant = capability_grant(
     id="project-progress-save",
     operation="progress.save",
@@ -86,12 +86,12 @@ The code is illustrative. `propose_effect` does not execute anything; it creates
 
 - **Capability grant:** a closed, admitted, package-bound declaration of authority for one operation class under named bounds.
 - **Effect proposal:** untrusted model or agent output that nominates a grant and bounded request parameters.
-- **Action request:** the canonical, immutable, validated request constructed by Hees after proposal normalization and grant resolution.
+- **Action request:** the canonical, immutable, validated request constructed by Hees.ai after proposal normalization and grant resolution.
 - **Decision:** the terminal pre-execution result of grant, constraint, approval, and verifier evaluation.
 - **Executor:** the trusted host-facing component that attempts an allowed action through an already available runtime capability.
-- **Execution receipt:** the private Hees projection returned atomically with the terminal executor result.
+- **Execution receipt:** the private Hees.ai projection returned atomically with the terminal executor result.
 
-The package admission boundary owns grant membership and package identity. The model or provider owns only its untrusted proposal. Hees owns request normalization, deterministic governance decision, and receipt projection. The executor owns transport-specific implementation and observed terminal outcome, but no governance authority. An application or operator may provide an approval record under a profile-defined trusted boundary, but cannot substitute a decision or receipt.
+The package admission boundary owns grant membership and package identity. The model or provider owns only its untrusted proposal. Hees.ai owns request normalization, deterministic governance decision, and receipt projection. The executor owns transport-specific implementation and observed terminal outcome, but no governance authority. An application or operator may provide an approval record under a profile-defined trusted boundary, but cannot substitute a decision or receipt.
 
 ### Capability grants
 
@@ -117,17 +117,17 @@ Grants authorize only the declared action request shape. They do not authorize r
 
 An effect proposal must reference one candidate grant and supply only the parameters permitted by that grant's schema. It remains untrusted even if its values validate. A proposal cannot choose its authority profile, approval state, execution mode, locality classification, receipt contents, or idempotency classification.
 
-After validating the proposal and resolving the exact admitted grant, Hees constructs one canonical action request. The request identity must bind the proposal identity when present, package identity, grant identity and revision, operation class, normalized target reference, normalized parameter identity, applicable policy and verifier profile identities, requested locality, and an explicit idempotency key or non-repeatable classification. The executor must receive this request or a capability-safe projection of it; it must not reconstruct an equivalent request from free-form provider output.
+After validating the proposal and resolving the exact admitted grant, Hees.ai constructs one canonical action request. The request identity must bind the proposal identity when present, package identity, grant identity and revision, operation class, normalized target reference, normalized parameter identity, applicable policy and verifier profile identities, requested locality, and an explicit idempotency key or non-repeatable classification. The executor must receive this request or a capability-safe projection of it; it must not reconstruct an equivalent request from free-form provider output.
 
 ### Decision before effect
 
-Before invocation, Hees must evaluate the grant, request bounds, package state, constraints, required verifier evidence, approval state, use budget, and expiry or invalidation condition. The closed pre-execution outcomes are `allowed`, `denied`, `approval_required`, `expired`, and `verification_failed`. A malformed, unsupported, unavailable, or unknown input is a fail-closed denial with a stable reason; it must not fall through to execution.
+Before invocation, Hees.ai must evaluate the grant, request bounds, package state, constraints, required verifier evidence, approval state, use budget, and expiry or invalidation condition. The closed pre-execution outcomes are `allowed`, `denied`, `approval_required`, `expired`, and `verification_failed`. A malformed, unsupported, unavailable, or unknown input is a fail-closed denial with a stable reason; it must not fall through to execution.
 
 An `allowed` decision must name the exact action-request identity, grant identity, governing profile identities, applied approval reference when required, remaining-use state when relevant, and the executor identity. Approval must be explicit, bound to the same request or a narrower immutable scope, and valid at decision time. A model proposal, a display confirmation, a prior unrelated approval, or a successful previous attempt is not approval. A model or executor must never approve its own request.
 
 ### Executor boundary and terminal outcomes
 
-The executor may run only after receiving an `allowed` decision directly from the trusted Hees boundary. It must check that its local host capability can perform the named operation and target. It may not compensate for a missing host capability by selecting a remote provider, broader target, or alternate operation.
+The executor may run only after receiving an `allowed` decision directly from the trusted Hees.ai boundary. It must check that its local host capability can perform the named operation and target. It may not compensate for a missing host capability by selecting a remote provider, broader target, or alternate operation.
 
 Terminal executor outcomes are `succeeded`, `rejected_before_attempt`, `failed_before_attempt`, `failed_after_attempt`, and `outcome_unknown`. The boundary must distinguish an executor that never attempted an external effect from one whose outcome is unknown after a possible attempt. A transport retry is a new execution attempt unless the action request's idempotency contract permits deterministic deduplication using the exact idempotency key. Non-repeatable actions must not be retried automatically.
 
@@ -135,7 +135,7 @@ An executor result is operational evidence, not a declaration of business correc
 
 ### Execution receipts
 
-The trusted Hees operation must return a terminal result and execution receipt atomically. The receipt must be a closed, versioned projection containing:
+The trusted Hees.ai operation must return a terminal result and execution receipt atomically. The receipt must be a closed, versioned projection containing:
 
 - receipt contract and receipt kind;
 - the package, proposal, grant, action-request, decision, and executor identities that are safely established;
@@ -152,7 +152,7 @@ RFC 006 remains the export-safe receipt contract for its existing governed outco
 
 ### Relationship to Incan runtime capabilities
 
-An Incan runtime host capability and a Hees capability grant answer different questions. The host capability says what the running process can technically perform. The Hees grant says what a governed package-bound request is permitted to ask that process to perform. An effect requires both; either one may deny it. Neither contract may silently synthesize the other, and neither grants a model authority to bypass the other.
+An Incan runtime host capability and a Hees.ai capability grant answer different questions. The host capability says what the running process can technically perform. The Hees.ai grant says what a governed package-bound request is permitted to ask that process to perform. An effect requires both; either one may deny it. Neither contract may silently synthesize the other, and neither grants a model authority to bypass the other.
 
 ## Design details
 
@@ -162,7 +162,7 @@ This RFC introduces no Incan authoring syntax or generic tool-call protocol. Any
 
 ### Compatibility and migration
 
-Hees 0.0.1 has no governed generic effect capability or execution receipt and therefore remains unchanged. Existing proposal and response flows continue to be content-plane only. A future implementation must make effect execution opt-in by admitted package contract; a package without a grant cannot gain an effect path through this RFC.
+Hees.ai 0.0.1 has no governed generic effect capability or execution receipt and therefore remains unchanged. Existing proposal and response flows continue to be content-plane only. A future implementation must make effect execution opt-in by admitted package contract; a package without a grant cannot gain an effect path through this RFC.
 
 ### Verification and acceptance evidence
 
@@ -199,7 +199,7 @@ The contract adds a number of identities and decision states that small local ap
 - **Governance specification** — grant, request, decision, executor, receipt, and replay semantics must remain closed and fail closed.
 - **Package admission** — admitted packages must bind the exact grant declaration, identity, bounds, and revision before it can be used.
 - **Constraint and response lifecycle** — untrusted proposals may nominate actions, but existing terminal authority and visible-response boundaries must remain intact.
-- **Runtime integration** — executors must require both an allowed Hees decision and a matching available host capability; no executor may create grants or receipts.
+- **Runtime integration** — executors must require both an allowed Hees.ai decision and a matching available host capability; no executor may create grants or receipts.
 - **Identity and receipts** — canonical request and execution-receipt identities, redaction, and export rules must align explicitly with RFCs 006 and 011.
 - **Documentation and inspection** — tools must explain requested versus allowed versus attempted effects, applicable bounds, approval state, and receipt scope without exposing secret payloads.
 

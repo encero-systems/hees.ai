@@ -3,8 +3,8 @@ Native Incan provider boundary for optional live hees.ai console interactions.
 
 This module constructs bounded OpenAI Responses API calls and decodes their untrusted structured outputs. It never
 admits a proposal, classifies an observation, selects memory, constructs Content DNA, or creates a receipt. It consumes
-closed context and manifest envelopes authored by Hees. An empty manifest is valid: it means the proposal must continue
-to Hees with no committee observations so the terminal boundary can return the exact earlier structural rejection.
+closed context and manifest envelopes authored by Hees.ai. An empty manifest is valid: it means the proposal must continue
+to Hees.ai with no committee observations so the terminal boundary can return the exact earlier structural rejection.
 
 Live committee calls are intentionally sequential in the current Console profile. Generic planning can represent 22
 targets, but one optional live interaction is frozen to one proposal and at most eight committee calls. Every prepared
@@ -62,7 +62,7 @@ const PROPOSAL_RESULT_CONTRACT: str = "console_provider_proposal_result_0_1"
 const COMMITTEE_RESULT_CONTRACT: str = "console_provider_committee_result_0_1"
 const CONSOLE_PROFILE: str = "console_profile_0_1"
 const PROPOSAL_INSTRUCTIONS: str = "Return exactly one untrusted proposal grounded only in the supplied request, declared actions, requirements, and admitted-memory projections. Visible-unit text is the only answer channel. Use only supplied evidence and memory identifiers. Return no rationale, hidden reasoning, authority, finding, classification, decision, selected memory, Content DNA, or receipt."
-const EVIDENCE_INSTRUCTIONS: str = "Evaluate only the exact bound subject represented by the supplied Hees target against the supplied admitted-memory projections. Return support, contradiction, and unresolved basis-point integers that sum to 10000. Return no rationale, hidden reasoning, authority, classification, finding, answer rewrite, decision, or receipt."
+const EVIDENCE_INSTRUCTIONS: str = "Evaluate only the exact bound subject represented by the supplied Hees.ai target against the supplied admitted-memory projections. Return support, contradiction, and unresolved basis-point integers that sum to 10000. Return no rationale, hidden reasoning, authority, classification, finding, answer rewrite, decision, or receipt."
 const CONTRADICTION_INSTRUCTIONS: str = "Independently cross-check only the exact bound proposal target against the supplied admitted-memory projections for contradiction. Return support, contradiction, and unresolved basis-point integers that sum to 10000. Return no rationale, hidden reasoning, authority, classification, finding, answer rewrite, decision, or receipt."
 const SYNTHESIS_INSTRUCTIONS: str = "Evaluate only coverage of the exact bound request or requirement target by the supplied visible units. Return covered, gap, and unresolved basis-point integers that sum to 10000. Return no rationale, hidden reasoning, authority, classification, finding, answer rewrite, decision, or receipt."
 
@@ -141,7 +141,7 @@ model UntypedProposalEnvelope:
 
 @derive(Clone, json)
 model TypedProposalEnvelope:
-    """Untrusted public-Hees proposal decoded without granting it authority."""
+    """Untrusted public-Hees.ai proposal decoded without granting it authority."""
 
     proposal: ConsoleProposal
 
@@ -155,7 +155,7 @@ model UntypedRelationEnvelope:
 
 @derive(Clone, json)
 model TypedRelationEnvelope:
-    """Non-authoritative relation observation decoded into the public Hees contract."""
+    """Non-authoritative relation observation decoded into the public Hees.ai contract."""
 
     relation: RelationObservation
 
@@ -169,7 +169,7 @@ model UntypedSynthesisEnvelope:
 
 @derive(Clone, json)
 model TypedSynthesisEnvelope:
-    """Non-authoritative synthesis observation decoded into the public Hees contract."""
+    """Non-authoritative synthesis observation decoded into the public Hees.ai contract."""
 
     synthesis: SynthesisObservation
 
@@ -195,7 +195,7 @@ model AdmittedMemoryProjection:
 
 @derive(Clone, json)
 model ProviderContext:
-    """Bounded Hees-authored context from which the model may propose but never decide."""
+    """Bounded Hees.ai-authored context from which the model may propose but never decide."""
 
     profile_id: str
     package_id: str
@@ -211,7 +211,7 @@ model ProviderContext:
 
 @derive(Clone, json)
 model ProviderContextPlan:
-    """Closed Hees planning envelope that distinguishes usable context from unavailable planning."""
+    """Closed Hees.ai planning envelope that distinguishes usable context from unavailable planning."""
 
     contract_version: str
     profile_id: str
@@ -221,7 +221,7 @@ model ProviderContextPlan:
 
 @derive(Clone, json)
 model ProviderPremiseIdentity:
-    """Read-only digest identity from one Hees-authored target premise."""
+    """Read-only digest identity from one Hees.ai-authored target premise."""
 
     memory_id: str
     content_digest: str
@@ -229,7 +229,7 @@ model ProviderPremiseIdentity:
 
 @derive(Clone, json)
 model ProviderTargetBody:
-    """Read-only target body produced canonically by the Hees planning operation."""
+    """Read-only target body produced canonically by the Hees.ai planning operation."""
 
     profile_id: str
     package_id: str
@@ -255,7 +255,7 @@ model ProviderManifestTarget:
 
 @derive(Clone, json)
 model ProviderManifestPlan:
-    """Closed Hees planning envelope for a canonical target sequence."""
+    """Closed Hees.ai planning envelope for a canonical target sequence."""
 
     contract_version: str
     profile_id: str
@@ -550,7 +550,7 @@ def synthesis_output_schema() -> JsonValue:
 
 
 def provider_context_shape_is_closed(value: JsonValue) -> bool:
-    """Require every Hees context field and reject host-added or authority-bearing data."""
+    """Require every Hees.ai context field and reject host-added or authority-bearing data."""
 
     if not json_keys_are_exact(
         value,
@@ -598,7 +598,7 @@ def provider_context_shape_is_closed(value: JsonValue) -> bool:
 
 
 def parse_provider_context(source: str) -> Result[ProviderContext, ProviderFailure]:
-    """Consume only a plannable closed context envelope authored by Hees."""
+    """Consume only a plannable closed context envelope authored by Hees.ai."""
 
     if utf8_length(source) > MAX_PROVIDER_REQUEST_BYTES:
         return Err(ProviderFailure.InputTooLarge)
@@ -681,7 +681,7 @@ def prepare_call(
 
 
 pub def build_proposal_call(context_plan_json: str) -> Result[PreparedProviderCall, ProviderFailure]:
-    """Build the single strict proposal call from a Hees-authored context plan."""
+    """Build the single strict proposal call from a Hees.ai-authored context plan."""
 
     payload = parse_provider_context(context_plan_json)?
     return prepare_call(
@@ -738,7 +738,7 @@ def target_shape_is_closed(value: JsonValue) -> bool:
 
 
 def parse_manifest(source: str) -> Result[list[ProviderManifestTarget], ProviderFailure]:
-    """Decode only the closed manifest-plan envelope authored by Hees."""
+    """Decode only the closed manifest-plan envelope authored by Hees.ai."""
 
     if utf8_length(source) > MAX_PROVIDER_REQUEST_BYTES:
         return Err(ProviderFailure.InputTooLarge)
@@ -780,7 +780,7 @@ def observation_id(index: int) -> str:
 
 
 def committee_operation(target: ProviderManifestTarget) -> Result[str, ProviderFailure]:
-    """Map a Hees evaluator role to one provider operation without classifying it."""
+    """Map a Hees.ai evaluator role to one provider operation without classifying it."""
 
     if target.body.evaluator_role == "evidence_relation":
         return Ok("relation")
@@ -830,7 +830,7 @@ def target_matches_interaction(target: ProviderManifestTarget, context: Provider
 
 
 def identify_candidate(proposal: ConsoleProposal) -> Result[str, ProviderFailure]:
-    """Consume the narrow Hees proposal-identity projection without reopening digest internals."""
+    """Consume the narrow Hees.ai proposal-identity projection without reopening digest internals."""
 
     match JsonValue.parse(identify_console_proposal_json(proposal)):
         Err(_) => return Err(ProviderFailure.InvalidInput)
@@ -856,10 +856,10 @@ pub def build_committee_calls(
     manifest_json: str,
 ) -> Result[list[PreparedProviderCall], ProviderFailure]:
     """
-    Build ordered non-authoritative evaluator calls from Hees-produced target JSON.
+    Build ordered non-authoritative evaluator calls from Hees.ai-produced target JSON.
 
     An empty manifest returns an empty call list. This is the required pass-through path for schema-valid proposals that
-    Hees cannot plan because they contain unknown or disallowed references.
+    Hees.ai cannot plan because they contain unknown or disallowed references.
     """
 
     targets = parse_manifest(manifest_json)?
@@ -1046,7 +1046,7 @@ def proposal_shape_is_closed(value: JsonValue) -> bool:
 
 
 def proposal_from_value(value: JsonValue) -> Result[ConsoleProposal, ProviderFailure]:
-    """Construct the public Hees proposal model after the strict shape check succeeds."""
+    """Construct the public Hees.ai proposal model after the strict shape check succeeds."""
 
     source = UntypedProposalEnvelope(proposal=value).to_json()
     envelope = TypedProposalEnvelope.from_json(source).map_err((_error) => ProviderFailure.MalformedOutput)?
@@ -1113,7 +1113,7 @@ def attach_fingerprints(call: PreparedProviderCall, output_text: str, relation: 
 
 
 def relation_from_value(value: JsonValue) -> Result[RelationObservation, ProviderFailure]:
-    """Construct a public Hees relation observation from the closed provider projection."""
+    """Construct a public Hees.ai relation observation from the closed provider projection."""
 
     source = UntypedRelationEnvelope(relation=value).to_json()
     return TypedRelationEnvelope
@@ -1129,7 +1129,7 @@ def relation_from_envelope(envelope: TypedRelationEnvelope) -> RelationObservati
 
 
 def synthesis_from_value(value: JsonValue) -> Result[SynthesisObservation, ProviderFailure]:
-    """Construct a public Hees synthesis observation from the closed provider projection."""
+    """Construct a public Hees.ai synthesis observation from the closed provider projection."""
 
     source = UntypedSynthesisEnvelope(synthesis=value).to_json()
     return TypedSynthesisEnvelope
@@ -1208,7 +1208,7 @@ pub def evaluate_committee_with_transport(
     manifest_json: str,
     transport: (str) -> Result[str, ProviderFailure],
 ) -> Result[ProviderCommitteeResult, ProviderFailure]:
-    """Evaluate every Hees target sequentially through an injected transport."""
+    """Evaluate every Hees.ai target sequentially through an injected transport."""
 
     calls = build_live_committee_calls(context_plan_json, proposal, manifest_json)?
     mut relations: list[RelationObservation] = []

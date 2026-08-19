@@ -44,7 +44,7 @@ The first judge action establishes that the Console is a governed-AI development
 1. Press `2` to open Evidence.
 2. Use `↑` or `↓` to select a reviewed, rights-allowed evidence record and inspect its source identity, fingerprint, language, source span, review state, rights state, memory identity, and provenance digest.
 3. Press `Space` to unstage the selected record from the session-local candidate profile.
-4. Press `v` to rerun the shipped acceptance interaction against the candidate through the real Incan-authored Hees boundary.
+4. Press `v` to rerun the shipped acceptance interaction against the candidate through the real Incan-authored Hees.ai boundary.
 5. Confirm that the candidate probe returns `REJECTED` with stable public reason `invalid_package` and exact profile diagnostic `invalid_package_atoms` while the shipped active profile remains unchanged.
 6. Press `a` and confirm that activation remains blocked as `candidate only — not active`; this release does not let UI state bypass a missing activation-authority API.
 7. Press `r` to reset the candidate to the shipped reviewed profile, then press `v` and confirm the restored valid result.
@@ -56,23 +56,23 @@ The equivalent workflow is available in Memory with `3`. Candidate changes are i
 
 | Selection | Scenario | Expected trusted result | What to inspect |
 | --- | --- | --- | --- |
-| Initial row | Declared action with reviewed, rights-allowed evidence and admitted memory | `ADMITTED` / `console_admission_0_1` / `admitted` | Visible units, distinct evidence and memory identifiers, observations, Hees-classified findings, structural reason, Spectrum result, selected memory, Content DNA, receipt |
+| Initial row | Declared action with reviewed, rights-allowed evidence and admitted memory | `ADMITTED` / `console_admission_0_1` / `admitted` | Visible units, distinct evidence and memory identifiers, observations, Hees.ai-classified findings, structural reason, Spectrum result, selected memory, Content DNA, receipt |
 | `↓` once | Undeclared action | `REJECTED` / `console_admission_0_1` / `unknown_action` | The untrusted proposal remains inspectable, but no trusted answer, selected memory, or Content DNA appears |
 | `↓` twice | Unknown evidence | `REJECTED` / `console_admission_0_1` / `unknown_evidence` | A schema-valid evidence identifier that the package never declared cannot acquire authority |
 | `↓` three times | Unknown memory | `REJECTED` / `console_admission_0_1` / `unknown_memory` | The untrusted proposal remains inspectable, but no trusted answer, selected memory, or Content DNA appears |
 | `↓` four times | Known but non-admitted memory | `REJECTED` / `console_admission_0_1` / `memory_not_admitted` | The package-owned memory exists but cannot be selected into a trusted answer |
 
-Replay fixtures do not store terminal results. They contain bounded request, proposal, and observation inputs plus schema and integrity identities. After replay decoding, those inputs enter the same compiled Hees validation, finding-classification, Spectrum, selected-memory, Content DNA, and receipt path used after live-provider decoding. To establish that the real runner executed, compare the displayed runner identity and receipt or Content DNA values with the golden-output and runner-integrity evidence linked by the published release notes. A replay digest proves saved-input integrity, not GPT provenance.
+Replay fixtures do not store terminal results. They contain bounded request, proposal, and observation inputs plus schema and integrity identities. After replay decoding, those inputs enter the same compiled Hees.ai validation, finding-classification, Spectrum, selected-memory, Content DNA, and receipt path used after live-provider decoding. To establish that the real runner executed, compare the displayed runner identity and receipt or Content DNA values with the golden-output and runner-integrity evidence linked by the published release notes. A replay digest proves saved-input integrity, not GPT provenance.
 
 ### 5. Inspect the trust boundary
 
 The following checks establish the complete evidence-to-decision boundary:
 
 - The Profiles, Evidence, and Memory workspaces distinguish shipped active state from the session-local candidate.
-- Staging changes affect only the candidate; `v` invokes the real Hees acceptance probe, exposes public reason `invalid_package` separately from profile diagnostic `invalid_package_atoms`, and `a` cannot grant activation authority.
+- Staging changes affect only the candidate; `v` invokes the real Hees.ai acceptance probe, exposes public reason `invalid_package` separately from profile diagnostic `invalid_package_atoms`, and `a` cannot grant activation authority.
 - `UNTRUSTED PROPOSAL` is visually and textually separate from `ADMITTED` or `REJECTED`.
 - Relation and synthesis observations contain bounded integer scores, while the resulting classifications are shown as `HEES-CLASSIFIED NON-AUTHORITATIVE FINDINGS`.
-- Training by Committee presents separately role-bound observations as proposal pressure tests; Hees validates complete coverage, classifies the findings, and decides without a provider-majority vote.
+- Training by Committee presents separately role-bound observations as proposal pressure tests; Hees.ai validates complete coverage, classifies the findings, and decides without a provider-majority vote.
 - The provider does not supply the finding classification, terminal action, selected memory, Content DNA, or receipt.
 - An admitted response shows every and only the canonical package memory referenced by the admitted support mappings.
 - Profile-specific Console Content DNA binds the admitted visible units, package and policy identity, terminal decision, and selected package-owned memory without reproducing source or answer prose in the provenance entries.
@@ -99,13 +99,13 @@ One complete live invocation is preflight-limited to one proposal call and at mo
 5. Confirm that provider refusal, timeout, rate limit, malformed structured output, or incomplete observation coverage produces a typed fail-closed state and never silently substitutes replay values under a live label.
 6. Remove the environment credential after the test.
 
-**Live network status:** a native provider-only diagnostic exercised the Incan credential loader, `ureq` HTTPS POST, accepted strict schema, product decoder, and typed proposal path successfully in 8.34 seconds, with no retry. It did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal. A second native diagnostic reused that proposal, preflighted exactly six targets, completed six sequential GPT-5.6 committee calls in 40.06 seconds with zero retries, decoded three relation and three synthesis observations, and passed the complete set through the real Hees profile. Hees classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process, retained no token-usage or cost record, and ran in a temporary generated harness rather than the frozen release binary. The final merged and pinned Incan `0.5.0-dev.23` compiler completes all nineteen provider-boundary tests. A combined proposal-plus-committee run from the frozen release binary remains unproven. The [sanitized local observation](submission/evidence/live-gpt56-proposal-2026-07-20.json) records the separate observations and their limitations. The video and primary judge path use offline replay.
+**Live network status:** a native provider-only diagnostic exercised the Incan credential loader, `ureq` HTTPS POST, accepted strict schema, product decoder, and typed proposal path successfully in 8.34 seconds, with no retry. It did not record request or response hashes or usage. Separately, external `curl` submitted the exact product-generated request and supplies locally observed hashes, usage, and the exact decoded proposal. A second native diagnostic reused that proposal, preflighted exactly six targets, completed six sequential GPT-5.6 committee calls in 40.06 seconds with zero retries, decoded three relation and three synthesis observations, and passed the complete set through the real Hees.ai profile. Hees.ai classified six findings, selected `memory_lantern_sequence`, constructed Content DNA and a receipt, and admitted the result. The committee diagnostic did not repeat the proposal call in the same process, retained no token-usage or cost record, and ran in a temporary generated harness rather than the frozen release binary. The final merged and pinned Incan `0.5.0-dev.23` compiler completes all nineteen provider-boundary tests. A combined proposal-plus-committee run from the frozen release binary remains unproven. The [sanitized local observation](submission/evidence/live-gpt56-proposal-2026-07-20.json) records the separate observations and their limitations. The video and primary judge path use offline replay.
 
 The source defines nineteen provider-boundary tests for request construction, strict decoding, injected-transport composition, failure classification, budget preflight, duplicate-authority rejection, and fail-closed behavior. All nineteen pass with the final merged and pinned Incan `0.5.0-dev.23` compiler. The tagged release workflow repeats that suite before assembling release artifacts. The adapter is designed against the official [GPT-5.6 Sol model](https://developers.openai.com/api/docs/models/gpt-5.6-sol), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), and [API data controls](https://developers.openai.com/api/docs/guides/your-data) documentation.
 
 ## Source verification for contributors
 
-The current checked library remains Hees `0.0.1` and uses commit-pinned Incan `0.5.0-dev.23`:
+The current checked library remains Hees.ai `0.0.1` and uses commit-pinned Incan `0.5.0-dev.23`:
 
 ```bash
 make ci
@@ -133,7 +133,7 @@ Before publication, bind the release evidence to the exact tagged commit: record
 | Working in `console_profile_0_1` | Direction beyond this release |
 | --- | --- |
 | Supplied fictional evidence catalog with exact source, review, rights, and provenance state | General evidence intake, extraction, multilingual source processing, and candidate-atom curation |
-| Session-local staging, Hees acceptance probing, reset, and explicit blocked activation | Durable IncQL-DB workspaces, governed activation, versioning, comparison, and export of authored profiles |
+| Session-local staging, Hees.ai acceptance probing, reset, and explicit blocked activation | Durable IncQL-DB workspaces, governed activation, versioning, comparison, and export of authored profiles |
 | One bounded Training by Committee proposal pressure test | Provider-neutral pressure testing across evidence, candidate atoms, profiles, prompts, and policy |
 | Deterministic structural and policy admission with `admit` and `reject` | Semantic and factual verification, source and claim provenance, rights assurance, repair, clarification, and escalation |
 | Profile-specific Spectrum operation, Content DNA, and receipt | Complete generalized Spectrum, Content DNA, response-lifecycle, and governance-receipt contracts |
@@ -147,13 +147,13 @@ Before publication, bind the release evidence to the exact tagged commit: record
 | Digest mismatch | Stop and download the asset again from the published release; do not bypass verification. |
 | Unsupported platform | Use a documented supported artifact or a verified hosted equivalent if one is published; do not infer support from source portability. |
 | Replay integrity failure | Treat the fixture as invalid; do not run or display a stored fallback decision. |
-| Runner unavailable or malformed response | Show a typed host failure; do not fabricate a Hees rejection or admission. |
+| Runner unavailable or malformed response | Show a typed host failure; do not fabricate a Hees.ai rejection or admission. |
 | Missing API key | Stay in explicitly labelled replay mode or configure live mode deliberately; do not ask judges to expose a credential. |
 | Live timeout, refusal, rate limit, or malformed output | Fail closed under the documented typed state; do not relabel replay as live. |
 | Hosted session expired | Use the published native test build, or follow the verified hosted restart instruction if a hosted equivalent is later supplied. |
 
 ## What a successful test establishes
 
-A successful offline judge run establishes that the published executable can mutate bounded candidate-profile state, validate it through Hees without changing the active profile, and rerun five saved-input scenarios through the real Incan-authored authority path without rebuilding the project. It exposes the exact path from evidence and reviewed memory atoms through profile policy, Training by Committee, the bounded Spectrum operation, the governed decision, selected memory, Content DNA, and receipt.
+A successful offline judge run establishes that the published executable can mutate bounded candidate-profile state, validate it through Hees.ai without changing the active profile, and rerun five saved-input scenarios through the real Incan-authored authority path without rebuilding the project. It exposes the exact path from evidence and reviewed memory atoms through profile policy, Training by Committee, the bounded Spectrum operation, the governed decision, selected memory, Content DNA, and receipt.
 
 This structural and policy proof is the foundation for the product's next assurance layers. Semantic and factual verification, source and claim provenance, rights assurance, richer response states, and durable profile authoring require additional profiles and contracts; they are not inferred from the fictional answer or provider observations in this release.

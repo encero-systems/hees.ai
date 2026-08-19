@@ -81,7 +81,7 @@ pub model GuidedProgrammeCard:
 
 @derive(Clone, json)
 pub model GuidedProgramme:
-    """Complete package-owned programme declaration evaluated by Hees."""
+    """Complete package-owned programme declaration evaluated by Hees.ai."""
 
     pub programme_id: ProgrammeId
     pub package_id: PackageId

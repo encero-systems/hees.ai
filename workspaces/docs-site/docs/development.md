@@ -25,7 +25,7 @@ make console-test console-native-smoke \
   INCAN=/path/to/incan-0.5.0-dev.23/bin/incan
 ```
 
-Those gates compile the native Incan Console, run the direct profile and application suite, and execute all five offline scenarios through the real Hees profile. The domain JSON Schemas constrain provider-facing shape; profile authority and public reason selection remain inside the Hees profile.
+Those gates compile the native Incan Console, run the direct profile and application suite, and execute all five offline scenarios through the real Hees.ai profile. The domain JSON Schemas constrain provider-facing shape; profile authority and public reason selection remain inside the Hees.ai profile.
 
 ## Release-candidate archive
 

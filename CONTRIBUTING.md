@@ -1,6 +1,6 @@
 # Contributing
 
-Hees is intentionally small. Changes should preserve an Incan-owned public boundary and avoid adding concrete domains, private corpora, model artifacts, product control surfaces, or research spikes.
+Hees.ai is intentionally small. Changes should preserve an Incan-owned public boundary and avoid adding concrete domains, private corpora, model artifacts, product control surfaces, or research spikes.
 
 Before opening a pull request:
 

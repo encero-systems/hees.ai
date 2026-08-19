@@ -2,7 +2,7 @@
 Public guided-programme contracts.
 
 Implementation packages declare reviewed card topology, bounded choices, support identifiers and progress policy.
-Hees validates those declarations and evaluates learner-operation eligibility without rendering cards, retrieving
+Hees.ai validates those declarations and evaluates learner-operation eligibility without rendering cards, retrieving
 memory, mutating progress or allowing a caller-supplied flag to manufacture persistence authority.
 
 The public evaluation explains an outcome and projects the eligible operation, if any. It carries no reusable authority

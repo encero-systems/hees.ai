@@ -170,7 +170,7 @@ def admitted_memory_projection(atom: JsonValue) -> JsonValue:
 
 
 def context_plan() -> str:
-    """Reproduce the frozen Hees-authored context envelope as a provider contract fixture."""
+    """Reproduce the frozen Hees.ai-authored context envelope as a provider contract fixture."""
 
     package = assert_is_ok(JsonValue.parse(read_text(fixture_path("package/package.json"))))
     request = assert_is_ok(JsonValue.parse(read_text(fixture_path("requests/valid_lantern.json"))))
@@ -318,7 +318,7 @@ def oversized_ascii_value() -> str:
 
 
 def target_value(index: int, evaluator_role: str, target_role: str, candidate_digest: str) -> JsonValue:
-    """Construct one read-only Hees-target projection for maximum-shape capacity tests."""
+    """Construct one read-only Hees.ai-target projection for maximum-shape capacity tests."""
 
     digest = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
     context = require(assert_is_ok(JsonValue.parse(context_plan())), "context")
@@ -340,7 +340,7 @@ def target_value(index: int, evaluator_role: str, target_role: str, candidate_di
 
 
 def manifest_plan_json(targets: list[JsonValue], plannable: bool = true) -> str:
-    """Wrap canonical targets in the exact closed Hees manifest-plan envelope."""
+    """Wrap canonical targets in the exact closed Hees.ai manifest-plan envelope."""
 
     envelope = JsonValue.object(
         {"contract_version": JsonValue.str("console_manifest_plan_0_1"), "profile_id": JsonValue.str(
@@ -351,7 +351,7 @@ def manifest_plan_json(targets: list[JsonValue], plannable: bool = true) -> str:
 
 
 def fixture_manifest_json() -> str:
-    """Load the canonical happy-path targets into the closed Hees manifest envelope."""
+    """Load the canonical happy-path targets into the closed Hees.ai manifest envelope."""
 
     scenario = assert_is_ok(JsonValue.parse(read_text(fixture_path("scenarios/valid_lantern.json"))))
     targets = [assert_is_ok(JsonValue.parse(read_text(fixture_path(assert_is_ok(path.expect_str()))))) for path in require_array(
@@ -362,7 +362,7 @@ def fixture_manifest_json() -> str:
 
 
 def proposal_candidate_digest(proposal: ConsoleProposal) -> str:
-    """Read the candidate digest from the narrow public Hees identity projection."""
+    """Read the candidate digest from the narrow public Hees.ai identity projection."""
 
     identity = assert_is_ok(JsonValue.parse(identify_console_proposal_json(proposal)))
     return require_str(identity, "candidate_digest")
@@ -421,7 +421,7 @@ def maximum_proposal() -> ConsoleProposal:
 
 
 def maximum_context_plan() -> str:
-    """Expand a valid Hees context to the generic four-requirement profile maximum."""
+    """Expand a valid Hees.ai context to the generic four-requirement profile maximum."""
 
     mut plan = assert_is_ok(JsonValue.parse(context_plan()))
     context = require(plan, "context")
@@ -479,7 +479,7 @@ def test_proposal_request_is_the_exact_closed_responses_operation() -> None:
 
 
 def test_proposal_input_contains_only_hees_authored_untrusted_context() -> None:
-    """Project only the Hees-authored request, declared surface, and admitted memory."""
+    """Project only the Hees.ai-authored request, declared surface, and admitted memory."""
 
     call = assert_is_ok(build_proposal_call(context_plan()))
     payload = proposal_input(call)
@@ -500,7 +500,7 @@ def test_proposal_input_contains_only_hees_authored_untrusted_context() -> None:
 
 
 def test_schema_valid_unauthorized_proposals_remain_pass_through_values() -> None:
-    """Leave action and memory authority to the terminal Hees evaluation."""
+    """Leave action and memory authority to the terminal Hees.ai evaluation."""
 
     call = assert_is_ok(build_proposal_call(context_plan()))
     undeclared: ConsoleProposal = assert_is_ok(
@@ -683,7 +683,7 @@ def test_request_size_ceiling_fails_closed_before_transport() -> None:
 
 
 def test_empty_manifest_skips_the_non_authoritative_committee() -> None:
-    """Allow unauthorized proposals to continue to Hees with no provider observations."""
+    """Allow unauthorized proposals to continue to Hees.ai with no provider observations."""
 
     calls: list[PreparedProviderCall] = assert_is_ok(
         build_committee_calls(
@@ -699,7 +699,7 @@ def test_empty_manifest_skips_the_non_authoritative_committee() -> None:
 
 @serial
 def test_provider_decoded_duplicate_evidence_reaches_hees_without_committee_calls() -> None:
-    """Leave provider-permitted duplicates to the real Hees structural authority boundary."""
+    """Leave provider-permitted duplicates to the real Hees.ai structural authority boundary."""
 
     injected_transport_calls = 0
     live_plan = assert_is_ok(plan_live_question_json("What order should I use for the Lantern Path cards?"))

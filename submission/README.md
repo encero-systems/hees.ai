@@ -1,6 +1,6 @@
 # hees.ai console submission pack
 
-This directory contains the production drafts for Danny Meijer's individual hees.ai console Build Week 2026 entry. The material follows one product story: evidence becomes governed memory, governed memory becomes a reusable profile, Training by Committee pressure-tests proposals, and Hees produces the Spectrum decision, selected memory, Content DNA, and receipt.
+This directory contains the production drafts for Danny Meijer's individual hees.ai console Build Week 2026 entry. The material follows one product story: evidence becomes governed memory, governed memory becomes a reusable profile, Training by Committee pressure-tests proposals, and Hees.ai produces the Spectrum decision, selected memory, Content DNA, and receipt.
 
 These documents are drafting and production controls. They are not evidence that a release, hosted demo, video, or Devpost submission exists.
 
@@ -14,7 +14,7 @@ The submission pack was reconciled against the [OpenAI Build Week Official Rules
 
 ## Status and placeholder contract
 
-The permanent hees.ai console is the terminal-first, local-first environment for creating, validating, running, replaying, and inspecting reusable governance profiles. The event entry is the working `console_profile_0_1` slice: a session-local Profile Studio over fictional evidence, a Hees-owned candidate acceptance probe, Training by Committee, governed interactions, a bounded Spectrum operation, Content DNA, and receipts. The submission should make the permanent outcome credible through this real slice without implying that general ingestion, durable profile authoring, or complete assurance already ship.
+The permanent hees.ai console is the terminal-first, local-first environment for creating, validating, running, replaying, and inspecting reusable governance profiles. The event entry is the working `console_profile_0_1` slice: a session-local Profile Studio over fictional evidence, a Hees.ai-owned candidate acceptance probe, Training by Committee, governed interactions, a bounded Spectrum operation, Content DNA, and receipts. The submission should make the permanent outcome credible through this real slice without implying that general ingestion, durable profile authoring, or complete assurance already ship.
 
 This pack separates two kinds of material:
 

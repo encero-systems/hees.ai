@@ -2,7 +2,7 @@
 Direct guided-programme eligibility result.
 
 The serializable result explains one structural decision and its eligible operation, if any. It carries no reusable
-authority. Later Hees stages must evaluate the original admitted package, governed support and runtime state rather
+authority. Later Hees.ai stages must evaluate the original admitted package, governed support and runtime state rather
 than accepting a caller-constructed eligibility result as package admission or terminal authority.
 """
 
@@ -18,7 +18,7 @@ from crate.programme.models import (
 
 @derive(Clone, json)
 pub model ProgrammeEvaluation:
-    """Inspectable eligibility result that cannot substitute for a later Hees authority decision."""
+    """Inspectable eligibility result that cannot substitute for a later Hees.ai authority decision."""
 
     pub trace: ProgrammeDecisionTrace
     pub operation: Option[ProgrammeOperationProjection]

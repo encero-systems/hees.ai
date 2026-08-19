@@ -2,7 +2,7 @@
 Generic in-memory package and proposal-admission contracts.
 
 The runtime does not invoke a model, retrieve evidence, or claim semantic verification. A caller supplies a package and
-an untrusted proposal; Hees checks structural authority before admitting the visible output.
+an untrusted proposal; Hees.ai checks structural authority before admitting the visible output.
 """
 
 from std.serde import json

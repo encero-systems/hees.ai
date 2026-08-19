@@ -2,7 +2,7 @@
 
 ## Requirements
 
-The current branch requires Incan `0.5.0-dev.23` from merged source commit [`121b1b789508d8fa83aa7f9400fef52e294afa62`](https://github.com/encero-systems/incan/commit/121b1b789508d8fa83aa7f9400fef52e294afa62). Release tooling records that source identity separately from the canonical root `incan.lock`. The release workflow fails closed unless it obtains a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the tagged Hees head.
+The current branch requires Incan `0.5.0-dev.23` from merged source commit [`121b1b789508d8fa83aa7f9400fef52e294afa62`](https://github.com/encero-systems/incan/commit/121b1b789508d8fa83aa7f9400fef52e294afa62). Release tooling records that source identity separately from the canonical root `incan.lock`. The release workflow fails closed unless it obtains a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the tagged Hees.ai head.
 
 ## Verify the repository
 
@@ -31,7 +31,7 @@ The test project under `workspaces/external-consumer/` compiles and tests this e
 
 ## Verify the initial console profile
 
-The Console workspace uses only original fictional acceptance data. Its verification covers session-local candidate-profile state, evidence and memory staging, the Hees-owned acceptance probe, blocked activation, reset, responsive rendering, provider boundaries, and all five governed interactions:
+The Console workspace uses only original fictional acceptance data. Its verification covers session-local candidate-profile state, evidence and memory staging, the Hees.ai-owned acceptance probe, blocked activation, reset, responsive rendering, provider boundaries, and all five governed interactions:
 
 ```bash
 make console-test console-native-smoke \

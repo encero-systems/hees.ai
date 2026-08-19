@@ -1,5 +1,5 @@
 """
-Faithful, versioned TurboQuant vector codecs for Hees Hyperquant.
+Faithful, versioned TurboQuant vector codecs for Hees.ai Hyperquant.
 
 The implementation follows the MSE and product-style construction described by Zandieh, Daliri, Hadian, and
 Mirrokni in *TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate*. The published algorithm
@@ -7,7 +7,7 @@ defines the random rotation, scalar quantization, residual construction, and one
 Johnson-Lindenstrauss correction. It does not define a portable random stream, exact QR sign convention, bit
 layout, or replayable binary envelope.
 
-Hees therefore fixes those operational choices separately: SHA-256 counter-mode randomness, Box-Muller Gaussian
+Hees.ai therefore fixes those operational choices separately: SHA-256 counter-mode randomness, Box-Muller Gaussian
 sampling, positive-diagonal Householder QR, most-significant-bit-first packing, and versioned configuration and
 code envelopes. These choices make independent Incan implementations reproducible; they do not claim to be
 Google's own software or make approximate similarity authoritative.

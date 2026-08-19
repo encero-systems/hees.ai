@@ -1,7 +1,7 @@
 """
 Typed, integrity-checked offline replay selection for the native Console.
 
-Replay envelopes are untrusted inputs. This module verifies their closed identity before handing transport projections to the public Hees profile, but it never predicts or embeds the terminal decision.
+Replay envelopes are untrusted inputs. This module verifies their closed identity before handing transport projections to the public Hees.ai profile, but it never predicts or embeds the terminal decision.
 """
 
 from rust::std::string import String as RustString
@@ -148,7 +148,7 @@ pub model ReplayBody:
 
 @derive(Clone, json)
 model ReplayEnvelope:
-    """Integrity-sealed replay body without any Hees terminal result."""
+    """Integrity-sealed replay body without any Hees.ai terminal result."""
 
     body: ReplayBody
     replay_id: str
@@ -156,7 +156,7 @@ model ReplayEnvelope:
 
 @derive(Clone)
 pub model OfflineScenario:
-    """Named offline scenario ready for conversion at the public Hees boundary."""
+    """Named offline scenario ready for conversion at the public Hees.ai boundary."""
 
     pub slug: str
     pub title: str

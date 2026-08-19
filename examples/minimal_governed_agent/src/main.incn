@@ -1,4 +1,4 @@
-"""Fictional external implementation using the checked Hees public API."""
+"""Fictional external implementation using the checked Hees.ai public API."""
 
 from pub::hees_ai import (
     ReviewStatus,

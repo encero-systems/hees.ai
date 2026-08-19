@@ -15,16 +15,16 @@
     - RFC 009 (Governed Visible Response Lifecycle)
 - **Issue:** https://github.com/encero-systems/hees.ai/issues/2
 - **RFC PR:** —
-- **Written against:** Hees 0.0.1 / Incan 0.4.0
+- **Written against:** Hees.ai 0.0.1 / Incan 0.4.0
 - **Shipped in:** —
 
 ## Summary
 
-Hees should expose Spectrum as its single terminal adjudication boundary. Spectrum consumes only direct trusted capabilities and validated bounded findings produced by the specialized Hees contracts, resolves selected and discarded governed memory, contradictions, package policy, behavior, and response state in one deterministic order, and returns one terminal response outcome plus a bounded non-authoritative trace. Only Spectrum may authorize admission of model-generated visible prose, and an admitted answer must be returned atomically with valid RFC 002 Content DNA.
+Hees.ai should expose Spectrum as its single terminal adjudication boundary. Spectrum consumes only direct trusted capabilities and validated bounded findings produced by the specialized Hees.ai contracts, resolves selected and discarded governed memory, contradictions, package policy, behavior, and response state in one deterministic order, and returns one terminal response outcome plus a bounded non-authoritative trace. Only Spectrum may authorize admission of model-generated visible prose, and an admitted answer must be returned atomically with valid RFC 002 Content DNA.
 
 ## Core model
 
-1. **Spectrum receives authority; it does not reconstruct it.** Accepted package, memory, constraint, behavior, and response values enter Spectrum through direct Hees capabilities or trusted values produced inside the same governed operation.
+1. **Spectrum receives authority; it does not reconstruct it.** Accepted package, memory, constraint, behavior, and response values enter Spectrum through direct Hees.ai capabilities or trusted values produced inside the same governed operation.
 2. **Findings remain observations.** Verifier, coverage, policy, and other evaluator findings are validated and normalized under their owning contracts but cannot select the final action.
 3. **Memory selection becomes terminally exact.** Spectrum distinguishes the complete admitted context from the exact ordered subset used as premises for an admitted answer.
 4. **Policy application is deterministic.** Package-declared order, dependencies, allowed actions, conflict rules, and failure substitutions determine the effective governance result.
@@ -39,7 +39,7 @@ The specialized RFCs deliberately separate memory admission, package identity, f
 
 The absence of an explicit terminal core also leaves selected memory ambiguous. A retrieval result can materialize a valid governed context without proving that every atom supports or contributes to the visible answer. A verifier can examine claims against memory without deciding whether the final answer is admissible. Content DNA requires a terminally exact selected-memory set, so the operation that decides admission must own that set and its relationship to the response.
 
-Spectrum provides that composition point without becoming a domain rules engine. Packages declare domain policy and reviewed content; specialized Hees contracts normalize their inputs; Spectrum applies those admitted declarations mechanically and produces the single terminal result required by RFC 000.
+Spectrum provides that composition point without becoming a domain rules engine. Packages declare domain policy and reviewed content; specialized Hees.ai contracts normalize their inputs; Spectrum applies those admitted declarations mechanically and produces the single terminal result required by RFC 000.
 
 ## Goals
 
@@ -61,19 +61,19 @@ Spectrum provides that composition point without becoming a domain rules engine.
 - Determining unrestricted real-world truth from model or verifier output.
 - Exposing hidden reasoning, chain-of-thought, free-form evaluator rationale, or private package deliberation.
 - Defining the canonical package format, individual finding schemas, response candidate schema, receipt envelope, or Content DNA entry schema owned by their dedicated RFCs.
-- Defining remote federation, quorum, consensus, signatures, attestation, or replay protection across independent Hees processes.
+- Defining remote federation, quorum, consensus, signatures, attestation, or replay protection across independent Hees.ai processes.
 
 ## Guide-level explanation
 
-An application begins with a directly admitted package and governed request. Retrieval may nominate package-owned memory, a model may propose a bounded response, and verifiers may report observations about exact targets. Those values remain specialized inputs. Spectrum receives their direct trusted Hees results, applies the admitted package policy, distinguishes selected from discarded memory, and chooses one response-lifecycle terminal variant.
+An application begins with a directly admitted package and governed request. Retrieval may nominate package-owned memory, a model may propose a bounded response, and verifiers may report observations about exact targets. Those values remain specialized inputs. Spectrum receives their direct trusted Hees.ai results, applies the admitted package policy, distinguishes selected from discarded memory, and chooses one response-lifecycle terminal variant.
 
-If Spectrum admits a visible answer, it freezes the exact selected-memory order and asks Hees to construct RFC 002 Content DNA from the corresponding package-owned provenance. The answer and Content DNA are returned together. If the candidate needs its single permitted repair, requires package-authored clarification, or must be rejected, Spectrum returns that exact terminal path without inventing fallback prose.
+If Spectrum admits a visible answer, it freezes the exact selected-memory order and asks Hees.ai to construct RFC 002 Content DNA from the corresponding package-owned provenance. The answer and Content DNA are returned together. If the candidate needs its single permitted repair, requires package-authored clarification, or must be rejected, Spectrum returns that exact terminal path without inventing fallback prose.
 
 ## Reference-level explanation
 
 ### Authority boundary
 
-Spectrum is an in-process Hees operation, not a package evaluator, provider protocol, serialized orchestration format, or package-authoring function. Its caller may coordinate provider execution, but every value entering Spectrum must already be bound to the exact governed operation by the owning Hees contract.
+Spectrum is an in-process Hees.ai operation, not a package evaluator, provider protocol, serialized orchestration format, or package-authoring function. Its caller may coordinate provider execution, but every value entering Spectrum must already be bound to the exact governed operation by the owning Hees.ai contract.
 
 Spectrum must not accept a public trace, receipt, Content DNA document, package tuple, list of memory identifiers, terminal variant, or collection of findings as a substitute for the direct trusted capabilities that establish those values. Public scalar identities may be repeated for mismatch detection, but trusted identity must come from the opaque source value rather than the caller's copy.
 
@@ -175,7 +175,7 @@ Spectrum must construct RFC 002 Content DNA only after terminal response selecti
 
 For an admitted answer, RFC 002 validation must prove exact set equality and order consistency between Spectrum selected memory and the Content DNA entries. A missing entry, additional entry, duplicate, reordered identity where order is meaningful, source-provenance mismatch, review or rights failure, package mismatch, policy mismatch, proposal mismatch, answer-digest mismatch, or decision-digest mismatch changes the outcome from admission to the owning fail-closed terminal result.
 
-Spectrum must never accept Content DNA supplied by the model, provider, caller, package-authoring tooling, or package. The package supplies reviewed provenance facts; Spectrum supplies the final selection; Hees constructs the answer-specific projection.
+Spectrum must never accept Content DNA supplied by the model, provider, caller, package-authoring tooling, or package. The package supplies reviewed provenance facts; Spectrum supplies the final selection; Hees.ai constructs the answer-specific projection.
 
 ### Trace contract
 
@@ -183,7 +183,7 @@ Spectrum may return a bounded serializable trace for debugging, explanation, acc
 
 The trace must not include raw source content, complete memory text, model hidden state, chain-of-thought, free-form verifier rationale, provider payloads, unbounded diagnostics, private deliberation, repair capability bytes, or values that let a caller reconstruct an opaque authority capability.
 
-The trace is non-authoritative even when its schema and digest verify. A caller may compare or retain it but may not submit it to another Hees operation as proof that the original in-process decision occurred. RFC 006 receipts own external integrity projections; a future attestation RFC may add producer authenticity without changing Spectrum's single terminal authority.
+The trace is non-authoritative even when its schema and digest verify. A caller may compare or retain it but may not submit it to another Hees.ai operation as proof that the original in-process decision occurred. RFC 006 receipts own external integrity projections; a future attestation RFC may add producer authenticity without changing Spectrum's single terminal authority.
 
 ### Bounds and resource behavior
 
@@ -260,7 +260,7 @@ Rejected because response validation alone does not own the final selected-memor
 
 ### Let an orchestrator or package-authoring system compose the final result
 
-Rejected because external composition could vary by deployment and would let a control plane construct authority from serializable parts. Build-time tooling owns package authoring; Hees owns runtime finality.
+Rejected because external composition could vary by deployment and would let a control plane construct authority from serializable parts. Build-time tooling owns package authoring; Hees.ai owns runtime finality.
 
 ### Treat the public trace as the decision capability
 
@@ -287,7 +287,7 @@ Those costs are deliberate. Without one terminal composition contract, authority
 
 ## Design Decisions
 
-- Spectrum is the sole terminal Hees adjudication boundary.
+- Spectrum is the sole terminal Hees.ai adjudication boundary.
 - Spectrum consumes direct trusted values rather than reconstructing authority from public records.
 - Selected memory is an exact ordered terminal subset of admitted context and is distinct from examined or cited memory.
 - Selected and discarded memory partition the admitted context for an admitted answer.

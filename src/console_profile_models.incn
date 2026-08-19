@@ -194,7 +194,7 @@ pub model ManifestTargetBody:
 
 @derive(Clone, json)
 pub model ManifestTarget:
-    """Hees-authored verifier target body sealed by a canonical digest."""
+    """Hees.ai-authored verifier target body sealed by a canonical digest."""
 
     pub body: ManifestTargetBody
     pub target_digest: DigestIdType
@@ -202,7 +202,7 @@ pub model ManifestTarget:
 
 @derive(Clone, json)
 pub model ConsoleManifestPlan:
-    """Non-terminal Hees-authored evaluator targets for one plannable proposal."""
+    """Non-terminal Hees.ai-authored evaluator targets for one plannable proposal."""
 
     pub contract_version: ContractId
     pub profile_id: ProfileId
@@ -247,7 +247,7 @@ pub model ConsoleProviderContext:
 
 @derive(Clone, json)
 pub model ConsoleProviderContextPlan:
-    """Non-terminal Hees-authored provider context or a closed non-plannable result."""
+    """Non-terminal Hees.ai-authored provider context or a closed non-plannable result."""
 
     pub contract_version: ContractId
     pub profile_id: ProfileId
@@ -329,7 +329,7 @@ pub model SynthesisObservation:
 
 @derive(Clone, json)
 pub model DerivedFinding:
-    """Hees-owned classification derived from one validated observation."""
+    """Hees.ai-owned classification derived from one validated observation."""
 
     pub contract_version: ContractId
     pub profile_id: ProfileId

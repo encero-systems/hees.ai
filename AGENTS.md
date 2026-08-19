@@ -1,8 +1,8 @@
-# Agent Instructions for Hees
+# Agent Instructions for Hees.ai
 
-Hees is an Incan-first governed-intelligence runtime. It turns evidence, reviewed memory, declared authority, policy, and evaluator requirements into executable governance profiles, then produces inspectable terminal decisions with selected memory, Content DNA, and receipts.
+Hees.ai is an Incan-first governed-intelligence runtime. It turns evidence, reviewed memory, declared authority, policy, and evaluator requirements into executable governance profiles, then produces inspectable terminal decisions with selected memory, Content DNA, and receipts.
 
-**The model proposes. Hees decides.** Nothing an LLM or other provider produces — content, candidate memory atoms, or evaluator observations — is trusted output on its own. Hees validates, classifies, and holds terminal authority.
+**The model proposes. Hees.ai decides.** Nothing an LLM or other provider produces — content, candidate memory atoms, or evaluator observations — is trusted output on its own. Hees.ai validates, classifies, and holds terminal authority.
 
 ## Key references
 
@@ -18,13 +18,13 @@ Hees is an Incan-first governed-intelligence runtime. It turns evidence, reviewe
 
 ## Boundaries
 
-Hees is intentionally small. Do not add:
+Hees.ai is intentionally small. Do not add:
 
 - Concrete domains, private corpora, model artifacts, or product control surfaces beyond the existing fictional Build Week package.
 - Research spikes — there is no `__research__/` directory here; keep exploratory material out of the tracked tree entirely rather than adding one.
 - Confidential information, credentials, personal data, raw source material, or content without documented redistribution rights.
 
-Hees should be built in Incan, with Incan, and for Incan (dogfooding). Native Rust in this repo (`crossterm`, `unicode-width`, `unicode-segmentation`, `ureq`, declared under `[workspace.rust-dependencies]` in `incan.toml`) exists only for interop Incan cannot yet express directly — terminal rendering and HTTP for the console. Do not add new authored Rust merely because it is convenient; if a genuine Incan gap blocks you, reduce it to a minimal repro and link it to the owning Incan issue.
+Hees.ai should be built in Incan, with Incan, and for Incan (dogfooding). Native Rust in this repo (`crossterm`, `unicode-width`, `unicode-segmentation`, `ureq`, declared under `[workspace.rust-dependencies]` in `incan.toml`) exists only for interop Incan cannot yet express directly — terminal rendering and HTTP for the console. Do not add new authored Rust merely because it is convenient; if a genuine Incan gap blocks you, reduce it to a minimal repro and link it to the owning Incan issue.
 
 Do not run destructive git commands (`git checkout -- <path>`, `git restore <path>`, `git clean`, `git reset --hard`, `stash drop`, or equivalent) without explicit user approval that quotes the exact paths or commands.
 
@@ -64,7 +64,7 @@ RFCs live under `rfcs/` as `NNN-short-title.md`, numbered sequentially starting 
 - **In Progress**: implementation actually underway; a progress checklist may appear and must reflect real work.
 - **Implemented**: merged, released, `Shipped in` records the actual release.
 
-Until an RFC **and** its implementation are both merged, the README and checked public API remain the source of truth for what Hees actually implements — RFCs describe intent, not current state. RFCs must not contain private package contents, client material, raw corpora, credentials, local paths, model artifacts, or unpublished research results.
+Until an RFC **and** its implementation are both merged, the README and checked public API remain the source of truth for what Hees.ai actually implements — RFCs describe intent, not current state. RFCs must not contain private package contents, client material, raw corpora, credentials, local paths, model artifacts, or unpublished research results.
 
 ## Security
 

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Hees is pre-v0.1. Only the latest commit on the default branch is eligible for security fixes.
+Hees.ai is pre-v0.1. Only the latest commit on the default branch is eligible for security fixes.
 
 ## Reporting a vulnerability
 

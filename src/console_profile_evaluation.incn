@@ -81,7 +81,7 @@ pub def rejected_evaluation(
 
 
 def structural_admission(package: ConsolePackage, proposal: ConsoleProposal) -> StructuralAdmission:
-    """Delegate mandatory structural checks to the generic Hees kernel."""
+    """Delegate mandatory structural checks to the generic Hees.ai kernel."""
 
     actions = [action_contract(action.action_id, action.evidence_required) for action in package.actions]
     evidence = [approved_evidence_record(atom.evidence_id, atom.claim, atom.guidance, atom.source_ref) for atom in package.atoms if atom_is_admitted(

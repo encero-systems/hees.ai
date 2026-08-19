@@ -1,8 +1,8 @@
 # Hyperquant retrieval
 
-Hyperquant is Hees's first-party family of bounded vector-retrieval profiles. It answers one narrow question: which package-owned memory identifiers are the strongest candidates for a query?
+Hyperquant is Hees.ai's first-party family of bounded vector-retrieval profiles. It answers one narrow question: which package-owned memory identifiers are the strongest candidates for a query?
 
-Hyperquant ranks. Hees decides.
+Hyperquant ranks. Hees.ai decides.
 
 ## Authority boundary
 
@@ -10,7 +10,7 @@ A Hyperquant result is a non-authoritative nomination. It contains logical `Memo
 
 It does not contain trusted memory payloads and does not establish that nominated material is reviewed, rights-allowed, temporally valid, relevant to the active goal, sufficient to support an answer, or admissible under policy.
 
-The RFC 003 governed-memory boundary must validate the provider binding, package identity, nominated identifiers, review and rights declarations, temporal state, limits, and package-owned materialization before memory can become selected memory. Spectrum and the final Hees decision remain downstream authority.
+The RFC 003 governed-memory boundary must validate the provider binding, package identity, nominated identifiers, review and rights declarations, temporal state, limits, and package-owned materialization before memory can become selected memory. Spectrum and the final Hees.ai decision remain downstream authority.
 
 ```text
 query vector + versioned Hyperquant index
@@ -25,7 +25,7 @@ RFC 003 package-owned memory admission
 selected memory
         |
         v
-Spectrum + final Hees decision
+Spectrum + final Hees.ai decision
 ```
 
 ## Exact profile
@@ -81,12 +81,12 @@ Diagnostics use stable error kinds and bounded implementation-owned detail. Call
 
 ## Profile roadmap
 
-The first compressed product candidates are separately versioned TurboQuant product-style and MSE-oriented profiles. Their [reference contract](hyperquant-turboquant-reference.md) now maps transforms, quantization, residuals, estimators, packing, and query-time behavior to explicit paper evidence and Hees reproducibility decisions.
+The first compressed product candidates are separately versioned TurboQuant product-style and MSE-oriented profiles. Their [reference contract](hyperquant-turboquant-reference.md) now maps transforms, quantization, residuals, estimators, packing, and query-time behavior to explicit paper evidence and Hees.ai reproducibility decisions.
 
 The reference contract and conformance fixtures are now backed by a faithful dense Incan codec with canonical configuration and code envelopes. That implementation proves the profile semantics and portable bytes; it does not yet provide bounded approximate nomination, production-dimensional transforms, or a measured default. Those belong to the next implementation slice.
 
 Both profiles will use bounded approximate nomination and an explicitly configured exact-reranking policy. Evaluation against `exact_cosine_0_1` and independent baselines will determine the default; the paper name alone will not.
 
-The current Notulist-derived randomized-Hadamard, scalar-centroid, and residual-sign experiment remains comparison evidence under an identity describing what it actually implements. It is not a TurboQuant profile. Hees now provides a faithful dense Incan reference codec for `turboquant_mse_0_1` and `turboquant_product_0_1`, including canonical configuration and code envelopes.
+The current Notulist-derived randomized-Hadamard, scalar-centroid, and residual-sign experiment remains comparison evidence under an identity describing what it actually implements. It is not a TurboQuant profile. Hees.ai now provides a faithful dense Incan reference codec for `turboquant_mse_0_1` and `turboquant_product_0_1`, including canonical configuration and code envelopes.
 
 Later slices add bounded approximate nomination, exact reranking, multilingual evaluation, RFC 003 admission, paged storage integration, and consumer migration. Related KV-cache compression belongs to the native model runtime and will use a distinct profile identity rather than being conflated with Hyperquant retrieval.

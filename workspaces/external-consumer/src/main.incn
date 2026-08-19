@@ -1,4 +1,4 @@
-"""External consumer smoke for the Hees package-loader contract."""
+"""External consumer smoke for the Hees.ai package-loader contract."""
 
 from pub::hees_ai import package_loader_descriptor, package_loader_summary, validate_package_loader_descriptor
 
