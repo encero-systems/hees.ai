@@ -128,6 +128,8 @@ StructuralIdentity
 
 For public text and inspection, a structural identity must render as `hees-si:<domain>:<contract>:sha256:<64 lowercase hexadecimal characters>`. The textual rendering is a presentation of the typed record; an owning model or operation must retain nominal identity types and must not accept this text through an untyped string field.
 
+Identity domains use the grammar `[a-z0-9][a-z0-9_-]*(\.[a-z0-9][a-z0-9_-]*)+`. Hees.ai-owned domains use the `hees.` prefix, such as `hees.package`, `hees.memory_atom`, and `hees.receipt`. This domain grammar is distinct from the underscore-delimited identifiers used where a contract name cannot contain a dot.
+
 Contract `0.1` permits only `sha256`. A future algorithm, digest size, or rendering change requires a new identity contract and an explicit verifier route; a verifier must not negotiate, guess, or retry an alternate algorithm after failure.
 
 ### Structural stream framing
