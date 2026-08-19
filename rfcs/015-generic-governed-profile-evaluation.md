@@ -12,7 +12,7 @@
     - RFC 013 (Governed Continuity), RFC 014 (Governed Memory Lifecycle Operations) — sibling generalizations from the same research spike, independent of this one
 - **Issue:** — (not yet filed; see Open questions)
 - **RFC PR:** —
-- **Written against:** Hees.ai 0.0.1 / Incan 0.5.0-rc2
+- **Written against:** Hees.ai 0.0.1 / Incan 0.5
 - **Shipped in:** —
 
 ## Summary
