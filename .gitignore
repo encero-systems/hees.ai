@@ -26,6 +26,10 @@ node_modules/
 .agents/*
 !.agents/skills/
 !.agents/skills/**
+
+# Claude Code project hooks/policy are committed and shared; personal
+# per-machine overrides are not.
+.claude/settings.local.json
 outputs/
 reference/
 research/
