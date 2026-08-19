@@ -6,9 +6,6 @@ authors = ["Encero Systems"]
 license = "Apache-2.0"
 readme = "README.md"
 
-[project.scripts]
-library = "src/lib.incn"
-
 [workspace]
 members = [
     "examples/minimal_governed_agent",

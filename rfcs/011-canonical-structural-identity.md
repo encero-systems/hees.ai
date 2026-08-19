@@ -93,7 +93,7 @@ Two JSON documents can therefore lead to one memory identity after they construc
 }
 ```
 
-Their artifact-byte digests differ because their bytes differ. Their `hees.ai.memory_atom` structural identity is the same only if the same closed model validates with the same nominal values. Changing the atom body, source binding, review state, language, validity range, or another identity-bearing field changes the structural stream and identity. Changing a display color or storage offset does not.
+Their artifact-byte digests differ because their bytes differ. Their `hees.memory_atom` structural identity is the same only if the same closed model validates with the same nominal values. Changing the atom body, source binding, review state, language, validity range, or another identity-bearing field changes the structural stream and identity. Changing a display color or storage offset does not.
 
 Package identity illustrates the separate claims together. RFC 005 validates the full delivered Package bytes and calculates an `artifact_digest`. It then validates the profile’s complete graph and calculates `package_semantic_identity` through this RFC. Finally, it derives `package_admission_binding` from that exact typed pair. A governed response and its Content DNA are bound to the semantic Package identity; a receipt may additionally show the exact artifact digest and the derived binding that were admitted.
 
@@ -126,9 +126,9 @@ StructuralIdentity
   digest: exactly thirty-two digest bytes
 ```
 
-For public text and inspection, a structural identity must render as `hees.ai-si:<domain>:<contract>:sha256:<64 lowercase hexadecimal characters>`. The textual rendering is a presentation of the typed record; an owning model or operation must retain nominal identity types and must not accept this text through an untyped string field.
+For public text and inspection, a structural identity must render as `hees-si:<domain>:<contract>:sha256:<64 lowercase hexadecimal characters>`. The textual rendering is a presentation of the typed record; an owning model or operation must retain nominal identity types and must not accept this text through an untyped string field.
 
-Identity domains use the grammar `[a-z0-9][a-z0-9_-]*(\.[a-z0-9][a-z0-9_-]*)+`. Hees.ai-owned domains use the `hees.ai.` prefix, such as `hees.ai.package`, `hees.ai.memory_atom`, and `hees.ai.receipt`. This domain grammar is distinct from the underscore-delimited identifiers used where a contract name cannot contain a dot.
+Identity domains use the grammar `[a-z0-9][a-z0-9_-]*(\.[a-z0-9][a-z0-9_-]*)+`. Hees.ai-owned domains use the `hees.` prefix, such as `hees.package`, `hees.memory_atom`, and `hees.receipt`. This domain grammar is distinct from the underscore-delimited identifiers used where a contract name cannot contain a dot.
 
 Contract `0.1` permits only `sha256`. A future algorithm, digest size, or rendering change requires a new identity contract and an explicit verifier route; a verifier must not negotiate, guess, or retry an alternate algorithm after failure.
 
@@ -137,7 +137,7 @@ Contract `0.1` permits only `sha256`. A future algorithm, digest size, or render
 Every stream begins with this exact header:
 
 ```text
-ASCII bytes "HEES.AI-SI\0"
+ASCII bytes "HEES-SI\0"
 unsigned big-endian structural-wire number: 1
 registered domain text value
 identity-contract text value
@@ -192,7 +192,7 @@ Merkle-style composition is permitted only through declared child identities and
 
 ### Package semantic identity and artifact integrity
 
-RFC 005 owns exact Package artifact framing, profile topology, member sequence, byte digests, typed member admission, and complete graph validation. After those checks succeed, the profile renders its Package semantic-identity projection into the `hees.ai.package` domain. The projection must include the Package, domain, revision, profile, declared mission, required topology, and ordered validated member child identities defined by the profile.
+RFC 005 owns exact Package artifact framing, profile topology, member sequence, byte digests, typed member admission, and complete graph validation. After those checks succeed, the profile renders its Package semantic-identity projection into the `hees.package` domain. The projection must include the Package, domain, revision, profile, declared mission, required topology, and ordered validated member child identities defined by the profile.
 
 `artifact_digest` identifies the exact complete Package byte stream. `package_semantic_identity` identifies the validated Package profile projection. `package_admission_binding` identifies the exact typed pair and is rendered only after both primary values verify. The Package semantic identity must not be calculated from an artifact digest, and a matching artifact digest must not be treated as semantic admission. A receipt, installation audit, or deployment policy may require all three typed values and must label them separately.
 
@@ -200,9 +200,9 @@ A human-facing binding reference may add ISO/IEC 7064 MOD 97-10 check digits to 
 
 ### Content DNA, answers, provenance, and receipts
 
-RFC 002 owns Content DNA membership, selected-memory coverage, answer binding, source-safe projections, atomicity, redaction, and authority limits. This RFC owns the structural-identity mechanics used by the Content DNA body, its answer binding, and its Package provenance binding. Content DNA must bind the exact `hees.ai.package` semantic identity of the Package that governed the answer. Its owning contract may carry an artifact digest as an explicitly named delivery-provenance fact, but an artifact change must not silently change Content DNA identity merely because a serializer or storage layout changed.
+RFC 002 owns Content DNA membership, selected-memory coverage, answer binding, source-safe projections, atomicity, redaction, and authority limits. This RFC owns the structural-identity mechanics used by the Content DNA body, its answer binding, and its Package provenance binding. Content DNA must bind the exact `hees.package` semantic identity of the Package that governed the answer. Its owning contract may carry an artifact digest as an explicitly named delivery-provenance fact, but an artifact change must not silently change Content DNA identity merely because a serializer or storage layout changed.
 
-RFC 006 owns safe receipt projection and public verification. A receipt body must be reconstructed as a validated closed model, and its `receipt_id` must be a `hees.ai.receipt` structural identity. Its inspection envelope may be JSON or another approved external encoding. Reformatting the same accepted receipt model must not change its receipt identity. A receipt verifier proves the identity of the public projection, not the authority or authenticity of the original process.
+RFC 006 owns safe receipt projection and public verification. A receipt body must be reconstructed as a validated closed model, and its `receipt_id` must be a `hees.receipt` structural identity. Its inspection envelope may be JSON or another approved external encoding. Reformatting the same accepted receipt model must not change its receipt identity. A receipt verifier proves the identity of the public projection, not the authority or authenticity of the original process.
 
 RFC 009 owns visible-unit, response, repair, clarification, and terminal-result semantics. Exact visible text, unit identifiers, unit order, support bindings, and identity-bearing terminal facts must enter its declared structural projections. Terminal colors, panel geometry, display wrapping, localization of an inspection label, and JSON property order are not answer identity inputs unless the owning response contract explicitly governs them.
 
