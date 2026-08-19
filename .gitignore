@@ -2,6 +2,9 @@
 target/
 **/target/
 
+# Incan build/bake receipts are machine-local state, not portable source
+.incan/
+
 # Documentation output
 site/
 **/site/
