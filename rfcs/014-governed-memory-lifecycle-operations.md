@@ -28,7 +28,7 @@ Hees.ai should independently admit every proposed operation against a governed m
 
 RFC 000 establishes that only Hees.ai decides. But "decides" for memory has (at least) two genuinely separate questions: *is this candidate record eligible to enter context at all* (RFC 003's ingress/materialization concern), and, independently, *is this specific lifecycle action — reading it for a prompt, writing a new record, revoking one, superseding one — allowed for this class of memory, right now, with this consent and provenance* (this RFC's concern). A package with rich memory-class policy (a learner-preference class requiring explicit consent and supporting revocation; a package-reviewed class that is prompt- and Hyperquant-eligible but never writable; a runtime-trace class that is neither) has no shared contract for enforcing that policy today.
 
-This gap was explored in the same research spike as RFC 013 (see `GOVERNED_CONTINUITY_HYPERQUANT_SPIKE_DECISION.md`, 2026-07-24) and implemented as `governed_memory_operations.incn`, whose own docstring already disclaims RFC 003 conformance: "Retrieval providers may nominate identifiers, but package declarations and Hees.ai determine whether a record is eligible for the proposed operation. This prototype is adjacent to RFC 003 and does not claim to implement its retrieval ingress." This RFC formalizes that already-implemented, already-tested lifecycle contract on its own terms, distinct from RFC 003.
+This gap was explored in the same research spike as RFC 013 (2026-07-24) and implemented as `governed_memory_operations.incn`, whose own docstring already disclaims RFC 003 conformance: "Retrieval providers may nominate identifiers, but package declarations and Hees.ai determine whether a record is eligible for the proposed operation. This prototype is adjacent to RFC 003 and does not claim to implement its retrieval ingress." This RFC formalizes that already-implemented, already-tested lifecycle contract on its own terms, distinct from RFC 003.
 
 ## Goals
 
@@ -169,7 +169,7 @@ The two contracts do not compose structurally. `evaluate_memory_operation` never
 
 ### Relationship to RFC 013
 
-Independent. A memory-operation decision never reads continuity state, and a continuity decision never calls `evaluate_memory_operation`. The two are commonly declared by the same package and evaluated back-to-back by the same caller (as in the customer-demo project's pacing implementation, where a governed interaction both prepares memory via memory operations and separately records a continuity action), but neither function calls or depends on the other's types.
+Independent. A memory-operation decision never reads continuity state, and a continuity decision never calls `evaluate_memory_operation`. The two are commonly declared by the same package and evaluated back-to-back by the same caller (as in a reference pacing implementation, where a governed interaction both prepares memory via memory operations and separately records a continuity action), but neither function calls or depends on the other's types.
 
 ## Alternatives considered
 

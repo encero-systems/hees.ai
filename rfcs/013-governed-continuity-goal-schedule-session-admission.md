@@ -28,7 +28,7 @@ Hees.ai should independently admit every proposed change to a session's position
 
 A package that declares a bounded learner goal — "help the learner do X within Y minutes, in this order" — has no way to make Hees.ai enforce that shape today. Nothing stops an implementation from silently extending a phase past its declared maximum, skipping a declared transition, or accepting an action the current phase never declared. Without a shared contract, every caller either re-derives this logic ad hoc (and disagrees with other implementations about edge cases like clock regression, tampered prior state, or a re-chained history) or skips real enforcement entirely and lets the model or the UI decide when to move on.
 
-This gap was explored as a bounded research spike (see `GOVERNED_CONTINUITY_HYPERQUANT_SPIKE_DECISION.md`, 2026-07-24, in the customer-demo project) and implemented as `governed_continuity.incn`. The spike's own production recommendation was to "review and stabilize the generic Hees.ai goal, temporal and memory-operation contracts through their RFC path" before wider adoption. This RFC is that stabilization step for the goal/schedule/session half of that recommendation.
+This gap was explored as a bounded research spike (2026-07-24) and implemented as `governed_continuity.incn`. The spike's own production recommendation was to "review and stabilize the generic Hees.ai goal, temporal and memory-operation contracts through their RFC path" before wider adoption. This RFC is that stabilization step for the goal/schedule/session half of that recommendation.
 
 ## Goals
 
@@ -41,7 +41,7 @@ This gap was explored as a bounded research spike (see `GOVERNED_CONTINUITY_HYPE
 
 ## Non-Goals
 
-- Persisting or replaying continuity events. This RFC defines the admission function only; a caller-owned adapter (analogous to the customer-demo project's `SessionContinuityStore`) owns the append-only log, chain-of-custody digesting, and replay. That adapter pattern is implementation evidence for this RFC, not itself part of the public contract.
+- Persisting or replaying continuity events. This RFC defines the admission function only; a caller-owned adapter (analogous to a reference `SessionContinuityStore` implementation) owns the append-only log, chain-of-custody digesting, and replay. That adapter pattern is implementation evidence for this RFC, not itself part of the public contract.
 - Choosing which goal a session pursues, or reading a wall clock. The caller always supplies both.
 - Validating delivery content, evidence, or selected memory for the action being proposed — that remains RFC 000's and (for memory) the sibling memory-operations contract's responsibility (see [Relationship to RFC 003](#relationship-to-rfc-003)).
 - Declaring topic, subject-matter, or content-relevance scope for a phase. `GovernedPhase` deliberately carries no evidence or topic field — see [Design Decisions](#design-decisions).
@@ -187,7 +187,7 @@ Rejected for the same reason RFC 003 rejects it for evaluation time: repeated ev
 
 ### Persist session state inside Hees.ai/`evaluate_continuity`
 
-Rejected. Coupling admission to a specific storage adapter would make the function impossible to test in isolation, make cross-runtime determinism harder to prove, and duplicate work every storage backend would need to redo identically. The current split — a pure admission function plus a caller-owned, independently-replayable event log — was validated in the customer-demo project's `SessionContinuityStore`, including adversarial fixtures for clock regression, non-monotonic event index, chain tampering, and re-chained prior-state substitution.
+Rejected. Coupling admission to a specific storage adapter would make the function impossible to test in isolation, make cross-runtime determinism harder to prove, and duplicate work every storage backend would need to redo identically. The current split — a pure admission function plus a caller-owned, independently-replayable event log — was validated in a reference `SessionContinuityStore` implementation, including adversarial fixtures for clock regression, non-monotonic event index, chain tampering, and re-chained prior-state substitution.
 
 ### Encode topic/content relevance as a kernel-level phase field
 
@@ -203,7 +203,7 @@ A caller must implement its own persistence adapter to get any value from this c
 - **Runtime validation:** Deterministic package-graph validation, proposal-identity binding, and per-operation admission with a closed (informal, pending formal freeze) reason vocabulary.
 - **Package compatibility:** Purely additive — a package with no continuity declaration is unaffected; continuity is opt-in per package, mirroring RFC 003's opt-in framing for memory.
 - **Persistence boundary:** This RFC explicitly does not define one. A reference caller-owned adapter exists as implementation evidence (see Non-Goals) but is out of this contract's scope.
-- **Tests and documentation:** The reference implementation already carries positive and fail-closed tests (`tests/test_governed_continuity_contract.incn`) and a documented adversarial persistence-adapter test suite in the customer-demo project; formal cross-implementation fixtures per this repo's usual RFC acceptance-obligations bar remain open work (see below).
+- **Tests and documentation:** The reference implementation already carries positive and fail-closed tests (`tests/test_governed_continuity_contract.incn`) and a separate, documented adversarial persistence-adapter test suite; formal cross-implementation fixtures per this repo's usual RFC acceptance-obligations bar remain open work (see below).
 
 ## Design Decisions
 

@@ -30,9 +30,9 @@ Hees.ai should offer one generic, package-neutral function that evaluates a prop
 
 ## Motivation
 
-Every governed package that wants a Hees.ai-decided outcome — not just the sleep-learning demo, not just `console_profile_0_1`'s one fixed Build Week package — currently needs bespoke evaluation code (as this customer-demo project's own `native_generation.rs`/`governed_admission.rs` write in Rust around the same generic 0.0.1 kernel call). That bespoke code has to independently reinvent committee-observation validation, memory resolution, guided-material projection, terminal-decision derivation, Content DNA construction, and receipt construction — each a place two implementations could quietly disagree, and each already specified in detail (if elaborately) by RFC 001/002/006/007/008/009.
+Every governed package that wants a Hees.ai-decided outcome — not just the sleep-learning demo, not just `console_profile_0_1`'s one fixed Build Week package — currently needs bespoke evaluation code (as a reference Rust caller writes around the same generic 0.0.1 kernel call). That bespoke code has to independently reinvent committee-observation validation, memory resolution, guided-material projection, terminal-decision derivation, Content DNA construction, and receipt construction — each a place two implementations could quietly disagree, and each already specified in detail (if elaborately) by RFC 001/002/006/007/008/009.
 
-This module was built as part of the same research spike as RFC 013/014 (`GOVERNED_CONTINUITY_HYPERQUANT_SPIKE_DECISION.md`, 2026-07-24) and is the working, tested proof that a *deliberately narrower* generalization — five outcome kinds, one committee pass, one Content DNA state, one receipt kind — is enough to serve the demo's actual five real actions (`answer_from_package`/`present_guided_card`/`navigate_guided_card`/`refuse_unsupported`/`escalate_clinical_request`) without needing RFC 001's full constraint-composability, repair, or behavior-envelope machinery to be built and accepted first. This RFC proposes stabilizing that narrower, already-proven shape as its own contract, explicit that it is not a claim of RFC 001/002/006 conformance.
+This module was built as part of the same research spike as RFC 013/014 (2026-07-24) and is the working, tested proof that a *deliberately narrower* generalization — five outcome kinds, one committee pass, one Content DNA state, one receipt kind — is enough to serve the demo's actual five real actions (`answer_from_package`/`present_guided_card`/`navigate_guided_card`/`refuse_unsupported`/`escalate_clinical_request`) without needing RFC 001's full constraint-composability, repair, or behavior-envelope machinery to be built and accepted first. This RFC proposes stabilizing that narrower, already-proven shape as its own contract, explicit that it is not a claim of RFC 001/002/006 conformance.
 
 ## Goals
 
@@ -158,7 +158,7 @@ This module realizes RFC 000's authority separation narrowly but faithfully: the
 
 ### Relationship to RFC 001
 
-RFC 001's Spectrum composes package, memory, constraint, behavior, and response state through a twelve-step deterministic order feeding seven possible terminal variants with a single permitted repair branch. This module's evaluation order (above) is a real but much shorter analog — nine-ish stages feeding exactly three terminal decisions, no repair, no constraint-plan composability beyond carrying a constraint-plan *identity* through to the receipt (RFC 004's actual composable-constraint adjudication is not implemented here at all). Calling this module "Spectrum" or claiming RFC 001 conformance would be inaccurate; it is better understood as evidence that a much-simplified Spectrum-shaped function is sufficient for the five-outcome-kind package shape this demo project has used throughout, not as a competing or complete implementation of RFC 001.
+RFC 001's Spectrum composes package, memory, constraint, behavior, and response state through a twelve-step deterministic order feeding seven possible terminal variants with a single permitted repair branch. This module's evaluation order (above) is a real but much shorter analog — nine-ish stages feeding exactly three terminal decisions, no repair, no constraint-plan composability beyond carrying a constraint-plan *identity* through to the receipt (RFC 004's actual composable-constraint adjudication is not implemented here at all). Calling this module "Spectrum" or claiming RFC 001 conformance would be inaccurate; it is better understood as evidence that a much-simplified Spectrum-shaped function is sufficient for the five-outcome-kind package shape the reference implementation has used throughout, not as a competing or complete implementation of RFC 001.
 
 ### Relationship to RFC 002
 
@@ -174,7 +174,7 @@ RFC 001's Spectrum composes package, memory, constraint, behavior, and response 
 
 ### Relationship to RFC 013 and RFC 014
 
-Independent. This module never calls `evaluate_continuity` or `evaluate_memory_operation`, and neither of those calls this module. All three came out of the same research spike and are commonly deployed together (as this demo's Rust caller layer does), but none has a structural dependency on another.
+Independent. This module never calls `evaluate_continuity` or `evaluate_memory_operation`, and neither of those calls this module. All three came out of the same research spike and are commonly deployed together (as a reference Rust caller layer does), but none has a structural dependency on another.
 
 ## Alternatives considered
 
