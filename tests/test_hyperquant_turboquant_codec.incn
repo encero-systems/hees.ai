@@ -1,0 +1,369 @@
+"""Behavioral and wire-contract tests for the faithful Incan TurboQuant codecs."""
+
+import std.math
+from std.encoding.hex import hexlify
+from std.fs import Path
+from std.hash import sha256
+from std.serde.json import Deserialize
+from std.testing import assert_eq, assert_is_err, assert_is_ok
+from crate.hyperquant import HyperquantErrorKind, HyperquantProfile, TurboquantConfiguration
+from crate.hyperquant.turboquant_primitives import (
+    gaussian_matrix,
+    pack_unsigned_msb,
+    rotation_matrix,
+    unpack_unsigned_msb,
+)
+
+const FIXTURE_ROOT: str = "tests/fixtures/hyperquant/turboquant_0_1"
+
+
+@derive(Clone, Deserialize)
+model CodecEnvelopeFixture:
+    """One canonical profile configuration and code envelope."""
+
+    profile_id: str
+    bit_width: int
+    configuration_hex: str
+    configuration_sha256: str
+    code_hex: str
+    code_sha256: str
+
+
+@derive(Clone, Deserialize)
+model CodecFixture:
+    """Canonical Slice 3 identities for both faithful profiles."""
+
+    schema_version: str
+    fixture_id: str
+    source_anchors: list[str]
+    dimensions: int
+    seed: int
+    centroids: list[float]
+    mse: CodecEnvelopeFixture
+    product: CodecEnvelopeFixture
+
+
+@derive(Clone, Deserialize)
+model GenerationFixture:
+    """Seeded random samples and reference transforms from Slice 2."""
+
+    schema_version: str
+    fixture_id: str
+    source_anchors: list[str]
+    dimensions: int
+    seed_hex: str
+    rotation_domain: str
+    qjl_domain: str
+    rotation_uniforms: list[float]
+    rotation_normals: list[float]
+    rotation_matrix: list[list[float]]
+    qjl_uniforms: list[float]
+    qjl_normals: list[float]
+    qjl_projection_matrix: list[list[float]]
+    absolute_tolerance: float
+    relative_tolerance: float
+
+
+@derive(Clone, Deserialize)
+model MseFixture:
+    """Expected faithful MSE encode and reconstruction result."""
+
+    schema_version: str
+    fixture_id: str
+    profile_id: str
+    source_anchors: list[str]
+    dimensions: int
+    bit_width: int
+    input: list[float]
+    centroids: list[float]
+    rotated: list[float]
+    indices: list[int]
+    packed_indices_hex: str
+    reconstructed: list[float]
+    squared_error: float
+    absolute_tolerance: float
+    relative_tolerance: float
+
+
+@derive(Clone, Deserialize)
+model ProductFixture:
+    """Expected faithful product encode and estimate result."""
+
+    schema_version: str
+    fixture_id: str
+    profile_id: str
+    source_anchors: list[str]
+    dimensions: int
+    bit_width: int
+    mse_bit_width: int
+    input: list[float]
+    mse_reconstructed: list[float]
+    residual: list[float]
+    residual_norm: float
+    projected_residual: list[float]
+    qjl_signs: list[int]
+    packed_qjl_hex: str
+    qjl_scale: float
+    qjl_reconstructed: list[float]
+    product_reconstructed: list[float]
+    query: list[float]
+    exact_inner_product: float
+    mse_inner_product_estimate: float
+    product_inner_product_estimate: float
+    absolute_tolerance: float
+    relative_tolerance: float
+
+
+def fixture_text(filename: str) -> str:
+    """Read one checked UTF-8 fixture."""
+
+    return assert_is_ok(Path(f"{FIXTURE_ROOT}/{filename}").read_text("utf-8", "strict"))
+
+
+def codec_fixture() -> CodecFixture:
+    return assert_is_ok(CodecFixture.from_json(fixture_text("codec.json")))
+
+
+def generation_fixture() -> GenerationFixture:
+    return assert_is_ok(GenerationFixture.from_json(fixture_text("generation.json")))
+
+
+def mse_fixture() -> MseFixture:
+    return assert_is_ok(MseFixture.from_json(fixture_text("mse.json")))
+
+
+def product_fixture() -> ProductFixture:
+    return assert_is_ok(ProductFixture.from_json(fixture_text("product.json")))
+
+
+def assert_close(actual: float, expected: float, absolute_tolerance: float, relative_tolerance: float) -> None:
+    tolerance = absolute_tolerance + relative_tolerance * math.abs(expected)
+    assert_eq(math.abs(actual - expected) <= tolerance, true)
+
+
+def assert_vectors_close(
+    actual: list[float],
+    expected: list[float],
+    absolute_tolerance: float,
+    relative_tolerance: float,
+) -> None:
+    assert_eq(len(actual), len(expected))
+    for index in range(len(actual)):
+        assert_close(actual[index], expected[index], absolute_tolerance, relative_tolerance)
+
+
+def replace_byte(payload: bytes, index: int, value: int) -> bytes:
+    mut result: list[u8] = []
+    for position, byte in enumerate(payload):
+        if position == index:
+            replacement: u8 = value.wrapping_resize()
+            result.append(replacement)
+        else:
+            retained: u8 = byte.wrapping_resize()
+            result.append(retained)
+    return result
+
+
+def append_byte(payload: bytes, value: int) -> bytes:
+    mut result: list[u8] = []
+    for byte in payload:
+        retained: u8 = byte.wrapping_resize()
+        result.append(retained)
+    appended: u8 = value.wrapping_resize()
+    result.append(appended)
+    return result
+
+
+def mse_configuration() -> TurboquantConfiguration:
+    fixture = codec_fixture()
+    return assert_is_ok(
+        TurboquantConfiguration.create(
+            HyperquantProfile.TurboquantMse01,
+            fixture.dimensions,
+            fixture.mse.bit_width,
+            fixture.seed.wrapping_resize(),
+            fixture.centroids,
+        ),
+    )
+
+
+def product_configuration() -> TurboquantConfiguration:
+    fixture = codec_fixture()
+    return assert_is_ok(
+        TurboquantConfiguration.create(
+            HyperquantProfile.TurboquantProduct01,
+            fixture.dimensions,
+            fixture.product.bit_width,
+            fixture.seed.wrapping_resize(),
+            fixture.centroids,
+        ),
+    )
+
+
+def test_seeded_generation_replays_every_frozen_transform() -> None:
+    """Reproduce the frozen random streams and matrices from only seed, domain, and dimension."""
+
+    fixture = generation_fixture()
+    rotation = assert_is_ok(rotation_matrix(fixture.dimensions, 20260726))
+    projection = assert_is_ok(gaussian_matrix(fixture.dimensions, 20260726, fixture.qjl_domain))
+
+    assert_vectors_close(
+        rotation.uniforms,
+        fixture.rotation_uniforms,
+        fixture.absolute_tolerance,
+        fixture.relative_tolerance,
+    )
+    assert_vectors_close(
+        rotation.normals,
+        fixture.rotation_normals,
+        fixture.absolute_tolerance,
+        fixture.relative_tolerance,
+    )
+    for row in range(fixture.dimensions):
+        assert_vectors_close(
+            rotation.matrix_row(row),
+            fixture.rotation_matrix[row],
+            fixture.absolute_tolerance,
+            fixture.relative_tolerance,
+        )
+        assert_vectors_close(
+            projection.matrix_row(row),
+            fixture.qjl_projection_matrix[row],
+            fixture.absolute_tolerance,
+            fixture.relative_tolerance,
+        )
+
+
+def test_mse_profile_reproduces_frozen_code_reconstruction_and_identity() -> None:
+    fixture = mse_fixture()
+    envelope = codec_fixture().mse
+    configuration = mse_configuration()
+    code = assert_is_ok(configuration.encode(fixture.input))
+
+    assert_eq(code.profile(), HyperquantProfile.TurboquantMse01)
+    assert_eq(code.mse_indices(), fixture.indices)
+    assert_eq(hexlify(code.packed_mse_indices()), fixture.packed_indices_hex)
+    assert_vectors_close(
+        assert_is_ok(configuration.reconstruct(code)),
+        fixture.reconstructed,
+        fixture.absolute_tolerance,
+        fixture.relative_tolerance,
+    )
+    assert_eq(hexlify(configuration.to_bytes()), envelope.configuration_hex)
+    assert_eq(hexlify(sha256.digest(configuration.to_bytes())), envelope.configuration_sha256)
+    assert_eq(hexlify(code.to_bytes()), envelope.code_hex)
+    assert_eq(hexlify(sha256.digest(code.to_bytes())), envelope.code_sha256)
+
+
+def test_product_profile_reproduces_frozen_residual_reconstruction_and_estimate() -> None:
+    fixture = product_fixture()
+    envelope = codec_fixture().product
+    configuration = product_configuration()
+    code = assert_is_ok(configuration.encode(fixture.input))
+
+    assert_eq(code.profile(), HyperquantProfile.TurboquantProduct01)
+    assert_eq(code.qjl_signs(), fixture.qjl_signs)
+    assert_close(code.residual_norm(), fixture.residual_norm, fixture.absolute_tolerance, fixture.relative_tolerance)
+    assert_eq(hexlify(code.packed_qjl_signs()), fixture.packed_qjl_hex)
+    assert_vectors_close(
+        assert_is_ok(configuration.reconstruct(code)),
+        fixture.product_reconstructed,
+        fixture.absolute_tolerance,
+        fixture.relative_tolerance,
+    )
+    assert_close(
+        assert_is_ok(configuration.estimate(fixture.query, code)),
+        fixture.product_inner_product_estimate,
+        fixture.absolute_tolerance,
+        fixture.relative_tolerance,
+    )
+    assert_eq(hexlify(configuration.to_bytes()), envelope.configuration_hex)
+    assert_eq(hexlify(sha256.digest(configuration.to_bytes())), envelope.configuration_sha256)
+    assert_eq(hexlify(code.to_bytes()), envelope.code_hex)
+    assert_eq(hexlify(sha256.digest(code.to_bytes())), envelope.code_sha256)
+
+
+def test_configuration_and_code_payloads_round_trip_byte_for_byte() -> None:
+    for configuration, values in [(mse_configuration(), mse_fixture().input), (product_configuration(), product_fixture().input)]:
+        decoded_configuration = assert_is_ok(TurboquantConfiguration.from_bytes(configuration.to_bytes()))
+        assert_eq(decoded_configuration.to_bytes(), configuration.to_bytes())
+        code = assert_is_ok(configuration.encode(values))
+        decoded_code = assert_is_ok(decoded_configuration.decode(code.to_bytes()))
+        assert_eq(decoded_code.to_bytes(), code.to_bytes())
+
+
+def test_canonical_packers_reject_invalid_values_lengths_and_padding() -> None:
+    assert_eq(hexlify(assert_is_ok(pack_unsigned_msb([0, 1, 2, 3, 4], 3))), "0538")
+    assert_eq(assert_is_ok(unpack_unsigned_msb(b"\x058", 5, 3)), [0, 1, 2, 3, 4])
+    assert_eq(assert_is_err(pack_unsigned_msb([8], 3)).kind(), HyperquantErrorKind.InvalidPackedValue)
+    assert_eq(assert_is_err(unpack_unsigned_msb(b"\x05", 5, 3)).kind(), HyperquantErrorKind.TruncatedPayload)
+    assert_eq(assert_is_err(unpack_unsigned_msb(b"\x059", 5, 3)).kind(), HyperquantErrorKind.NonCanonicalPayload)
+
+
+def test_decoders_fail_closed_on_corruption_truncation_trailing_data_and_mismatch() -> None:
+    configuration = mse_configuration()
+    configuration_payload = configuration.to_bytes()
+    code = assert_is_ok(configuration.encode(mse_fixture().input))
+    code_payload = code.to_bytes()
+
+    assert_eq(
+        assert_is_err(TurboquantConfiguration.from_bytes(configuration_payload[:8])).kind(),
+        HyperquantErrorKind.TruncatedPayload,
+    )
+    assert_eq(
+        assert_is_err(TurboquantConfiguration.from_bytes(replace_byte(configuration_payload, 8, 9))).kind(),
+        HyperquantErrorKind.UnsupportedVersion,
+    )
+    assert_eq(
+        assert_is_err(TurboquantConfiguration.from_bytes(replace_byte(configuration_payload, 11, 9))).kind(),
+        HyperquantErrorKind.InvalidBitWidth,
+    )
+    assert_eq(
+        assert_is_err(TurboquantConfiguration.from_bytes(append_byte(configuration_payload, 0))).kind(),
+        HyperquantErrorKind.TrailingPayload,
+    )
+    assert_eq(assert_is_err(configuration.decode(code_payload[:16])).kind(), HyperquantErrorKind.TruncatedPayload)
+    assert_eq(
+        assert_is_err(configuration.decode(replace_byte(code_payload, 48, 1))).kind(),
+        HyperquantErrorKind.IntegrityMismatch,
+    )
+    assert_eq(
+        assert_is_err(configuration.decode(append_byte(code_payload, 0))).kind(),
+        HyperquantErrorKind.TrailingPayload,
+    )
+    assert_eq(
+        assert_is_err(product_configuration().decode(code_payload)).kind(),
+        HyperquantErrorKind.ConfigurationMismatch,
+    )
+
+
+def test_configuration_rejects_unbounded_malformed_and_nonfinite_values_before_work() -> None:
+    assert_eq(
+        assert_is_err(TurboquantConfiguration.create(HyperquantProfile.TurboquantMse01, 0, 1, 1, [-0.5, 0.5])).kind(),
+        HyperquantErrorKind.EmptyVector,
+    )
+    assert_eq(
+        assert_is_err(TurboquantConfiguration.create(HyperquantProfile.TurboquantMse01, 257, 1, 1, [-0.5, 0.5])).kind(),
+        HyperquantErrorKind.VectorTooLarge,
+    )
+    assert_eq(
+        assert_is_err(TurboquantConfiguration.create(HyperquantProfile.TurboquantMse01, 4, 9, 1, [-0.5, 0.5])).kind(),
+        HyperquantErrorKind.InvalidBitWidth,
+    )
+    assert_eq(
+        assert_is_err(TurboquantConfiguration.create(HyperquantProfile.TurboquantMse01, 4, 1, 1, [0.5, -0.5])).kind(),
+        HyperquantErrorKind.InvalidCodebook,
+    )
+    assert_eq(
+        assert_is_err(TurboquantConfiguration.create(HyperquantProfile.TurboquantMse01, 4, 1, 1, [math.NAN, 0.5])).kind(),
+        HyperquantErrorKind.NonFiniteValue,
+    )
+
+
+def test_encode_rejects_dimension_mismatch_and_nonfinite_intermediate_input() -> None:
+    configuration = mse_configuration()
+    assert_eq(assert_is_err(configuration.encode([1.0])).kind(), HyperquantErrorKind.DimensionMismatch)
+    assert_eq(
+        assert_is_err(configuration.encode([math.INFINITY, 0.0, 0.0, 0.0])).kind(),
+        HyperquantErrorKind.NonFiniteValue,
+    )

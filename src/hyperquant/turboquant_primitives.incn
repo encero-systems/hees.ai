@@ -1,0 +1,464 @@
+"""
+Deterministic mathematical and bit-packing primitives for the faithful TurboQuant profiles.
+
+This module owns the reproducibility choices that the TurboQuant paper does not freeze: a domain-separated
+SHA-256 counter stream, Box-Muller Gaussian sampling, positive-diagonal Householder QR, and
+most-significant-bit-first packing with zero tail padding. `turboquant.incn` composes these primitives into the
+versioned Hees configuration and code envelopes.
+
+The matrix implementation is intentionally dense, direct, and pure Incan. It is a bounded conformance reference,
+not the future SIMD or sparse production kernel. Flat row-major storage keeps coordinate access explicit and avoids
+the hidden row cloning that a nested-list representation produced in generated Rust.
+"""
+
+import std.math
+from std.hash import sha256
+from std.io import BytesIO, Endian, IoError, _BytesIO
+from crate.hyperquant.models import MAX_HYPERQUANT_DIMENSIONS, HyperquantError, HyperquantErrorKind
+
+pub const TURBOQUANT_ROTATION_DOMAIN: str = "hees.hyperquant.turboquant.rotation.0_1"
+pub const TURBOQUANT_QJL_DOMAIN: str = "hees.hyperquant.turboquant.qjl.0_1"
+pub const MAX_DENSE_TURBOQUANT_DIMENSIONS: int = 256
+
+
+@derive(Clone)
+pub class DenseMatrix:
+    """
+    Bounded square binary64 matrix backed by flat row-major storage.
+
+    Construction is internal to this module so dimensions and storage length remain aligned. Coordinate methods
+    support the numerical kernels without materializing rows; `row(...)` is reserved for conformance inspection and
+    deliberately returns a projected list.
+    """
+
+    _dimensions: int
+    _values: list[float]
+
+    pub property dimensions -> int:
+        """Square matrix dimension used by row-major coordinate calculations."""
+
+        return self._dimensions
+
+    @staticmethod
+    def from_values(dimensions: int, values: list[float]) -> Self:
+        """Construct an internally validated dense square matrix."""
+
+        return DenseMatrix(_dimensions=dimensions, _values=values)
+
+    @staticmethod
+    def empty() -> Self:
+        """Construct an absent optional transform without allocating a matrix."""
+
+        return DenseMatrix(_dimensions=0, _values=[])
+
+    def coordinate(self, row: int, column: int) -> float:
+        """Read one coordinate without copying a row or the backing vector."""
+
+        return self._values[row * self._dimensions + column]
+
+    def set_coordinate(mut self, row: int, column: int, value: float) -> None:
+        """Replace one coordinate in the row-major backing vector."""
+
+        self._values[row * self._dimensions + column] = value
+
+    def row(self, row: int) -> list[float]:
+        """Project one row for conformance inspection."""
+
+        start = row * self._dimensions
+        return [self._values[start + column] for column in range(self._dimensions)]
+
+    def multiply(self, vector: list[float]) -> list[float]:
+        """Multiply this matrix by one dense vector without cloning matrix rows."""
+
+        mut result: list[float] = []
+        for row in range(self._dimensions):
+            mut value = 0.0
+            for column in range(self._dimensions):
+                value += self.coordinate(row, column) * vector[column]
+            result.append(value)
+        return result
+
+    def transpose_multiply(self, vector: list[float]) -> list[float]:
+        """Multiply this matrix transpose by one dense vector."""
+
+        mut result: list[float] = []
+        for column in range(self._dimensions):
+            mut value = 0.0
+            for row in range(self._dimensions):
+                value += self.coordinate(row, column) * vector[row]
+            result.append(value)
+        return result
+
+
+@derive(Clone)
+pub class GeneratedMatrix:
+    """
+    Reproducible random-stream evidence and its generated matrix.
+
+    The uniform and Gaussian streams are exposed for conformance testing, while the matrix can be inspected row by
+    row or transferred into the codec. These properties are package-internal public surface; external Hees
+    consumers receive only the higher-level TurboQuant configuration API.
+    """
+
+    _uniforms: list[float]
+    _normals: list[float]
+    _matrix: DenseMatrix
+
+    pub property uniforms -> list[float]:
+        """Independent copy of the deterministic uniform stream used for generation."""
+
+        return [value for value in self._uniforms]
+
+    pub property normals -> list[float]:
+        """Independent copy of the Box-Muller Gaussian stream used for generation."""
+
+        return [value for value in self._normals]
+
+    def matrix_row(self, row: int) -> list[float]:
+        """Return one generated matrix row for conformance inspection."""
+
+        return self._matrix.row(row)
+
+    def into_matrix(self) -> DenseMatrix:
+        """Return the generated dense matrix."""
+
+        return self._matrix
+
+
+def failure(kind: HyperquantErrorKind, detail: str) -> HyperquantError:
+    """Construct one closed Hyperquant failure for an internal primitive."""
+
+    return HyperquantError.from_kind(kind, detail)
+
+
+def domain_bytes(domain: str) -> Result[bytes, HyperquantError]:
+    """Return the fixed ASCII bytes for a recognized random-stream domain."""
+
+    if domain == TURBOQUANT_ROTATION_DOMAIN:
+        return Ok(b"hees.hyperquant.turboquant.rotation.0_1")
+    if domain == TURBOQUANT_QJL_DOMAIN:
+        return Ok(b"hees.hyperquant.turboquant.qjl.0_1")
+    return Err(failure(HyperquantErrorKind.UnsupportedProfile, "unknown TurboQuant random domain"))
+
+
+def hexadecimal_byte(nibble: u64) -> u8:
+    """Encode one four-bit value as its lowercase ASCII hexadecimal byte."""
+
+    if nibble < 10:
+        return (48 + nibble).wrapping_resize()
+    return (87 + nibble).wrapping_resize()
+
+
+def fixed_u64_hex(value: u64) -> bytes:
+    """Encode one unsigned value as exactly sixteen lowercase ASCII hex bytes."""
+
+    mut result: list[u8] = []
+    mut position = 15
+    while position >= 0:
+        shift: u64 = (position * 4).wrapping_resize()
+        nibble: u64 = (int(value >> shift) & 15).wrapping_resize()
+        result.append(hexadecimal_byte(nibble))
+        position -= 1
+    return result
+
+
+def append_bytes(mut target: list[u8], source: bytes) -> list[u8]:
+    """Append a byte string to its mutable list representation without widening."""
+
+    for value in source:
+        byte: u8 = value.wrapping_resize()
+        target.append(byte)
+    return target
+
+
+def counter_source(domain: str, seed: u64, counter: u64) -> Result[bytes, HyperquantError]:
+    """Build one exact ASCII SHA-256 counter block source."""
+
+    mut result: list[u8] = []
+    result = append_bytes(result, domain_bytes(domain)?)
+    separator: u8 = 58
+    result.append(separator)
+    result = append_bytes(result, fixed_u64_hex(seed))
+    result.append(separator)
+    result = append_bytes(result, fixed_u64_hex(counter))
+    return Ok(result)
+
+
+def read_big_u64(reader: _BytesIO) -> Result[u64, IoError]:
+    """
+    Select the unsigned 64-bit `BinaryRead` implementation before error translation.
+
+    Incan 0.5.0-dev.23 cannot resolve this overloaded read from a nested `Result[u64, IoError]` context; issue #955
+    tracks the compiler fix.
+    """
+
+    value: u64 = reader.read(Endian.Big)?
+    return Ok(value)
+
+
+def uniform_samples(count: int, seed: u64, domain: str) -> Result[list[float], HyperquantError]:
+    """
+    Generate a bounded open-interval binary64 stream from domain-separated SHA-256 counter blocks.
+
+    Each 64-bit word contributes its upper 53 bits to one exactly representable mantissa. Adding one half unit keeps
+    every sample strictly inside `(0, 1)`, which is required by the Box-Muller logarithm.
+    """
+
+    if count < 0 or count > MAX_DENSE_TURBOQUANT_DIMENSIONS * MAX_DENSE_TURBOQUANT_DIMENSIONS:
+        return Err(failure(HyperquantErrorKind.VectorTooLarge, "TurboQuant random sample count exceeds its bound"))
+
+    mut samples: list[float] = []
+    mut counter: u64 = 0
+    while len(samples) < count:
+        digest = sha256.digest(counter_source(domain, seed, counter)?)
+        reader = BytesIO(digest)
+        for _word_index in range(4):
+            word = read_big_u64(reader).map_err(
+                (_error) => failure(HyperquantErrorKind.NumericalFailure, "TurboQuant SHA-256 block could not be read"),
+            )?
+            mantissa = word >> 11
+            sample = (float(mantissa) + 0.5) / 9007199254740992.0
+            if not sample.is_finite() or sample <= 0.0 or sample >= 1.0:
+                return Err(failure(HyperquantErrorKind.NumericalFailure, "TurboQuant uniform sample is invalid"))
+            samples.append(sample)
+            if len(samples) == count:
+                break
+        next_counter: u64 = (int(counter) + 1).wrapping_resize()
+        counter = next_counter
+    return Ok(samples)
+
+
+def normal_samples(uniforms: list[float]) -> Result[list[float], HyperquantError]:
+    """
+    Convert an even uniform stream to standard Gaussian samples using Box-Muller pairs.
+
+    Pair order and binary64 operation order are part of the Hees reproducibility contract.
+    """
+
+    if len(uniforms) % 2 != 0:
+        return Err(failure(HyperquantErrorKind.NumericalFailure, "TurboQuant uniform stream must contain pairs"))
+
+    mut result: list[float] = []
+    mut index = 0
+    while index < len(uniforms):
+        radius = math.sqrt(-2.0 * math.log(uniforms[index]))
+        angle = 2.0 * math.PI * uniforms[index + 1]
+        first = radius * math.cos(angle)
+        second = radius * math.sin(angle)
+        if not first.is_finite() or not second.is_finite():
+            return Err(failure(HyperquantErrorKind.NumericalFailure, "TurboQuant Gaussian sample is non-finite"))
+        result.append(first)
+        result.append(second)
+        index += 2
+    return Ok(result)
+
+
+pub def gaussian_matrix(dimensions: int, seed: u64, domain: str) -> Result[GeneratedMatrix, HyperquantError]:
+    """
+    Generate a bounded row-major Gaussian matrix and its exact source streams.
+
+    Odd square dimensions request one extra Box-Muller pair and discard its final values deterministically.
+    """
+
+    if dimensions <= 0:
+        return Err(failure(HyperquantErrorKind.EmptyVector, "TurboQuant dimensions must be positive"))
+    if dimensions > MAX_DENSE_TURBOQUANT_DIMENSIONS:
+        return Err(
+            failure(
+                HyperquantErrorKind.VectorTooLarge,
+                "TurboQuant dimensions exceed the dense reference implementation bound",
+            ),
+        )
+
+    sample_count = dimensions * dimensions
+    mut uniform_count = sample_count
+    if uniform_count % 2 != 0:
+        uniform_count += 1
+    mut uniforms = uniform_samples(uniform_count, seed, domain)?
+    mut normals = normal_samples(uniforms)?
+    if len(uniforms) > sample_count:
+        uniforms.pop()
+        normals.pop()
+
+    return Ok(
+        GeneratedMatrix(_uniforms=uniforms, _normals=normals, _matrix=DenseMatrix.from_values(dimensions, normals)),
+    )
+
+
+def identity_matrix(dimensions: int) -> DenseMatrix:
+    """Construct a dense row-major identity matrix for Householder accumulation."""
+
+    mut values: list[float] = []
+    for row in range(dimensions):
+        for column in range(dimensions):
+            mut value = 0.0
+            if row == column:
+                value = 1.0
+            values.append(value)
+    return DenseMatrix.from_values(dimensions, values)
+
+
+def householder_q(matrix: DenseMatrix) -> Result[DenseMatrix, HyperquantError]:
+    """
+    Compute the positive-diagonal Householder QR rotation in fixed binary64 operation order.
+
+    The positive diagonal removes QR's sign ambiguity, ensuring the same random matrix produces the same rotation
+    and therefore the same code bytes on every conforming implementation.
+    """
+
+    dimensions = matrix.dimensions
+    mut r = matrix
+    mut q = identity_matrix(dimensions)
+
+    for column in range(dimensions):
+        # Build the reflector for the active column without touching the already triangular prefix.
+        mut squared_norm = 0.0
+        for row in range(column, dimensions):
+            value = r.coordinate(row, column)
+            squared_norm += value * value
+        norm = math.sqrt(squared_norm)
+        if not norm.is_finite() or norm <= 1.0e-15:
+            return Err(failure(HyperquantErrorKind.NumericalFailure, "TurboQuant Gaussian matrix is rank deficient"))
+
+        mut alpha = -norm
+        if r.coordinate(column, column) < 0.0:
+            alpha = norm
+        mut householder = [0.0 for _row in range(dimensions)]
+        for row in range(column, dimensions):
+            householder[row] = r.coordinate(row, column)
+        householder[column] -= alpha
+
+        mut householder_squared_norm = 0.0
+        for row in range(column, dimensions):
+            householder_squared_norm += householder[row] * householder[row]
+        householder_norm = math.sqrt(householder_squared_norm)
+        if not householder_norm.is_finite() or householder_norm <= 1.0e-15:
+            return Err(failure(HyperquantErrorKind.NumericalFailure, "TurboQuant Householder vector is degenerate"))
+        for row in range(column, dimensions):
+            householder[row] /= householder_norm
+
+        # Apply the reflector to the remaining R columns, then accumulate the same transform into Q.
+        for output_column in range(column, dimensions):
+            mut projection = 0.0
+            for row in range(column, dimensions):
+                projection += householder[row] * r.coordinate(row, output_column)
+            for row in range(column, dimensions):
+                value = r.coordinate(row, output_column) - 2.0 * householder[row] * projection
+                r.set_coordinate(row, output_column, value)
+
+        for row in range(dimensions):
+            mut projection = 0.0
+            for inner in range(column, dimensions):
+                projection += q.coordinate(row, inner) * householder[inner]
+            for inner in range(column, dimensions):
+                value = q.coordinate(row, inner) - 2.0 * projection * householder[inner]
+                q.set_coordinate(row, inner, value)
+
+    # Normalize every diagonal sign so QR has one portable, canonical orientation.
+    for diagonal in range(dimensions):
+        diagonal_value = r.coordinate(diagonal, diagonal)
+        if not diagonal_value.is_finite() or math.abs(diagonal_value) <= 1.0e-15:
+            return Err(failure(HyperquantErrorKind.NumericalFailure, "TurboQuant QR diagonal is invalid"))
+        if diagonal_value < 0.0:
+            for row in range(dimensions):
+                q.set_coordinate(row, diagonal, -q.coordinate(row, diagonal))
+    return Ok(q)
+
+
+pub def rotation_matrix(dimensions: int, seed: u64) -> Result[GeneratedMatrix, HyperquantError]:
+    """
+    Generate the normalized dense rotation required by the faithful MSE profile.
+
+    The returned evidence retains the pre-QR random streams while replacing the raw Gaussian matrix with its
+    canonical orthonormal Q factor.
+    """
+
+    generated = gaussian_matrix(dimensions, seed, TURBOQUANT_ROTATION_DOMAIN)?
+    return Ok(
+        GeneratedMatrix(
+            _uniforms=generated.uniforms,
+            _normals=generated.normals,
+            _matrix=householder_q(generated.into_matrix())?,
+        ),
+    )
+
+
+pub def dot(left: list[float], right: list[float]) -> float:
+    """Compute a dense dot product in logical coordinate order."""
+
+    mut result = 0.0
+    for index in range(len(left)):
+        result += left[index] * right[index]
+    return result
+
+
+pub def pack_unsigned_msb(values: list[int], width: int) -> Result[bytes, HyperquantError]:
+    """
+    Pack bounded integers most-significant-bit first with canonical zero tail padding.
+
+    Values are emitted in logical order and each value contributes exactly `width` bits. A partial final byte is
+    shifted left so unused low bits are always zero.
+    """
+
+    if width <= 0 or width > 8:
+        return Err(failure(HyperquantErrorKind.InvalidBitWidth, "packed integer width must be between one and eight"))
+    limit = 1 << width
+    mut result: list[u8] = []
+    mut byte = 0
+    mut occupied = 0
+    for value in values:
+        if value < 0 or value >= limit:
+            return Err(failure(HyperquantErrorKind.InvalidPackedValue, "packed integer exceeds its declared width"))
+        mut shift = width - 1
+        while shift >= 0:
+            # Append the next most-significant source bit to the active output byte.
+            byte = (byte << 1) | ((value >> shift) & 1)
+            occupied += 1
+            if occupied == 8:
+                encoded: u8 = byte.wrapping_resize()
+                result.append(encoded)
+                byte = 0
+                occupied = 0
+            shift -= 1
+    if occupied > 0:
+        byte <<= 8 - occupied
+        encoded: u8 = byte.wrapping_resize()
+        result.append(encoded)
+    return Ok(result)
+
+
+pub def unpack_unsigned_msb(payload: bytes, count: int, width: int) -> Result[list[int], HyperquantError]:
+    """
+    Decode an exact-length fixed-width integer section and reject non-canonical padding.
+
+    The expected byte count is derived from trusted caller bounds rather than read from the payload.
+    """
+
+    if count < 0 or count > MAX_HYPERQUANT_DIMENSIONS:
+        return Err(failure(HyperquantErrorKind.VectorTooLarge, "packed integer count exceeds its bound"))
+    if width <= 0 or width > 8:
+        return Err(failure(HyperquantErrorKind.InvalidBitWidth, "packed integer width must be between one and eight"))
+    expected_bytes = (count * width + 7) // 8
+    if len(payload) < expected_bytes:
+        return Err(failure(HyperquantErrorKind.TruncatedPayload, "packed integer section is truncated"))
+    if len(payload) > expected_bytes:
+        return Err(failure(HyperquantErrorKind.TrailingPayload, "packed integer section is overlong"))
+
+    mut result: list[int] = []
+    mut bit_offset = 0
+    for _value_index in range(count):
+        mut value = 0
+        for _bit_index in range(width):
+            # Address the current stream bit without constructing temporary byte or bit vectors.
+            byte = int(payload[bit_offset // 8])
+            bit = (byte >> (7 - bit_offset % 8)) & 1
+            value = (value << 1) | bit
+            bit_offset += 1
+        result.append(value)
+
+    padding_bits = expected_bytes * 8 - count * width
+    if padding_bits > 0 and len(payload) > 0:
+        padding_mask = (1 << padding_bits) - 1
+        if payload[len(payload) - 1] & padding_mask != 0:
+            return Err(failure(HyperquantErrorKind.NonCanonicalPayload, "packed integer padding must be zero"))
+    return Ok(result)

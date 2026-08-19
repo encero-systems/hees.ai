@@ -1,0 +1,491 @@
+"""Behavioral contract tests for generic guided-programme validation and operation eligibility."""
+
+from std.serde.json import Deserialize, Serialize
+from std.testing import assert_eq, assert_is_err, assert_is_ok
+from crate.identifiers import (
+    EvidenceId,
+    GuidedCardId,
+    MemoryId,
+    choice_id,
+    evidence_id,
+    guided_card_id,
+    memory_id,
+    package_id,
+    programme_id,
+    progress_id,
+    revision,
+)
+from crate.programme import (
+    GuidedProgramme,
+    GuidedProgrammeCard,
+    GuidedProgrammeChoice,
+    ProgrammeAction,
+    ProgrammeChoiceAction,
+    ProgrammeCurrentCardAction,
+    ProgrammeEnterAction,
+    ProgrammeMemoryOperation,
+    ProgrammeProgressPolicy,
+    ProgrammeProgressSnapshot,
+    ProgrammeRuntimeFrame,
+    ProgrammeTransitionAction,
+    evaluate_programme_action,
+    validate_guided_programme,
+)
+from crate.runtime import ReviewStatus, RightsStatus
+
+
+def card(id: str, next_id: Option[str], completion: bool, choices: list[GuidedProgrammeChoice]) -> GuidedProgrammeCard:
+    mut next_card_id: Option[GuidedCardId] = None
+    mut evidence_ids: list[EvidenceId] = []
+    mut memory_ids: list[MemoryId] = []
+    match next_id:
+        Some(value) =>
+            next_card_id = Some(guided_card_id(value))
+        None => pass
+    if not completion:
+        evidence_ids.append(evidence_id(f"{id}_evidence"))
+        memory_ids.append(memory_id(f"{id}_memory"))
+
+    return GuidedProgrammeCard(
+        card_id=guided_card_id(id),
+        evidence_ids=evidence_ids,
+        memory_ids=memory_ids,
+        language_ids=["en", "af"],
+        audience_ids=["adult_learner"],
+        choices=choices,
+        next_card_id=next_card_id,
+        completion=completion,
+        review_status=ReviewStatus.Approved,
+        rights_status=RightsStatus.Allowed,
+    )
+
+
+def standard_cards() -> list[GuidedProgrammeCard]:
+    timing_choice = GuidedProgrammeChoice(
+        choice_id=choice_id("choose_earlier"),
+        session_key="timing_anchor",
+        session_value="earlier",
+    )
+    return [card("introduction", Some("timing"), false, []), card("timing", Some("completion"), false, [timing_choice]), card(
+        "completion",
+        None,
+        true,
+        [],
+    )]
+
+
+def programme_from_cards(progress_policy: ProgrammeProgressPolicy, cards: list[GuidedProgrammeCard]) -> GuidedProgramme:
+    return GuidedProgramme(
+        programme_id=programme_id("guided_learning_path"),
+        package_id=package_id("guided_learning_fixture"),
+        revision=revision("1.0.0"),
+        language_ids=["en", "af"],
+        audience_ids=["adult_learner"],
+        entry_card_id=guided_card_id("introduction"),
+        completion_card_id=guided_card_id("completion"),
+        progress_policy=progress_policy,
+        cards=cards,
+    )
+
+
+def programme_with_policy(progress_policy: ProgrammeProgressPolicy) -> GuidedProgramme:
+    return programme_from_cards(progress_policy, standard_cards())
+
+
+def programme() -> GuidedProgramme:
+    return programme_with_policy(ProgrammeProgressPolicy.ExplicitSave)
+
+
+def frame(
+    current_card_id: Option[str],
+    history: list[str],
+    nominated_memory_ids: list[str],
+    nominated_evidence_ids: list[str],
+) -> ProgrammeRuntimeFrame:
+    mut current: Option[GuidedCardId] = None
+    match current_card_id:
+        Some(value) =>
+            current = Some(guided_card_id(value))
+        None => pass
+
+    return ProgrammeRuntimeFrame(
+        package_id=package_id("guided_learning_fixture"),
+        programme_id=programme_id("guided_learning_path"),
+        revision=revision("1.0.0"),
+        current_card_id=current,
+        history=[guided_card_id(value) for value in history],
+        language_id="en",
+        audience_id="adult_learner",
+        nominated_memory_ids=[memory_id(value) for value in nominated_memory_ids],
+        nominated_evidence_ids=[evidence_id(value) for value in nominated_evidence_ids],
+    )
+
+
+def all_memory() -> list[str]:
+    return ["introduction_memory", "timing_memory"]
+
+
+def all_evidence() -> list[str]:
+    return ["introduction_evidence", "timing_evidence"]
+
+
+def test_validates_complete_reviewed_programme() -> None:
+    validation = validate_guided_programme(programme())
+
+    assert_eq(validation.valid, true)
+    assert_eq(len(validation.errors), 0)
+
+
+def test_programme_declaration_round_trips_through_json() -> None:
+    expected = programme()
+    decoded = assert_is_ok(GuidedProgramme.from_json(expected.to_json()))
+
+    assert_eq(decoded.package_id, expected.package_id)
+    assert_eq(decoded.programme_id, expected.programme_id)
+    assert_eq(decoded.revision, expected.revision)
+    assert_eq(decoded.entry_card_id, expected.entry_card_id)
+    assert_eq(decoded.completion_card_id, expected.completion_card_id)
+    assert_eq(decoded.progress_policy, expected.progress_policy)
+    assert_eq(len(decoded.cards), len(expected.cards))
+
+
+def test_rejects_duplicate_card_identifiers() -> None:
+    mut cards = standard_cards()
+    cards.append(card("timing", Some("completion"), false, []))
+    validation = validate_guided_programme(programme_from_cards(ProgrammeProgressPolicy.ExplicitSave, cards))
+
+    assert_eq(validation.valid, false)
+    assert_eq("duplicate_card_id" in validation.errors, true)
+
+
+def test_rejects_unreviewed_card() -> None:
+    mut pending = card("introduction", Some("timing"), false, [])
+    pending.review_status = ReviewStatus.Pending
+    validation = validate_guided_programme(
+        programme_from_cards(
+            ProgrammeProgressPolicy.ExplicitSave,
+            [pending, card("timing", Some("completion"), false, []), card("completion", None, true, [])],
+        ),
+    )
+
+    assert_eq(validation.valid, false)
+    assert_eq("card_review_not_approved" in validation.errors, true)
+
+
+def test_rejects_rights_blocked_card() -> None:
+    mut blocked = card("introduction", Some("timing"), false, [])
+    blocked.rights_status = RightsStatus.Restricted
+    validation = validate_guided_programme(
+        programme_from_cards(
+            ProgrammeProgressPolicy.ExplicitSave,
+            [blocked, card("timing", Some("completion"), false, []), card("completion", None, true, [])],
+        ),
+    )
+
+    assert_eq(validation.valid, false)
+    assert_eq("card_rights_not_allowed" in validation.errors, true)
+
+
+def test_rejects_required_progression_cycle() -> None:
+    validation = validate_guided_programme(
+        programme_from_cards(
+            ProgrammeProgressPolicy.ExplicitSave,
+            [card("introduction", Some("timing"), false, []), card("timing", Some("introduction"), false, []), card(
+                "completion",
+                None,
+                true,
+                [],
+            )],
+        ),
+    )
+
+    assert_eq(validation.valid, false)
+    assert_eq("required_progression_cycle" in validation.errors, true)
+
+
+def test_enters_only_at_declared_entry_with_nominated_support() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(None, [], all_memory(), all_evidence()),
+        ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=guided_card_id("introduction"))),
+    )
+    decision = evaluation.trace
+
+    assert_eq(evaluation.trace.eligible, true)
+    assert_eq(decision.eligible, evaluation.trace.eligible)
+    assert_eq(decision.next_card_id, Some(guided_card_id("introduction")))
+    assert_eq(evaluation.trace.next_card_id, Some(guided_card_id("introduction")))
+    assert_eq(evaluation.trace.memory_operation, ProgrammeMemoryOperation.None)
+
+
+def test_rejects_card_when_memory_was_not_nominated() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(None, [], [], ["introduction_evidence"]),
+        ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=guided_card_id("introduction"))),
+    )
+    decision = evaluation.trace
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(decision.reason, "card_memory_not_nominated")
+
+
+def test_rejects_card_when_evidence_was_not_nominated() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(None, [], ["introduction_memory"], []),
+        ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=guided_card_id("introduction"))),
+    )
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(evaluation.trace.reason, "card_evidence_not_nominated")
+
+
+def test_rejects_language_outside_programme_catalogue() -> None:
+    invalid_frame = ProgrammeRuntimeFrame(
+        package_id=package_id("guided_learning_fixture"),
+        programme_id=programme_id("guided_learning_path"),
+        revision=revision("1.0.0"),
+        current_card_id=None,
+        history=[],
+        language_id="zu",
+        audience_id="adult_learner",
+        nominated_memory_ids=[memory_id(value) for value in all_memory()],
+        nominated_evidence_ids=[evidence_id(value) for value in all_evidence()],
+    )
+    evaluation = evaluate_programme_action(
+        programme(),
+        invalid_frame,
+        ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=guided_card_id("introduction"))),
+    )
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(evaluation.trace.reason, "language_not_allowed")
+
+
+def test_action_payload_rejects_missing_required_field_during_json_decode() -> None:
+    malformed = "{\"Enter\":{\"from_card_id\":\"introduction\"}}"
+
+    assert_is_err(ProgrammeAction.from_json(malformed))
+
+
+def test_rejects_undeclared_forward_transition() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(Some("introduction"), [], all_memory(), all_evidence()),
+        ProgrammeAction.Advance(
+            ProgrammeTransitionAction(
+                from_card_id=guided_card_id("introduction"),
+                target_card_id=guided_card_id("completion"),
+            ),
+        ),
+    )
+    decision = evaluation.trace
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(decision.reason, "transition_not_declared")
+
+
+def test_choice_returns_session_value_without_persistence() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(Some("timing"), ["introduction"], all_memory(), all_evidence()),
+        ProgrammeAction.SelectChoice(
+            ProgrammeChoiceAction(from_card_id=guided_card_id("timing"), choice_id=choice_id("choose_earlier")),
+        ),
+    )
+    decision = evaluation.trace
+
+    assert_eq(evaluation.trace.eligible, true)
+    assert_eq(decision.session_key, Some("timing_anchor"))
+    assert_eq(decision.session_value, Some("earlier"))
+    assert_eq(evaluation.trace.memory_operation, ProgrammeMemoryOperation.None)
+
+
+def test_backtracking_is_limited_to_immediately_previous_card() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(Some("timing"), ["introduction"], all_memory(), all_evidence()),
+        ProgrammeAction.Backtrack(
+            ProgrammeTransitionAction(
+                from_card_id=guided_card_id("timing"),
+                target_card_id=guided_card_id("introduction"),
+            ),
+        ),
+    )
+    decision = evaluation.trace
+
+    assert_eq(evaluation.trace.eligible, true)
+    assert_eq(decision.next_card_id, Some(guided_card_id("introduction")))
+
+
+def test_backtracking_requires_nominated_support_for_the_target_card() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(Some("timing"), ["introduction"], ["timing_memory"], ["timing_evidence"]),
+        ProgrammeAction.Backtrack(
+            ProgrammeTransitionAction(
+                from_card_id=guided_card_id("timing"),
+                target_card_id=guided_card_id("introduction"),
+            ),
+        ),
+    )
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(evaluation.trace.reason, "card_memory_not_nominated")
+
+
+def test_rejects_runtime_history_outside_declared_progression() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(Some("timing"), ["completion"], all_memory(), all_evidence()),
+        ProgrammeAction.SelectChoice(
+            ProgrammeChoiceAction(from_card_id=guided_card_id("timing"), choice_id=choice_id("choose_earlier")),
+        ),
+    )
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(evaluation.trace.reason, "history_not_declared")
+
+
+def test_rejects_runtime_history_before_programme_entry() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(None, ["introduction"], all_memory(), all_evidence()),
+        ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=guided_card_id("introduction"))),
+    )
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(evaluation.trace.reason, "history_without_current_card")
+
+
+def test_completion_requires_declared_completion_card() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(Some("timing"), ["introduction"], all_memory(), all_evidence()),
+        ProgrammeAction.Complete(ProgrammeCurrentCardAction(from_card_id=guided_card_id("timing"))),
+    )
+    decision = evaluation.trace
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(decision.reason, "completion_card_not_reached")
+
+
+def test_advance_from_completion_rejects_instead_of_unwrapping_empty_transition() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(Some("completion"), ["introduction", "timing"], all_memory(), all_evidence()),
+        ProgrammeAction.Advance(
+            ProgrammeTransitionAction(
+                from_card_id=guided_card_id("completion"),
+                target_card_id=guided_card_id("introduction"),
+            ),
+        ),
+    )
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(evaluation.trace.reason, "transition_not_declared")
+
+
+def test_durable_progress_requires_explicit_authority() -> None:
+    evaluation = evaluate_programme_action(
+        programme_with_policy(ProgrammeProgressPolicy.SessionOnly),
+        frame(Some("timing"), ["introduction"], all_memory(), all_evidence()),
+        ProgrammeAction.SaveProgress(ProgrammeCurrentCardAction(from_card_id=guided_card_id("timing"))),
+    )
+    decision = evaluation.trace
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(decision.reason, "durable_progress_not_allowed")
+
+
+def test_save_progress_returns_explicit_memory_operation() -> None:
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(Some("timing"), ["introduction"], all_memory(), all_evidence()),
+        ProgrammeAction.SaveProgress(ProgrammeCurrentCardAction(from_card_id=guided_card_id("timing"))),
+    )
+
+    assert_eq(evaluation.trace.eligible, true)
+    assert_eq(evaluation.trace.memory_operation, ProgrammeMemoryOperation.SaveProgress)
+
+
+def test_resume_rejects_stale_programme_revision() -> None:
+    snapshot = ProgrammeProgressSnapshot(
+        progress_id=progress_id("progress_1"),
+        package_id=package_id("guided_learning_fixture"),
+        programme_id=programme_id("guided_learning_path"),
+        revision=revision("0.9.0"),
+        current_card_id=guided_card_id("timing"),
+        history=[guided_card_id("introduction")],
+    )
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(None, [], all_memory(), all_evidence()),
+        ProgrammeAction.Resume(snapshot),
+    )
+    decision = evaluation.trace
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(decision.reason, "progress_revision_mismatch")
+
+
+def test_resume_rejects_unknown_history_card() -> None:
+    snapshot = ProgrammeProgressSnapshot(
+        progress_id=progress_id("progress_1"),
+        package_id=package_id("guided_learning_fixture"),
+        programme_id=programme_id("guided_learning_path"),
+        revision=revision("1.0.0"),
+        current_card_id=guided_card_id("timing"),
+        history=[guided_card_id("unknown")],
+    )
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(None, [], all_memory(), all_evidence()),
+        ProgrammeAction.Resume(snapshot),
+    )
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(evaluation.trace.reason, "progress_history_card_unknown")
+
+
+def test_resume_rejects_history_outside_declared_progression() -> None:
+    snapshot = ProgrammeProgressSnapshot(
+        progress_id=progress_id("progress_1"),
+        package_id=package_id("guided_learning_fixture"),
+        programme_id=programme_id("guided_learning_path"),
+        revision=revision("1.0.0"),
+        current_card_id=guided_card_id("completion"),
+        history=[guided_card_id("timing"), guided_card_id("introduction")],
+    )
+    evaluation = evaluate_programme_action(
+        programme(),
+        frame(None, [], all_memory(), all_evidence()),
+        ProgrammeAction.Resume(snapshot),
+    )
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(evaluation.trace.reason, "progress_history_not_declared")
+
+
+def test_runtime_frame_rejects_cross_package_identity() -> None:
+    invalid_frame = ProgrammeRuntimeFrame(
+        package_id=package_id("different_package"),
+        programme_id=programme_id("guided_learning_path"),
+        revision=revision("1.0.0"),
+        current_card_id=None,
+        history=[],
+        language_id="en",
+        audience_id="adult_learner",
+        nominated_memory_ids=[memory_id(value) for value in all_memory()],
+        nominated_evidence_ids=[evidence_id(value) for value in all_evidence()],
+    )
+    evaluation = evaluate_programme_action(
+        programme(),
+        invalid_frame,
+        ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=guided_card_id("introduction"))),
+    )
+    decision = evaluation.trace
+
+    assert_eq(evaluation.trace.eligible, false)
+    assert_eq(decision.reason, "package_id_mismatch")

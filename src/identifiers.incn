@@ -244,6 +244,26 @@ pub type ProfileId = newtype SymbolicIdType:
 
 
 @derive(Clone, Eq, json)
+pub type ProgrammeId = newtype SymbolicIdType:
+    """Nominal identity for one package-declared guided programme."""
+
+
+@derive(Clone, Eq, json)
+pub type GuidedCardId = newtype SymbolicIdType:
+    """Nominal identity for one reviewed guided-material card."""
+
+
+@derive(Clone, Eq, json)
+pub type ChoiceId = newtype SymbolicIdType:
+    """Nominal identity for one bounded learner choice."""
+
+
+@derive(Clone, Eq, json)
+pub type ProgressId = newtype SymbolicIdType:
+    """Nominal identity for one explicit guided-programme progress record."""
+
+
+@derive(Clone, Eq, json)
 pub type ProposalId = newtype SymbolicIdType:
     """Nominal identity for one untrusted model proposal."""
 
@@ -469,6 +489,30 @@ pub def profile_id(value: str) -> ProfileId:
     """Wrap trusted canonical text as a profile identity."""
 
     return ProfileId(trusted_symbolic_id(value))
+
+
+pub def programme_id(value: str) -> ProgrammeId:
+    """Wrap trusted canonical text as a guided-programme identity."""
+
+    return ProgrammeId(trusted_symbolic_id(value))
+
+
+pub def guided_card_id(value: str) -> GuidedCardId:
+    """Wrap trusted canonical text as a guided-card identity."""
+
+    return GuidedCardId(trusted_symbolic_id(value))
+
+
+pub def choice_id(value: str) -> ChoiceId:
+    """Wrap trusted canonical text as a learner-choice identity."""
+
+    return ChoiceId(trusted_symbolic_id(value))
+
+
+pub def progress_id(value: str) -> ProgressId:
+    """Wrap trusted canonical text as a progress-record identity."""
+
+    return ProgressId(trusted_symbolic_id(value))
 
 
 pub def proposal_id(value: str) -> ProposalId:
@@ -719,6 +763,30 @@ pub def phase_id_text(identifier: PhaseId) -> str:
 
 pub def profile_id_text(identifier: ProfileId) -> str:
     """Project a profile identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def programme_id_text(identifier: ProgrammeId) -> str:
+    """Project a guided-programme identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def guided_card_id_text(identifier: GuidedCardId) -> str:
+    """Project a guided-card identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def choice_id_text(identifier: ChoiceId) -> str:
+    """Project a learner-choice identity into canonical wire text."""
+
+    return symbolic_id_type_text(identifier.0)
+
+
+pub def progress_id_text(identifier: ProgressId) -> str:
+    """Project a progress-record identity into canonical wire text."""
 
     return symbolic_id_type_text(identifier.0)
 

@@ -108,6 +108,12 @@ required_files=(
     src/governed_profile_validation.incn
     src/identifiers.incn
     src/package_loader.incn
+    src/programme/mod.incn
+    src/programme/models.incn
+    src/programme/context.incn
+    src/programme/decision.incn
+    src/programme/evaluation.incn
+    src/programme/validation.incn
     src/runtime.incn
     tests/test_console_profile_contract.incn
     tests/test_content_dna_contract.incn
@@ -116,6 +122,7 @@ required_files=(
     tests/test_governed_profile_contract.incn
     tests/test_identifier_contract.incn
     tests/test_package_loader_contract.incn
+    tests/test_programme_eligibility_contract.incn
     tests/test_runtime_contract.incn
     tools/validation/test_framework_boundary.sh
     tools/licenses/about.toml
@@ -150,6 +157,13 @@ for path in src/*.incn; do
     esac
 done
 
+for path in src/programme/*.incn; do
+    case "$path" in
+        src/programme/context.incn | src/programme/decision.incn | src/programme/evaluation.incn | src/programme/mod.incn | src/programme/models.incn | src/programme/validation.incn) ;;
+        *) fail "guided-programme module is outside the public allowlist: $path" ;;
+    esac
+done
+
 allowed_docs=(
     workspaces/docs-site/docs/SUMMARY.md
     workspaces/docs-site/docs/architecture.md
@@ -160,6 +174,9 @@ allowed_docs=(
     workspaces/docs-site/docs/development.md
     workspaces/docs-site/docs/getting-started.md
     workspaces/docs-site/docs/governance-profiles.md
+    workspaces/docs-site/docs/guided-programmes.md
+    workspaces/docs-site/docs/hyperquant.md
+    workspaces/docs-site/docs/hyperquant-turboquant-reference.md
     workspaces/docs-site/docs/index.md
     workspaces/docs-site/docs/rfcs.md
     workspaces/docs-site/docs/whitepapers/spectrum-and-content-dna.md

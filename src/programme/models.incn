@@ -1,0 +1,214 @@
+"""
+Data contracts for package-declared guided programmes.
+
+These types describe package declarations and untrusted runtime input. They do not render content, select memory or
+confer authority merely because their fields are well formed. The evaluator owns the direct eligibility capability
+while this module keeps the serializable decision trace separately inspectable.
+"""
+
+from std.serde import json
+from crate.identifiers import (
+    ChoiceId,
+    EvidenceId,
+    GuidedCardId,
+    MemoryId,
+    PackageId,
+    ProgrammeId,
+    ProgressId,
+    RevisionType,
+)
+from crate.runtime import ReviewStatus, RightsStatus
+
+pub const MAX_GUIDED_PROGRAMME_CARDS: int = 128
+pub const MAX_GUIDED_PROGRAMME_HISTORY: int = 256
+
+
+@derive(Clone, Eq, json)
+pub enum ProgrammeActionKind(str):
+    """Closed learner operations evaluated by the guided-programme boundary."""
+
+    Enter = "enter"
+    Advance = "advance"
+    Backtrack = "backtrack"
+    SelectChoice = "select_choice"
+    Complete = "complete"
+    Resume = "resume"
+    SaveProgress = "save_progress"
+    DiscardProgress = "discard_progress"
+
+
+@derive(Clone, Eq, json)
+pub enum ProgrammeProgressPolicy(str):
+    """Package-owned policy for durable progress operations."""
+
+    SessionOnly = "session_only"
+    ExplicitSave = "explicit_save"
+
+
+@derive(Clone, Eq, json)
+pub enum ProgrammeMemoryOperation(str):
+    """Explicit persistence effect carried by an eligible programme operation."""
+
+    None = "none"
+    SaveProgress = "save_progress"
+    DiscardProgress = "discard_progress"
+
+
+@derive(Clone, json)
+pub model GuidedProgrammeChoice:
+    """Package-declared session value with no inherent persistence authority."""
+
+    pub choice_id: ChoiceId
+    pub session_key: str
+    pub session_value: str
+
+
+@derive(Clone, json)
+pub model GuidedProgrammeCard:
+    """Reviewed card declaration and its single deterministic forward edge."""
+
+    pub card_id: GuidedCardId
+    pub evidence_ids: list[EvidenceId]
+    pub memory_ids: list[MemoryId]
+    pub language_ids: list[str]
+    pub audience_ids: list[str]
+    pub choices: list[GuidedProgrammeChoice]
+    pub next_card_id: Option[GuidedCardId]
+    pub completion: bool
+    pub review_status: ReviewStatus
+    pub rights_status: RightsStatus
+
+
+@derive(Clone, json)
+pub model GuidedProgramme:
+    """Complete package-owned programme declaration evaluated by Hees."""
+
+    pub programme_id: ProgrammeId
+    pub package_id: PackageId
+    pub revision: RevisionType
+    pub language_ids: list[str]
+    pub audience_ids: list[str]
+    pub entry_card_id: GuidedCardId
+    pub completion_card_id: GuidedCardId
+    pub progress_policy: ProgrammeProgressPolicy
+    pub cards: list[GuidedProgrammeCard]
+
+
+@derive(Clone, json)
+pub model ProgrammeProgressSnapshot:
+    """Untrusted progress input that must match the exact programme identity and declared topology."""
+
+    pub progress_id: ProgressId
+    pub package_id: PackageId
+    pub programme_id: ProgrammeId
+    pub revision: RevisionType
+    pub current_card_id: GuidedCardId
+    pub history: list[GuidedCardId]
+
+
+@derive(Clone, json)
+pub model ProgrammeRuntimeFrame:
+    """Untrusted execution input and non-authoritative support nominations."""
+
+    pub package_id: PackageId
+    pub programme_id: ProgrammeId
+    pub revision: RevisionType
+    pub current_card_id: Option[GuidedCardId]
+    pub history: list[GuidedCardId]
+    pub language_id: str
+    pub audience_id: str
+    pub nominated_memory_ids: list[MemoryId]
+    pub nominated_evidence_ids: list[EvidenceId]
+
+
+@derive(Clone, json)
+pub model ProgrammeEnterAction:
+    """Untrusted request to enter at one declared card."""
+
+    pub target_card_id: GuidedCardId
+
+
+@derive(Clone, json)
+pub model ProgrammeTransitionAction:
+    """Untrusted request to move between two explicit cards."""
+
+    pub from_card_id: GuidedCardId
+    pub target_card_id: GuidedCardId
+
+
+@derive(Clone, json)
+pub model ProgrammeChoiceAction:
+    """Untrusted request to select one declared choice on the current card."""
+
+    pub from_card_id: GuidedCardId
+    pub choice_id: ChoiceId
+
+
+@derive(Clone, json)
+pub model ProgrammeCurrentCardAction:
+    """Untrusted operation whose only payload is the current card identity."""
+
+    pub from_card_id: GuidedCardId
+
+
+@derive(Clone, json)
+pub enum ProgrammeAction:
+    """
+    Closed learner operation proposed to the programme authority boundary.
+
+    Payload variants make invalid field combinations unrepresentable. Deserialization therefore rejects malformed
+    operations before the evaluator considers package authority, topology, support, or progress policy.
+    """
+
+    Enter(ProgrammeEnterAction)
+    Advance(ProgrammeTransitionAction)
+    Backtrack(ProgrammeTransitionAction)
+    SelectChoice(ProgrammeChoiceAction)
+    Complete(ProgrammeCurrentCardAction)
+    Resume(ProgrammeProgressSnapshot)
+    SaveProgress(ProgrammeCurrentCardAction)
+    DiscardProgress(ProgrammeCurrentCardAction)
+
+    def kind(self) -> ProgrammeActionKind:
+        """Return the closed operation kind recorded in traces and capabilities."""
+
+        match self:
+            ProgrammeAction.Enter(_payload) => return ProgrammeActionKind.Enter
+            ProgrammeAction.Advance(_payload) => return ProgrammeActionKind.Advance
+            ProgrammeAction.Backtrack(_payload) => return ProgrammeActionKind.Backtrack
+            ProgrammeAction.SelectChoice(_payload) => return ProgrammeActionKind.SelectChoice
+            ProgrammeAction.Complete(_payload) => return ProgrammeActionKind.Complete
+            ProgrammeAction.Resume(_payload) => return ProgrammeActionKind.Resume
+            ProgrammeAction.SaveProgress(_payload) => return ProgrammeActionKind.SaveProgress
+            ProgrammeAction.DiscardProgress(_payload) => return ProgrammeActionKind.DiscardProgress
+
+
+@derive(Clone, json)
+pub model ProgrammeValidation:
+    """Complete package-declaration validation result."""
+
+    pub valid: bool
+    pub errors: list[str]
+
+
+@derive(Clone, json)
+pub model ProgrammeDecisionTrace:
+    """Serializable explanation of one eligibility evaluation; it carries no reusable authority."""
+
+    pub eligible: bool
+    pub reason: str
+    pub action: ProgrammeActionKind
+    pub current_card_id: Option[GuidedCardId]
+    pub next_card_id: Option[GuidedCardId]
+    pub session_key: Option[str]
+    pub session_value: Option[str]
+    pub memory_operation: ProgrammeMemoryOperation
+
+
+@derive(Clone, json)
+pub model ProgrammeOperationProjection:
+    """Inspectable fields from an eligible operation; the projection itself carries no reusable authority."""
+
+    pub action: ProgrammeActionKind
+    pub next_card_id: Option[GuidedCardId]
+    pub memory_operation: ProgrammeMemoryOperation

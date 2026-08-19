@@ -1,0 +1,134 @@
+"""
+Guided-programme topology and runtime-context checks.
+
+These helpers validate untrusted history, current-card identity, language, audience, support nominations and progress
+against one structurally valid programme declaration. They do not retrieve or select memory and do not grant package
+or terminal authority.
+"""
+
+from crate.identifiers import ChoiceId, GuidedCardId, guided_card_id_text
+from crate.programme.models import (
+    MAX_GUIDED_PROGRAMME_HISTORY,
+    GuidedProgramme,
+    GuidedProgrammeCard,
+    GuidedProgrammeChoice,
+    ProgrammeProgressSnapshot,
+    ProgrammeRuntimeFrame,
+)
+
+
+pub def find_programme_card(programme: GuidedProgramme, card_id: GuidedCardId) -> Option[GuidedProgrammeCard]:
+    """Return the declared card with the requested nominal identity."""
+
+    for card in programme.cards:
+        if card.card_id == card_id:
+            return Some(card)
+    return None
+
+
+pub def find_programme_choice(card: GuidedProgrammeCard, choice_id: ChoiceId) -> Option[GuidedProgrammeChoice]:
+    """Return the bounded session choice declared by one card."""
+
+    for choice in card.choices:
+        if choice.choice_id == choice_id:
+            return Some(choice)
+    return None
+
+
+def history_follows_programme(
+    programme: GuidedProgramme,
+    history: list[GuidedCardId],
+    current_card_id: GuidedCardId,
+) -> bool:
+    """Check that untrusted prior cards form the exact declared path to the current card."""
+
+    mut expected_card_id = guided_card_id_text(programme.entry_card_id)
+    for history_card_id in history:
+        if guided_card_id_text(history_card_id) != expected_card_id:
+            return false
+        maybe_card = find_programme_card(programme, history_card_id)
+        if maybe_card is None:
+            return false
+        match maybe_card.unwrap().next_card_id:
+            Some(next_card_id) =>
+                expected_card_id = guided_card_id_text(next_card_id)
+            None => return false
+    return guided_card_id_text(current_card_id) == expected_card_id
+
+
+pub def runtime_frame_reason(programme: GuidedProgramme, frame: ProgrammeRuntimeFrame) -> Option[str]:
+    """Return the first reason an untrusted runtime frame cannot belong to the programme."""
+
+    if frame.package_id != programme.package_id:
+        return Some("package_id_mismatch")
+    if frame.programme_id != programme.programme_id:
+        return Some("programme_id_mismatch")
+    if frame.revision != programme.revision:
+        return Some("programme_revision_mismatch")
+    if frame.language_id not in programme.language_ids:
+        return Some("language_not_allowed")
+    if frame.audience_id not in programme.audience_ids:
+        return Some("audience_not_allowed")
+    if len(frame.history) > MAX_GUIDED_PROGRAMME_HISTORY:
+        return Some("history_limit_exceeded")
+    if let Some(current_card_id) = frame.current_card_id:
+        match find_programme_card(programme, current_card_id):
+            Some(_card) => pass
+            None => return Some("current_card_unknown")
+        for history_card_id in frame.history:
+            match find_programme_card(programme, history_card_id):
+                Some(_card) => pass
+                None => return Some("history_card_unknown")
+        if not history_follows_programme(programme, frame.history, current_card_id):
+            return Some("history_not_declared")
+        return None
+    if len(frame.history) > 0:
+        return Some("history_without_current_card")
+    return None
+
+
+pub def card_nomination_reason(card: GuidedProgrammeCard, frame: ProgrammeRuntimeFrame) -> Option[str]:
+    """Return why nominated support cannot make the card eligible for this language and audience."""
+
+    if frame.language_id not in card.language_ids:
+        return Some("card_language_not_allowed")
+    if frame.audience_id not in card.audience_ids:
+        return Some("card_audience_not_allowed")
+    for memory_id in card.memory_ids:
+        if memory_id not in frame.nominated_memory_ids:
+            return Some("card_memory_not_nominated")
+    for evidence_id in card.evidence_ids:
+        if evidence_id not in frame.nominated_evidence_ids:
+            return Some("card_evidence_not_nominated")
+    return None
+
+
+pub def action_origin_reason(frame: ProgrammeRuntimeFrame, from_card_id: GuidedCardId) -> Option[str]:
+    """Require an operation's explicit origin to match the runtime's current card."""
+
+    if Some(from_card_id) != frame.current_card_id:
+        return Some("action_origin_mismatch")
+    return None
+
+
+pub def progress_snapshot_reason(programme: GuidedProgramme, snapshot: ProgrammeProgressSnapshot) -> Option[str]:
+    """Return why a durable snapshot cannot resume the exact programme revision and path."""
+
+    if snapshot.package_id != programme.package_id:
+        return Some("progress_package_mismatch")
+    if snapshot.programme_id != programme.programme_id:
+        return Some("progress_programme_mismatch")
+    if snapshot.revision != programme.revision:
+        return Some("progress_revision_mismatch")
+    if len(snapshot.history) > MAX_GUIDED_PROGRAMME_HISTORY:
+        return Some("progress_history_limit_exceeded")
+    match find_programme_card(programme, snapshot.current_card_id):
+        Some(_card) => pass
+        None => return Some("progress_card_unknown")
+    for card_id in snapshot.history:
+        match find_programme_card(programme, card_id):
+            Some(_card) => pass
+            None => return Some("progress_history_card_unknown")
+    if not history_follows_programme(programme, snapshot.history, snapshot.current_card_id):
+        return Some("progress_history_not_declared")
+    return None

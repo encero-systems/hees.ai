@@ -1,0 +1,90 @@
+"""Shared public models for versioned Hyperquant retrieval profiles."""
+
+from std.traits.error import Error
+from crate.identifiers import MemoryId
+
+pub const MAX_HYPERQUANT_DIMENSIONS: int = 8192
+pub const MAX_HYPERQUANT_ENTRIES: int = 65536
+pub const MAX_HYPERQUANT_TOP_K: int = 64
+
+
+@derive(Clone, Eq)
+pub enum HyperquantProfile(str):
+    """Stable identity of one retrieval algorithm and behavioral contract."""
+
+    ExactCosine01 = "exact_cosine_0_1"
+    TurboquantMse01 = "turboquant_mse_0_1"
+    TurboquantProduct01 = "turboquant_product_0_1"
+
+
+@derive(Clone, Eq)
+pub enum HyperquantErrorKind(str):
+    """Closed failure categories for vector, index, and query validation."""
+
+    EmptyIndex = "empty_index"
+    IndexTooLarge = "index_too_large"
+    EmptyVector = "empty_vector"
+    VectorTooLarge = "vector_too_large"
+    ZeroVector = "zero_vector"
+    NonFiniteValue = "non_finite_value"
+    DimensionMismatch = "dimension_mismatch"
+    DuplicateMemoryId = "duplicate_memory_id"
+    InvalidTopK = "invalid_top_k"
+    InvalidBitWidth = "invalid_bit_width"
+    InvalidCodebook = "invalid_codebook"
+    InvalidPackedValue = "invalid_packed_value"
+    UnsupportedProfile = "unsupported_profile"
+    UnsupportedVersion = "unsupported_version"
+    TruncatedPayload = "truncated_payload"
+    TrailingPayload = "trailing_payload"
+    NonCanonicalPayload = "non_canonical_payload"
+    IntegrityMismatch = "integrity_mismatch"
+    ConfigurationMismatch = "configuration_mismatch"
+    NumericalFailure = "numerical_failure"
+
+
+@derive(Clone)
+pub model HyperquantError with Error:
+    """Typed fail-closed error with a stable kind and bounded diagnostic detail."""
+
+    pub _kind: HyperquantErrorKind
+    pub _detail: str
+
+    @staticmethod
+    def from_kind(kind: HyperquantErrorKind, detail: str) -> Self:
+        """Construct one typed Hyperquant failure."""
+
+        return HyperquantError(_kind=kind, _detail=detail)
+
+    def kind(self) -> HyperquantErrorKind:
+        """Return the stable failure category."""
+
+        return self._kind
+
+    def message(self) -> str:
+        """Return a human-readable diagnostic without caller-supplied content."""
+
+        return self._detail
+
+    def source(self) -> Option[str]:
+        """Hyperquant contract errors do not currently wrap another error."""
+
+        return None
+
+
+@derive(Clone)
+pub model HyperquantNomination:
+    """One non-authoritative RFC 003-compatible memory nomination."""
+
+    pub memory_id: MemoryId
+    pub rank: int
+    pub relevance_bps: int
+
+
+@derive(Clone)
+pub model HyperquantExactCandidate:
+    """One retained exact-oracle score in the bounded top-k trace."""
+
+    pub memory_id: MemoryId
+    pub cosine_similarity: float
+    pub relevance_bps: int

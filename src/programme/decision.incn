@@ -1,0 +1,73 @@
+"""
+Direct guided-programme eligibility result.
+
+The serializable result explains one structural decision and its eligible operation, if any. It carries no reusable
+authority. Later Hees stages must evaluate the original admitted package, governed support and runtime state rather
+than accepting a caller-constructed eligibility result as package admission or terminal authority.
+"""
+
+from std.serde import json
+from crate.identifiers import GuidedCardId
+from crate.programme.models import (
+    ProgrammeActionKind,
+    ProgrammeDecisionTrace,
+    ProgrammeMemoryOperation,
+    ProgrammeOperationProjection,
+)
+
+
+@derive(Clone, json)
+pub model ProgrammeEvaluation:
+    """Inspectable eligibility result that cannot substitute for a later Hees authority decision."""
+
+    pub trace: ProgrammeDecisionTrace
+    pub operation: Option[ProgrammeOperationProjection]
+
+    @staticmethod
+    def rejected(
+        action: ProgrammeActionKind,
+        reason: str,
+        current_card_id: Option[GuidedCardId],
+    ) -> ProgrammeEvaluation:
+        """Construct one internally consistent, non-authoritative rejection result."""
+
+        return ProgrammeEvaluation(
+            trace=ProgrammeDecisionTrace(
+                eligible=false,
+                reason=reason,
+                action=action,
+                current_card_id=current_card_id,
+                next_card_id=None,
+                session_key=None,
+                session_value=None,
+                memory_operation=ProgrammeMemoryOperation.None,
+            ),
+            operation=None,
+        )
+
+    @staticmethod
+    def eligible(
+        action: ProgrammeActionKind,
+        current_card_id: Option[GuidedCardId],
+        next_card_id: Option[GuidedCardId],
+        session_key: Option[str],
+        session_value: Option[str],
+        memory_operation: ProgrammeMemoryOperation,
+    ) -> ProgrammeEvaluation:
+        """Construct one internally consistent, non-authoritative eligibility result."""
+
+        return ProgrammeEvaluation(
+            trace=ProgrammeDecisionTrace(
+                eligible=true,
+                reason="eligible",
+                action=action,
+                current_card_id=current_card_id,
+                next_card_id=next_card_id,
+                session_key=session_key,
+                session_value=session_value,
+                memory_operation=memory_operation,
+            ),
+            operation=Some(
+                ProgrammeOperationProjection(action=action, next_card_id=next_card_id, memory_operation=memory_operation),
+            ),
+        )
