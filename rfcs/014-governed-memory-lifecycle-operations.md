@@ -9,7 +9,7 @@
     - RFC 013 (Governed Continuity — Goal, Schedule, and Session Admission) — independent, commonly co-deployed
 - **Issue:** — (not yet filed; see Open questions)
 - **RFC PR:** —
-- **Written against:** Hees.ai 0.0.1 / Incan 0.5.0-rc2
+- **Written against:** Hees.ai 0.0.1 / Incan 0.5
 - **Shipped in:** —
 
 ## Summary
