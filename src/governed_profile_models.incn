@@ -128,7 +128,7 @@ pub model GovernedPolicy:
 
 @derive(Clone, json)
 pub model GovernedProfilePackage:
-    """Generic runtime package projection supplied by an integrity-checked loader."""
+    """Generic runtime package projection whose artifact_digest validate_governed_profile_package recomputes and checks."""
 
     pub contract_version: ContractId
     pub profile_id: ProfileId
@@ -142,6 +142,51 @@ pub model GovernedProfilePackage:
     pub memory: list[GovernedMemory]
     pub guided_material: list[GuidedMaterial]
     pub policy: GovernedPolicy
+
+
+@derive(Clone, json)
+pub model GovernedMemoryArtifactProjection:
+    """One memory atom's fields except ``provenance_digest``, which binds separately once the package digest is known."""
+
+    pub memory_id: MemoryId
+    pub concept: str
+    pub evidence_ids: list[EvidenceId]
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+
+
+@derive(Clone, json)
+pub model GovernedProfilePackageArtifactProjection:
+    """Every ``GovernedProfilePackage`` field except ``artifact_digest`` itself, used to recompute and verify it."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub mission: str
+    pub actions: list[GovernedAction]
+    pub evidence: list[GovernedEvidence]
+    pub memory: list[GovernedMemoryArtifactProjection]
+    pub guided_material: list[GuidedMaterial]
+    pub policy: GovernedPolicy
+
+
+@derive(Clone, json)
+pub model GovernedMemoryProvenanceProjection:
+    """One memory atom's core fields bound to the exact package identity, covered by its ``provenance_digest``."""
+
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub artifact_digest: DigestIdType
+    pub memory_id: MemoryId
+    pub concept: str
+    pub evidence_ids: list[EvidenceId]
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
 
 
 @derive(Clone, json)

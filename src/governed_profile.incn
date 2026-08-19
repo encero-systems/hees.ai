@@ -13,7 +13,9 @@ pub from crate.governed_profile_evaluation import (
 pub from crate.governed_profile_identity import (
     bind_governed_request,
     committee_observation,
+    digest_governed_memory_provenance,
     digest_governed_proposal,
+    digest_governed_profile_package,
     governed_proposal,
 )
 pub from crate.governed_profile_models import (

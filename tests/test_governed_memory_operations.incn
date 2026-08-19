@@ -9,6 +9,8 @@ from crate.governed_memory_operations import (
     MemoryOperationKind,
     MemoryOperationProposal,
     MemoryOperationTerminal,
+    digest_governed_memory_policy,
+    digest_memory_record_witness,
     evaluate_memory_operation,
     validate_governed_memory_policy,
 )
@@ -29,7 +31,7 @@ def digest() -> str:
     return "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 
-def memory_policy() -> GovernedMemoryPolicy:
+def unwitnessed_memory_policy() -> GovernedMemoryPolicy:
     return GovernedMemoryPolicy(
         profile_id=profile_id("profile_one"),
         package_id=package_id("package_one"),
@@ -101,6 +103,19 @@ def memory_policy() -> GovernedMemoryPolicy:
     )
 
 
+def memory_policy() -> GovernedMemoryPolicy:
+    unwitnessed = unwitnessed_memory_policy()
+    mut policy = unwitnessed.clone()
+    policy.artifact_digest = digest_governed_memory_policy(unwitnessed)
+    return policy
+
+
+def witnessed(unwitnessed: GovernedMemoryRecord) -> GovernedMemoryRecord:
+    mut result = unwitnessed.clone()
+    result.record_witness = digest_memory_record_witness(unwitnessed)
+    return result
+
+
 def record(class_name: str, revoked: bool, expires_at: Option[int]) -> GovernedMemoryRecord:
     policy = memory_policy()
     mut provenance_fields = ["consent_receipt_id"]
@@ -108,21 +123,24 @@ def record(class_name: str, revoked: bool, expires_at: Option[int]) -> GovernedM
     if class_name == "operational_trace":
         provenance_fields = ["terminal_receipt_id"]
         memory_key = None
-    return GovernedMemoryRecord(
-        memory_id=memory_id("memory_one"),
-        memory_class_id=memory_class_id(class_name),
-        profile_id=policy.profile_id,
-        package_id=policy.package_id,
-        domain_id=policy.domain_id,
-        package_revision=policy.package_revision,
-        artifact_digest=policy.artifact_digest,
-        session_id=Some(session_id("session_one")),
-        memory_key=memory_key,
-        created_at_seconds=1000,
-        expires_at_seconds=expires_at,
-        revoked=revoked,
-        superseded_by=None,
-        provenance_fields=provenance_fields,
+    return witnessed(
+        GovernedMemoryRecord(
+            memory_id=memory_id("memory_one"),
+            memory_class_id=memory_class_id(class_name),
+            profile_id=policy.profile_id,
+            package_id=policy.package_id,
+            domain_id=policy.domain_id,
+            package_revision=policy.package_revision,
+            artifact_digest=policy.artifact_digest,
+            session_id=Some(session_id("session_one")),
+            memory_key=memory_key,
+            created_at_seconds=1000,
+            expires_at_seconds=expires_at,
+            revoked=revoked,
+            superseded_by=None,
+            provenance_fields=provenance_fields,
+            record_witness=digest_id_type(digest()),
+        ),
     )
 
 
@@ -259,6 +277,7 @@ def test_revoked_expired_cross_package_and_invented_memory_fail_closed() -> None
 
     mut superseded_record = record("learner_preference_memory", false, Some(2000))
     superseded_record.superseded_by = Some(memory_id("memory_two"))
+    superseded_record = witnessed(superseded_record)
     superseded = evaluate_memory_operation(
         policy,
         proposal(
@@ -284,3 +303,40 @@ def test_revoked_expired_cross_package_and_invented_memory_fail_closed() -> None
         ),
     )
     assert_eq(session_mismatch.reason, "memory_record_identity_mismatch")
+
+
+def test_hand_assembled_existing_record_with_forged_witness_is_rejected() -> None:
+    policy = memory_policy()
+    mut tampered = record("learner_preference_memory", false, Some(2000))
+    tampered.revoked = true
+    forged = evaluate_memory_operation(
+        policy,
+        proposal(
+            "select_prompt_memory",
+            MemoryOperationKind.SelectPrompt,
+            "learner_preference_memory",
+            Some(tampered),
+            false,
+        ),
+    )
+    assert_eq(forged.reason, "memory_record_witness_invalid")
+
+
+def test_genuine_memory_policy_digest_is_valid() -> None:
+    assert_eq(validate_governed_memory_policy(memory_policy()).valid, true)
+
+
+def test_stale_memory_policy_digest_after_class_change_is_rejected() -> None:
+    mut mutated = memory_policy()
+    mut first_class = mutated.classes[0]
+    first_class.prompt_eligible = not first_class.prompt_eligible
+    mutated.classes[0] = first_class
+    assert_eq(validate_governed_memory_policy(mutated).reason, "artifact_digest_mismatch")
+
+
+def test_stale_memory_policy_digest_after_operation_change_is_rejected() -> None:
+    mut mutated = memory_policy()
+    mut first_operation = mutated.operations[0]
+    first_operation.allowed_class_ids = [memory_class_id("operational_trace")]
+    mutated.operations[0] = first_operation
+    assert_eq(validate_governed_memory_policy(mutated).reason, "artifact_digest_mismatch")

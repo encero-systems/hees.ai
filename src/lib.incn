@@ -141,6 +141,8 @@ pub from governed_continuity import (
     GovernedPhase,
     GovernedSchedule,
     SessionContinuityState,
+    digest_continuity_package,
+    digest_continuity_state_witness,
     evaluate_continuity,
     validate_continuity_package,
 )
@@ -154,6 +156,8 @@ pub from governed_memory_operations import (
     MemoryOperationProposal,
     MemoryOperationTerminal,
     MemoryPolicyValidation,
+    digest_governed_memory_policy,
+    digest_memory_record_witness,
     evaluate_memory_operation,
     validate_governed_memory_policy,
 )

@@ -1,6 +1,10 @@
 """Fail-closed validation for generic governed packages, requests, and proposals."""
 
-from crate.governed_profile_identity import digest_governed_request_fields
+from crate.governed_profile_identity import (
+    digest_governed_memory_provenance,
+    digest_governed_profile_package,
+    digest_governed_request_fields,
+)
 from crate.governed_profile_models import (
     GovernedAction,
     GovernedEvidence,
@@ -198,6 +202,8 @@ def validate_package_header(package: GovernedProfilePackage) -> GovernedValidati
         return governed_validation_error("invalid_package", "invalid_package_revision")
     if not digest_id_text_is_safe(digest_id_type_text(package.artifact_digest)):
         return governed_validation_error("invalid_package", "invalid_artifact_digest")
+    if package.artifact_digest != digest_governed_profile_package(package):
+        return governed_validation_error("invalid_package", "artifact_digest_mismatch")
     if package.mission.strip() == "" or len(package.mission) > 512:
         return governed_validation_error("invalid_package", "invalid_mission")
     return governed_validation_ok()
@@ -274,6 +280,8 @@ def validate_memory(package: GovernedProfilePackage, atom: GovernedMemory) -> Go
         return governed_validation_error("invalid_package", "memory_not_admitted")
     if not digest_id_text_is_safe(digest_id_type_text(atom.provenance_digest)):
         return governed_validation_error("invalid_package", "invalid_memory_provenance")
+    if atom.provenance_digest != digest_governed_memory_provenance(package, atom.clone()):
+        return governed_validation_error("invalid_package", "memory_provenance_mismatch")
     return governed_validation_ok()
 
 

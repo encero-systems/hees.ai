@@ -16,8 +16,11 @@ from crate.governed_profile import (
     GuidedTransition,
     bind_governed_request,
     committee_observation,
+    digest_governed_memory_provenance,
+    digest_governed_profile_package,
     evaluate_governed_profile_with_artifacts,
     governed_proposal,
+    validate_governed_profile_package,
 )
 from crate.identifiers import (
     GuidedMaterialId,
@@ -83,7 +86,7 @@ def evidence(id: str, source_ref: str) -> GovernedEvidence:
     )
 
 
-def memory(id: str, evidence_value: str) -> GovernedMemory:
+def unwitnessed_memory(id: str, evidence_value: str) -> GovernedMemory:
     return GovernedMemory(
         memory_id=memory_id(id),
         concept=f"Reviewed concept for {id}.",
@@ -95,7 +98,7 @@ def memory(id: str, evidence_value: str) -> GovernedMemory:
     )
 
 
-def sleep_package() -> GovernedProfilePackage:
+def unwitnessed_package(memory_atoms: list[GovernedMemory]) -> GovernedProfilePackage:
     return GovernedProfilePackage(
         contract_version=contract_id("governed_profile_package_0_1"),
         profile_id=profile_id("governed_profile_0_1"),
@@ -119,10 +122,7 @@ def sleep_package() -> GovernedProfilePackage:
             "sleep_evidence_regular_timing",
             "sleep_source_sleep_smarter:129-130",
         ), evidence("sleep_evidence_relaxation_elements", "sleep_source_relaxation_response:76-79")],
-        memory=[memory("sleep_atom_evening_screens", "sleep_evidence_evening_screens"), memory(
-            "sleep_atom_regular_timing",
-            "sleep_evidence_regular_timing",
-        ), memory("sleep_atom_relaxation_elements", "sleep_evidence_relaxation_elements")],
+        memory=memory_atoms,
         guided_material=[GuidedMaterial(
             guided_material_id=guided_material_id("sleep_guide_wind_down_0_1"),
             artifact_revision=artifact_revision("0.1.0"),
@@ -162,6 +162,23 @@ def sleep_package() -> GovernedProfilePackage:
             require_all_passed=true,
         ),
     )
+
+
+def sleep_package() -> GovernedProfilePackage:
+    unwitnessed_atoms = [unwitnessed_memory("sleep_atom_evening_screens", "sleep_evidence_evening_screens"), unwitnessed_memory(
+        "sleep_atom_regular_timing",
+        "sleep_evidence_regular_timing",
+    ), unwitnessed_memory("sleep_atom_relaxation_elements", "sleep_evidence_relaxation_elements")]
+    unwitnessed = unwitnessed_package(unwitnessed_atoms)
+    mut package = unwitnessed.clone()
+    package.artifact_digest = digest_governed_profile_package(unwitnessed)
+    mut witnessed_atoms: list[GovernedMemory] = []
+    for atom in package.memory:
+        mut witnessed_atom = atom.clone()
+        witnessed_atom.provenance_digest = digest_governed_memory_provenance(package, atom)
+        witnessed_atoms.append(witnessed_atom)
+    package.memory = witnessed_atoms
+    return package
 
 
 def request(question: str) -> GovernedRequest:
@@ -438,3 +455,70 @@ def test_unknown_evidence_and_memory_relationship_mismatch_are_rejected() -> Non
         evaluate_governed_profile_with_artifacts(package, bound, mismatch, []).spectrum.reason,
         "memory_evidence_mismatch",
     )
+
+
+def test_genuine_package_digest_is_valid() -> None:
+    assert_eq(validate_governed_profile_package(sleep_package()).valid, true)
+
+
+def test_stale_digest_after_action_change_is_rejected() -> None:
+    mut mutated = sleep_package()
+    mut first_action = mutated.actions[0]
+    first_action.committee_required = not first_action.committee_required
+    mutated.actions[0] = first_action
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "artifact_digest_mismatch")
+
+
+def test_stale_digest_after_evidence_change_is_rejected() -> None:
+    mut mutated = sleep_package()
+    mut first_evidence = mutated.evidence[0]
+    first_evidence.claim = f"A different, unreviewed claim."
+    mutated.evidence[0] = first_evidence
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "artifact_digest_mismatch")
+
+
+def test_stale_digest_after_memory_change_is_rejected() -> None:
+    mut mutated = sleep_package()
+    mut first_memory = mutated.memory[0]
+    first_memory.concept = f"A different, unreviewed concept."
+    mutated.memory[0] = first_memory
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "artifact_digest_mismatch")
+
+
+def test_stale_digest_after_policy_change_is_rejected() -> None:
+    mut mutated = sleep_package()
+    mut policy = mutated.policy
+    policy.require_all_passed = false
+    mutated.policy = policy
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "artifact_digest_mismatch")
+
+
+def test_stale_digest_after_guided_material_change_is_rejected() -> None:
+    mut mutated = sleep_package()
+    mut first_guide = mutated.guided_material[0]
+    first_guide.language = f"af"
+    mutated.guided_material[0] = first_guide
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "artifact_digest_mismatch")
+
+
+def test_stale_memory_provenance_digest_is_rejected_independent_of_package_digest() -> None:
+    genuine = sleep_package()
+    mut tampered = genuine.clone()
+    mut first_memory = tampered.memory[0]
+    first_memory.concept = f"A retargeted concept, package digest recomputed but provenance left stale."
+    tampered.memory[0] = first_memory
+    mut package = tampered.clone()
+    package.artifact_digest = digest_governed_profile_package(tampered)
+    result = validate_governed_profile_package(package)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "memory_provenance_mismatch")

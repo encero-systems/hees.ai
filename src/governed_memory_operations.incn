@@ -6,6 +6,7 @@ for the proposed operation. This prototype is adjacent to RFC 003 and does not c
 """
 
 from std.serde import json
+from crate.content_dna import digest_canonical_json
 from crate.identifiers import (
     ArtifactRevisionType,
     DigestIdType,
@@ -66,7 +67,7 @@ pub model GovernedMemoryOperation:
 
 @derive(Clone, json)
 pub model GovernedMemoryPolicy:
-    """Integrity-bound package projection for memory-operation admission."""
+    """Package projection whose artifact_digest validate_governed_memory_policy recomputes and checks."""
 
     pub profile_id: ProfileId
     pub package_id: PackageId
@@ -75,6 +76,18 @@ pub model GovernedMemoryPolicy:
     pub artifact_digest: DigestIdType
     pub classes: list[GovernedMemoryClass]
     pub operations: list[GovernedMemoryOperation]
+
+
+@derive(Clone, json)
+model GovernedMemoryPolicyArtifactProjection:
+    """Every ``GovernedMemoryPolicy`` field except ``artifact_digest`` itself, used to recompute and verify it."""
+
+    profile_id: ProfileId
+    package_id: PackageId
+    domain_id: DomainId
+    package_revision: ArtifactRevisionType
+    classes: list[GovernedMemoryClass]
+    operations: list[GovernedMemoryOperation]
 
 
 @derive(Clone, json)
@@ -95,6 +108,72 @@ pub model GovernedMemoryRecord:
     pub revoked: bool
     pub superseded_by: Option[MemoryId]
     pub provenance_fields: list[str]
+    pub record_witness: DigestIdType
+
+
+@derive(Clone, json)
+model MemoryRecordWitnessProjection:
+    """
+    Every ``GovernedMemoryRecord`` field except ``record_witness`` itself.
+
+    This is a self-consistency digest, not a signature: the formula is public, so it cannot prove a record's fields
+    were admitted by ``evaluate_memory_operation``'s ``write`` path rather than hand-assembled by a caller who read
+    this source. It defends against accidental corruption and casual, plausible-looking fabrication -- not a
+    determined caller willing to reproduce the formula. See RFC 014's Open Questions for the tracked follow-up (a
+    keyed MAC, blocked on Incan stdlib support). A caller must compute this after a ``write`` is admitted and before
+    persisting the resulting record; every later operation on that record requires it to still match.
+    """
+
+    memory_id: MemoryId
+    memory_class_id: MemoryClassId
+    profile_id: ProfileId
+    package_id: PackageId
+    domain_id: DomainId
+    package_revision: ArtifactRevisionType
+    artifact_digest: DigestIdType
+    session_id: Option[SessionId]
+    memory_key: Option[str]
+    created_at_seconds: int
+    expires_at_seconds: Option[int]
+    revoked: bool
+    superseded_by: Option[MemoryId]
+    provenance_fields: list[str]
+
+
+pub def digest_governed_memory_policy(policy: GovernedMemoryPolicy) -> DigestIdType:
+    """Recompute the policy digest over every field except ``artifact_digest`` itself."""
+
+    projection = GovernedMemoryPolicyArtifactProjection(
+        profile_id=policy.profile_id,
+        package_id=policy.package_id,
+        domain_id=policy.domain_id,
+        package_revision=policy.package_revision,
+        classes=policy.classes,
+        operations=policy.operations,
+    )
+    return digest_canonical_json(projection.to_json()).unwrap()
+
+
+pub def digest_memory_record_witness(record: GovernedMemoryRecord) -> DigestIdType:
+    """Recompute the self-consistency digest over every field of ``record`` except ``record_witness`` itself."""
+
+    projection = MemoryRecordWitnessProjection(
+        memory_id=record.memory_id,
+        memory_class_id=record.memory_class_id,
+        profile_id=record.profile_id,
+        package_id=record.package_id,
+        domain_id=record.domain_id,
+        package_revision=record.package_revision,
+        artifact_digest=record.artifact_digest,
+        session_id=record.session_id,
+        memory_key=record.memory_key,
+        created_at_seconds=record.created_at_seconds,
+        expires_at_seconds=record.expires_at_seconds,
+        revoked=record.revoked,
+        superseded_by=record.superseded_by,
+        provenance_fields=record.provenance_fields,
+    )
+    return digest_canonical_json(projection.to_json()).unwrap()
 
 
 @derive(Clone, json)
@@ -245,6 +324,8 @@ def memory_class_is_valid(memory_class: GovernedMemoryClass) -> MemoryPolicyVali
 pub def validate_governed_memory_policy(policy: GovernedMemoryPolicy) -> MemoryPolicyValidation:
     """Validate class and operation declarations without admitting a runtime operation."""
 
+    if policy.artifact_digest != digest_governed_memory_policy(policy):
+        return invalid("artifact_digest_mismatch")
     if len(policy.classes) == 0 or len(policy.operations) == 0:
         return invalid("memory_policy_empty")
     if has_duplicate_classes(policy.classes):
@@ -313,6 +394,8 @@ def record_is_eligible(
 ) -> Option[str]:
     if not record_identity_matches(proposal, record):
         return Some("memory_record_identity_mismatch")
+    if record.record_witness != digest_memory_record_witness(record):
+        return Some("memory_record_witness_invalid")
     if record.created_at_seconds < 0 or record.created_at_seconds > proposal.current_time_seconds:
         return Some("memory_record_time_invalid")
     match memory_class.maximum_age_seconds:

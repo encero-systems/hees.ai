@@ -103,6 +103,7 @@ Revoking that same record later requires supplying the exact existing record Hee
 
 `GovernedMemoryPolicy` binds `GovernedMemoryClass` and `GovernedMemoryOperation` declarations to a package identity. `validate_governed_memory_policy` enforces, before any proposal is considered:
 
+- `artifact_digest` is not a caller-chosen label: `digest_governed_memory_policy` recomputes it from every other policy field (classes and operations included) and `validate_governed_memory_policy` rejects (`artifact_digest_mismatch`) if the supplied value doesn't match;
 - at least one class and one operation are declared;
 - class identifiers and operation identifiers are each unique, and no two operations share the same `operation_kind`;
 - each class's `owner` is one of `package`/`session`/`learner`/`runtime`;
@@ -116,7 +117,7 @@ Revoking that same record later requires supplying the exact existing record Hee
 
 `MemoryOperationProposal` carries: the target operation id/kind, the full package identity, an optional `session_id`, the target `memory_class_id`/`target_memory_id`, an optional `replacement_memory_id` (for `supersede`), an optional `memory_key`, the current time, a `consent_present` claim, a `provenance_fields` claim, and `existing_record: Option[GovernedMemoryRecord]`.
 
-`GovernedMemoryRecord` is the caller-supplied, already-created record an operation acts on: its own class and package identity, an optional owning session, an optional key, when it was created, when (if ever) it expires, whether it's revoked, and an optional `superseded_by` pointer.
+`GovernedMemoryRecord` is the caller-supplied, already-created record an operation acts on: its own class and package identity, an optional owning session, an optional key, when it was created, when (if ever) it expires, whether it's revoked, an optional `superseded_by` pointer, and a `record_witness` digest. `record_witness` is a self-consistency digest, not a signature (the formula is public source): a caller computes it via `digest_memory_record_witness` once, immediately after a `Write` is admitted, and persists it alongside the record; every later operation recomputes and checks it (`memory_record_witness_invalid`) before trusting the rest of the supplied record. This catches a record hand-assembled or corrupted outside that flow; it does not stop a caller willing to reproduce the public digest formula — see [Open questions](#open-questions).
 
 ### Admission order
 
@@ -135,6 +136,7 @@ Revoking that same record later requires supplying the exact existing record Hee
 - **Write**: requires `existing_record` to be absent (`memory_already_exists`) and the class to be `runtime_writable` (`memory_class_not_writable`), then applies the shared consent/key/provenance checks below. Admits with reason `declared_memory_write`.
 - **Inspect**, **SelectPrompt**, **Revoke**, **Supersede** all require `existing_record` to be present (`memory_record_required`), and the record must be *eligible*:
     - its identity (package, class, memory id, and — when the proposal names a session — that session) must match the proposal (`memory_record_identity_mismatch`); a package-owned record with no `session_id` at all is eligible regardless of the proposal's session, but a session-owned record must match exactly;
+    - its `record_witness` must match a fresh recomputation over the record's own other fields (`memory_record_witness_invalid`) — this rejects a record that was hand-assembled or corrupted rather than the exact value stamped when it was written;
     - `created_at_seconds` must be non-negative and not in the future relative to `current_time_seconds` (`memory_record_time_invalid`);
     - if the class declares `maximum_age_seconds`, the record must not have exceeded it (`memory_expired`);
     - the record must carry every one of the class's `required_provenance` fields (`memory_record_provenance_incomplete`);
@@ -155,7 +157,9 @@ Revoking that same record later requires supplying the exact existing record Hee
 
 The complete set observed in the current implementation:
 
-`invalid_memory_policy`, `package_identity_mismatch`, `invalid_evaluation_time`, `unknown_memory_operation`, `memory_operation_kind_mismatch`, `unknown_memory_class`, `memory_class_not_allowed_for_operation`, `memory_already_exists`, `memory_class_not_writable`, `memory_record_required`, `memory_record_identity_mismatch`, `memory_record_time_invalid`, `memory_expired`, `memory_record_provenance_incomplete`, `memory_revoked`, `memory_superseded`, `memory_not_prompt_eligible`, `memory_revoke_not_allowed`, `memory_supersede_not_allowed`, `explicit_consent_required`, `replacement_memory_required`, `replacement_memory_must_differ`, `memory_key_not_allowed`, `memory_provenance_incomplete` (rejections); and `declared_memory_inspection`, `declared_memory_read`, `declared_memory_revoke`, `declared_memory_supersede`, `declared_memory_write` (admissions).
+`invalid_memory_policy`, `package_identity_mismatch`, `invalid_evaluation_time`, `unknown_memory_operation`, `memory_operation_kind_mismatch`, `unknown_memory_class`, `memory_class_not_allowed_for_operation`, `memory_already_exists`, `memory_class_not_writable`, `memory_record_required`, `memory_record_identity_mismatch`, `memory_record_witness_invalid`, `memory_record_time_invalid`, `memory_expired`, `memory_record_provenance_incomplete`, `memory_revoked`, `memory_superseded`, `memory_not_prompt_eligible`, `memory_revoke_not_allowed`, `memory_supersede_not_allowed`, `explicit_consent_required`, `replacement_memory_required`, `replacement_memory_must_differ`, `memory_key_not_allowed`, `memory_provenance_incomplete` (rejections); and `declared_memory_inspection`, `declared_memory_read`, `declared_memory_revoke`, `declared_memory_supersede`, `declared_memory_write` (admissions).
+
+`invalid_memory_policy` is a coarse wrapper, same as RFC 013's `invalid_continuity_package`: every structural policy failure (empty declarations, duplicate identifiers, and now a stale `artifact_digest`) collapses into it at the `evaluate_memory_operation` boundary. A caller who wants the specific cause calls `validate_governed_memory_policy` directly and reads its own uncoarsened `reason` (e.g. `artifact_digest_mismatch`).
 
 As with RFC 013, this vocabulary is not yet frozen into a closed, namespaced table — see [Open questions](#open-questions).
 
@@ -183,11 +187,11 @@ Rejected for the same reason RFC 000 rejects letting application code interpret 
 
 ## Drawbacks
 
-The composition question with RFC 003 (does every RFC-003-accepted record still need a `SelectPrompt` admission here before entering a prompt, or is RFC 003 acceptance itself sufficient for prompt-eligible package-owned atoms) is unresolved and could go either way depending on how strict callers want double-admission to be; leaving it open risks two conforming implementations disagreeing about how many admission calls a single prompt-context assembly requires. The admission-reason vocabulary is informal, matching RFC 013's drawback. `key_is_allowed`'s "empty `allowed_keys` means no restriction" rule is easy to read backwards (it means *unrestricted*, not *nothing allowed*) and may deserve a less surprising name in a future revision.
+The composition question with RFC 003 (does every RFC-003-accepted record still need a `SelectPrompt` admission here before entering a prompt, or is RFC 003 acceptance itself sufficient for prompt-eligible package-owned atoms) is unresolved and could go either way depending on how strict callers want double-admission to be; leaving it open risks two conforming implementations disagreeing about how many admission calls a single prompt-context assembly requires. The admission-reason vocabulary is informal, matching RFC 013's drawback. `key_is_allowed`'s "empty `allowed_keys` means no restriction" rule is easy to read backwards (it means *unrestricted*, not *nothing allowed*) and may deserve a less surprising name in a future revision. `record_witness` has the same honest limit as RFC 013's `state_witness`: an unkeyed digest over public source, so it catches accidental corruption and casual fabrication, not a caller willing to reproduce the formula. A real signed handle needs a keyed MAC, tracked upstream as [incan#1075](https://github.com/encero-systems/incan/issues/1075), not hand-rolled here.
 
 ## Layers affected
 
-- **Public contract:** New `MemoryOperationKind`, `MemoryOperationTerminal`, `GovernedMemoryClass`, `GovernedMemoryOperation`, `GovernedMemoryPolicy`, `GovernedMemoryRecord`, `MemoryOperationProposal`, `MemoryOperationDecision`, and `MemoryPolicyValidation` types; new `validate_governed_memory_policy` and `evaluate_memory_operation` public functions.
+- **Public contract:** New `MemoryOperationKind`, `MemoryOperationTerminal`, `GovernedMemoryClass`, `GovernedMemoryOperation`, `GovernedMemoryPolicy`, `GovernedMemoryRecord` (now carrying `record_witness`), `MemoryOperationProposal`, `MemoryOperationDecision`, and `MemoryPolicyValidation` types; new `validate_governed_memory_policy` and `evaluate_memory_operation` public functions, plus `digest_governed_memory_policy` and `digest_memory_record_witness` for callers to stamp a policy's real digest and a record's real witness before use.
 - **Runtime validation:** Deterministic policy validation, proposal-identity binding, per-record eligibility, and per-operation-kind admission with a closed (informal, pending formal freeze) reason vocabulary.
 - **Package compatibility:** Purely additive and opt-in per package, mirroring RFC 003 and RFC 013.
 - **Storage boundary:** Explicitly out of scope, mirroring RFC 013's persistence split.
@@ -201,6 +205,7 @@ The composition question with RFC 003 (does every RFC-003-accepted record still 
 - `SelectPrompt`, `Revoke`, and `Supersede` each layer one additional check on top of shared eligibility, rather than duplicating eligibility per operation kind.
 - Consent and provenance-completeness checks are shared between `Write` and `Supersede` (both create a new admitted state) but not required for `Inspect`, `SelectPrompt`, or `Revoke` (none of which create new content).
 - This RFC is deliberately independent of RFC 003 and RFC 013 rather than layered on either, reflecting that the underlying implementation makes no structural call between the three.
+- `GovernedMemoryPolicy.artifact_digest` and `GovernedMemoryRecord.record_witness` are both self-consistency digests, not signatures. They are honestly scoped to catch accidental corruption and casual hand-assembly, not a caller willing to reproduce the public digest formula — a real signed handle needs a keyed MAC, tracked upstream as [incan#1075](https://github.com/encero-systems/incan/issues/1075) rather than hand-rolled here.
 
 ## Open questions
 
@@ -208,4 +213,5 @@ The composition question with RFC 003 (does every RFC-003-accepted record still 
 - Should the admission-reason vocabulary be frozen into a closed, namespaced table as part of this RFC?
 - Should this RFC define exact byte-size/collection bounds, given `governed_memory_operations.incn` does not currently enforce any beyond structural non-emptiness?
 - `key_is_allowed`'s empty-list-means-unrestricted semantics reads easy to misuse; worth a naming or shape revision before this leaves Draft?
+- `record_witness` should become a keyed MAC once Incan's standard library supports one ([incan#1075](https://github.com/encero-systems/incan/issues/1075)), so `evaluate_memory_operation` can actually authenticate a record that crossed an untrusted boundary, not just detect accidental corruption or hand-assembly. Should the key be a required parameter on `evaluate_memory_operation` from the start of that work, or should the unkeyed digest remain a supported mode for callers with no untrusted boundary to defend?
 - Proposal issue [#36](https://github.com/encero-systems/hees.ai/issues/36) is now filed; this document should stay `Draft` until that discussion resolves.

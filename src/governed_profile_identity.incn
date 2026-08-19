@@ -6,7 +6,11 @@ from crate.governed_profile_models import (
     CommitteeObservation,
     CommitteeVerdict,
     GovernedAnswerProjection,
+    GovernedMemory,
+    GovernedMemoryArtifactProjection,
+    GovernedMemoryProvenanceProjection,
     GovernedProfilePackage,
+    GovernedProfilePackageArtifactProjection,
     GovernedProposal,
     GovernedRequest,
     GovernedRequestDigestProjection,
@@ -27,6 +31,63 @@ from crate.identifiers import (
 )
 
 
+def digest_serialized_json(source: str) -> DigestIdType:
+    """
+    Digest JSON emitted by this module's own serializer calls.
+
+    This helper accepts only serializer-produced model output, so parse failure is a broken invariant rather than an
+    invalid digest value. It does not claim a durable cross-version canonical encoding. A caller accepting arbitrary
+    external JSON must use ``digest_canonical_json`` directly and handle its ``Result``.
+    """
+
+    return digest_canonical_json(source).unwrap()
+
+
+pub def digest_governed_profile_package(package: GovernedProfilePackage) -> DigestIdType:
+    """Recompute the package digest over every field except ``artifact_digest`` and each atom's ``provenance_digest``."""
+
+    memory: list[GovernedMemoryArtifactProjection] = [GovernedMemoryArtifactProjection(
+        memory_id=atom.memory_id,
+        concept=atom.concept,
+        evidence_ids=atom.evidence_ids,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+    ) for atom in package.memory]
+    projection = GovernedProfilePackageArtifactProjection(
+        contract_version=package.contract_version,
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        mission=package.mission,
+        actions=package.actions,
+        evidence=package.evidence,
+        memory=memory,
+        guided_material=package.guided_material,
+        policy=package.policy,
+    )
+    return digest_serialized_json(projection.to_json())
+
+
+pub def digest_governed_memory_provenance(package: GovernedProfilePackage, atom: GovernedMemory) -> DigestIdType:
+    """Bind one memory atom's core fields to the exact, already-established package identity."""
+
+    projection = GovernedMemoryProvenanceProjection(
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        memory_id=atom.memory_id,
+        concept=atom.concept,
+        evidence_ids=atom.evidence_ids,
+        review_state=atom.review_state,
+        review_revision=atom.review_revision,
+        rights_state=atom.rights_state,
+    )
+    return digest_serialized_json(projection.to_json())
+
+
 pub def digest_governed_request_fields(
     request_id: RequestId,
     question: str,
@@ -41,7 +102,7 @@ pub def digest_governed_request_fields(
         language=language,
         audience=audience,
     )
-    return digest_canonical_json(projection.to_json()).unwrap()
+    return digest_serialized_json(projection.to_json())
 
 
 pub def bind_governed_request(
@@ -64,13 +125,13 @@ pub def bind_governed_request(
 pub def digest_governed_proposal(proposal: GovernedProposal) -> DigestIdType:
     """Bind the complete untrusted proposal to one canonical candidate identity."""
 
-    return digest_canonical_json(proposal.to_json()).unwrap()
+    return digest_serialized_json(proposal.to_json())
 
 
 pub def digest_governed_answer(visible_output: str) -> DigestIdType:
     """Bind exact admitted visible output without normalizing its prose."""
 
-    return digest_canonical_json(GovernedAnswerProjection(visible_output=visible_output).to_json()).unwrap()
+    return digest_serialized_json(GovernedAnswerProjection(visible_output=visible_output).to_json())
 
 
 pub def governed_proposal(

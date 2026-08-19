@@ -55,7 +55,7 @@ This module was built as part of the same research spike as RFC 013/014 (2026-07
 
 ## Guide-level explanation
 
-A package declares its actions, evidence, and policy:
+A package declares its actions, evidence, and policy. Its `artifact_digest` and each memory atom's `provenance_digest` are not caller-chosen labels -- `validate_governed_profile_package` recomputes and checks both, so a package is assembled in two phases: build it with a placeholder digest, then stamp on the real one before use:
 
 ```incan
 action = GovernedAction(
@@ -64,12 +64,13 @@ action = GovernedAction(
     evidence_required=true,
     committee_required=false,
 )
-package = GovernedProfilePackage(
+unwitnessed = GovernedProfilePackage(
+    contract_version=contract_id("governed_profile_package_0_1"),
     profile_id=profile_id("governed_profile_0_1"),
     package_id=package_id("sleep_learning_demo"),
     domain_id=domain_id("sleep_learning"),
-    package_revision=revision("0.2.0-candidate.2"),
-    artifact_digest=digest_id("sha256:..."),
+    package_revision=artifact_revision("0.2.0-candidate.2"),
+    artifact_digest=digest_id_type("sha256:0000000000000000000000000000000000000000000000000000000000000000"),
     mission="...",
     actions=[action],
     evidence=[...],
@@ -77,18 +78,23 @@ package = GovernedProfilePackage(
     guided_material=[],
     policy=GovernedPolicy(constraint_plan_id=..., constraint_plan_revision=..., required_roles=[]),
 )
+mut package = unwitnessed.clone()
+package.artifact_digest = digest_governed_profile_package(unwitnessed)
+# each memory atom's provenance_digest is stamped the same way, via digest_governed_memory_provenance(package, atom)
 ```
 
 A caller builds a request and proposal, then evaluates:
 
 ```incan
-request = bind_governed_request(package, "How can morning light affect my sleep?", "en", "general_adult_learner")
+request = bind_governed_request(request_id("request_sleep_demo"), "How can morning light affect my sleep?", "en", audience_id("general_adult_learner"))
 proposal = governed_proposal(
-    package, request, action_id("answer_from_package"),
+    package, request, proposal_id("proposal_sleep_answer"), action_id("answer_from_package"),
     "Morning light helps anchor your body's daily rhythm...",
     evidence_ids=[evidence_id("sleep_evidence_morning_light")],
     memory_ids=[memory_id("sleep_atom_morning_light")],
     guided_material_id=None,
+    current_step_id=None,
+    next_step_id=None,
 )
 result = evaluate_governed_profile_with_artifacts(package, request, proposal, observations=[])
 # result.spectrum.decision == "deliver"
@@ -103,9 +109,9 @@ An action declared `Refusal` or `Escalation` still produces a receipt (so the ou
 
 `evaluate_governed_profile_with_artifacts` validates in this fixed order, stopping at the first failure:
 
-1. `validate_governed_profile_package(package)` — structural package validity (unique action/evidence/memory/guided-material identifiers, non-empty required fields; not detailed further here, see source).
+1. `validate_governed_profile_package(package)` — structural package validity (unique action/evidence/memory/guided-material identifiers, non-empty required fields; not detailed further here, see source). This includes recomputing `package.artifact_digest` from every other package field (via `digest_governed_profile_package`) and each memory atom's `provenance_digest` from its own fields plus the now-established package identity (via `digest_governed_memory_provenance`); either mismatch fails closed here, coarsened to `invalid_package` at this function's boundary the same way every other package-content failure is (a caller who wants the specific cause calls `validate_governed_profile_package` directly and reads its own uncoarsened `errors[0]`, e.g. `artifact_digest_mismatch` or `memory_provenance_mismatch`).
 2. `validate_governed_request(request)` — structural request validity.
-3. `validate_governed_proposal(package, request, proposal)` — proposal/package/request identity binding (`profile_id_mismatch`, `package_id_mismatch`, `domain_id_mismatch`, `package_revision_mismatch`, `artifact_digest_mismatch`, `request_id_mismatch`, `request_digest_mismatch`, `unsupported_proposal_contract`), evidence/memory reference validity (`unknown_evidence`, `unknown_memory`, `duplicate_evidence_reference`, `duplicate_memory_reference`, `memory_evidence_mismatch`), guided-material reference validity (`unknown_guided_material`, `guided_material_required`, `guided_material_not_allowed`, `terminal_boundary_support_not_allowed`), and basic proposal shape (`missing_visible_output`, `invalid_proposal`, `invalid_package`, `invalid_request`).
+3. `validate_governed_proposal(package, request, proposal)` — proposal/package/request identity binding (`profile_id_mismatch`, `package_id_mismatch`, `domain_id_mismatch`, `package_revision_mismatch`, `artifact_digest_mismatch`, `request_id_mismatch`, `request_digest_mismatch`, `unsupported_proposal_contract`), evidence/memory reference validity (`unknown_evidence`, `unknown_memory`, `duplicate_evidence_reference`, `duplicate_memory_reference`, `memory_evidence_mismatch`), guided-material reference validity (`unknown_guided_material`, `guided_material_required`, `guided_material_not_allowed`, `terminal_boundary_support_not_allowed`), and basic proposal shape (`missing_visible_output`, `invalid_proposal`, `invalid_package`, `invalid_request`). This step's own `artifact_digest_mismatch` is a different check from step 1's: it compares the proposal's claimed digest against the package's `artifact_digest` field, not against a recomputation of the package's content — by the time this step runs, step 1 has already established that the package's own digest is internally correct.
 4. The proposal's `action_id` must resolve in the package (`unknown_action`).
 5. Structural admission: delegates to the existing Hees.ai 0.0.1 `admit_model_proposal` kernel via a package/proposal projection (`action_contract`, `approved_evidence_record`, `governed_package`, `model_proposal`). Its rejection reason (e.g. `unsupported_proposal`) surfaces as `structural_admission_rejected`, with the kernel's own reason carried in `structural_reason`.
 6. Committee assessment (`assess_committee`, detailed below) — `committee_not_allowed` (observations supplied for an action that doesn't require committee review), `committee_coverage_invalid` (role set mismatch or duplicate observation), `unsupported_committee_contract`, `committee_identity_mismatch`, `committee_rejected` (any `Fail` verdict), `committee_uncertain` (any `Uncertain` verdict, checked only once no `Fail` is present).
@@ -196,10 +202,10 @@ Three real Draft RFCs (001, 002, 006) already claim ownership of the general sha
 
 ## Layers affected
 
-- **Public contract:** New `GovernedProfilePackage`, `GovernedRequest`, `GovernedProposal`, `CommitteeObservation`, `GovernedAction`, `GovernedEvidence`, `GovernedMemory`, `GuidedMaterial`, `GovernedPolicy`, `CompleteGovernedEvaluation`, `GovernedContentDna`, `GovernedReceipt` types (and their nested bodies); new `evaluate_governed_profile_with_artifacts`/`evaluate_governed_profile_json` public functions, exported through the `governed_profile.incn` facade.
+- **Public contract:** New `GovernedProfilePackage`, `GovernedRequest`, `GovernedProposal`, `CommitteeObservation`, `GovernedAction`, `GovernedEvidence`, `GovernedMemory`, `GuidedMaterial`, `GovernedPolicy`, `CompleteGovernedEvaluation`, `GovernedContentDna`, `GovernedReceipt` types (and their nested bodies); new `evaluate_governed_profile_with_artifacts`/`evaluate_governed_profile_json` public functions, plus `digest_governed_profile_package` and `digest_governed_memory_provenance` for callers to stamp a package's real digest and a memory atom's real provenance digest before use, exported through the `governed_profile.incn` facade.
 - **Runtime validation:** Package/request/proposal identity validation, delegation to the existing 0.0.1 structural-admission kernel, committee-coverage validation, memory/guided-material resolution, terminal-decision derivation, atomic Content DNA + receipt construction.
 - **Package compatibility:** Purely additive and opt-in, mirroring RFC 013/014.
-- **Tests and documentation:** The reference implementation already carries positive and fail-closed tests (implied by the repo's `make test` gate covering this module — not independently re-verified line-by-line for this RFC beyond the 61/61 pass confirmed when `ba4e24a` was committed); formal cross-implementation fixtures matching RFC 001/002/006's acceptance-obligations bar remain open work.
+- **Tests and documentation:** The reference implementation carries positive, fail-closed, and stale-digest mutation tests (14/14 pass as of this revision, covering the package-content and memory-provenance digest checks specifically); formal cross-implementation fixtures matching RFC 001/002/006's acceptance-obligations bar remain open work.
 
 ## Design Decisions
 
@@ -209,6 +215,7 @@ Three real Draft RFCs (001, 002, 006) already claim ownership of the general sha
 - Content DNA is constructed before the receipt for a `deliver` outcome; either failing means nothing is exposed.
 - A non-`deliver` outcome still produces a receipt (once identity is safely established) but never Content DNA.
 - This module deliberately does not claim RFC 001/002/006 conformance; every relationship section names its real deltas rather than asserting equivalence.
+- `GovernedProfilePackage.artifact_digest` and each `GovernedMemory.provenance_digest` are not caller-chosen labels: `validate_governed_profile_package` recomputes and checks both against the rest of the package's own content, so a package mutated after its digest was stamped fails closed instead of being evaluated under a stale identity.
 
 ## Open questions
 
