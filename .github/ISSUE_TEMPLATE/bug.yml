@@ -15,7 +15,7 @@ body:
       required: true
   - type: input
     attributes:
-      label: Hees revision
+      label: Hees.ai revision
     validations:
       required: true
   - type: input

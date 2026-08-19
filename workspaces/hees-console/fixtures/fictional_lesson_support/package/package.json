@@ -5,7 +5,7 @@
   "domain_id": "fictional_lesson_support",
   "package_revision": "1.0.0",
   "artifact_digest": "sha256:e4fd8da08bf9635d4753d8d70be77caa4aae59e756f72d9a9b177bca4603b335",
-  "mission": "Support the Hees Console Build Week initial profile with bounded explanations and practice steps using only this package's original fictional lesson records.",
+  "mission": "Support the Hees.ai Console Build Week initial profile with bounded explanations and practice steps using only this package's original fictional lesson records.",
   "sources": [
     {
       "source_id": "source_lantern_path",

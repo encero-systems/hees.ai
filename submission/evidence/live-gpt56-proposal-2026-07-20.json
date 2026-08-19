@@ -1,6 +1,6 @@
 {
   "evidence_contract": "hees_console_live_proposal_observation_0_1",
-  "evidence_scope": "separate native proposal, external proposal, native live committee, and diagnostic Hees observations",
+  "evidence_scope": "separate native proposal, external proposal, native live committee, and diagnostic Hees.ai observations",
   "observed_date": "2026-07-20",
   "observation_timestamp_local": "2026-07-20T16:14:41+02:00",
   "observation_timestamp_basis": "local diagnostic proposal artifact creation time",
@@ -124,7 +124,7 @@
     "The external-curl proposal observation supplies locally observed request and response hashes and usage; the native proposal and committee observations do not.",
     "The product adapter did not retain committee token usage or cost.",
     "Raw provider envelopes are not published.",
-    "The native live committee and diagnostic Hees verification used a temporary generated-Rust workaround after resolving against a stale ambient Incan 0.4.0-rc3 stdlib source; coherent Incan 0.5.0-dev.21 verification later completed all nineteen provider-boundary tests without it."
+    "The native live committee and diagnostic Hees.ai verification used a temporary generated-Rust workaround after resolving against a stale ambient Incan 0.4.0-rc3 stdlib source; coherent Incan 0.5.0-dev.21 verification later completed all nineteen provider-boundary tests without it."
   ],
   "redactions": [
     "No API key or authorization header.",

@@ -21,7 +21,7 @@ jobs:
     env:
       MDBOOK_SHA256: 3f28de05dafca9d0f2eab99c662116b0e37b89b1d96a08f8f430b9eeae958cd7
     steps:
-      - name: Check out Hees
+      - name: Check out Hees.ai
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false

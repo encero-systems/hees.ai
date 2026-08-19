@@ -1,5 +1,5 @@
 name: RFC proposal
-description: Propose a new Hees capability or a material public-contract change
+description: Propose a new Hees.ai capability or a material public-contract change
 title: "rfc - "
 labels:
   - rfc-proposal
@@ -18,7 +18,7 @@ body:
       required: true
   - type: textarea
     attributes:
-      label: Why this belongs in Hees
+      label: Why this belongs in Hees.ai
       description: Explain why this is a reusable governance-runtime responsibility rather than package-authoring, implementation-package, provider, or research behavior.
     validations:
       required: true

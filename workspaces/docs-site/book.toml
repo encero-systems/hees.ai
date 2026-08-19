@@ -1,6 +1,6 @@
 [book]
 title = "hees.ai documentation"
-description = "Checked contracts and developer guidance for the Incan-first Hees governance runtime"
+description = "Checked contracts and developer guidance for the Incan-first Hees.ai governance runtime"
 authors = ["Encero Systems"]
 language = "en"
 src = "docs"

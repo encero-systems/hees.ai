@@ -1,7 +1,7 @@
 [project]
 name = "hees_console"
 version = "0.1.0"
-description = "Native Incan console for inspecting governed Hees interactions"
+description = "Native Incan console for inspecting governed Hees.ai interactions"
 authors = ["Encero Systems"]
 license = "Apache-2.0"
 
