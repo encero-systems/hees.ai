@@ -7,7 +7,7 @@
     - RFC 000 (Foundational Governance Authority)
     - RFC 003 (Governed Memory and Retrieval Results) — complementary, not a dependency; see [Relationship to RFC 003](#relationship-to-rfc-003)
     - RFC 005 (Canonical Package Artifact Admission)
-- **Issue:** — (not yet filed; see Open questions)
+- **Issue:** https://github.com/encero-systems/hees.ai/issues/35
 - **RFC PR:** —
 - **Written against:** Hees.ai 0.0.1 / Incan 0.5
 - **Shipped in:** —
@@ -220,4 +220,4 @@ A caller must implement its own persistence adapter to get any value from this c
 - Does a continuity decision need any receipt/Content DNA export at all, or is it purely an internal admission signal that a *separate* delivery decision's receipt may reference by event id?
 - Should this RFC define exact byte-size/collection bounds (identifiers, phase counts, schedule counts) the way RFC 003 does, given `governed_continuity.incn` does not currently enforce any?
 - The phase-graph-forward-only acyclicity rule forbids expressing an intentional bounded revisit/loop. Is that an acceptable permanent restriction, or should a future revision add an explicit, bounded loop declaration?
-- No proposal issue exists yet for this RFC. Per this repo's process, one should be opened (and discussed) before this document moves past `Draft`.
+- Proposal issue [#35](https://github.com/encero-systems/hees.ai/issues/35) is now filed; this document should stay `Draft` until that discussion resolves.

@@ -7,7 +7,7 @@
     - RFC 000 (Foundational Governance Authority)
     - RFC 003 (Governed Memory and Retrieval Results) — complementary, not a dependency; see [Relationship to RFC 003](#relationship-to-rfc-003)
     - RFC 013 (Governed Continuity — Goal, Schedule, and Session Admission) — independent, commonly co-deployed
-- **Issue:** — (not yet filed; see Open questions)
+- **Issue:** https://github.com/encero-systems/hees.ai/issues/36
 - **RFC PR:** —
 - **Written against:** Hees.ai 0.0.1 / Incan 0.5
 - **Shipped in:** —
@@ -208,4 +208,4 @@ The composition question with RFC 003 (does every RFC-003-accepted record still 
 - Should the admission-reason vocabulary be frozen into a closed, namespaced table as part of this RFC?
 - Should this RFC define exact byte-size/collection bounds, given `governed_memory_operations.incn` does not currently enforce any beyond structural non-emptiness?
 - `key_is_allowed`'s empty-list-means-unrestricted semantics reads easy to misuse; worth a naming or shape revision before this leaves Draft?
-- No proposal issue exists yet for this RFC. Per this repo's process, one should be opened (and discussed) before this document moves past `Draft`.
+- Proposal issue [#36](https://github.com/encero-systems/hees.ai/issues/36) is now filed; this document should stay `Draft` until that discussion resolves.
