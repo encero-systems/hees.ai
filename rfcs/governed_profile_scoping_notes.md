@@ -1,7 +1,22 @@
-# Scoping notes: `governed_profile*` RFC stabilization (not an RFC)
+# Scoping notes: `governed_profile*` RFC stabilization
 
 Written 2026-08-19 while triaging what else in the promoted kernel commit (`ba4e24a`) needs RFC-track
-stabilization, alongside RFC 013/014. This is deliberately **not** a drafted RFC — see rationale below.
+stabilization, alongside RFC 013/014.
+
+**Update, same night:** after writing the first version of this note (below, preserved as-is), there was still
+plenty of time left before the morning, so instead of leaving this as a permanent punt, RFC 000/001/002/006 were
+read in full and the actual `governed_profile*` source was read end to end. That closer look showed the module is
+a *narrower, simpler* thing than "generalizes RFC 000/001/002/006" made it sound — it reuses the existing Hees
+0.0.1 kernel for structural admission and only implements a small, already-proven five-outcome-kind pattern (no
+repair, no constraint composability, no behavior envelopes, one Content DNA state, one receipt kind), not those
+RFCs' full elaborate designs. That made it possible to draft an honest RFC after all:
+[RFC 015](015-generic-governed-profile-evaluation.md), whose relationship sections are explicit about every real
+delta from RFC 001/002/006 rather than claiming conformance. The superseding-vs-generalizing question against RFC
+010 raised below is still real and still unresolved — RFC 015 names it explicitly as an open question rather than
+answering it — but "draft nothing until that's settled" turned out to be too conservative once the actual scope
+was understood. The original reasoning is kept below for the record.
+
+---
 
 ## What `governed_profile*` is
 
