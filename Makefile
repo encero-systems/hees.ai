@@ -9,7 +9,7 @@ CONSOLE_SOURCE := src/main.incn
 CONSOLE_NATIVE_TEST := tests/native_console_test.incn
 CONSOLE_PROVIDER_TEST := tests/test_provider.incn
 CONSOLE_LOCK := $(abspath incan.lock)
-CONSOLE_BINARY := $(abspath $(CONSOLE_ROOT)/target/incan/.cargo-target/release/hees_console)
+CONSOLE_BINARY := $(abspath $(CONSOLE_ROOT)/target/incan/hees_console/oven/release/hees_console)
 CONSOLE_BUILD_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/build-report.json)
 CONSOLE_RELEASE_TOOL := $(abspath $(CONSOLE_ROOT)/packaging/release_candidate.sh)
 CONSOLE_RELEASE_TEST := $(abspath $(CONSOLE_ROOT)/packaging/test_release_candidate.sh)
@@ -21,7 +21,7 @@ DOCS_PAGES_PUBLISH_TOOL := $(abspath workspaces/docs-site/packaging/publish_page
 DOCS_PAGES_PUBLISH_TEST := $(abspath workspaces/docs-site/packaging/test_publish_pages.sh)
 CONSOLE_GENERATED_ROOT := $(abspath $(CONSOLE_ROOT)/target/incan/hees_console)
 CONSOLE_RUNNER_ROOT := $(abspath $(CONSOLE_ROOT)/runner)
-CONSOLE_RUNNER_BINARY := $(CONSOLE_RUNNER_ROOT)/target/incan/.cargo-target/release/hees_runner
+CONSOLE_RUNNER_BINARY := $(CONSOLE_RUNNER_ROOT)/target/incan/hees_runner/oven/release/hees_runner
 CONSOLE_COMPATIBILITY_ROOT := $(abspath $(CONSOLE_ROOT)/contracts/domain/kernel_compatibility)
 CONSOLE_GENERATED_LICENSE_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/THIRD_PARTY_LICENSES.md)
 LICENSE_CONFIG_ROOT := $(abspath tools/licenses)
@@ -29,7 +29,8 @@ INCAN_RESOLVED := $(shell command -v "$(INCAN)" 2>/dev/null || printf '%s' "$(IN
 INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
 INCAN_PROVIDER_HOME := $(abspath $(if $(INCAN_HOME),$(INCAN_HOME),$(HOME)/.incan))
 CONSOLE_RUSTFLAGS := --remap-path-prefix=$(HOME)=/toolchain-home --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain --remap-path-prefix=$(INCAN_PROVIDER_HOME)=/incan-provider-cache $(if $(INCAN_TOOLCHAIN_CRATES_DIR),--remap-path-prefix=$(INCAN_TOOLCHAIN_CRATES_DIR)=/incan-toolchain-crates) $(if $(INCAN_STDLIB),--remap-path-prefix=$(INCAN_STDLIB)=/incan-stdlib)
-INCAN_REQUIRED_VERSION := incan 0.5.0-dev.23
+INCAN_REQUIRED_VERSION := incan 0.5.1
+RUST_PREFETCH_ROOT := $(abspath target/rust-prefetch)
 RELEASE_OUTPUT ?= $(abspath $(CONSOLE_ROOT)/target/release)
 RELEASE_PLATFORM ?=
 PAGES_OUTPUT ?=
@@ -38,21 +39,48 @@ PAGES_BRANCH ?=
 SOURCE_COMMIT ?= $(shell git rev-parse HEAD)
 SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct HEAD)
 
-.PHONY: fmt lib test consumer example boundary boundary-self-test docs docs-pages-contract-test docs-pages-publish-contract-test docs-pages-stage docs-pages-publish ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-set-test console-release-lint
+.PHONY: rust-prefetch bake-lib bake-consumer bake-example bake-console bake-runner bake-kernel-compatibility fmt lib test consumer example boundary boundary-self-test docs docs-pages-contract-test docs-pages-publish-contract-test docs-pages-stage docs-pages-publish ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-set-test console-release-lint
 
 fmt:
 	$(INCAN) fmt --check .
 
-lib:
+# Oven runs Cargo offline once a project lock exists, so a fresh machine fetches every declared crate, for all
+# platforms, before its first bake.
+rust-prefetch:
+	@mkdir -p $(RUST_PREFETCH_ROOT)/src
+	@{ printf '[package]\nname = "hees_rust_prefetch"\nversion = "0.0.0"\nedition = "2021"\n\n[dependencies]\n'; awk '/^\[workspace\.rust-dependencies\]/{f=1;next} /^\[/{f=0} f' incan.toml; } > $(RUST_PREFETCH_ROOT)/Cargo.toml
+	@: > $(RUST_PREFETCH_ROOT)/src/lib.rs
+	cargo fetch --manifest-path $(RUST_PREFETCH_ROOT)/Cargo.toml
+
+# Incan 0.5.1 Oven builds reuse only explicitly baked, sealed project Loafs; normal build, run and test never bake.
+bake-lib:
+	$(INCAN) oven bake --project .
+
+bake-consumer: bake-lib
+	cd workspaces/external-consumer && $(INCAN) oven bake --project .
+
+bake-example: bake-lib
+	cd examples/minimal_governed_agent && $(INCAN) oven bake --project .
+
+bake-console: bake-lib
+	cd $(CONSOLE_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) oven bake --project .
+
+bake-runner: bake-lib
+	cd $(CONSOLE_RUNNER_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) oven bake --project .
+
+bake-kernel-compatibility: bake-lib
+	cd $(CONSOLE_COMPATIBILITY_ROOT) && $(INCAN) oven bake --project .
+
+lib: bake-lib
 	$(INCAN) build --lib --member $(HEES_MEMBER) $(INCAN_FLAGS)
 
-test:
+test: bake-lib
 	$(INCAN) test --member $(HEES_MEMBER) tests $(INCAN_FLAGS) --fail-on-empty
 
-consumer: lib
+consumer: lib bake-consumer
 	cd workspaces/external-consumer && $(INCAN) test tests $(INCAN_FLAGS) --fail-on-empty
 
-example: lib
+example: lib bake-example
 	cd examples/minimal_governed_agent && $(INCAN) run src/main.incn $(INCAN_FLAGS)
 
 boundary:
@@ -80,24 +108,24 @@ docs-pages-publish:
 	@test -n "$(PAGES_BRANCH)" || { echo "PAGES_BRANCH is required" >&2; exit 1; }
 	$(DOCS_PAGES_PUBLISH_TOOL) --site "$(PAGES_OUTPUT)" --source-commit "$(SOURCE_COMMIT)" --remote "$(PAGES_REMOTE)" --branch "$(PAGES_BRANCH)" --publish
 
-console-build:
+console-build: bake-console
 	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "hees.ai console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	@mkdir -p "$(dir $(CONSOLE_BUILD_REPORT))"
 	RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build --lib --member $(HEES_MEMBER) $(INCAN_FLAGS)
 	cd $(CONSOLE_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build $(CONSOLE_SOURCE) $(INCAN_FLAGS) --release --report json --report-output $(CONSOLE_BUILD_REPORT)
 	@test -x "$(CONSOLE_BINARY)" || { echo "pinned Incan did not emit $(CONSOLE_BINARY)" >&2; exit 1; }
 
-console-test:
+console-test: bake-console
 	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "hees.ai console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	cd $(CONSOLE_ROOT) && $(INCAN) test $(CONSOLE_NATIVE_TEST) $(INCAN_FLAGS) --fail-on-empty
 	cd $(CONSOLE_ROOT) && $(INCAN) test $(CONSOLE_PROVIDER_TEST) $(INCAN_FLAGS) --fail-on-empty
 
-console-runner-build:
+console-runner-build: bake-runner
 	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "hees.ai console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	cd $(CONSOLE_RUNNER_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) build src/main.incn $(INCAN_FLAGS) --release
 	@test -x "$(CONSOLE_RUNNER_BINARY)" || { echo "pinned Incan did not emit $(CONSOLE_RUNNER_BINARY)" >&2; exit 1; }
 
-console-kernel-compatibility:
+console-kernel-compatibility: bake-kernel-compatibility
 	@test "$$($(INCAN) --version)" = "$(INCAN_REQUIRED_VERSION)" || { echo "hees.ai console requires $(INCAN_REQUIRED_VERSION)" >&2; exit 1; }
 	cd $(CONSOLE_COMPATIBILITY_ROOT) && $(INCAN) run src/main.incn $(INCAN_FLAGS)
 

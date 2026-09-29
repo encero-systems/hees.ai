@@ -33,7 +33,7 @@ enum StyledRow:
 def is_terminal_control(character: str) -> bool:
     """Recognize C0, delete, and C1 controls from one Unicode scalar's UTF-8 bytes."""
 
-    bytes = RustString.as_bytes(character)
+    bytes = RustString.from(character).into_bytes()
     if len(bytes) == 1:
         return bytes[0] < 32 or bytes[0] == 127
     return len(bytes) == 2 and bytes[0] == 194 and bytes[1] >= 128 and bytes[1] <= 159
@@ -42,7 +42,7 @@ def is_terminal_control(character: str) -> bool:
 def is_bidi_control(character: str) -> bool:
     """Recognize invisible directional controls that can visually reorder authority-bearing text."""
 
-    bytes = RustString.as_bytes(character)
+    bytes = RustString.from(character).into_bytes()
     if len(bytes) == 2 and bytes[0] == 216 and bytes[1] == 156:
         return true
     if len(bytes) != 3:
@@ -69,14 +69,14 @@ def escape_terminal_hazards(value: str) -> str:
 pub def terminal_cell_width(value: str) -> int:
     """Measure rendered terminal cells through the narrow unicode-width Rust interop boundary."""
 
-    return int(UnicodeWidthStr.width(RustString.as_str(value)))
+    return int(UnicodeWidthStr.width(RustString.from(value).as_str()))
 
 
 def terminal_graphemes(value: str) -> list[str]:
     """Split printable text at extended grapheme boundaries through a narrow Rust interop boundary."""
 
     mut result: list[str] = []
-    for grapheme in UnicodeSegmentation.graphemes(RustString.as_str(value), true):
+    for grapheme in UnicodeSegmentation.graphemes(RustString.from(value).as_str(), true):
         result.append(f"{grapheme}")
     return result
 
