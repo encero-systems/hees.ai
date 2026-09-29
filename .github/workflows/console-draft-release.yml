@@ -62,6 +62,8 @@ jobs:
             echo "INCAN_STDLIB=$install_root/source/crates/incan_stdlib/stdlib"
             echo "INCAN_TOOLCHAIN_CRATES_DIR=$install_root/source/crates"
           } >> "$GITHUB_ENV"
+      - name: Prefetch declared Rust crates for offline Oven bakes
+        run: make rust-prefetch
       - name: Audit the locked native license graph
         run: >-
           make console-license-audit
@@ -120,6 +122,8 @@ jobs:
           prepare-incan
           --platform "$RELEASE_PLATFORM"
           --destination "$INCAN_ROOT"
+      - name: Prefetch declared Rust crates for offline Oven bakes
+        run: make rust-prefetch
       - name: Build and clean-smoke the release archive
         run: >-
           make console-release-candidate

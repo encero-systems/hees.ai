@@ -59,5 +59,7 @@ jobs:
           tar -xzf "$archive" -C "$install_root" mdbook
           test "$("$install_root/mdbook" --version)" = "mdbook v0.5.4"
           printf '%s\n' "$install_root" >> "$GITHUB_PATH"
+      - name: Prefetch declared Rust crates for offline Oven bakes
+        run: make rust-prefetch
       - name: Verify repository
         run: make ci INCAN="$INCAN_BIN"

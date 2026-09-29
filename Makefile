@@ -30,6 +30,7 @@ INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
 INCAN_PROVIDER_HOME := $(abspath $(if $(INCAN_HOME),$(INCAN_HOME),$(HOME)/.incan))
 CONSOLE_RUSTFLAGS := --remap-path-prefix=$(HOME)=/toolchain-home --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain --remap-path-prefix=$(INCAN_PROVIDER_HOME)=/incan-provider-cache $(if $(INCAN_TOOLCHAIN_CRATES_DIR),--remap-path-prefix=$(INCAN_TOOLCHAIN_CRATES_DIR)=/incan-toolchain-crates) $(if $(INCAN_STDLIB),--remap-path-prefix=$(INCAN_STDLIB)=/incan-stdlib)
 INCAN_REQUIRED_VERSION := incan 0.5.1
+RUST_PREFETCH_ROOT := $(abspath target/rust-prefetch)
 RELEASE_OUTPUT ?= $(abspath $(CONSOLE_ROOT)/target/release)
 RELEASE_PLATFORM ?=
 PAGES_OUTPUT ?=
@@ -38,10 +39,18 @@ PAGES_BRANCH ?=
 SOURCE_COMMIT ?= $(shell git rev-parse HEAD)
 SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct HEAD)
 
-.PHONY: bake-lib bake-console bake-runner bake-kernel-compatibility fmt lib test consumer example boundary boundary-self-test docs docs-pages-contract-test docs-pages-publish-contract-test docs-pages-stage docs-pages-publish ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-set-test console-release-lint
+.PHONY: rust-prefetch bake-lib bake-console bake-runner bake-kernel-compatibility fmt lib test consumer example boundary boundary-self-test docs docs-pages-contract-test docs-pages-publish-contract-test docs-pages-stage docs-pages-publish ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-set-test console-release-lint
 
 fmt:
 	$(INCAN) fmt --check .
+
+# Oven runs Cargo offline once a project lock exists, so a fresh machine fetches every declared crate, for all
+# platforms, before its first bake.
+rust-prefetch:
+	@mkdir -p $(RUST_PREFETCH_ROOT)/src
+	@{ printf '[package]\nname = "hees_rust_prefetch"\nversion = "0.0.0"\nedition = "2021"\n\n[dependencies]\n'; awk '/^\[workspace\.rust-dependencies\]/{f=1;next} /^\[/{f=0} f' incan.toml; } > $(RUST_PREFETCH_ROOT)/Cargo.toml
+	@: > $(RUST_PREFETCH_ROOT)/src/lib.rs
+	cargo fetch --manifest-path $(RUST_PREFETCH_ROOT)/Cargo.toml
 
 # Incan 0.5.1 Oven builds reuse only explicitly baked, sealed project Loafs; normal build, run and test never bake.
 bake-lib:
