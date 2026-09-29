@@ -47,6 +47,8 @@ jobs:
           printf '%s  %s\n' "$INCAN_ARCHIVE_SHA256" "$archive" | sha256sum --check --strict
           tar -xzf "$archive" -C "$install_root"
           test "$("$install_root/bin/incan" --version)" = "incan 0.5.1"
+          # Oven bakes run Cargo offline against the toolchain's locked support crates.
+          cargo fetch --locked --manifest-path "$install_root/crates/Cargo.toml"
           {
             echo "INCAN_BIN=$install_root/bin/incan"
             echo "INCAN_HOME=$RUNNER_TEMP/incan-home"
