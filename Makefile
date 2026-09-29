@@ -39,7 +39,7 @@ PAGES_BRANCH ?=
 SOURCE_COMMIT ?= $(shell git rev-parse HEAD)
 SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct HEAD)
 
-.PHONY: rust-prefetch bake-lib bake-console bake-runner bake-kernel-compatibility fmt lib test consumer example boundary boundary-self-test docs docs-pages-contract-test docs-pages-publish-contract-test docs-pages-stage docs-pages-publish ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-set-test console-release-lint
+.PHONY: rust-prefetch bake-lib bake-consumer bake-example bake-console bake-runner bake-kernel-compatibility fmt lib test consumer example boundary boundary-self-test docs docs-pages-contract-test docs-pages-publish-contract-test docs-pages-stage docs-pages-publish ci console-build console-test console-runner-build console-kernel-compatibility console-native-smoke console-license-audit console-release-candidate console-release-contract-test console-release-set-test console-release-lint
 
 fmt:
 	$(INCAN) fmt --check .
@@ -56,6 +56,12 @@ rust-prefetch:
 bake-lib:
 	$(INCAN) oven bake --project .
 
+bake-consumer: bake-lib
+	cd workspaces/external-consumer && $(INCAN) oven bake --project .
+
+bake-example: bake-lib
+	cd examples/minimal_governed_agent && $(INCAN) oven bake --project .
+
 bake-console: bake-lib
 	cd $(CONSOLE_ROOT) && RUSTFLAGS="$(CONSOLE_RUSTFLAGS)" $(INCAN) oven bake --project .
 
@@ -71,10 +77,10 @@ lib: bake-lib
 test: bake-lib
 	$(INCAN) test --member $(HEES_MEMBER) tests $(INCAN_FLAGS) --fail-on-empty
 
-consumer: lib
+consumer: lib bake-consumer
 	cd workspaces/external-consumer && $(INCAN) test tests $(INCAN_FLAGS) --fail-on-empty
 
-example: lib
+example: lib bake-example
 	cd examples/minimal_governed_agent && $(INCAN) run src/main.incn $(INCAN_FLAGS)
 
 boundary:
