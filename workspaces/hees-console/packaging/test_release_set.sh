@@ -50,6 +50,23 @@ expect_failure() {
     pass "$label"
 }
 
+assert_pinned_incan_release_archive() {
+    workflow_file=$1
+    workflow_name=$(basename -- "$workflow_file")
+    [ "$(grep -Fc "install_root=\"\$RUNNER_TEMP/incan-0.5.1\"" "$workflow_file")" -eq 1 ] ||
+        fail "$workflow_name does not bind the Incan release archive to the pinned install root"
+    [ "$(grep -Fc "echo \"INCAN_HOME=\$RUNNER_TEMP/incan-home\"" "$workflow_file")" -eq 1 ] ||
+        fail "$workflow_name does not isolate the pinned Incan provider home"
+    grep -Fq "releases/download/v0.5.1/incan-v0.5.1-x86_64-unknown-linux-gnu.tar.gz" "$workflow_file" ||
+        fail "$workflow_name does not install the pinned Incan release archive"
+    grep -Eq "INCAN_ARCHIVE_SHA256: [0-9a-f]{64}$" "$workflow_file" ||
+        fail "$workflow_name does not pin the Incan release archive checksum"
+    grep -Fq 'sha256sum --check --strict' "$workflow_file" ||
+        fail "$workflow_name does not verify the Incan release archive checksum"
+    ! grep -Fq "INCAN_STDLIB=" "$workflow_file" ||
+        fail "$workflow_name redirects the release toolchain to a source stdlib"
+}
+
 assert_pinned_incan_roots() {
     workflow_file=$1
     expected_count=$2
@@ -271,7 +288,7 @@ do
     grep -Fq -- "- platform: $platform" "$candidate_workflow" || fail "candidate workflow omits $platform"
 done
 assert_pinned_incan_roots "$candidate_workflow" 2
-assert_pinned_incan_roots "$REPOSITORY_ROOT/.github/workflows/ci.yml" 1
+assert_pinned_incan_release_archive "$REPOSITORY_ROOT/.github/workflows/ci.yml"
 pass "release platform contract matches the candidate matrix"
 
 printf '1..%s\n' "$PASS_COUNT"
