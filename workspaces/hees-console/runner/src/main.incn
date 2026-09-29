@@ -33,6 +33,7 @@ from std.json import JsonValue
 from std.serde import json
 
 const MAX_REQUEST_BYTES: int = 262144
+const MAX_REQUEST_READ_LIMIT: u64 = 262145
 const MAX_RESPONSE_BYTES: int = 65536
 const MAX_JSON_NESTING: int = 16
 const REQUEST_CONTRACT: str = "console_runner_request_0_1"
@@ -307,7 +308,7 @@ def read_request_line() -> Result[str, str]:
     """Read exactly one bounded UTF-8 JSON record with a terminal LF."""
     mut source: str = ""
     input = stdin()
-    match input.take(MAX_REQUEST_BYTES + 1).read_to_string(source):
+    match input.take(MAX_REQUEST_READ_LIMIT).read_to_string(source):
         Err(_) => return Err("stdin_io")
         Ok(bytes_read) =>
             if int(bytes_read) > MAX_REQUEST_BYTES:

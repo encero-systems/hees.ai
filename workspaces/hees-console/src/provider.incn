@@ -53,6 +53,7 @@ const RESPONSES_ENDPOINT: str = "https://api.openai.com/v1/responses"
 const API_KEY_ENVIRONMENT: str = "OPENAI_API_KEY"
 const REASONING_EFFORT: str = "low"
 const MAX_PROVIDER_ENVELOPE_BYTES: int = 131_072
+const MAX_PROVIDER_ENVELOPE_READ_LIMIT: u64 = 131_073
 pub const MAX_JSON_NESTING: int = 16
 const PROPOSAL_OUTPUT_BYTES: int = 32_768
 const OBSERVATION_OUTPUT_BYTES: int = 8_192
@@ -1296,7 +1297,7 @@ def send_https(api_key: str, request_body: str) -> Result[str, ProviderFailure]:
         Ok(response) =>
             mut body: bytes = b""
             reader = response.into_reader()
-            match reader.take(MAX_PROVIDER_ENVELOPE_BYTES + 1).read_to_end(body):
+            match reader.take(MAX_PROVIDER_ENVELOPE_READ_LIMIT).read_to_end(body):
                 Err(_) => return Err(ProviderFailure.TransportFailure)
                 Ok(_) =>
                     if len(body) > MAX_PROVIDER_ENVELOPE_BYTES:
