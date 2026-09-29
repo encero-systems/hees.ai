@@ -576,7 +576,7 @@ def test_full_screen_carries_the_exact_build_week_product_line() -> None:
     assert_eq(browser.contains("CANDIDATE DRAFT"), true)
     assert_eq(browser.contains("candidate only · not active"), true)
     assert_eq(browser.contains("general package validator."), true)
-    assert_eq(browser.contains("safe profile-activation"), true)
+    assert_eq(browser.contains("profile-activation authority API."), true)
     assert_eq(browser.contains("authority API."), true)
     assert_eq(browser.ends_with("\n"), false)
     escape = assert_is_ok(ControlPayload.from_json("{\"value\":\"\\u001b\"}"))

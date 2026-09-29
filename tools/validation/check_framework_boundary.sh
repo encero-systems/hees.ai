@@ -53,6 +53,8 @@ scan_tracked_paths() {
         case "$path" in
             .agents/skills/create-pr-description/SKILL.md | .agents/skills/write-commit-message/SKILL.md)
                 ;;
+            .claude/skills | scripts/claude_hooks/dispatch.py)
+                ;;
             .env.example | */.env.example)
                 ;;
             .env | */.env | .env.* | */.env.* | *.key | *.pem | *.p12 | *.pfx)
@@ -191,6 +193,8 @@ while IFS= read -r path; do
         *.mjs | *.js | *.bin | *.pdf | *.pptx | *.docx | *.gguf | *.safetensors | *.onnx | *.zip | *.tar | *.tar.gz)
             fail "disallowed artifact type is present: ${path#./}"
             ;;
+        ./scripts/claude_hooks/dispatch.py)
+            ;;
         *.incn | *.md | *.json | *.toml | *.lock | *.sh | *.hbs | *.yml | *.yaml | *.txt | *.ndjson | *.css | *.png | ./.editorconfig | ./.gitattributes | ./.gitignore | */.gitignore | ./LICENSE | ./NOTICE | ./Makefile)
             ;;
         *)
@@ -202,6 +206,9 @@ done < <(find . -type f -print | sort)
 while IFS= read -r path; do
     case "$path" in
         ./.git | ./.git/* | ./.agents/* | ./target/* | */target/* | */site/*) continue ;;
+        ./.claude/skills)
+            [[ "$(readlink "$path")" == "../.agents/skills" ]] || fail "symbolic link target is outside the repository skills directory: ${path#./}"
+            ;;
         *) fail "symbolic links are not allowed in the publication candidate: ${path#./}" ;;
     esac
 done < <(find . -type l -print | sort)
