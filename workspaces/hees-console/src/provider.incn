@@ -525,7 +525,7 @@ def observation_identity_schema(
 def relation_output_schema() -> JsonValue:
     """Construct the strict raw relation schema whose fingerprints are host-added."""
 
-    fields = observation_identity_schema(
+    mut fields = observation_identity_schema(
         "console_relation_observation_0_1",
         ["evidence_relation", "contradiction_cross_check"],
         ["visible_unit_union", "support_claim_memory", "proposal_union"],
@@ -539,7 +539,7 @@ def relation_output_schema() -> JsonValue:
 def synthesis_output_schema() -> JsonValue:
     """Construct the strict raw synthesis schema whose fingerprints are host-added."""
 
-    fields = observation_identity_schema(
+    mut fields = observation_identity_schema(
         "console_synthesis_observation_0_1",
         ["synthesis_coverage"],
         ["request_coverage", "requirement_coverage"],

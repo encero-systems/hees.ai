@@ -21,4 +21,8 @@ All notable changes will be recorded here.
 - Native packaging and release-validation workflows for Linux and macOS candidates, including checksums, provenance, dependency notices, leakage scans, and extracted-archive smoke tests. macOS artifacts are not Developer ID-signed and not notarized; linker ad-hoc signing may exist solely for local execution and conveys no publisher identity. The tagged Release is the sole source of artifact availability and platform claims.
 - Governance-profile, architecture, testing, release, video, and Devpost documentation for the bounded Console profile and its permanent product direction.
 
+### Changed
+
+- The repository builds with commit-pinned Incan `0.6.0-dev.6`. Manifests are named `loaf.toml` and the canonical lock is `oven.lock`. CI builds the pinned compiler from source.
+
 The `0.1.0` release contract is limited to the tagged source and the explicitly published artifacts, platforms, and checksums attached to that tag.

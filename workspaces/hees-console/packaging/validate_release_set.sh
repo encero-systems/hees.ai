@@ -94,10 +94,10 @@ validate_manifest() {
                 .source.tree_state == "clean" and
                 (.source.date_epoch | type == "number" and . >= 0) and
                 .toolchain.compiler == "incan" and
-                .toolchain.compiler_version == "0.5.1" and
+                .toolchain.compiler_version == "0.6.0-dev.6" and
                 .toolchain.source_repository == "https://github.com/encero-systems/incan.git" and
-                .toolchain.source_commit == "864ee9243eac9454e3dad5c34b032851038b8c93" and
-                .dependencies.incan_lock_file == "incan.lock" and
+                .toolchain.source_commit == "614df3645bfd213d9f1b867acac066ed051b5542" and
+                .dependencies.incan_lock_file == "oven.lock" and
                 (.dependencies.incan_lock_sha256 | test("^[0-9a-f]{64}$")) and
                 .guidance.running_file == "RUNNING.txt" and
                 (.guidance.running_sha256 | test("^[0-9a-f]{64}$")) and
