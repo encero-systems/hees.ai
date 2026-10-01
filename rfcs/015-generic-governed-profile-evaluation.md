@@ -264,9 +264,9 @@ Independent. This module never calls `evaluate_continuity` or `evaluate_memory_o
 
 ## Alternatives considered
 
-### Wait for RFC 001/004/007/008/009 to be implemented before building anything
+### Build on RFC 001/004/007/008/009 instead
 
-Rejected: those RFCs are appropriately elaborate for the general case, and none is implemented yet (RFC 001 is still Draft; RFC 004, 007, 008, and 009 are Planned). A package that only needs to answer, guide, refuse, and escalate should not wait for them. A narrower subset serves that shape without weakening any of RFC 000's authority invariants.
+Rejected: those RFCs are appropriately elaborate for the general case, and this module neither implements nor depends on them. A package that only needs to answer, guide, refuse, and escalate should not have to wait for that broader design. A narrower subset serves that shape without weakening any of RFC 000's authority invariants.
 
 ### Call this module "Spectrum"
 
@@ -274,11 +274,11 @@ Rejected. Reusing RFC 001's name for a materially narrower contract (no repair, 
 
 ### Fold Content DNA and receipt construction into RFC 002/006 directly
 
-Rejected for now. RFC 002/006 are Draft and unimplemented; retrofitting this module's simpler shapes into their schemas would require resolving the same conformance gaps (`no_answer` state, `source_digests`, receipt kinds) this RFC deliberately defers rather than papering over.
+Rejected for now. Retrofitting this module's simpler shapes into the RFC 002/006 schemas would require resolving the same conformance gaps (`no_answer` state, `source_digests`, receipt kinds) this RFC deliberately defers rather than papering over.
 
 ## Drawbacks
 
-Three Draft RFCs (001, 002, 006) already claim ownership of the general shape of what this module does, and this RFC's relationship sections are, by necessity, "close to, but not," for all three — a reviewer has to hold several nuanced deltas in mind rather than one clean "implements RFC N" statement. Three admitted decisions (no repair, no clarification, no constraint composability) may not be enough for a future package with more complex response needs, at which point this module and RFC 001's eventual full implementation would need a real reconciliation rather than just living side by side. The single Content DNA state (no `no_answer` representation) means a non-`deliver` decision is silently provenance-free rather than explicitly marked as such.
+Three other RFCs (001, 002, 006) already claim ownership of the general shape of what this module does, and this RFC's relationship sections are, by necessity, "close to, but not," for all three — a reviewer has to hold several nuanced deltas in mind rather than one clean "implements RFC N" statement. Three admitted decisions (no repair, no clarification, no constraint composability) may not be enough for a future package with more complex response needs, at which point this module and RFC 001's eventual full implementation would need a real reconciliation rather than just living side by side. The single Content DNA state (no `no_answer` representation) means a non-`deliver` decision is silently provenance-free rather than explicitly marked as such.
 
 ## Layers affected
 
