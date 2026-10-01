@@ -29,11 +29,27 @@ from crate.governed_profile import (
     digest_governed_memory_provenance,
     digest_governed_profile_package,
     digest_governed_proposal,
+    evaluate_governed_profile_in_memory_context,
     evaluate_governed_profile_with_artifacts,
     governed_proposal,
     validate_governed_profile_package,
 )
 from crate.content_dna import digest_canonical_json
+from crate.governed_memory_retrieval import admit_memory_result
+from crate.governed_memory_retrieval_declaration import AdmittedMemoryPackage, admit_memory_declaration
+from crate.governed_memory_retrieval_models import (
+    GovernedMemoryAtom,
+    GovernedMemoryDeclaration,
+    MemoryAdmissionRecord,
+    MemoryNomination,
+    MemoryProviderBinding,
+    MemoryProviderResult,
+    MemoryRequest,
+    MemoryReviewStatus,
+    MemoryRuntimeRights,
+    MemoryValidity,
+    MemoryValidityMode,
+)
 from crate.governed_profile_artifacts import GOVERNED_CONTENT_DNA_TYPE_TAG, GOVERNED_RECEIPT_TYPE_TAG
 from crate.governed_profile_identity import (
     GOVERNED_ANSWER_TYPE_TAG,
@@ -1961,3 +1977,169 @@ def test_committee_policy_is_validated() -> None:
     mut lenient = unwitnessed_package().policy
     lenient.require_all_passed = false
     assert_eq(rejection(with_policy(lenient)), "unsupported_committee_policy")
+# Memory context handoff
+
+
+const RETRIEVAL_FINGERPRINT: str = "1111111111111111111111111111111111111111111111111111111111111111"
+
+
+def retrieval_binding() -> MemoryProviderBinding:
+    """Return the provider binding the fictional retrieval declaration approves."""
+
+    return MemoryProviderBinding(
+        provider_id="lantern_retriever",
+        provider_contract_version="0.1",
+        adapter_version="1.0.0",
+        configuration_fingerprint=f"{RETRIEVAL_FINGERPRINT}",
+        index_fingerprint=f"{RETRIEVAL_FINGERPRINT}",
+        corpus_fingerprint=f"{RETRIEVAL_FINGERPRINT}",
+    )
+
+
+def retrieval_atom(identifier: str) -> GovernedMemoryAtom:
+    """Return an eligible retrieval atom whose identifier matches a profile memory atom."""
+
+    return GovernedMemoryAtom(
+        id=identifier,
+        corpus_version="1.0",
+        corpus_fingerprint=f"{RETRIEVAL_FINGERPRINT}",
+        claim="A reviewed Lantern Path statement.",
+        guidance="Use the reviewed Lantern Path statement.",
+        applicability="Applies to Lantern Path questions.",
+        source_ref="lantern-path/handbook",
+        source_fingerprint=f"{RETRIEVAL_FINGERPRINT}",
+        review_status=MemoryReviewStatus.Approved,
+        runtime_rights=MemoryRuntimeRights.Allowed,
+        authority_class_id="reviewed_lesson",
+        risk_class_id="low",
+        sensitivity_class_id="public",
+        validity=MemoryValidity(mode=MemoryValidityMode.Indefinite, valid_from_ms=0, valid_until_ms=None),
+        labels=[],
+    )
+
+
+def retrieval_package(package_name: str) -> AdmittedMemoryPackage:
+    """Admit a retrieval declaration named ``package_name`` that covers the profile fixture's memory identifiers."""
+
+    declaration = GovernedMemoryDeclaration(
+        package_id=package_name,
+        domain_id="fictional_lesson_support",
+        package_revision="1.0",
+        provider_bindings=[retrieval_binding()],
+        authority_class_ids=["reviewed_lesson"],
+        risk_class_ids=["low"],
+        sensitivity_class_ids=["public"],
+        atoms=[retrieval_atom("lantern_atom_card_order"), retrieval_atom("lantern_atom_pacing"), retrieval_atom(
+            "lantern_atom_reflection",
+        )],
+    )
+    return assert_is_ok(admit_memory_declaration(declaration))
+
+
+def retrieval_record(package_name: str, state: str, reason: str, memory_ids: list[str]) -> MemoryAdmissionRecord:
+    """Return the admission record for a provider result that nominates ``memory_ids``."""
+
+    admitted = retrieval_package(package_name)
+    identity = admitted.identity
+    mut nominations: list[MemoryNomination] = []
+    for index, memory_name in enumerate(memory_ids):
+        nominations.append(MemoryNomination(memory_id=memory_name, rank=index, relevance_bps=9000))
+    retrieval_request = MemoryRequest(
+        contract_version="0.1",
+        request_id="request_lantern",
+        package_id=identity.package_id,
+        domain_id=identity.domain_id,
+        package_revision=identity.package_revision,
+        package_semantic_identity=identity.package_semantic_identity.text(),
+        package_admission_binding=identity.package_admission_binding.text(),
+        query_text="Which card first?",
+        evaluation_time_ms=1000,
+    )
+    result = MemoryProviderResult(
+        contract_version="0.1",
+        request_id="request_lantern",
+        result_id="result_lantern",
+        state=state,
+        reason=reason,
+        binding=retrieval_binding(),
+        nominations=nominations,
+    )
+    return admit_memory_result(Some(admitted), retrieval_request, result)
+
+
+def evaluate_in_context(record: MemoryAdmissionRecord) -> CompleteGovernedEvaluation:
+    """Evaluate the two-atom answer proposal with a passing committee against ``record``."""
+
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    return evaluate_governed_profile_in_memory_context(
+        package,
+        bound,
+        proposal,
+        passed_committee(package, bound, proposal),
+        record,
+    )
+
+
+def test_proposal_citing_only_accepted_context_memory_is_delivered() -> None:
+    record = retrieval_record(
+        "lantern_path_lessons",
+        "complete",
+        "completed",
+        ["lantern_atom_pacing", "lantern_atom_card_order", "lantern_atom_reflection"],
+    )
+    assert_eq(record.reason, "accepted_complete")
+    result = evaluate_in_context(record)
+    assert_eq(result.spectrum.admitted, true)
+    assert_eq(result.spectrum.decision, "deliver")
+    assert_eq(len(result.selected_memory), 2)
+
+
+def test_proposal_citing_memory_outside_the_accepted_context_is_rejected() -> None:
+    record = retrieval_record("lantern_path_lessons", "complete", "completed", ["lantern_atom_card_order"])
+    assert_rejected_with_receipt(evaluate_in_context(record), "memory_not_in_accepted_context")
+
+    unavailable = retrieval_record("lantern_path_lessons", "unavailable", "index_unavailable", [])
+    assert_eq(unavailable.reason, "accepted_unavailable")
+    assert_rejected_with_receipt(evaluate_in_context(unavailable), "memory_not_in_accepted_context")
+
+
+def test_rejected_retrieval_record_supplies_no_context() -> None:
+    rejected = retrieval_record("lantern_path_lessons", "complete", "completed", ["lantern_atom_missing"])
+    assert_eq(rejected.reason, "unknown_memory_id")
+    assert_rejected_with_receipt(evaluate_in_context(rejected), "memory_context_not_accepted")
+
+    without_package = retrieval_record("lantern_path_lessons", "degraded", "completed", [])
+    assert_eq(without_package.reason, "unsupported_provider_state")
+    assert_rejected_with_receipt(evaluate_in_context(without_package), "memory_context_not_accepted")
+
+
+def test_context_for_another_package_is_rejected() -> None:
+    record = retrieval_record(
+        "other_lessons",
+        "complete",
+        "completed",
+        ["lantern_atom_card_order", "lantern_atom_pacing"],
+    )
+    assert_eq(record.reason, "accepted_complete")
+    assert_rejected_with_receipt(evaluate_in_context(record), "memory_context_package_mismatch")
+
+
+def test_refusal_needs_no_memory_from_an_accepted_context() -> None:
+    package = lantern_package()
+    bound = request("Give me an apple pie recipe.")
+    proposal = terminal_proposal(package, bound, "refuse_unsupported")
+    unavailable = retrieval_record("lantern_path_lessons", "unavailable", "index_unavailable", [])
+    result = evaluate_governed_profile_in_memory_context(package, bound, proposal, [], unavailable)
+    assert_eq(result.spectrum.decision, "refuse")
+
+
+def test_invalid_package_still_rejects_before_the_memory_context_rule() -> None:
+    record = retrieval_record("lantern_path_lessons", "complete", "completed", ["lantern_atom_card_order"])
+    mut package = lantern_package()
+    package.mission = "A mutated mission."
+    bound = request("Which card first?")
+    proposal = answer_proposal(lantern_package(), bound)
+    result = evaluate_governed_profile_in_memory_context(package, bound, proposal, [], record)
+    assert_rejected_without_receipt(result, "invalid_package")

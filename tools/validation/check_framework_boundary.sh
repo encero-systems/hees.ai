@@ -109,6 +109,7 @@ required_files=(
     src/governed_profile_committee.incn
     src/governed_profile_evaluation.incn
     src/governed_profile_identity.incn
+    src/governed_profile_memory_context.incn
     src/governed_profile_models.incn
     src/governed_profile_validation.incn
     src/identifiers.incn
@@ -179,6 +180,7 @@ allowed_source_modules=(
     src/governed_profile_committee.incn
     src/governed_profile_evaluation.incn
     src/governed_profile_identity.incn
+    src/governed_profile_memory_context.incn
     src/governed_profile_models.incn
     src/governed_profile_validation.incn
     src/identifiers.incn

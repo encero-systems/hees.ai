@@ -207,6 +207,7 @@ pub from governed_profile import (
     digest_governed_memory_provenance,
     digest_governed_profile_package,
     digest_governed_proposal,
+    evaluate_governed_profile_in_memory_context,
     evaluate_governed_profile_json,
     evaluate_governed_profile_with_artifacts,
     governed_proposal,

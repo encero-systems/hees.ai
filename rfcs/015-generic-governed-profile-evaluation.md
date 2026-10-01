@@ -258,6 +258,12 @@ RFC 001's Spectrum composes package, memory, constraint, behavior, and response 
 
 `console_profile_0_1` (implemented in the checked `0.0.1` library, per the top-level README) implements this pattern — profiles, evidence, memory, Training by Committee, governed interactions, terminal artifacts — for one fixed fictional Build Week package. This module is that pattern with the package itself as a runtime input instead of a hardcoded constant, so any package can use the same evaluation function. Whether RFC 010 comes to depend on this module, or the two remain independently evolving siblings, is an open question (see [Open questions](#open-questions)).
 
+### Relationship to RFC 003
+
+`evaluate_governed_profile_in_memory_context` is `evaluate_governed_profile_with_artifacts` with one more rule, applied after proposal validation (step 3) and before action resolution: the caller supplies the `MemoryAdmissionRecord` that RFC 003 retrieval admission returned, and the proposal may nominate only memory that record materialized. The rule rejects, in order, with `memory_context_not_accepted` (the record is not an accepted normalized record), `memory_context_package_mismatch` (it was evaluated for another package or domain identifier), and `memory_not_in_accepted_context` (the proposal nominates a memory identifier outside the record's materialized context). Each rejection carries a receipt. A proposal that nominates no memory, such as a refusal, passes against any accepted record, including an accepted `unavailable` one.
+
+The rule bridges the two contracts by identifier only. RFC 003 atoms and this module's `GovernedMemory` are separate models, and the nominated memory must still resolve in the profile package itself. The record is bound to the package by package and domain identifier; the package revision is not compared because the two contracts use different revision grammars.
+
 ### Relationship to RFC 013 and RFC 014
 
 Independent. This module never calls `evaluate_continuity` or `evaluate_memory_operation`, and neither of those calls this module. A caller may use all three together, but none has a structural dependency on another.
@@ -285,7 +291,7 @@ Three other RFCs (001, 002, 006) already claim ownership of the general shape of
 - **Public contract:** exported from the `governed_profile` facade and the library root:
     - types: `GovernedProfilePackage`, `GovernedAction`, `GovernedOutcomeKind`, `GovernedVisibleOutputSource`, `GovernedEvidence`, `GovernedMemory`, `GuidedMaterial`, `GuidedTransition`, `GovernedPolicy`, `GovernedRequest`, `GovernedProposal`, `CommitteeObservation`, `CommitteeVerdict`, `GovernedFinding`, `GovernedValidation`, `GovernedSpectrumResult`, `AdmittedGuidedMaterial`, `CompleteGovernedEvaluation`, `GovernedContentDna`, `GovernedReceipt`;
     - body types that only Hees.ai constructs, exported from the `governed_profile` facade but not from the library root: `GovernedContentDnaBody`, `GovernedContentDnaEntry`, `GovernedReceiptBody`, `GovernedPackageIdentity`. A caller reads their fields from a returned `GovernedContentDna` or `GovernedReceipt`;
-    - functions: `validate_governed_profile_package`, `digest_governed_profile_package`, `digest_governed_memory_provenance`, `bind_governed_request`, `governed_proposal`, `committee_observation`, `digest_governed_proposal`, `evaluate_governed_profile_with_artifacts`, `evaluate_governed_profile_json`;
+    - functions: `validate_governed_profile_package`, `digest_governed_profile_package`, `digest_governed_memory_provenance`, `bind_governed_request`, `governed_proposal`, `committee_observation`, `digest_governed_proposal`, `evaluate_governed_profile_with_artifacts`, `evaluate_governed_profile_in_memory_context`, `evaluate_governed_profile_json`;
     - identifier namespaces: `ArtifactRevisionType`, `AudienceId`, `CommitteeRoleId`, `GuidedMaterialId`, `GuidedStepId` with their constructors. Every identifier projects to text through its `text()` method.
 - **Runtime validation:** Package/request/proposal identity validation, delegation to the existing 0.0.1 structural-admission kernel, committee-coverage validation, memory/guided-material resolution, terminal-decision derivation, atomic Content DNA + receipt construction.
 - **Package compatibility:** Purely additive and opt-in, mirroring RFC 013/014.
@@ -309,3 +315,4 @@ Three other RFCs (001, 002, 006) already claim ownership of the general shape of
 - Does RFC 010's eventual stabilization come to depend on this module (replacing `console_profile_0_1`'s bespoke evaluation with a call to `evaluate_governed_profile_with_artifacts`), or do they remain independent siblings?
 - Should the single `"admitted_delivery"` Content DNA state gain an explicit `no_answer`-style counterpart for `refuse`/`escalate` outcomes, matching RFC 002, or is "simply absent" an acceptable permanent simplification?
 - Should the [bounds](#bounds) above be frozen as part of contract 0.1, or remain implementation limits that a later contract revision may change?
+- RFC 003 atoms and `GovernedMemory` are two models bridged by identifier, with different revision grammars. Should they be reconciled into one package-owned memory declaration, and should the memory-context rule then also bind the package revision and admission binding?
