@@ -27,7 +27,7 @@ Hees.ai should independently admit every proposed change to a session's position
 
 ## Motivation
 
-A package that declares a bounded learner goal — "help the learner do X within Y minutes, in this order" — has no way to make Hees.ai enforce that shape without a continuity contract. Nothing stops an implementation from silently extending a phase past its declared maximum, skipping a declared transition, or accepting an action the current phase never declared. Without a shared contract, every caller either re-derives this logic ad hoc (and disagrees with other implementations about edge cases like clock regression, tampered prior state, or a re-chained history) or skips real enforcement entirely and lets the model or the UI decide when to move on.
+A package that declares a bounded goal — "complete X within Y minutes, in this order" — has no way to make Hees.ai enforce that shape without a continuity contract. Nothing stops an implementation from silently extending a phase past its declared maximum, skipping a declared transition, or accepting an action the current phase never declared. Without a shared contract, every caller either re-derives this logic ad hoc (and disagrees with other implementations about edge cases like clock regression, tampered prior state, or a re-chained history) or skips real enforcement entirely and lets the model or the UI decide when to move on.
 
 The implementation in `governed_continuity.incn` covers this gap; this RFC stabilizes its goal/schedule/session contract before wider adoption.
 
@@ -51,28 +51,28 @@ The implementation in `governed_continuity.incn` covers this gap; this RFC stabi
 
 ## Guide-level explanation
 
-A package declares one goal and its schedule:
+A package declares one goal and its schedule. The identifiers below are invented for illustration:
 
 ```incan
 goal = GovernedGoal(
-    goal_id=goal_id("build_personal_wind_down_routine"),
-    entry_phase_id=phase_id("understand_context"),
-    completion_phase_ids=[phase_id("review_routine")],
+    goal_id=goal_id("complete_lantern_lesson"),
+    entry_phase_id=phase_id("orient"),
+    completion_phase_ids=[phase_id("review")],
     allowed_action_ids=[action_id("answer_from_package"), action_id("present_guided_card")],
     expiry_allowed=true,
 )
 
 schedule = GovernedSchedule(
-    schedule_id=schedule_id("wind_down_learning_session"),
-    goal_id=goal_id("build_personal_wind_down_routine"),
+    schedule_id=schedule_id("lantern_lesson_session"),
+    goal_id=goal_id("complete_lantern_lesson"),
     total_target_seconds=720,
     allowed_clock_sources=["host_monotonic"],
     phases=[
         GovernedPhase(
-            phase_id=phase_id("understand_context"),
+            phase_id=phase_id("orient"),
             minimum_seconds=0, target_seconds=120, maximum_seconds=240,
             allowed_action_ids=[action_id("answer_from_package"), action_id("present_guided_card")],
-            next_phase_ids=[phase_id("choose_routine")],
+            next_phase_ids=[phase_id("practice")],
         ),
         # ...
     ],
@@ -91,7 +91,7 @@ decision = evaluate_continuity(
         event_index=0,
         goal_id=goal.goal_id,
         schedule_id=schedule.schedule_id,
-        proposed_phase_id=phase_id("understand_context"),
+        proposed_phase_id=phase_id("orient"),
         proposed_action_id=action_id("present_guided_card"),
         clock_source="host_monotonic",
         current_clock_seconds=1000,
@@ -101,7 +101,7 @@ decision = evaluate_continuity(
     host_witness_key,
 )
 # decision.terminal == ContinuityTerminal.Admitted
-# decision.resulting_state.unwrap().phase_id == phase_id("understand_context")
+# decision.resulting_state.unwrap().phase_id == phase_id("orient")
 # decision.resulting_state.unwrap().clock_source == "host_monotonic"
 ```
 
