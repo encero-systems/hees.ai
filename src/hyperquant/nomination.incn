@@ -22,7 +22,7 @@ from crate.hyperquant.models import (
 )
 from crate.hyperquant.turboquant import TurboquantCode, TurboquantConfiguration
 from crate.hyperquant.vector import normalize_vector, relevance_basis_points
-from crate.identifiers import MemoryId, memory_id_text
+from crate.identifiers import MemoryId
 
 pub const MAX_HYPERQUANT_CANDIDATES: int = 256
 
@@ -107,9 +107,7 @@ pub class TurboquantIndex:
 
         if left.estimated_similarity != right.estimated_similarity:
             return left.estimated_similarity > right.estimated_similarity
-        return memory_id_text(self._entries[left.position].memory_id) < memory_id_text(
-            self._entries[right.position].memory_id,
-        )
+        return self._entries[left.position].memory_id.text() < self._entries[right.position].memory_id.text()
 
     def reranked(self, normalized_query: list[float], approximate: list[ScoredPosition]) -> list[TurboquantCandidate]:
         """Rerank the approximate candidates by exact cosine similarity over retained vectors."""
@@ -140,7 +138,7 @@ def candidate_precedes(left: TurboquantCandidate, right: TurboquantCandidate) ->
 
     if left.cosine_similarity != right.cosine_similarity:
         return left.cosine_similarity > right.cosine_similarity
-    return memory_id_text(left.memory_id) < memory_id_text(right.memory_id)
+    return left.memory_id.text() < right.memory_id.text()
 
 
 def failure(kind: HyperquantErrorKind, detail: str) -> HyperquantError:
@@ -167,7 +165,7 @@ pub def turboquant_index(
     mut codes: list[TurboquantCode] = []
     mut identity_lines: list[str] = [configuration.configuration_fingerprint()]
     for entry in entries:
-        canonical_id = memory_id_text(entry.memory_id)
+        canonical_id = entry.memory_id.text()
         if canonical_id in canonical_ids:
             return Err(
                 failure(HyperquantErrorKind.DuplicateMemoryId, "TurboQuant index memory identifiers must be unique"),

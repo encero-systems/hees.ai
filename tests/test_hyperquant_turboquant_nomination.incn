@@ -15,7 +15,7 @@ from crate.hyperquant import (
     turboquant_index,
     turboquant_query,
 )
-from crate.identifiers import memory_id, memory_id_text
+from crate.identifiers import memory_id
 
 const DIMENSIONS: int = 8
 const ENTRY_COUNT: int = 12
@@ -66,7 +66,7 @@ def product_configuration(dimensions: int) -> TurboquantConfiguration:
 
 
 def nomination_ids(nominations: list[HyperquantNomination]) -> list[str]:
-    return [memory_id_text(nomination.memory_id) for nomination in nominations]
+    return [nomination.memory_id.text() for nomination in nominations]
 
 
 def assert_matches_exact_oracle(configuration: TurboquantConfiguration) -> None:
@@ -117,8 +117,8 @@ def test_candidate_count_bounds_the_approximate_stage_and_orders_the_trace() -> 
             result.candidates[position].cosine_similarity >= result.candidates[position + 1].cosine_similarity,
             true,
         )
-    assert_eq(memory_id_text(result.nominations[0].memory_id), memory_id_text(result.candidates[0].memory_id))
-    assert_eq(memory_id_text(result.nominations[1].memory_id), memory_id_text(result.candidates[1].memory_id))
+    assert_eq(result.nominations[0].memory_id.text(), result.candidates[0].memory_id.text())
+    assert_eq(result.nominations[1].memory_id.text(), result.candidates[1].memory_id.text())
 
     repeated = assert_is_ok(turboquant_query(compressed, query, 2, 5))
     assert_eq(nomination_ids(repeated.nominations), nomination_ids(result.nominations))

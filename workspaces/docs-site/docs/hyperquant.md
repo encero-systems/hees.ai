@@ -83,10 +83,14 @@ Diagnostics use stable error kinds and bounded implementation-owned detail. Call
 
 The first compressed product candidates are separately versioned TurboQuant product-style and MSE-oriented profiles. Their [reference contract](hyperquant-turboquant-reference.md) now maps transforms, quantization, residuals, estimators, packing, and query-time behavior to explicit paper evidence and Hees.ai reproducibility decisions.
 
-The reference contract and conformance fixtures are now backed by a faithful dense Incan codec with canonical configuration and code envelopes. That implementation proves the profile semantics and portable bytes; it does not yet provide bounded approximate nomination, production-dimensional transforms, or a measured default. Those belong to the next implementation slice.
+The reference contract and conformance fixtures are now backed by a faithful dense Incan codec with canonical configuration and code envelopes. That implementation proves the profile semantics and portable bytes.
 
-Both profiles will use bounded approximate nomination and an explicitly configured exact-reranking policy. Evaluation against `exact_cosine_0_1` and independent baselines will determine the default; the paper name alone will not.
+`turboquant_index` and `turboquant_query` add bounded approximate nomination over that codec. An index binds each package-owned memory identifier to one compressed code and keeps the normalized full-precision vector. A query is transformed once, scored against every code in linear time, reduced to a caller-chosen candidate set of at most `MAX_HYPERQUANT_CANDIDATES` (256), and reranked by exact cosine similarity over the retained vectors. Ties break by canonical memory identifier, so the result is deterministic. The dense transform accepts vectors of up to 1,024 dimensions.
+
+The result has the same shape as an exact result: dense zero-based ranks and bounded relevance over logical `MemoryId` values, plus the retained candidates. It is a nomination and carries no authority.
+
+This does not yet provide a measured default, an index that omits the full-precision vectors, or sub-linear search. Evaluation against `exact_cosine_0_1` and independent baselines will determine the default profile and candidate count; the paper name alone will not.
 
 The current Notulist-derived randomized-Hadamard, scalar-centroid, and residual-sign experiment remains comparison evidence under an identity describing what it actually implements. It is not a TurboQuant profile. Hees.ai now provides a faithful dense Incan reference codec for `turboquant_mse_0_1` and `turboquant_product_0_1`, including canonical configuration and code envelopes.
 
-Later slices add bounded approximate nomination, exact reranking, multilingual evaluation, RFC 003 admission, paged storage integration, and consumer migration. Related KV-cache compression belongs to the native model runtime and will use a distinct profile identity rather than being conflated with Hyperquant retrieval.
+Later slices add multilingual evaluation, paged storage integration, and consumer migration. Related KV-cache compression belongs to the native model runtime and will use a distinct profile identity rather than being conflated with Hyperquant retrieval.
