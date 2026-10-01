@@ -414,6 +414,14 @@ def successor_positions(phases: list[GovernedPhase], phase: GovernedPhase) -> li
     return [position for position, candidate in enumerate(phases) if phase.next_phase_ids.contains(candidate.phase_id)]
 
 
+def longer_seconds(longest: int, candidate: int) -> int:
+    """Return the larger of two durations; the reducing step of a longest-path maximum."""
+
+    if candidate > longest:
+        return candidate
+    return longest
+
+
 def longest_completion_path_seconds(goal: GovernedGoal, schedule: GovernedSchedule) -> int:
     """
     Return the most time a session can spend between Start and Close without exceeding any phase maximum.
@@ -430,10 +438,11 @@ def longest_completion_path_seconds(goal: GovernedGoal, schedule: GovernedSchedu
         if reach[index] < 0:
             continue
         for successor in successor_positions(phases, phase):
-            reach[successor] = max([reach[successor], reach[index] + phases[successor].maximum_seconds])
-    return max(
-        [-1] + [reach[index] for index, phase in enumerate(phases) if goal.completion_phase_ids.contains(phase.phase_id)],
-    )
+            reach[successor] = longer_seconds(reach[successor], reach[index] + phases[successor].maximum_seconds)
+    completion_reach = [reach[index] for index, phase in enumerate(phases) if goal.completion_phase_ids.contains(
+        phase.phase_id,
+    )]
+    return completion_reach.iter().fold(-1, longer_seconds)
 
 
 def validate_goal_schedule(goal: GovernedGoal, schedule: GovernedSchedule) -> ContinuityValidation:
