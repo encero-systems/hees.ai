@@ -400,6 +400,20 @@ def package_identifiers_are_canonical(package: ContinuityPackage) -> bool:
     return true
 
 
+def entry_phase_reach(goal: GovernedGoal, phase: GovernedPhase) -> int:
+    """Return the longest time reachable in ``phase`` before any transition: its maximum for the entry phase, else -1."""
+
+    if phase.phase_id == goal.entry_phase_id:
+        return phase.maximum_seconds
+    return -1
+
+
+def successor_positions(phases: list[GovernedPhase], phase: GovernedPhase) -> list[int]:
+    """Return the declaration indexes of the phases that ``phase`` declares as next phases."""
+
+    return [position for position, candidate in enumerate(phases) if phase.next_phase_ids.contains(candidate.phase_id)]
+
+
 def longest_completion_path_seconds(goal: GovernedGoal, schedule: GovernedSchedule) -> int:
     """
     Return the most time a session can spend between Start and Close without exceeding any phase maximum.
@@ -410,26 +424,16 @@ def longest_completion_path_seconds(goal: GovernedGoal, schedule: GovernedSchedu
     counts and durations keep every sum far below the integer limit.
     """
 
-    mut reach: list[int] = []
-    for phase in schedule.phases:
-        if phase.phase_id == goal.entry_phase_id:
-            reach.append(phase.maximum_seconds)
-        else:
-            reach.append(-1)
-    for index, phase in enumerate(schedule.phases):
-        if reach[index] >= 0:
-            for next_phase_id in phase.next_phase_ids:
-                match declared_position(schedule.phases, next_phase_id):
-                    None => pass
-                    Some(next_index) =>
-                        candidate = reach[index] + schedule.phases[next_index].maximum_seconds
-                        if candidate > reach[next_index]:
-                            reach[next_index] = candidate
-    mut longest = -1
-    for index, phase in enumerate(schedule.phases):
-        if goal.completion_phase_ids.contains(phase.phase_id) and reach[index] > longest:
-            longest = reach[index]
-    return longest
+    phases = schedule.phases
+    mut reach = [entry_phase_reach(goal, phase) for phase in phases]
+    for index, phase in enumerate(phases):
+        if reach[index] < 0:
+            continue
+        for successor in successor_positions(phases, phase):
+            reach[successor] = max([reach[successor], reach[index] + phases[successor].maximum_seconds])
+    return max(
+        [-1] + [reach[index] for index, phase in enumerate(phases) if goal.completion_phase_ids.contains(phase.phase_id)],
+    )
 
 
 def validate_goal_schedule(goal: GovernedGoal, schedule: GovernedSchedule) -> ContinuityValidation:
