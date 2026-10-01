@@ -21,7 +21,6 @@ from pub::hees_ai import (
     guided_card_id,
     hyperquant_entry,
     memory_id,
-    memory_id_text,
     package_loader_descriptor,
     package_loader_summary,
     package_id,
@@ -68,7 +67,7 @@ def test_external_dependency_can_use_the_exact_hyperquant_oracle() -> None:
     result = assert_is_ok(exact_query(index, [1.0, 0.0], 1))
     assert_eq(len(result.nominations), 1)
     assert_eq(result.nominations[0].rank, 0)
-    assert_eq(memory_id_text(result.nominations[0].memory_id), "sleep_schedule")
+    assert_eq(result.nominations[0].memory_id.text(), "sleep_schedule")
 
 
 def test_external_dependency_can_encode_and_decode_faithful_turboquant() -> None:

@@ -10,19 +10,7 @@ from pub::hees_ai import (
     SupportMapping,
     SynthesisObservation,
     VisibleUnit,
-    action_id_text,
-    constraint_plan_id_text,
-    contract_id_text,
-    digest_id_type_text,
-    domain_id_text,
-    evidence_id_text,
     evaluate_console_profile_json,
-    observation_id_text,
-    package_id_text,
-    profile_id_text,
-    proposal_id_text,
-    request_id_text,
-    revision_text,
 )
 from rust::std::io import Read, Write, stderr, stdin, stdout
 from rust::std::process import exit
@@ -365,23 +353,23 @@ def digest_canonical_json(source: str) -> str:
 def evidence_id_texts(values: list[EvidenceId]) -> list[str]:
     """Project nominal evidence identifiers into the transport-local JSON shape."""
 
-    return [evidence_id_text(value) for value in values]
+    return [value.text() for value in values]
 
 
 def digest_proposal(proposal: ConsoleProposal) -> str:
     """Recompute the candidate digest for non-authoritative runner metadata."""
 
     projection = ProposalProjection(
-        contract_version=contract_id_text(proposal.contract_version),
-        profile_id=profile_id_text(proposal.profile_id),
-        package_id=package_id_text(proposal.package_id),
-        domain_id=domain_id_text(proposal.domain_id),
-        package_revision=revision_text(proposal.package_revision),
-        artifact_digest=digest_id_type_text(proposal.artifact_digest),
-        request_id=request_id_text(proposal.request_id),
-        request_digest=digest_id_type_text(proposal.request_digest),
-        proposal_id=proposal_id_text(proposal.proposal_id),
-        action_id=action_id_text(proposal.action_id),
+        contract_version=proposal.contract_version.text(),
+        profile_id=proposal.profile_id.text(),
+        package_id=proposal.package_id.text(),
+        domain_id=proposal.domain_id.text(),
+        package_revision=proposal.package_revision.text(),
+        artifact_digest=proposal.artifact_digest.text(),
+        request_id=proposal.request_id.text(),
+        request_digest=proposal.request_digest.text(),
+        proposal_id=proposal.proposal_id.text(),
+        action_id=proposal.action_id.text(),
         evidence_ids=evidence_id_texts(proposal.evidence_ids),
         visible_units=proposal.visible_units,
         support_mappings=proposal.support_mappings,
@@ -443,21 +431,21 @@ def replay_fingerprints_are_exact(relations: list[RelationObservation], synthese
     """Require every replay observation to use the frozen evaluator fingerprints."""
 
     for observation in relations:
-        if digest_id_type_text(observation.model_fingerprint) != REPLAY_MODEL_FINGERPRINT:
+        if observation.model_fingerprint.text() != REPLAY_MODEL_FINGERPRINT:
             return false
-        if digest_id_type_text(observation.configuration_fingerprint) != REPLAY_CONFIGURATION_FINGERPRINT:
+        if observation.configuration_fingerprint.text() != REPLAY_CONFIGURATION_FINGERPRINT:
             return false
         if observation.evaluator_role == "contradiction_cross_check":
-            if digest_id_type_text(observation.prompt_fingerprint) != CONTRADICTION_PROMPT_FINGERPRINT:
+            if observation.prompt_fingerprint.text() != CONTRADICTION_PROMPT_FINGERPRINT:
                 return false
-        elif digest_id_type_text(observation.prompt_fingerprint) != RELATION_PROMPT_FINGERPRINT:
+        elif observation.prompt_fingerprint.text() != RELATION_PROMPT_FINGERPRINT:
             return false
     for observation in syntheses:
-        if digest_id_type_text(observation.model_fingerprint) != REPLAY_MODEL_FINGERPRINT:
+        if observation.model_fingerprint.text() != REPLAY_MODEL_FINGERPRINT:
             return false
-        if digest_id_type_text(observation.configuration_fingerprint) != REPLAY_CONFIGURATION_FINGERPRINT:
+        if observation.configuration_fingerprint.text() != REPLAY_CONFIGURATION_FINGERPRINT:
             return false
-        if digest_id_type_text(observation.prompt_fingerprint) != SYNTHESIS_PROMPT_FINGERPRINT:
+        if observation.prompt_fingerprint.text() != SYNTHESIS_PROMPT_FINGERPRINT:
             return false
     return true
 
@@ -510,25 +498,25 @@ def trace_observations(request: RunnerRequest) -> list[TraceObservation]:
 
     mut result: list[TraceObservation] = []
     for observation in request.relation_observations:
-        identifier = observation_id_text(observation.observation_id)
+        identifier = observation.observation_id.text()
         if not trace_contains(result, identifier):
             result.append(
                 TraceObservation(
                     observation_id=identifier,
-                    model_fingerprint=digest_id_type_text(observation.model_fingerprint),
-                    prompt_fingerprint=digest_id_type_text(observation.prompt_fingerprint),
-                    configuration_fingerprint=digest_id_type_text(observation.configuration_fingerprint),
+                    model_fingerprint=observation.model_fingerprint.text(),
+                    prompt_fingerprint=observation.prompt_fingerprint.text(),
+                    configuration_fingerprint=observation.configuration_fingerprint.text(),
                 ),
             )
     for observation in request.synthesis_observations:
-        identifier = observation_id_text(observation.observation_id)
+        identifier = observation.observation_id.text()
         if not trace_contains(result, identifier):
             result.append(
                 TraceObservation(
                     observation_id=identifier,
-                    model_fingerprint=digest_id_type_text(observation.model_fingerprint),
-                    prompt_fingerprint=digest_id_type_text(observation.prompt_fingerprint),
-                    configuration_fingerprint=digest_id_type_text(observation.configuration_fingerprint),
+                    model_fingerprint=observation.model_fingerprint.text(),
+                    prompt_fingerprint=observation.prompt_fingerprint.text(),
+                    configuration_fingerprint=observation.configuration_fingerprint.text(),
                 ),
             )
     return result
@@ -547,7 +535,7 @@ def proposal_identity(proposal: Option[ConsoleProposal]) -> Option[str]:
 
     match proposal:
         None => return None
-        Some(value) => return Some(proposal_id_text(value.proposal_id))
+        Some(value) => return Some(value.proposal_id.text())
 
 
 def proposal_digest(proposal: Option[ConsoleProposal]) -> Option[str]:
@@ -569,11 +557,11 @@ def make_trace(request: RunnerRequest, findings: list[DerivedFindingProjection],
 
     constraint_plan_id = match request.package:
         None => None
-        Some(package) => Some(constraint_plan_id_text(package.policy.constraint_plan_id))
+        Some(package) => Some(package.policy.constraint_plan_id.text())
 
     constraint_plan_revision = match request.package:
         None => None
-        Some(package) => Some(revision_text(package.policy.constraint_plan_revision))
+        Some(package) => Some(package.policy.constraint_plan_revision.text())
 
     return ConsoleTrace(
         contract_version="console_trace_0_1",
@@ -628,13 +616,13 @@ def established_identity(
     """Project the exact safely validated package, request, and proposal identity."""
 
     return EstablishedIdentity(
-        package_id=package_id_text(package.package_id),
-        domain_id=domain_id_text(package.domain_id),
-        package_revision=revision_text(package.package_revision),
-        artifact_digest=digest_id_type_text(package.artifact_digest),
-        request_id=request_id_text(request.request_id),
-        request_digest=digest_id_type_text(request.request_digest),
-        proposal_id=proposal_id_text(proposal.proposal_id),
+        package_id=package.package_id.text(),
+        domain_id=package.domain_id.text(),
+        package_revision=package.package_revision.text(),
+        artifact_digest=package.artifact_digest.text(),
+        request_id=request.request_id.text(),
+        request_digest=request.request_digest.text(),
+        proposal_id=proposal.proposal_id.text(),
         candidate_digest=digest_proposal(proposal),
     )
 

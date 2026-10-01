@@ -26,19 +26,9 @@ from crate.identifiers import (
     MemoryId,
     SourceId,
     UnitId,
-    action_id_text,
-    contract_id_text,
-    domain_id_text,
     digest_id_type,
-    evidence_id_text,
-    memory_id_text,
-    package_id_text,
-    profile_id_text,
+    has_duplicate_identifiers,
     revision,
-    requirement_id_text,
-    source_id_text,
-    support_claim_id_text,
-    unit_id_text,
 )
 
 const CONSOLE_PROFILE_ID: str = "console_profile_0_1"
@@ -114,7 +104,7 @@ pub def admitted_atoms(package: ConsolePackage) -> list[ConsoleAtom]:
 def validate_package_header(package: ConsolePackage) -> ProfileValidation:
     """Validate contract identity and bounded human-authored package metadata."""
 
-    if contract_id_text(package.contract_version) != PACKAGE_CONTRACT or profile_id_text(package.profile_id) != CONSOLE_PROFILE_ID:
+    if package.contract_version.text() != PACKAGE_CONTRACT or package.profile_id.text() != CONSOLE_PROFILE_ID:
         return validation_error("invalid_package", "unsupported_package_contract")
     if package.mission.strip() == "" or len(package.mission) > 512:
         return validation_error("invalid_package", "invalid_package_mission")
@@ -124,22 +114,18 @@ def validate_package_header(package: ConsolePackage) -> ProfileValidation:
 def validate_package_shape(package: ConsolePackage) -> ProfileValidation:
     """Validate bounded collection sizes and nominal uniqueness."""
 
-    if len(package.sources) != 3 or has_duplicate_strings(
-        [source_id_text(source.source_id) for source in package.sources],
-    ):
+    if len(package.sources) != 3 or has_duplicate_strings([source.source_id.text() for source in package.sources]):
         return validation_error("invalid_package", "invalid_package_sources")
-    if len(package.actions) != 3 or has_duplicate_strings(
-        [action_id_text(action.action_id) for action in package.actions],
-    ):
+    if len(package.actions) != 3 or has_duplicate_strings([action.action_id.text() for action in package.actions]):
         return validation_error("invalid_package", "invalid_package_actions")
     if len(package.requirements) < 1 or len(package.requirements) > 4:
         return validation_error("invalid_package", "invalid_package_requirements")
-    if has_duplicate_strings([requirement_id_text(requirement.requirement_id) for requirement in package.requirements]):
+    if has_duplicate_strings([requirement.requirement_id.text() for requirement in package.requirements]):
         return validation_error("invalid_package", "duplicate_requirement_id")
     if len(package.atoms) != 4:
         return validation_error("invalid_package", "invalid_package_atoms")
-    if has_duplicate_strings([memory_id_text(atom.memory_id) for atom in package.atoms]) or has_duplicate_strings(
-        [evidence_id_text(atom.evidence_id) for atom in package.atoms],
+    if has_duplicate_strings([atom.memory_id.text() for atom in package.atoms]) or has_duplicate_strings(
+        [atom.evidence_id.text() for atom in package.atoms],
     ):
         return validation_error("invalid_package", "duplicate_atom_identity")
     return validation_ok()
@@ -239,9 +225,9 @@ def validate_fixed_package_identity(package: ConsolePackage) -> ProfileValidatio
         return validation_error("invalid_package", "artifact_digest_mismatch")
     if len(admitted_atoms(package)) == 0:
         return validation_error("memory_context_invalid", "no_admitted_memory")
-    if package_id_text(package.package_id) != FIXED_PACKAGE_ID:
+    if package.package_id.text() != FIXED_PACKAGE_ID:
         return validation_error("package_id_mismatch", "fixed_package_id_mismatch")
-    if domain_id_text(package.domain_id) != FIXED_DOMAIN_ID:
+    if package.domain_id.text() != FIXED_DOMAIN_ID:
         return validation_error("domain_id_mismatch", "fixed_domain_id_mismatch")
     if package.package_revision != revision(FIXED_PACKAGE_REVISION):
         return validation_error("package_revision_mismatch", "fixed_package_revision_mismatch")
@@ -357,7 +343,7 @@ pub def validate_console_proposal_identity(
     proposal: ConsoleProposal,
 ) -> ProfileValidation:
     """Establish only the package, request, contract, and proposal identity safe for a receipt."""
-    if contract_id_text(proposal.contract_version) != PROPOSAL_CONTRACT or profile_id_text(proposal.profile_id) != CONSOLE_PROFILE_ID:
+    if proposal.contract_version.text() != PROPOSAL_CONTRACT or proposal.profile_id.text() != CONSOLE_PROFILE_ID:
         return validation_error("unsupported_proposal_contract", "unsupported_proposal_contract")
     if utf8_length(proposal.to_json()) > 131072:
         return validation_error("proposal_too_large", "proposal_too_large")
@@ -381,15 +367,13 @@ def validate_visible_answer(package: ConsolePackage, proposal: ConsoleProposal) 
 
     if len(proposal.visible_units) == 0:
         return validation_error("missing_visible_output", "missing_visible_units")
-    if len(proposal.visible_units) > 8 or has_duplicate_strings(
-        [unit_id_text(unit.unit_id) for unit in proposal.visible_units],
-    ):
+    if len(proposal.visible_units) > 8 or has_duplicate_strings([unit.unit_id.text() for unit in proposal.visible_units]):
         return validation_error("invalid_visible_unit", "invalid_visible_units")
     for unit in proposal.visible_units:
         if unit.text.strip() == "" or len(unit.text) > 1024:
             return validation_error("invalid_visible_unit", "invalid_visible_unit")
-        if len(unit.requirement_ids) == 0 or len(unit.requirement_ids) > 4 or has_duplicate_strings(
-            [requirement_id_text(requirement_id) for requirement_id in unit.requirement_ids],
+        if len(unit.requirement_ids) == 0 or len(unit.requirement_ids) > 4 or has_duplicate_identifiers(
+            unit.requirement_ids,
         ):
             return validation_error("invalid_visible_unit", "invalid_unit_requirements")
         for requirement_id in unit.requirement_ids:
@@ -404,13 +388,13 @@ def validate_declared_evidence(package: ConsolePackage, proposal: ConsoleProposa
     match action_requirement(package.actions, proposal.action_id):
         None => return validation_error("unknown_action", "unknown_action")
         Some(evidence_required) =>
-            if has_duplicate_strings([evidence_id_text(value) for value in proposal.evidence_ids]):
+            if has_duplicate_identifiers(proposal.evidence_ids):
                 return validation_error("duplicate_evidence_reference", "duplicate_evidence_reference")
             for mapping in proposal.support_mappings:
                 match mapping.evidence_ids:
                     None => pass
                     Some(mapping_evidence_ids) =>
-                        if has_duplicate_strings([evidence_id_text(value) for value in mapping_evidence_ids]):
+                        if has_duplicate_identifiers(mapping_evidence_ids):
                             return validation_error("duplicate_evidence_reference", "duplicate_support_evidence")
             if evidence_required and len(proposal.evidence_ids) == 0:
                 return validation_error("evidence_required", "evidence_required")
@@ -427,7 +411,7 @@ def validate_support_mappings(package: ConsolePackage, proposal: ConsoleProposal
     if len(proposal.support_mappings) != len(proposal.visible_units):
         return validation_error("support_mapping_invalid", "support_coverage_invalid")
     if len(proposal.support_mappings) > 8 or has_duplicate_strings(
-        [support_claim_id_text(mapping.support_claim_id) for mapping in proposal.support_mappings],
+        [mapping.support_claim_id.text() for mapping in proposal.support_mappings],
     ):
         return validation_error("support_mapping_invalid", "duplicate_support_claim")
     for index in range(len(proposal.support_mappings)):

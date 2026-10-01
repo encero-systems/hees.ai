@@ -6,7 +6,7 @@ against one structurally valid programme declaration. They do not retrieve or se
 or terminal authority.
 """
 
-from crate.identifiers import ChoiceId, GuidedCardId, guided_card_id_text
+from crate.identifiers import ChoiceId, GuidedCardId
 from crate.programme.models import (
     MAX_GUIDED_PROGRAMME_HISTORY,
     GuidedProgramme,
@@ -42,18 +42,18 @@ def history_follows_programme(
 ) -> bool:
     """Check that untrusted prior cards form the exact declared path to the current card."""
 
-    mut expected_card_id = guided_card_id_text(programme.entry_card_id)
+    mut expected_card_id = programme.entry_card_id.text()
     for history_card_id in history:
-        if guided_card_id_text(history_card_id) != expected_card_id:
+        if history_card_id.text() != expected_card_id:
             return false
         maybe_card = find_programme_card(programme, history_card_id)
         if maybe_card is None:
             return false
         match maybe_card.unwrap().next_card_id:
             Some(next_card_id) =>
-                expected_card_id = guided_card_id_text(next_card_id)
+                expected_card_id = next_card_id.text()
             None => return false
-    return guided_card_id_text(current_card_id) == expected_card_id
+    return current_card_id.text() == expected_card_id
 
 
 pub def runtime_frame_reason(programme: GuidedProgramme, frame: ProgrammeRuntimeFrame) -> Option[str]:

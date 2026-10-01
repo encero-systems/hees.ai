@@ -105,6 +105,28 @@ pub def artifact_revision_text_is_safe(value: str) -> bool:
     return true
 
 
+pub trait SymbolicIdentifier:
+    """Nominal identity over a validated symbolic base; each type supplies only its ``underlying`` accessor."""
+
+    def underlying(self) -> SymbolicIdType
+
+    def text(self) -> str:
+        """Project the identity into canonical wire text at serialization, hashing, and presentation boundaries."""
+
+        return self.underlying().text()
+
+
+pub trait DigestIdentifier:
+    """Content-addressed identity over a validated digest base; each type supplies only its ``underlying`` accessor."""
+
+    def underlying(self) -> DigestIdType
+
+    def text(self) -> str:
+        """Project the identity into canonical digest text at hashing and presentation boundaries."""
+
+        return self.underlying().text()
+
+
 @derive(Clone, Eq, json)
 pub type IdType = newtype str:
     """Shared bounded string representation beneath every nominal ID namespace."""
@@ -117,6 +139,11 @@ pub type IdType = newtype str:
                 ValidationError(message="identifier must be trimmed and contain 1 to 128 characters", code="invalid_id"),
             )
         return Ok(IdType(value))
+
+    def text(self) -> str:
+        """Expose canonical text only at serialization, hashing, and presentation boundaries."""
+
+        return self.0
 
 
 @derive(Clone, Eq, json)
@@ -131,6 +158,11 @@ pub type SymbolicIdType = newtype IdType:
                 ValidationError(message="identifier must match ^[a-z0-9][a-z0-9_-]{0,127}$", code="invalid_symbolic_id"),
             )
         return Ok(SymbolicIdType(value))
+
+    def text(self) -> str:
+        """Expose canonical symbolic text at serialization, hashing, and presentation boundaries."""
+
+        return self.0.text()
 
 
 @derive(Clone, Eq, json)
@@ -149,6 +181,11 @@ pub type ArtifactRevisionType = newtype IdType:
             )
         return Ok(ArtifactRevisionType(value))
 
+    def text(self) -> str:
+        """Expose an artifact revision at serialization and presentation boundaries."""
+
+        return self.0.text()
+
 
 @derive(Clone, Eq, json)
 pub type DigestIdType = newtype IdType:
@@ -162,6 +199,11 @@ pub type DigestIdType = newtype IdType:
                 ValidationError(message="digest identity must be lowercase sha256:<64 hex>", code="invalid_digest_id"),
             )
         return Ok(DigestIdType(value))
+
+    def text(self) -> str:
+        """Expose an exact content identity at hashing and presentation boundaries."""
+
+        return self.0.text()
 
 
 @derive(Clone, Eq, json)
@@ -177,200 +219,400 @@ pub type RevisionType = newtype str:
             )
         return Ok(RevisionType(value))
 
+    def text(self) -> str:
+        """Expose revision text at serialization and presentation boundaries."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ActionId = newtype SymbolicIdType:
+pub type ActionId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one action declared by a governed package."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of an action identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type AudienceId = newtype SymbolicIdType:
+pub type AudienceId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one package-declared audience."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of an audience identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type CommitteeRoleId = newtype SymbolicIdType:
+pub type CommitteeRoleId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one bounded committee evaluator role."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a committee-role identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ConstraintPlanId = newtype SymbolicIdType:
+pub type ConstraintPlanId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one compiled constraint plan."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a constraint-plan identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ContentDnaId = newtype DigestIdType:
+pub type ContentDnaId = newtype DigestIdType with DigestIdentifier:
     """Content-addressed identity for one Content DNA artifact."""
 
+    def underlying(self) -> DigestIdType:
+        """Return the digest base of a Content DNA identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ContractId = newtype SymbolicIdType:
+pub type ContractId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one versioned public contract."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a contract identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type DecisionId = newtype SymbolicIdType:
+pub type DecisionId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one deterministic Hees.ai decision."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a decision identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type DomainId = newtype SymbolicIdType:
+pub type DomainId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one governed knowledge domain."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a domain identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type EvidenceId = newtype SymbolicIdType:
+pub type EvidenceId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one rights-classified evidence record."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of an evidence identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type FindingId = newtype SymbolicIdType:
+pub type FindingId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one derived verifier finding."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a finding identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type GoalId = newtype SymbolicIdType:
+pub type GoalId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one package-declared goal."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a goal identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type GuidedMaterialId = newtype SymbolicIdType:
+pub type GuidedMaterialId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one package-owned guided artifact."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a guided-material identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type GuidedStepId = newtype SymbolicIdType:
+pub type GuidedStepId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one step inside package-owned guided material."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a guided-step identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type InputId = newtype SymbolicIdType:
+pub type InputId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one governed runtime input."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of an input identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type MemoryId = newtype SymbolicIdType:
+pub type MemoryId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one reviewed memory atom."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a memory identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type MemoryClassId = newtype SymbolicIdType:
+pub type MemoryClassId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one package-declared memory class."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a memory-class identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type MemoryOperationId = newtype SymbolicIdType:
+pub type MemoryOperationId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one package-declared memory operation."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a memory-operation identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ObservationId = newtype SymbolicIdType:
+pub type ObservationId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one non-authoritative verifier observation."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of an observation identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type PackageId = newtype SymbolicIdType:
+pub type PackageId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one governed package."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a package identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type PhaseId = newtype SymbolicIdType:
+pub type PhaseId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one phase inside a package-declared schedule."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a phase identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ProfileId = newtype SymbolicIdType:
+pub type ProfileId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one Hees.ai evaluation profile."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a profile identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ProgrammeId = newtype SymbolicIdType:
+pub type ProgrammeId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one package-declared guided programme."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a guided-programme identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type GuidedCardId = newtype SymbolicIdType:
+pub type GuidedCardId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one reviewed guided-material card."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a guided-card identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ChoiceId = newtype SymbolicIdType:
+pub type ChoiceId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one bounded learner choice."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a learner-choice identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ProgressId = newtype SymbolicIdType:
+pub type ProgressId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one explicit guided-programme progress record."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a progress-record identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ProposalId = newtype SymbolicIdType:
+pub type ProposalId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one untrusted model proposal."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a proposal identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ProviderId = newtype SymbolicIdType:
+pub type ProviderId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one external proposal provider."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a provider identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ReceiptId = newtype DigestIdType:
+pub type ReceiptId = newtype DigestIdType with DigestIdentifier:
     """Content-addressed identity for one Hees.ai decision receipt."""
 
+    def underlying(self) -> DigestIdType:
+        """Return the digest base of a receipt identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type RequestId = newtype SymbolicIdType:
+pub type RequestId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one bound user request."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a request identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type RequirementId = newtype SymbolicIdType:
+pub type RequirementId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one declared response requirement."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a requirement identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ResponseContractId = newtype SymbolicIdType:
+pub type ResponseContractId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one governed response contract."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a response-contract identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ScenarioId = newtype SymbolicIdType:
+pub type ScenarioId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one replayable Console scenario."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a scenario identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type ScheduleId = newtype SymbolicIdType:
+pub type ScheduleId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one package-declared schedule."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a schedule identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type SessionEventId = newtype SymbolicIdType:
+pub type SessionEventId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one admitted session event."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a session-event identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type SessionId = newtype SymbolicIdType:
+pub type SessionId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one replayable governed session."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a session identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type SourceId = newtype SymbolicIdType:
+pub type SourceId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one reviewed source artifact."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a source identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type SupportClaimId = newtype SymbolicIdType:
+pub type SupportClaimId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one proposal-to-memory support claim."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a support-claim identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type TargetId = newtype SymbolicIdType:
+pub type TargetId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one verifier manifest target."""
 
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a verifier-target identity."""
+
+        return self.0
+
 
 @derive(Clone, Eq, json)
-pub type UnitId = newtype SymbolicIdType:
+pub type UnitId = newtype SymbolicIdType with SymbolicIdentifier:
     """Nominal identity for one visible proposal unit."""
+
+    def underlying(self) -> SymbolicIdType:
+        """Return the symbolic base of a visible-unit identity."""
+
+        return self.0
 
 
 def symbolic_id_from_text(value: str) -> Result[SymbolicIdType, ValidationError]:
@@ -651,265 +893,27 @@ pub def unit_id(value: str) -> UnitId:
     return UnitId(trusted_symbolic_id(value))
 
 
-pub def id_type_text(identifier: IdType) -> str:
-    """Expose canonical text only at serialization, hashing, and presentation boundaries."""
-
-    return identifier.0
-
-
-pub def symbolic_id_type_text(identifier: SymbolicIdType) -> str:
-    """Expose canonical symbolic text at serialization, hashing, and presentation boundaries."""
-
-    return id_type_text(identifier.0)
-
-
-pub def digest_id_type_text(identifier: DigestIdType) -> str:
-    """Expose an exact content identity at hashing and presentation boundaries."""
-
-    return id_type_text(identifier.0)
-
-
-pub def revision_text(value: RevisionType) -> str:
-    """Expose revision text at serialization and presentation boundaries."""
-
-    return value.0
-
-
-pub def action_id_text(identifier: ActionId) -> str:
-    """Project an action identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def artifact_revision_text(value: ArtifactRevisionType) -> str:
-    """Expose an artifact revision at serialization and presentation boundaries."""
-
-    return id_type_text(value.0)
-
-
-pub def audience_id_text(identifier: AudienceId) -> str:
-    """Project an audience identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def committee_role_id_text(identifier: CommitteeRoleId) -> str:
-    """Project a committee-role identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def constraint_plan_id_text(identifier: ConstraintPlanId) -> str:
-    """Project a constraint-plan identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def content_dna_id_text(identifier: ContentDnaId) -> str:
-    """Project a Content DNA identity into canonical digest text."""
-
-    return digest_id_type_text(identifier.0)
-
-
-pub def contract_id_text(identifier: ContractId) -> str:
-    """Project a contract identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def decision_id_text(identifier: DecisionId) -> str:
-    """Project a decision identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def domain_id_text(identifier: DomainId) -> str:
-    """Project a domain identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def evidence_id_text(identifier: EvidenceId) -> str:
-    """Project an evidence identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def finding_id_text(identifier: FindingId) -> str:
-    """Project a finding identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def goal_id_text(identifier: GoalId) -> str:
-    """Project a goal identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def guided_material_id_text(identifier: GuidedMaterialId) -> str:
-    """Project a guided-material identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def guided_step_id_text(identifier: GuidedStepId) -> str:
-    """Project a guided-step identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def input_id_text(identifier: InputId) -> str:
-    """Project an input identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def memory_id_text(identifier: MemoryId) -> str:
-    """Project a memory identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def memory_class_id_text(identifier: MemoryClassId) -> str:
-    """Project a memory-class identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def memory_operation_id_text(identifier: MemoryOperationId) -> str:
-    """Project a memory-operation identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def observation_id_text(identifier: ObservationId) -> str:
-    """Project an observation identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def package_id_text(identifier: PackageId) -> str:
-    """Project a package identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def phase_id_text(identifier: PhaseId) -> str:
-    """Project a phase identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def profile_id_text(identifier: ProfileId) -> str:
-    """Project a profile identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def programme_id_text(identifier: ProgrammeId) -> str:
-    """Project a guided-programme identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def guided_card_id_text(identifier: GuidedCardId) -> str:
-    """Project a guided-card identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def choice_id_text(identifier: ChoiceId) -> str:
-    """Project a learner-choice identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def progress_id_text(identifier: ProgressId) -> str:
-    """Project a progress-record identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def proposal_id_text(identifier: ProposalId) -> str:
-    """Project a proposal identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def provider_id_text(identifier: ProviderId) -> str:
-    """Project a provider identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def receipt_id_text(identifier: ReceiptId) -> str:
-    """Project a receipt identity into canonical digest text."""
-
-    return digest_id_type_text(identifier.0)
-
-
-pub def request_id_text(identifier: RequestId) -> str:
-    """Project a request identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def requirement_id_text(identifier: RequirementId) -> str:
-    """Project a requirement identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def response_contract_id_text(identifier: ResponseContractId) -> str:
-    """Project a response-contract identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def scenario_id_text(identifier: ScenarioId) -> str:
-    """Project a scenario identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def schedule_id_text(identifier: ScheduleId) -> str:
-    """Project a schedule identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def session_event_id_text(identifier: SessionEventId) -> str:
-    """Project a session-event identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def session_id_text(identifier: SessionId) -> str:
-    """Project a session identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def source_id_text(identifier: SourceId) -> str:
-    """Project a source identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def support_claim_id_text(identifier: SupportClaimId) -> str:
-    """Project a support-claim identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def target_id_text(identifier: TargetId) -> str:
-    """Project a verifier-target identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
-
-
-pub def unit_id_text(identifier: UnitId) -> str:
-    """Project a visible-unit identity into canonical wire text."""
-
-    return symbolic_id_type_text(identifier.0)
+pub def has_duplicate_identifiers[T with SymbolicIdentifier](values: list[T]) -> bool:
+    """Return whether any identifier repeats an earlier canonical text; callers bound ``values`` before this scan."""
+
+    mut seen: list[str] = []
+    for value in values:
+        text = value.text()
+        if seen.contains(text):
+            return true
+        seen.append(text)
+    return false
+
+
+pub def identifier_sets_equal[T with SymbolicIdentifier](left: list[T], right: list[T]) -> bool:
+    """Return whether two duplicate-free identifier lists hold the same canonical text in any order."""
+
+    if len(left) != len(right):
+        return false
+    mut right_text: list[str] = []
+    for value in right:
+        right_text.append(value.text())
+    for value in left:
+        if not right_text.contains(value.text()):
+            return false
+    return true

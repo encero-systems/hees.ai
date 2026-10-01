@@ -19,13 +19,9 @@ from crate.identifiers import (
     DigestIdType,
     FindingId,
     contract_id,
-    contract_id_text,
     digest_id_text_is_safe,
-    digest_id_type_text,
     finding_id,
     identifier_text_is_safe,
-    observation_id_text,
-    profile_id_text,
 )
 
 
@@ -43,9 +39,7 @@ def finding_identity(observation: CommitteeObservation) -> FindingId:
     of up to 128 characters never makes the trusted ``finding_id`` constructor fail.
     """
 
-    return finding_id(
-        derive_bounded_identifier_text(observation_id_text(observation.observation_id), "observation_", "finding_"),
-    )
+    return finding_id(derive_bounded_identifier_text(observation.observation_id.text(), "observation_", "finding_"))
 
 
 def derive_finding(package: GovernedProfilePackage, observation: CommitteeObservation) -> GovernedFinding:
@@ -79,8 +73,8 @@ def roles_match_exactly(required: list[CommitteeRoleId], observations: list[Comm
 def observation_fields_are_canonical(observation: CommitteeObservation) -> bool:
     """Return whether the observation's own identifier and evaluator fingerprint are canonical text."""
 
-    return identifier_text_is_safe(observation_id_text(observation.observation_id)) and digest_id_text_is_safe(
-        digest_id_type_text(observation.evaluator_fingerprint),
+    return identifier_text_is_safe(observation.observation_id.text()) and digest_id_text_is_safe(
+        observation.evaluator_fingerprint.text(),
     )
 
 
@@ -92,7 +86,7 @@ def observation_identity_matches(
 ) -> bool:
     """Return whether one observation is bound to the exact profile, package, request, and candidate."""
 
-    if profile_id_text(observation.profile_id) != GOVERNED_PROFILE_ID or observation.profile_id != package.profile_id:
+    if observation.profile_id.text() != GOVERNED_PROFILE_ID or observation.profile_id != package.profile_id:
         return false
     if observation.package_id != package.package_id or observation.domain_id != package.domain_id:
         return false
@@ -132,13 +126,13 @@ pub def assess_committee(
     candidate_digest = digest_governed_proposal(proposal)
     mut observation_ids: list[str] = []
     for observation in observations:
-        if contract_id_text(observation.contract_version) != GOVERNED_OBSERVATION_CONTRACT:
+        if observation.contract_version.text() != GOVERNED_OBSERVATION_CONTRACT:
             return assessment(false, "unsupported_committee_contract", [])
         if not observation_fields_are_canonical(observation):
             return assessment(false, "invalid_committee_observation", [])
         if not observation_identity_matches(package, request, observation, candidate_digest):
             return assessment(false, "committee_identity_mismatch", [])
-        observation_text = observation_id_text(observation.observation_id)
+        observation_text = observation.observation_id.text()
         if observation_ids.contains(observation_text):
             return assessment(false, "committee_coverage_invalid", [])
         observation_ids.append(observation_text)

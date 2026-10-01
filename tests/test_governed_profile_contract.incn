@@ -91,16 +91,12 @@ from crate.identifiers import (
     committee_role_id,
     constraint_plan_id,
     contract_id,
-    decision_id_text,
     digest_id_type,
     domain_id,
     evidence_id,
-    finding_id_text,
     guided_material_id,
-    guided_material_id_text,
     guided_step_id,
     memory_id,
-    memory_id_text,
     observation_id,
     package_id,
     profile_id,
@@ -561,7 +557,7 @@ def test_supported_answer_binds_committee_memory_content_dna_and_receipt() -> No
     assert_eq(result.spectrum.decision, "deliver")
     assert_eq(result.spectrum.reason, "supported_by_package")
     assert_eq(result.spectrum.reason_namespace, "governed_profile_admission_0_1")
-    assert_eq(decision_id_text(result.spectrum.decision_id), "decision_lantern_answer")
+    assert_eq(result.spectrum.decision_id.text(), "decision_lantern_answer")
     assert_eq(len(result.findings), 6)
     assert_eq(result.findings[0].classification, CommitteeVerdict.Pass)
     assert_eq(len(result.selected_memory), 2)
@@ -571,8 +567,8 @@ def test_supported_answer_binds_committee_memory_content_dna_and_receipt() -> No
     receipt = assert_is_ok(GovernedReceipt.from_json(assert_is_some(result.receipt_json)))
     assert_eq(content_dna.body.state, "admitted_delivery")
     assert_eq(len(content_dna.body.entries), 2)
-    assert_eq(memory_id_text(content_dna.body.entries[0].memory_id), "lantern_atom_card_order")
-    assert_eq(memory_id_text(content_dna.body.entries[1].memory_id), "lantern_atom_pacing")
+    assert_eq(content_dna.body.entries[0].memory_id.text(), "lantern_atom_card_order")
+    assert_eq(content_dna.body.entries[1].memory_id.text(), "lantern_atom_pacing")
     assert_eq(receipt.body.content_dna_id, Some(content_dna.content_dna_id))
     assert_eq(receipt.body.decision, "deliver")
 
@@ -585,7 +581,7 @@ def test_guided_material_is_admitted_only_as_an_exact_package_owned_identity() -
     admitted = assert_is_some(result.admitted_guided_material)
     assert_eq(result.spectrum.decision, "deliver")
     assert_eq(result.spectrum.reason, "supported_by_package")
-    assert_eq(guided_material_id_text(admitted.guided_material_id), GUIDE_ID)
+    assert_eq(admitted.guided_material_id.text(), GUIDE_ID)
     assert_eq(admitted.artifact_revision, artifact_revision("0.1.0"))
     assert_eq(admitted.artifact_digest, digest_id_type(CARD_DIGEST))
     assert_eq(assert_is_some(result.content_dna_json).contains(GUIDE_ID), true)
@@ -607,7 +603,7 @@ def test_declared_guided_navigation_is_admitted() -> None:
     assert_eq(result.spectrum.decision, "deliver")
     assert_eq(result.spectrum.reason, "supported_by_package")
     admitted = assert_is_some(result.admitted_guided_material)
-    assert_eq(guided_material_id_text(admitted.guided_material_id), GUIDE_ID)
+    assert_eq(admitted.guided_material_id.text(), GUIDE_ID)
     assert_is_some(result.content_dna_json)
     assert_is_some(result.receipt_json)
 
@@ -805,7 +801,7 @@ def test_long_unprefixed_proposal_id_derives_a_bounded_decision_id() -> None:
     )
     result = evaluate_governed_profile_with_artifacts(package, bound, refusal, [])
     assert_eq(result.spectrum.decision, "refuse")
-    decision_text = decision_id_text(result.spectrum.decision_id)
+    decision_text = result.spectrum.decision_id.text()
     assert_eq(decision_text.startswith("decision_"), true)
     assert_eq(len(decision_text), HASHED_DECISION_ID_LENGTH)
 
@@ -818,7 +814,7 @@ def test_maximum_length_proposal_id_on_an_invalid_package_rejects_without_panic(
     proposal.proposal_id = proposal_id(repeated("y", 128))
     result = evaluate_governed_profile_with_artifacts(package, bound, proposal, [])
     assert_rejected_without_receipt(result, "invalid_package")
-    assert_eq(len(decision_id_text(result.spectrum.decision_id)), HASHED_DECISION_ID_LENGTH)
+    assert_eq(len(result.spectrum.decision_id.text()), HASHED_DECISION_ID_LENGTH)
 
 
 def test_non_canonical_proposal_id_is_rejected_without_panic() -> None:
@@ -828,7 +824,7 @@ def test_non_canonical_proposal_id_is_rejected_without_panic() -> None:
     proposal.proposal_id = ProposalId(SymbolicIdType(IdType(f"Not A Canonical Id")))
     result = evaluate_governed_profile_with_artifacts(package, bound, proposal, [])
     assert_rejected_without_receipt(result, "invalid_proposal")
-    assert_eq(len(decision_id_text(result.spectrum.decision_id)), HASHED_DECISION_ID_LENGTH)
+    assert_eq(len(result.spectrum.decision_id.text()), HASHED_DECISION_ID_LENGTH)
 
 
 def test_long_observation_ids_derive_bounded_finding_ids() -> None:
@@ -852,7 +848,7 @@ def test_long_observation_ids_derive_bounded_finding_ids() -> None:
     result = evaluate_governed_profile_with_artifacts(package, bound, proposal, observations)
     assert_eq(result.spectrum.decision, "deliver")
     for finding in result.findings:
-        finding_text = finding_id_text(finding.finding_id)
+        finding_text = finding.finding_id.text()
         assert_eq(finding_text.startswith("finding_"), true)
         assert_eq(len(finding_text) <= 128, true)
 

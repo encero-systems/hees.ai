@@ -11,15 +11,11 @@ from pub::hees_ai import (
     SupportMapping,
     SynthesisObservation,
     VisibleUnit,
-    action_id_text,
     digest_id_type,
-    digest_id_type_text,
     evidence_id,
     identify_console_proposal_json,
     memory_id,
-    memory_id_text,
     proposal_id,
-    proposal_id_text,
     requirement_id,
     support_claim_id,
     unit_id,
@@ -506,18 +502,18 @@ def test_schema_valid_unauthorized_proposals_remain_pass_through_values() -> Non
     undeclared: ConsoleProposal = assert_is_ok(
         decode_proposal_response(call, response_with_output(read_text(fixture_path("proposals/undeclared_action.json")))),
     )
-    assert_eq(action_id_text(undeclared.action_id), "assign_final_grade")
+    assert_eq(undeclared.action_id.text(), "assign_final_grade")
     unknown_memory: ConsoleProposal = assert_is_ok(
         decode_proposal_response(call, response_with_output(read_text(fixture_path("proposals/unknown_memory.json")))),
     )
-    assert_eq(memory_id_text(unknown_memory.support_mappings[0].memory_id), "memory_missing_route")
+    assert_eq(unknown_memory.support_mappings[0].memory_id.text(), "memory_missing_route")
 
 
 def test_propose_with_transport_is_deterministic_and_network_free() -> None:
     """Exercise proposal request and typed decoding through an injected transport."""
 
     proposal: ConsoleProposal = assert_is_ok(propose_with_transport(context_plan(), fixture_transport))
-    assert_eq(proposal_id_text(proposal.proposal_id), "proposal_valid_lantern")
+    assert_eq(proposal.proposal_id.text(), "proposal_valid_lantern")
 
 
 @serial
@@ -754,8 +750,8 @@ def test_observation_decoders_add_only_non_authoritative_fingerprints() -> None:
         decode_relation_response(calls[0], response_with_output(assert_is_ok(relation_source.to_json()))),
     )
     assert_eq(relation.support_bps, 9000)
-    assert_eq(digest_id_type_text(relation.model_fingerprint).starts_with("sha256:"), true)
-    assert_eq(len(digest_id_type_text(relation.model_fingerprint)), 71)
+    assert_eq(relation.model_fingerprint.text().starts_with("sha256:"), true)
+    assert_eq(len(relation.model_fingerprint.text()), 71)
     mut synthesis_source = assert_is_ok(JsonValue.parse(read_text(fixture_path("observations/synthesis_request.json"))))
     assert_is_ok(synthesis_source.remove("model_fingerprint"))
     assert_is_ok(synthesis_source.remove("prompt_fingerprint"))
@@ -764,7 +760,7 @@ def test_observation_decoders_add_only_non_authoritative_fingerprints() -> None:
         decode_synthesis_response(calls[5], response_with_output(assert_is_ok(synthesis_source.to_json()))),
     )
     assert_eq(synthesis.covered_bps, 9000)
-    assert_eq(len(digest_id_type_text(synthesis.configuration_fingerprint)), 71)
+    assert_eq(len(synthesis.configuration_fingerprint.text()), 71)
 
 
 def test_transport_relation_bound_matches_the_frozen_maximum() -> None:

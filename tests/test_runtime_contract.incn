@@ -1,5 +1,5 @@
 from std.testing import assert_eq
-from crate.identifiers import action_id, domain_id, evidence_id, evidence_id_text, package_id
+from crate.identifiers import action_id, domain_id, evidence_id, package_id
 from crate.runtime import (
     GovernedPackage,
     ReviewStatus,
@@ -46,7 +46,7 @@ def test_valid_package_and_supported_visible_proposal_are_admitted() -> None:
     assert_eq(result.admitted, true)
     assert_eq(result.decision, RuntimeDecision.Admit)
     assert_eq(result.reason, "admitted")
-    assert_eq(evidence_id_text(result.evidence_ids[0]), "visible_note")
+    assert_eq(result.evidence_ids[0].text(), "visible_note")
 
 
 def test_rights_blocked_and_unreviewed_evidence_invalidates_package() -> None:

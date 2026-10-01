@@ -17,18 +17,10 @@ from crate.identifiers import (
     PackageId,
     ProfileId,
     SessionId,
-    artifact_revision_text,
     artifact_revision_text_is_safe,
     digest_id_text_is_safe,
-    digest_id_type_text,
-    domain_id_text,
+    has_duplicate_identifiers,
     identifier_text_is_safe,
-    memory_class_id_text,
-    memory_id_text,
-    memory_operation_id_text,
-    package_id_text,
-    profile_id_text,
-    session_id_text,
 )
 from crate.witness import (
     KeyedWitness,
@@ -501,7 +493,7 @@ def optional_memory_id_is_canonical(identifier: Option[MemoryId]) -> bool:
 
     return match identifier:
         None => true
-        Some(value) => identifier_text_is_safe(memory_id_text(value))
+        Some(value) => identifier_text_is_safe(value.text())
 
 
 def optional_session_id_is_canonical(identifier: Option[SessionId]) -> bool:
@@ -509,7 +501,7 @@ def optional_session_id_is_canonical(identifier: Option[SessionId]) -> bool:
 
     return match identifier:
         None => true
-        Some(value) => identifier_text_is_safe(session_id_text(value))
+        Some(value) => identifier_text_is_safe(value.text())
 
 
 def memory_text_fields_are_canonical(memory_key: Option[str], provenance_fields: list[str]) -> bool:
@@ -552,11 +544,11 @@ def policy_is_bounded(policy: GovernedMemoryPolicy) -> bool:
 def policy_identity_is_canonical(policy: GovernedMemoryPolicy) -> bool:
     """Return whether every package identity field of the policy is canonical text for its namespace."""
 
-    return (identifier_text_is_safe(profile_id_text(policy.profile_id)) and identifier_text_is_safe(
-        package_id_text(policy.package_id),
-    ) and identifier_text_is_safe(domain_id_text(policy.domain_id)) and artifact_revision_text_is_safe(
-        artifact_revision_text(policy.package_revision),
-    ) and digest_id_text_is_safe(digest_id_type_text(policy.memory_policy_digest)))
+    return (identifier_text_is_safe(policy.profile_id.text()) and identifier_text_is_safe(policy.package_id.text()) and identifier_text_is_safe(
+        policy.domain_id.text(),
+    ) and artifact_revision_text_is_safe(policy.package_revision.text()) and digest_id_text_is_safe(
+        policy.memory_policy_digest.text(),
+    ))
 
 
 def policy_identifiers_are_canonical(policy: GovernedMemoryPolicy) -> bool:
@@ -569,10 +561,10 @@ def policy_identifiers_are_canonical(policy: GovernedMemoryPolicy) -> bool:
     if not policy_identity_is_canonical(policy):
         return false
     for memory_class in policy.classes:
-        if not identifier_text_is_safe(memory_class_id_text(memory_class.memory_class_id)):
+        if not identifier_text_is_safe(memory_class.memory_class_id.text()):
             return false
     for operation in policy.operations:
-        if not identifier_text_is_safe(memory_operation_id_text(operation.operation_id)):
+        if not identifier_text_is_safe(operation.operation_id.text()):
             return false
     return true
 
@@ -607,7 +599,7 @@ def memory_operations_are_valid(policy: GovernedMemoryPolicy) -> MemoryPolicyVal
     for operation in policy.operations:
         if len(operation.allowed_class_ids) == 0:
             return invalid("memory_operation_classes_empty")
-        if has_duplicate_strings([memory_class_id_text(value) for value in operation.allowed_class_ids]):
+        if has_duplicate_identifiers(operation.allowed_class_ids):
             return invalid("duplicate_operation_memory_class")
         for memory_class_id in operation.allowed_class_ids:
             if not memory_class_exists(policy.classes, memory_class_id):
@@ -632,9 +624,9 @@ pub def validate_governed_memory_policy(policy: GovernedMemoryPolicy) -> MemoryP
         return invalid("invalid_memory_policy_identifier")
     if policy.memory_policy_digest != digest_governed_memory_policy(policy):
         return invalid("memory_policy_digest_mismatch")
-    if has_duplicate_strings([memory_class_id_text(value.memory_class_id) for value in policy.classes]):
+    if has_duplicate_strings([value.memory_class_id.text() for value in policy.classes]):
         return invalid("duplicate_memory_class_id")
-    if has_duplicate_strings([memory_operation_id_text(value.operation_id) for value in policy.operations]):
+    if has_duplicate_strings([value.operation_id.text() for value in policy.operations]):
         return invalid("duplicate_memory_operation_id")
     for memory_class in policy.classes:
         class_validation = memory_class_is_valid(memory_class)
@@ -658,9 +650,9 @@ def proposal_identity_matches(policy: GovernedMemoryPolicy, proposal: MemoryOper
 def proposal_identifiers_are_canonical(proposal: MemoryOperationProposal) -> bool:
     """Return whether every identifier the proposal names is canonical text for its namespace."""
 
-    return (identifier_text_is_safe(memory_operation_id_text(proposal.operation_id)) and identifier_text_is_safe(
-        memory_class_id_text(proposal.memory_class_id),
-    ) and identifier_text_is_safe(memory_id_text(proposal.target_memory_id)) and optional_memory_id_is_canonical(
+    return (identifier_text_is_safe(proposal.operation_id.text()) and identifier_text_is_safe(
+        proposal.memory_class_id.text(),
+    ) and identifier_text_is_safe(proposal.target_memory_id.text()) and optional_memory_id_is_canonical(
         proposal.replacement_memory_id,
     ) and optional_session_id_is_canonical(proposal.session_id))
 

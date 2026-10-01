@@ -10,7 +10,7 @@ from crate.hyperquant.models import (
     HyperquantProfile,
 )
 from crate.hyperquant.vector import normalize_vector, relevance_basis_points
-from crate.identifiers import MemoryId, memory_id_text
+from crate.identifiers import MemoryId
 
 
 @derive(Clone)
@@ -83,7 +83,7 @@ pub class HyperquantExactIndex:
         mut canonical_ids: dict[str, bool] = {}
         mut first_entry = true
         for entry in self._entries:
-            canonical_id = memory_id_text(entry.memory_id)
+            canonical_id = entry.memory_id.text()
             if canonical_id in canonical_ids:
                 return Err(
                     HyperquantError.from_kind(
@@ -147,7 +147,7 @@ def candidate_precedes(left: HyperquantExactCandidate, right: HyperquantExactCan
 
     if left.cosine_similarity != right.cosine_similarity:
         return left.cosine_similarity > right.cosine_similarity
-    return memory_id_text(left.memory_id) < memory_id_text(right.memory_id)
+    return left.memory_id.text() < right.memory_id.text()
 
 
 def nominations_from_candidates(candidates: list[HyperquantExactCandidate], top_k: int) -> list[HyperquantNomination]:

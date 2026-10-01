@@ -62,7 +62,6 @@ from pub::hees_ai import (
     governed_proposal,
     memory_class_id,
     memory_id,
-    memory_id_text,
     memory_operation_id,
     observation_id,
     package_id,
@@ -415,7 +414,7 @@ def test_external_dependency_can_admit_a_governed_profile_delivery() -> None:
     assert_eq(result.spectrum.reason, "supported_by_package")
     assert_eq(result.admitted_visible_output, Some(answer))
     assert_eq(len(result.selected_memory), 1)
-    assert_eq(memory_id_text(result.selected_memory[0].memory_id), "ember_atom_route")
+    assert_eq(result.selected_memory[0].memory_id.text(), "ember_atom_route")
     assert_eq(assert_is_some(result.content_dna_json).contains("ember_atom_route"), true)
     receipt_json = assert_is_some(result.receipt_json)
     assert_eq(receipt_json.contains("\"deliver\""), true)

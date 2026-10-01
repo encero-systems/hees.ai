@@ -25,5 +25,6 @@ All notable changes will be recorded here.
 ### Changed
 
 - The repository builds with commit-pinned Incan `0.6.0-dev.6`. Manifests are named `loaf.toml` and the canonical lock is `oven.lock`. CI builds the pinned compiler from source.
+- Identifier and revision types expose their canonical text through one `.text()` method, supplied by the new `SymbolicIdentifier` and `DigestIdentifier` traits for nominal identifiers; the per-type `*_id_text`, `id_type_text`, `symbolic_id_type_text`, `digest_id_type_text`, `revision_text`, and `artifact_revision_text` functions and their root exports are removed.
 
 The `0.1.0` release contract is limited to the tagged source and the explicitly published artifacts, platforms, and checksums attached to that tag.

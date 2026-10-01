@@ -32,16 +32,7 @@ from crate.governed_profile_validation import (
     validate_governed_proposal_identity,
     validate_governed_request,
 )
-from crate.identifiers import (
-    ContentDnaId,
-    DecisionId,
-    EvidenceId,
-    GuidedMaterialId,
-    MemoryId,
-    ProposalId,
-    decision_id,
-    proposal_id_text,
-)
+from crate.identifiers import ContentDnaId, DecisionId, EvidenceId, GuidedMaterialId, MemoryId, ProposalId, decision_id
 from crate.runtime import (
     action_contract,
     admission_evidence_ids,
@@ -77,7 +68,7 @@ def derive_decision_id(proposal_id: ProposalId) -> DecisionId:
     always returns canonical identifier text, so the trusted ``decision_id`` constructor cannot fail here.
     """
 
-    return decision_id(derive_bounded_identifier_text(proposal_id_text(proposal_id), "proposal_", "decision_"))
+    return decision_id(derive_bounded_identifier_text(proposal_id.text(), "proposal_", "decision_"))
 
 
 def spectrum(

@@ -14,10 +14,7 @@ from crate.identifiers import (
     constraint_plan_id,
     contract_id,
     evidence_id,
-    evidence_id_text,
     digest_id_type,
-    finding_id_text,
-    memory_id_text,
     request_id,
     revision,
     response_contract_id,
@@ -428,11 +425,11 @@ def test_complete_observations_derive_the_frozen_supported_findings() -> None:
     assert_eq(validation.valid, true)
     findings: list[DerivedFinding] = derive_findings(package, relations, syntheses)
     assert_eq(len(findings), 8)
-    assert_eq(finding_id_text(findings[0].finding_id), "finding_visible_sequence")
+    assert_eq(findings[0].finding_id.text(), "finding_visible_sequence")
     assert_eq(findings[0].classification, "supported")
-    assert_eq(finding_id_text(findings[4].finding_id), "finding_proposal_contradiction")
+    assert_eq(findings[4].finding_id.text(), "finding_proposal_contradiction")
     assert_eq(findings[4].classification, "supported")
-    assert_eq(finding_id_text(findings[5].finding_id), "finding_request_coverage")
+    assert_eq(findings[5].finding_id.text(), "finding_request_coverage")
     assert_eq(findings[5].classification, "covered")
     assert_eq(finding_policy_reason(findings), "ok")
 
@@ -511,7 +508,7 @@ def test_happy_path_reaches_the_checked_kernel_and_freezes_selected_memory() -> 
     assert_eq(evaluation.spectrum.reason_namespace, "console_admission_0_1")
     assert_eq(evaluation.spectrum.reason, "admitted")
     assert_eq(evaluation.spectrum.structural_reason, Some("admitted"))
-    assert_eq(evidence_id_text(evaluation.spectrum.admitted_evidence_ids[0]), "evidence_lantern_path")
-    assert_eq(memory_id_text(evaluation.spectrum.selected_memory_ids[0]), "memory_lantern_sequence")
+    assert_eq(evaluation.spectrum.admitted_evidence_ids[0].text(), "evidence_lantern_path")
+    assert_eq(evaluation.spectrum.selected_memory_ids[0].text(), "memory_lantern_sequence")
     assert_eq(len(evaluation.admitted_visible_units), 2)
     assert_eq(len(evaluation.selected_memory), 1)

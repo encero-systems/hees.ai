@@ -26,24 +26,11 @@ from crate.identifiers import (
     GuidedMaterialId,
     GuidedStepId,
     MemoryId,
-    action_id_text,
-    artifact_revision_text,
     artifact_revision_text_is_safe,
-    audience_id_text,
-    committee_role_id_text,
-    contract_id_text,
-    digest_id_type_text,
     digest_id_text_is_safe,
-    domain_id_text,
-    evidence_id_text,
-    guided_material_id_text,
-    guided_step_id_text,
+    has_duplicate_identifiers,
+    identifier_sets_equal,
     identifier_text_is_safe,
-    memory_id_text,
-    package_id_text,
-    profile_id_text,
-    proposal_id_text,
-    request_id_text,
 )
 
 # Collection bounds for package contract 0.1. Every bound is checked before any duplicate scan and before the
@@ -162,13 +149,13 @@ def language_is_safe(value: str) -> bool:
 def guided_identity_is_safe(material: GuidedMaterial) -> bool:
     """Return whether guided material identity, revision, digest, and audience are canonical text."""
 
-    if not identifier_text_is_safe(guided_material_id_text(material.guided_material_id)):
+    if not identifier_text_is_safe(material.guided_material_id.text()):
         return false
-    if not artifact_revision_text_is_safe(artifact_revision_text(material.artifact_revision)):
+    if not artifact_revision_text_is_safe(material.artifact_revision.text()):
         return false
-    if not digest_id_text_is_safe(digest_id_type_text(material.artifact_digest)):
+    if not digest_id_text_is_safe(material.artifact_digest.text()):
         return false
-    return identifier_text_is_safe(audience_id_text(material.audience))
+    return identifier_text_is_safe(material.audience.text())
 
 
 pub def find_governed_action(actions: list[GovernedAction], action_id: ActionId) -> Option[GovernedAction]:
@@ -210,28 +197,6 @@ pub def find_guided_material(
     return None
 
 
-def evidence_ids_equal_set(left: list[EvidenceId], right: list[EvidenceId]) -> bool:
-    """Return whether two duplicate-free evidence lists hold the same identifiers in any order."""
-
-    if len(left) != len(right):
-        return false
-    for value in left:
-        if not right.contains(value):
-            return false
-    return true
-
-
-def memory_ids_equal_set(left: list[MemoryId], right: list[MemoryId]) -> bool:
-    """Return whether two duplicate-free memory lists hold the same identifiers in any order."""
-
-    if len(left) != len(right):
-        return false
-    for value in left:
-        if not right.contains(value):
-            return false
-    return true
-
-
 def selected_evidence_for_memory(package: GovernedProfilePackage, memory_ids: list[MemoryId]) -> list[EvidenceId]:
     """
     Collect the duplicate-free evidence union of selected memory in package order.
@@ -254,17 +219,17 @@ def selected_evidence_for_memory(package: GovernedProfilePackage, memory_ids: li
 def validate_package_header(package: GovernedProfilePackage) -> GovernedValidation:
     """Check the package contract, profile, and the canonical text of its identity fields."""
 
-    if contract_id_text(package.contract_version) != GOVERNED_PACKAGE_CONTRACT:
+    if package.contract_version.text() != GOVERNED_PACKAGE_CONTRACT:
         return package_error("unsupported_package_contract")
-    if profile_id_text(package.profile_id) != GOVERNED_PROFILE_ID:
+    if package.profile_id.text() != GOVERNED_PROFILE_ID:
         return package_error("unsupported_profile")
-    if not identifier_text_is_safe(package_id_text(package.package_id)):
+    if not identifier_text_is_safe(package.package_id.text()):
         return package_error("invalid_package_id")
-    if not identifier_text_is_safe(domain_id_text(package.domain_id)):
+    if not identifier_text_is_safe(package.domain_id.text()):
         return package_error("invalid_domain_id")
-    if not artifact_revision_text_is_safe(artifact_revision_text(package.package_revision)):
+    if not artifact_revision_text_is_safe(package.package_revision.text()):
         return package_error("invalid_package_revision")
-    if not digest_id_text_is_safe(digest_id_type_text(package.profile_package_digest)):
+    if not digest_id_text_is_safe(package.profile_package_digest.text()):
         return package_error("invalid_profile_package_digest")
     return governed_validation_ok()
 
@@ -326,13 +291,13 @@ def validate_package_digest(package: GovernedProfilePackage) -> GovernedValidati
 def validate_package_uniqueness(package: GovernedProfilePackage) -> GovernedValidation:
     """Reject repeated action, evidence, memory, or guided-material identifiers."""
 
-    if has_duplicate_strings([action_id_text(value.action_id) for value in package.actions]):
+    if has_duplicate_strings([value.action_id.text() for value in package.actions]):
         return package_error("duplicate_action_id")
-    if has_duplicate_strings([evidence_id_text(value.evidence_id) for value in package.evidence]):
+    if has_duplicate_strings([value.evidence_id.text() for value in package.evidence]):
         return package_error("duplicate_evidence_id")
-    if has_duplicate_strings([memory_id_text(value.memory_id) for value in package.memory]):
+    if has_duplicate_strings([value.memory_id.text() for value in package.memory]):
         return package_error("duplicate_memory_id")
-    if has_duplicate_strings([guided_material_id_text(value.guided_material_id) for value in package.guided_material]):
+    if has_duplicate_strings([value.guided_material_id.text() for value in package.guided_material]):
         return package_error("duplicate_guided_material_id")
     return governed_validation_ok()
 
@@ -359,7 +324,7 @@ def validate_boundary_action(action: GovernedAction) -> GovernedValidation:
 def validate_action(action: GovernedAction) -> GovernedValidation:
     """Check one action's identity and that its support requirements and boundary text fit its outcome kind."""
 
-    if not identifier_text_is_safe(action_id_text(action.action_id)):
+    if not identifier_text_is_safe(action.action_id.text()):
         return package_error("invalid_action_id")
     if action_is_terminal_boundary(action):
         return validate_boundary_action(action)
@@ -373,7 +338,7 @@ def validate_action(action: GovernedAction) -> GovernedValidation:
 def validate_evidence(record: GovernedEvidence) -> GovernedValidation:
     """Check one evidence record's identity, bounded text, source, language, and admission state."""
 
-    if not identifier_text_is_safe(evidence_id_text(record.evidence_id)):
+    if not identifier_text_is_safe(record.evidence_id.text()):
         return package_error("invalid_evidence_id")
     if not text_is_bounded(record.claim, MAX_PACKAGE_TEXT_LENGTH):
         return package_error("invalid_evidence_claim")
@@ -381,7 +346,7 @@ def validate_evidence(record: GovernedEvidence) -> GovernedValidation:
         return package_error("invalid_evidence_guidance")
     if not source_ref_is_safe(record.source_ref) or not text_is_bounded(record.source_kind, MAX_PACKAGE_LABEL_LENGTH):
         return package_error("invalid_evidence_source")
-    if not digest_id_text_is_safe(digest_id_type_text(record.source_fingerprint)):
+    if not digest_id_text_is_safe(record.source_fingerprint.text()):
         return package_error("invalid_source_fingerprint")
     if not language_is_safe(record.language):
         return package_error("invalid_evidence_language")
@@ -397,11 +362,11 @@ def validate_evidence(record: GovernedEvidence) -> GovernedValidation:
 def validate_memory(package: GovernedProfilePackage, atom: GovernedMemory) -> GovernedValidation:
     """Check one memory atom's identity, concept, evidence relationships, admission state, and provenance digest."""
 
-    if not identifier_text_is_safe(memory_id_text(atom.memory_id)):
+    if not identifier_text_is_safe(atom.memory_id.text()):
         return package_error("invalid_memory_id")
     if not text_is_bounded(atom.concept, MAX_PACKAGE_TEXT_LENGTH):
         return package_error("invalid_memory_concept")
-    if has_duplicate_strings([evidence_id_text(value) for value in atom.evidence_ids]):
+    if has_duplicate_identifiers(atom.evidence_ids):
         return package_error("duplicate_memory_evidence")
     for evidence_id in atom.evidence_ids:
         match find_governed_evidence(package.evidence, evidence_id):
@@ -409,7 +374,7 @@ def validate_memory(package: GovernedProfilePackage, atom: GovernedMemory) -> Go
             Some(_) => pass
     if not review_admits(atom.review_state, atom.rights_state):
         return package_error("memory_not_admitted")
-    if not digest_id_text_is_safe(digest_id_type_text(atom.provenance_digest)):
+    if not digest_id_text_is_safe(atom.provenance_digest.text()):
         return package_error("invalid_memory_provenance")
     if atom.provenance_digest != digest_governed_memory_provenance(package, atom.clone()):
         return package_error("memory_provenance_mismatch")
@@ -419,7 +384,7 @@ def validate_memory(package: GovernedProfilePackage, atom: GovernedMemory) -> Go
 def transition_key(current: GuidedStepId, next: GuidedStepId) -> str:
     """Render one transition edge as a comparable text key."""
 
-    return f"{guided_step_id_text(current)}->{guided_step_id_text(next)}"
+    return f"{current.text()}->{next.text()}"
 
 
 def transition_is_declared(material: GuidedMaterial, current: GuidedStepId, next: GuidedStepId) -> bool:
@@ -467,9 +432,9 @@ def validate_guided_material(package: GovernedProfilePackage, material: GuidedMa
         return package_error("invalid_guided_material_language")
     if not review_admits(material.review_state, material.rights_state):
         return package_error("guided_material_not_admitted")
-    if has_duplicate_strings([memory_id_text(value) for value in material.memory_ids]):
+    if has_duplicate_identifiers(material.memory_ids):
         return package_error("duplicate_guided_memory")
-    if has_duplicate_strings([evidence_id_text(value) for value in material.evidence_ids]):
+    if has_duplicate_identifiers(material.evidence_ids):
         return package_error("duplicate_guided_evidence")
     for memory_id in material.memory_ids:
         match find_governed_memory(package.memory, memory_id):
@@ -479,7 +444,7 @@ def validate_guided_material(package: GovernedProfilePackage, material: GuidedMa
         match find_governed_evidence(package.evidence, evidence_id):
             None => return package_error("unknown_guided_evidence")
             Some(_) => pass
-    if not evidence_ids_equal_set(material.evidence_ids, selected_evidence_for_memory(package, material.memory_ids)):
+    if not identifier_sets_equal(material.evidence_ids, selected_evidence_for_memory(package, material.memory_ids)):
         return package_error("guided_memory_evidence_mismatch")
     for validation in [validate_guided_action(
         package,
@@ -496,7 +461,7 @@ def validate_guided_material(package: GovernedProfilePackage, material: GuidedMa
     )]:
         if not validation.valid:
             return validation
-    if has_duplicate_strings([guided_step_id_text(value) for value in material.steps]):
+    if has_duplicate_identifiers(material.steps):
         return package_error("duplicate_guided_step")
     mut transition_keys: list[str] = []
     for transition in material.transitions:
@@ -514,10 +479,10 @@ def validate_policy(package: GovernedProfilePackage) -> GovernedValidation:
     """Check committee roles are unique and canonical and that contract 0.1's all-passed rule is declared."""
 
     roles = package.policy.required_roles
-    if has_duplicate_strings([committee_role_id_text(value) for value in roles]):
+    if has_duplicate_identifiers(roles):
         return package_error("duplicate_committee_role")
     for role in roles:
-        if not identifier_text_is_safe(committee_role_id_text(role)):
+        if not identifier_text_is_safe(role.text()):
             return package_error("invalid_committee_role")
     if not package.policy.require_all_passed:
         return package_error("unsupported_committee_policy")
@@ -569,13 +534,13 @@ pub def validate_governed_request(request: GovernedRequest) -> GovernedValidatio
     bind the exact request fields.
     """
 
-    if not identifier_text_is_safe(request_id_text(request.request_id)):
+    if not identifier_text_is_safe(request.request_id.text()):
         return request_error("invalid_request_id")
     if not text_is_bounded(request.question, MAX_QUESTION_LENGTH):
         return request_error("invalid_question")
     if not language_is_safe(request.language):
         return request_error("invalid_request_language")
-    if not identifier_text_is_safe(audience_id_text(request.audience)):
+    if not identifier_text_is_safe(request.audience.text()):
         return request_error("invalid_request_audience")
     expected = digest_governed_request_fields(request.request_id, request.question, request.language, request.audience)
     if expected != request.request_digest:
@@ -599,9 +564,9 @@ pub def validate_governed_proposal_identity(
     so ``validate_governed_proposal`` checks that after resolving it.
     """
 
-    if contract_id_text(proposal.contract_version) != GOVERNED_PROPOSAL_CONTRACT:
+    if proposal.contract_version.text() != GOVERNED_PROPOSAL_CONTRACT:
         return proposal_error("unsupported_proposal_contract")
-    if profile_id_text(proposal.profile_id) != GOVERNED_PROFILE_ID or proposal.profile_id != package.profile_id:
+    if proposal.profile_id.text() != GOVERNED_PROFILE_ID or proposal.profile_id != package.profile_id:
         return proposal_error("profile_id_mismatch")
     if proposal.package_id != package.package_id:
         return proposal_error("package_id_mismatch")
@@ -615,7 +580,7 @@ pub def validate_governed_proposal_identity(
         return proposal_error("request_id_mismatch")
     if proposal.request_digest != request.request_digest:
         return proposal_error("request_digest_mismatch")
-    if not identifier_text_is_safe(proposal_id_text(proposal.proposal_id)):
+    if not identifier_text_is_safe(proposal.proposal_id.text()):
         return governed_validation_error("invalid_proposal", "invalid_proposal_id")
     if len(proposal.visible_output) > MAX_VISIBLE_OUTPUT_LENGTH:
         return governed_validation_error("missing_visible_output", "invalid_visible_output")
@@ -655,9 +620,9 @@ def validate_proposal_references(
 ) -> GovernedValidation:
     """Check the proposal's evidence and memory nominations against the package and the action's requirements."""
 
-    if has_duplicate_strings([evidence_id_text(value) for value in proposal.evidence_ids]):
+    if has_duplicate_identifiers(proposal.evidence_ids):
         return proposal_error("duplicate_evidence_reference")
-    if has_duplicate_strings([memory_id_text(value) for value in proposal.memory_ids]):
+    if has_duplicate_identifiers(proposal.memory_ids):
         return proposal_error("duplicate_memory_reference")
     for evidence_id in proposal.evidence_ids:
         match find_governed_evidence(package.evidence, evidence_id):
@@ -669,7 +634,7 @@ def validate_proposal_references(
             Some(_) => pass
     if action.evidence_required and (len(proposal.evidence_ids) == 0 or len(proposal.memory_ids) == 0):
         return governed_validation_error("evidence_required", "evidence_and_memory_required")
-    if not evidence_ids_equal_set(proposal.evidence_ids, selected_evidence_for_memory(package, proposal.memory_ids)):
+    if not identifier_sets_equal(proposal.evidence_ids, selected_evidence_for_memory(package, proposal.memory_ids)):
         return proposal_error("memory_evidence_mismatch")
     if action_is_terminal_boundary(action):
         if len(proposal.evidence_ids) > 0 or len(proposal.memory_ids) > 0:
@@ -746,9 +711,9 @@ def validate_guided_nomination(
         return proposal_error("guided_material_language_mismatch")
     if material.audience != request.audience:
         return proposal_error("guided_material_audience_mismatch")
-    if not memory_ids_equal_set(proposal.memory_ids, material.memory_ids):
+    if not identifier_sets_equal(proposal.memory_ids, material.memory_ids):
         return proposal_error("guided_material_memory_mismatch")
-    if not evidence_ids_equal_set(proposal.evidence_ids, material.evidence_ids):
+    if not identifier_sets_equal(proposal.evidence_ids, material.evidence_ids):
         return proposal_error("guided_material_evidence_mismatch")
     if action.outcome_kind == GovernedOutcomeKind.GuidedMaterial:
         return validate_guided_presentation(proposal, action, material)

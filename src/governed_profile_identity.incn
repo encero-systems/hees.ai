@@ -36,7 +36,6 @@ from crate.identifiers import (
     ProposalId,
     RequestId,
     contract_id,
-    digest_id_type_text,
     identifier_text_is_safe,
 )
 from crate.witness import digest_tagged_json
@@ -66,7 +65,7 @@ pub def derive_bounded_identifier_text(value: str, source_prefix: str, derived_p
         readable = f"{derived_prefix}{value[len(source_prefix):]}"
     if identifier_text_is_safe(readable):
         return readable
-    return f"{derived_prefix}{digest_id_type_text(digest_text_bytes(value))[DIGEST_TEXT_PREFIX_LENGTH:]}"
+    return f"{derived_prefix}{digest_text_bytes(value).text()[DIGEST_TEXT_PREFIX_LENGTH:]}"
 
 
 def digest_serialized_projection(type_tag: str, source: str) -> DigestIdType:

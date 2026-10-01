@@ -12,7 +12,7 @@ from crate.hyperquant import (
     exact_query,
     hyperquant_entry,
 )
-from crate.identifiers import memory_id, memory_id_text
+from crate.identifiers import memory_id
 
 
 def entry(id: str, values: list[float]) -> HyperquantEntry:
@@ -24,7 +24,7 @@ def index(entries: list[HyperquantEntry]) -> HyperquantExactIndex:
 
 
 def nomination_ids(nominations: list[HyperquantNomination]) -> list[str]:
-    return [memory_id_text(nomination.memory_id) for nomination in nominations]
+    return [nomination.memory_id.text() for nomination in nominations]
 
 
 def test_exact_oracle_ranks_nearest_memory_with_dense_ranks() -> None:
