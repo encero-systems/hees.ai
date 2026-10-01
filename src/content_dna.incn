@@ -26,10 +26,7 @@ from crate.identifiers import (
     RevisionType,
     RequestId,
     ResponseContractId,
-    content_dna_id_text,
     digest_id_type,
-    digest_id_type_text,
-    receipt_id_text,
 )
 
 
@@ -159,13 +156,13 @@ def serialize_json_value(value: JsonValue) -> Result[str, str]:
     return value.to_json().map_err((_error) => f"json_serialization_failed")
 
 
-def digest_text_bytes(value: str) -> DigestIdType:
+pub def digest_text_bytes(value: str) -> DigestIdType:
     """Return the lowercase SHA-256 identity of exact UTF-8 text."""
 
     return digest_id_type(f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}")
 
 
-def digest_canonical_json(source: str) -> Result[DigestIdType, str]:
+pub def digest_canonical_json(source: str) -> Result[DigestIdType, str]:
     """Normalize arbitrary JSON with the current Incan serializer and hash the rendered bytes."""
 
     return JsonValue
@@ -185,7 +182,7 @@ pub def construct_content_dna(body: ContentDnaBody) -> Option[ContentDna]:
 
 pub def content_dna_identity(value: ContentDna) -> str:
     """Expose the sealed identity without requiring sibling modules to inspect model storage."""
-    return content_dna_id_text(value.content_dna_id)
+    return value.content_dna_id.text()
 
 
 pub def content_dna_identifier(value: ContentDna) -> ContentDnaId:
@@ -195,7 +192,7 @@ pub def content_dna_identifier(value: ContentDna) -> ContentDnaId:
 
 pub def content_dna_answer_digest(value: ContentDna) -> str:
     """Expose the answer binding without making the sealed body caller-constructible."""
-    return digest_id_type_text(value.body.answer_digest)
+    return value.body.answer_digest.text()
 
 
 def construct_profile_receipt(body_source: str) -> Option[ProfileReceipt]:
@@ -221,4 +218,4 @@ pub def construct_rejected_receipt(body: RejectedReceiptBody) -> Option[ProfileR
 
 pub def profile_receipt_identity(value: ProfileReceipt) -> str:
     """Expose the receipt digest while keeping its sealed body non-constructible."""
-    return receipt_id_text(value.receipt_id)
+    return value.receipt_id.text()

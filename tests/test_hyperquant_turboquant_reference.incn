@@ -625,19 +625,19 @@ def test_reference_validation_fails_closed_on_versions_shapes_values_and_padding
     manifest = assert_is_ok(ReferenceManifest.from_json(manifest_text))
     assert_is_err(validate_manifest(manifest))
 
-    generation = assert_is_ok(load_generation())
+    mut generation = assert_is_ok(load_generation())
     generation.rotation_uniforms = []
     assert_is_err(validate_generation(generation))
 
-    mse = assert_is_ok(load_mse())
+    mut mse = assert_is_ok(load_mse())
     mse.indices[0] = 2
     assert_is_err(validate_mse(mse))
 
-    product = assert_is_ok(load_product())
+    mut product = assert_is_ok(load_product())
     product.qjl_signs[0] = 0
     assert_is_err(validate_product(product))
 
-    packing = assert_is_ok(load_packing())
+    mut packing = assert_is_ok(load_packing())
     packing.padding_bits_must_be_zero = false
     assert_is_err(validate_packing(packing))
 

@@ -24,7 +24,7 @@ Hees.ai is intentionally small. Do not add:
 - Research spikes — there is no `__research__/` directory here; keep exploratory material out of the tracked tree entirely rather than adding one.
 - Confidential information, credentials, personal data, raw source material, or content without documented redistribution rights.
 
-Hees.ai should be built in Incan, with Incan, and for Incan (dogfooding). Native Rust in this repo (`crossterm`, `unicode-width`, `unicode-segmentation`, `ureq`, declared under `[workspace.rust-dependencies]` in `incan.toml`) exists only for interop Incan cannot yet express directly — terminal rendering and HTTP for the console. Do not add new authored Rust merely because it is convenient; if a genuine Incan gap blocks you, reduce it to a minimal repro and link it to the owning Incan issue.
+Hees.ai should be built in Incan, with Incan, and for Incan (dogfooding). Native Rust in this repo (`crossterm`, `unicode-width`, `unicode-segmentation`, `ureq`, declared under `[workspace.rust-dependencies]` in `loaf.toml`) exists only for interop Incan cannot yet express directly — terminal rendering and HTTP for the console. Do not add new authored Rust merely because it is convenient; if a genuine Incan gap blocks you, reduce it to a minimal repro and link it to the owning Incan issue.
 
 Do not run destructive git commands (`git checkout -- <path>`, `git restore <path>`, `git clean`, `git reset --hard`, `stash drop`, or equivalent) without explicit user approval that quotes the exact paths or commands.
 
@@ -32,7 +32,7 @@ Do not run destructive git commands (`git checkout -- <path>`, `git restore <pat
 
 1. Work on a branch named `<type>/<issue>-<slug>` (e.g. `chore/27-governed-effect-capabilities`).
 2. New runtime capabilities and material public-contract changes start as an [RFC proposal](rfcs/README.md) issue, not a direct implementation PR.
-3. Check the Incan toolchain version this repo expects before relying on a specific compiler behavior — `incan.lock` (`incan-version`) and `workspaces/hees-console/packaging/release-platforms.json` are the sources of truth, not any version number written in prose docs, which can drift.
+3. Check the Incan toolchain version this repo expects before relying on a specific compiler behavior — `oven.lock` (`incan-version`) and `workspaces/hees-console/packaging/release-platforms.json` are the sources of truth, not any version number written in prose docs, which can drift.
 4. Add positive **and** fail-closed negative tests for any contract change — a rejection path is as load-bearing as an admission path here.
 5. Keep `src/lib.incn` exports deliberate and documented.
 6. Run `make ci` from a clean checkout before treating work as done.

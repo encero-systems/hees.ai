@@ -8,7 +8,7 @@ HEES_MEMBER := hees_ai
 CONSOLE_SOURCE := src/main.incn
 CONSOLE_NATIVE_TEST := tests/native_console_test.incn
 CONSOLE_PROVIDER_TEST := tests/test_provider.incn
-CONSOLE_LOCK := $(abspath incan.lock)
+CONSOLE_LOCK := $(abspath oven.lock)
 CONSOLE_BINARY := $(abspath $(CONSOLE_ROOT)/target/incan/hees_console/oven/release/hees_console)
 CONSOLE_BUILD_REPORT := $(abspath $(CONSOLE_ROOT)/target/release-evidence/build-report.json)
 CONSOLE_RELEASE_TOOL := $(abspath $(CONSOLE_ROOT)/packaging/release_candidate.sh)
@@ -29,7 +29,7 @@ INCAN_RESOLVED := $(shell command -v "$(INCAN)" 2>/dev/null || printf '%s' "$(IN
 INCAN_RELEASE_ROOT := $(abspath $(dir $(INCAN_RESOLVED))/..)
 INCAN_PROVIDER_HOME := $(abspath $(if $(INCAN_HOME),$(INCAN_HOME),$(HOME)/.incan))
 CONSOLE_RUSTFLAGS := --remap-path-prefix=$(HOME)=/toolchain-home --remap-path-prefix=$(abspath .)=/hees-source --remap-path-prefix=$(INCAN_RELEASE_ROOT)=/incan-toolchain --remap-path-prefix=$(INCAN_PROVIDER_HOME)=/incan-provider-cache $(if $(INCAN_TOOLCHAIN_CRATES_DIR),--remap-path-prefix=$(INCAN_TOOLCHAIN_CRATES_DIR)=/incan-toolchain-crates) $(if $(INCAN_STDLIB),--remap-path-prefix=$(INCAN_STDLIB)=/incan-stdlib)
-INCAN_REQUIRED_VERSION := incan 0.5.1
+INCAN_REQUIRED_VERSION := incan 0.6.0-dev.6
 RUST_PREFETCH_ROOT := $(abspath target/rust-prefetch)
 RELEASE_OUTPUT ?= $(abspath $(CONSOLE_ROOT)/target/release)
 RELEASE_PLATFORM ?=
@@ -48,11 +48,11 @@ fmt:
 # platforms, before its first bake.
 rust-prefetch:
 	@mkdir -p $(RUST_PREFETCH_ROOT)/src
-	@{ printf '[package]\nname = "hees_rust_prefetch"\nversion = "0.0.0"\nedition = "2021"\n\n[dependencies]\n'; awk '/^\[workspace\.rust-dependencies\]/{f=1;next} /^\[/{f=0} f' incan.toml; } > $(RUST_PREFETCH_ROOT)/Cargo.toml
+	@{ printf '[package]\nname = "hees_rust_prefetch"\nversion = "0.0.0"\nedition = "2021"\n\n[dependencies]\n'; awk '/^\[workspace\.rust-dependencies\]/{f=1;next} /^\[/{f=0} f' loaf.toml; } > $(RUST_PREFETCH_ROOT)/Cargo.toml
 	@: > $(RUST_PREFETCH_ROOT)/src/lib.rs
 	cargo fetch --manifest-path $(RUST_PREFETCH_ROOT)/Cargo.toml
 
-# Incan 0.5.1 Oven builds reuse only explicitly baked, sealed project Loafs; normal build, run and test never bake.
+# Incan Oven builds reuse only explicitly baked, sealed project Loafs; normal build, run and test never bake.
 bake-lib:
 	$(INCAN) oven bake --project .
 

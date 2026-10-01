@@ -30,8 +30,6 @@ from crate.console_profile_models import (
 )
 from crate.console_profile_validation import (
     admitted_atoms,
-    find_atom_by_memory,
-    find_unit,
     validate_console_package,
     validate_console_proposal,
     validate_request_binding,
@@ -40,13 +38,10 @@ from crate.identifiers import (
     DigestIdType,
     TargetId,
     contract_id,
-    memory_id_text,
+    find_declared,
     profile_id,
     request_id_from_text,
-    requirement_id_text,
-    support_claim_id_text,
     target_id,
-    unit_id_text,
 )
 
 const CONSOLE_PROFILE_ID: str = "console_profile_0_1"
@@ -135,7 +130,7 @@ pub def build_verifier_manifest(
                 package,
                 request,
                 candidate_digest,
-                target_id(f"target_visible_unit_{suffix_after(unit_id_text(unit.unit_id), "unit_")}"),
+                target_id(f"target_visible_unit_{suffix_after(unit.unit_id.text(), "unit_")}"),
                 "evidence_relation",
                 "visible_unit_union",
                 digest_serialized_json(subject.to_json()),
@@ -143,10 +138,10 @@ pub def build_verifier_manifest(
             ),
         )
     for mapping in proposal.support_mappings:
-        match find_unit(proposal.visible_units, mapping.unit_id):
+        match find_declared(proposal.visible_units, mapping.unit_id):
             None => return []
             Some(unit) =>
-                match find_atom_by_memory(package.atoms, mapping.memory_id):
+                match find_declared(package.atoms, mapping.memory_id):
                     None => return []
                     Some(atom) =>
                         subject = SupportClaimSubject(
@@ -161,10 +156,7 @@ pub def build_verifier_manifest(
                                 request,
                                 candidate_digest,
                                 target_id(
-                                    f"target_support_claim_{suffix_after(
-                                        support_claim_id_text(subject.support_claim_id),
-                                        "support_",
-                                    )}",
+                                    f"target_support_claim_{suffix_after(subject.support_claim_id.text(), "support_")}",
                                 ),
                                 "evidence_relation",
                                 "support_claim_memory",
@@ -213,7 +205,7 @@ pub def build_verifier_manifest(
                 package,
                 request,
                 candidate_digest,
-                target_id(f"target_requirement_{requirement_id_text(requirement.requirement_id)}"),
+                target_id(f"target_requirement_{requirement.requirement_id.text()}"),
                 "synthesis_coverage",
                 "requirement_coverage",
                 digest_serialized_json(requirement_subject.to_json()),

@@ -30,14 +30,7 @@ from pub::hees_ai import (
     ConsoleRequirement,
     RelationObservation,
     SynthesisObservation,
-    contract_id_text,
-    digest_id_type_text,
-    domain_id_text,
     identify_console_proposal_json,
-    package_id_text,
-    profile_id_text,
-    proposal_id_text,
-    revision_text,
 )
 
 pub const GPT56_MODEL: str = "gpt-5.6-sol"
@@ -525,7 +518,7 @@ def observation_identity_schema(
 def relation_output_schema() -> JsonValue:
     """Construct the strict raw relation schema whose fingerprints are host-added."""
 
-    fields = observation_identity_schema(
+    mut fields = observation_identity_schema(
         "console_relation_observation_0_1",
         ["evidence_relation", "contradiction_cross_check"],
         ["visible_unit_union", "support_claim_memory", "proposal_union"],
@@ -539,7 +532,7 @@ def relation_output_schema() -> JsonValue:
 def synthesis_output_schema() -> JsonValue:
     """Construct the strict raw synthesis schema whose fingerprints are host-added."""
 
-    fields = observation_identity_schema(
+    mut fields = observation_identity_schema(
         "console_synthesis_observation_0_1",
         ["synthesis_coverage"],
         ["request_coverage", "requirement_coverage"],
@@ -813,21 +806,30 @@ def committee_schema(operation: str) -> JsonValue:
 def proposal_matches_context(proposal: ConsoleProposal, context: ProviderContext) -> bool:
     """Bind an untrusted proposal to the exact context used to request it."""
 
-    return (contract_id_text(proposal.contract_version) == "console_proposal_0_1" and profile_id_text(
-        proposal.profile_id,
-    ) == context.profile_id and package_id_text(proposal.package_id) == context.package_id and domain_id_text(
-        proposal.domain_id,
-    ) == context.domain_id and revision_text(proposal.package_revision) == context.package_revision and digest_id_type_text(
-        proposal.artifact_digest,
-    ) == context.artifact_digest and proposal.request_id == context.request.request_id and proposal.request_digest == context.request.request_digest)
+    return (
+        proposal.contract_version.text() == "console_proposal_0_1"
+        and proposal.profile_id.text() == context.profile_id
+        and proposal.package_id.text() == context.package_id
+        and proposal.domain_id.text() == context.domain_id
+        and proposal.package_revision.text() == context.package_revision
+        and proposal.artifact_digest.text() == context.artifact_digest
+        and proposal.request_id == context.request.request_id
+        and proposal.request_digest == context.request.request_digest
+    )
 
 
 def target_matches_interaction(target: ProviderManifestTarget, context: ProviderContext, candidate_digest: str) -> bool:
     """Reject targets crossed between packages, requests, or proposal candidates."""
 
-    return (target.body.profile_id == context.profile_id and target.body.package_id == context.package_id and target.body.domain_id == context.domain_id and target.body.package_revision == context.package_revision and target.body.artifact_digest == context.artifact_digest and target.body.request_digest == digest_id_type_text(
-        context.request.request_digest,
-    ) and target.body.candidate_digest == candidate_digest)
+    return (
+        target.body.profile_id == context.profile_id
+        and target.body.package_id == context.package_id
+        and target.body.domain_id == context.domain_id
+        and target.body.package_revision == context.package_revision
+        and target.body.artifact_digest == context.artifact_digest
+        and target.body.request_digest == context.request.request_digest.text()
+        and target.body.candidate_digest == candidate_digest
+    )
 
 
 def identify_candidate(proposal: ConsoleProposal) -> Result[str, ProviderFailure]:
@@ -841,9 +843,7 @@ def identify_candidate(proposal: ConsoleProposal) -> Result[str, ProviderFailure
             if (json_string_field(identity, "contract_version")? != "console_proposal_identity_0_1" or json_string_field(
                 identity,
                 "profile_id",
-            )? != profile_id_text(proposal.profile_id) or json_string_field(identity, "proposal_id")? != proposal_id_text(
-                proposal.proposal_id,
-            )):
+            )? != proposal.profile_id.text() or json_string_field(identity, "proposal_id")? != proposal.proposal_id.text()):
                 return Err(ProviderFailure.InvalidInput)
             candidate_digest = json_string_field(identity, "candidate_digest")?
             if not candidate_digest.starts_with("sha256:") or len(candidate_digest) != 71:

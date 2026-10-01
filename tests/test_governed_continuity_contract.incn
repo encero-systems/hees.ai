@@ -1,0 +1,1556 @@
+"""Contract tests for package-declared goals, schedules, and replayable session continuity."""
+
+from rust::std::string import String as RustString
+from std.json import JsonValue
+from std.testing import assert_eq, assert_is_none, assert_is_ok, assert_is_some
+from crate.content_dna import digest_canonical_json
+from crate.governed_continuity import (
+    MAX_CONTINUITY_GOALS,
+    MAX_CONTINUITY_INTEGER,
+    MAX_CONTINUITY_SCHEDULES,
+    MAX_DECLARED_ACTIONS,
+    MAX_SCHEDULE_CLOCK_SOURCES,
+    MAX_SCHEDULE_PHASES,
+    ContinuityDecision,
+    ContinuityOperationKind,
+    ContinuityPackage,
+    ContinuityProposal,
+    ContinuityTerminal,
+    GovernedGoal,
+    GovernedPhase,
+    GovernedSchedule,
+    SessionContinuityState,
+    digest_continuity_package,
+    evaluate_continuity,
+    validate_continuity_package,
+)
+from crate.identifiers import (
+    MAX_IDENTIFIER_LENGTH,
+    ActionId,
+    DigestIdType,
+    GoalId,
+    IdType,
+    PackageId,
+    PhaseId,
+    SessionEventId,
+    SessionId,
+    SymbolicIdType,
+    action_id,
+    artifact_revision,
+    digest_id_type,
+    domain_id,
+    goal_id,
+    package_id,
+    phase_id,
+    profile_id,
+    schedule_id,
+    session_event_id,
+    session_id,
+)
+from crate.witness import (
+    MIN_WITNESS_KEY_BYTES,
+    KeyedWitness,
+    WitnessKey,
+    digest_tagged_json,
+    keyed_witness_verifies,
+    stamp_keyed_witness,
+    unstamped_witness,
+)
+
+const SESSION_START: int = 1000
+const PHASE_ONE_MINIMUM: int = 30
+const PHASE_ONE_TARGET: int = 120
+const PHASE_ONE_MAXIMUM: int = 240
+const PHASE_TWO_MINIMUM: int = 60
+const PHASE_TWO_TARGET: int = 600
+const PHASE_TWO_MAXIMUM: int = 900
+const TOTAL_TARGET: int = 720
+const HOST_CLOCK: str = "host_monotonic"
+const EXTERNAL_CLOCK: str = "external_monotonic"
+const LARGEST_INT: int = 9223372036854775807
+const DECLARATION_TYPE_TAG: str = "hees.ai/continuity-declaration/v0"
+const STATE_TYPE_TAG: str = "hees.ai/continuity-state/v0"
+const HOST_KEY_ID: str = "host-key-1"
+
+
+def secret_of(fill: str, count: int) -> bytes:
+    """Return ``count`` copies of ``fill`` as key bytes."""
+
+    return RustString.from(repeated_text(fill, count)).into_bytes()
+
+
+def key_named(key_id: str, fill: str) -> WitnessKey:
+    """Return a valid witness key with identifier ``key_id`` and a secret made of ``fill``."""
+
+    return WitnessKey(key_id=key_id, secret=secret_of(fill, MIN_WITNESS_KEY_BYTES))
+
+
+def host_key() -> WitnessKey:
+    """Return the host key every fixture evaluation uses."""
+
+    return key_named(HOST_KEY_ID, "k")
+
+
+def evaluate(package: ContinuityPackage, candidate: ContinuityProposal) -> ContinuityDecision:
+    """Evaluate ``candidate`` against ``package`` under the fixture host key."""
+
+    return evaluate_continuity(package, candidate, host_key())
+
+
+def placeholder_digest() -> str:
+    """Return a well-formed digest that a fixture overwrites before use."""
+
+    return "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+
+def phase_two_start() -> int:
+    """Return the clock value at which fixture sessions enter phase_two."""
+
+    return SESSION_START + PHASE_ONE_TARGET
+
+
+def repeated_text(fill: str, count: int) -> str:
+    """Return ``count`` copies of ``fill``."""
+
+    mut result = ""
+    for _index in range(count):
+        result = result + fill
+    return result
+
+
+def repeated_a(count: int) -> str:
+    """Return ``count`` copies of the letter a, for text-length bounds."""
+
+    return repeated_text("a", count)
+
+
+def phase_one() -> GovernedPhase:
+    """Return the fixture entry phase, which may move on to phase_two."""
+
+    return GovernedPhase(
+        phase_id=phase_id("phase_one"),
+        minimum_seconds=PHASE_ONE_MINIMUM,
+        target_seconds=PHASE_ONE_TARGET,
+        maximum_seconds=PHASE_ONE_MAXIMUM,
+        allowed_action_ids=[action_id("answer"), action_id("guide")],
+        next_phase_ids=[phase_id("phase_two")],
+    )
+
+
+def phase_two() -> GovernedPhase:
+    """Return the fixture completion phase, which declares no next phase and only the answer action."""
+
+    return GovernedPhase(
+        phase_id=phase_id("phase_two"),
+        minimum_seconds=PHASE_TWO_MINIMUM,
+        target_seconds=PHASE_TWO_TARGET,
+        maximum_seconds=PHASE_TWO_MAXIMUM,
+        allowed_action_ids=[action_id("answer")],
+        next_phase_ids=[],
+    )
+
+
+def goal_one() -> GovernedGoal:
+    """Return the fixture goal: enter in phase_one, close in phase_two, and let the host expire an overrun phase."""
+
+    return GovernedGoal(
+        goal_id=goal_id("goal_one"),
+        entry_phase_id=phase_id("phase_one"),
+        completion_phase_ids=[phase_id("phase_two")],
+        allowed_action_ids=[action_id("answer"), action_id("guide")],
+        expiry_allowed=true,
+    )
+
+
+def schedule_one() -> GovernedSchedule:
+    """Return the fixture schedule for goal_one."""
+
+    return GovernedSchedule(
+        schedule_id=schedule_id("schedule_one"),
+        goal_id=goal_id("goal_one"),
+        total_target_seconds=TOTAL_TARGET,
+        allowed_clock_sources=[HOST_CLOCK, EXTERNAL_CLOCK],
+        phases=[phase_one(), phase_two()],
+    )
+
+
+def rewitnessed(package: ContinuityPackage) -> ContinuityPackage:
+    """Restamp ``continuity_declaration_digest`` after a mutation so validation reaches the check under test."""
+
+    mut result = package.clone()
+    result.continuity_declaration_digest = digest_continuity_package(package)
+    return result
+
+
+def continuity_package() -> ContinuityPackage:
+    """Return the valid single-goal fixture package with a genuine digest."""
+
+    return rewitnessed(
+        ContinuityPackage(
+            profile_id=profile_id("profile_one"),
+            package_id=package_id("package_one"),
+            domain_id=domain_id("domain_one"),
+            package_revision=artifact_revision("1.0.0"),
+            continuity_declaration_digest=digest_id_type(placeholder_digest()),
+            goals=[goal_one()],
+            schedules=[schedule_one()],
+        ),
+    )
+
+
+def with_goal(goal: GovernedGoal) -> ContinuityPackage:
+    """Return the fixture package with its only goal replaced, re-witnessed."""
+
+    mut package = continuity_package()
+    package.goals = [goal]
+    return rewitnessed(package)
+
+
+def with_schedule(schedule: GovernedSchedule) -> ContinuityPackage:
+    """Return the fixture package with its only schedule replaced, re-witnessed."""
+
+    mut package = continuity_package()
+    package.schedules = [schedule]
+    return rewitnessed(package)
+
+
+def with_phases(phases: list[GovernedPhase]) -> ContinuityPackage:
+    """Return the fixture package with its schedule's phase list replaced, re-witnessed."""
+
+    mut schedule = schedule_one()
+    schedule.phases = phases
+    return with_schedule(schedule)
+
+
+def with_first_phase(phase: GovernedPhase) -> ContinuityPackage:
+    """Return the fixture package with phase_one replaced, re-witnessed."""
+
+    return with_phases([phase, phase_two()])
+
+
+def two_goal_package() -> ContinuityPackage:
+    """Return the fixture package plus a second declared goal with its own one-phase schedule."""
+
+    mut package = continuity_package()
+    package.goals = [goal_one(), GovernedGoal(
+        goal_id=goal_id("goal_two"),
+        entry_phase_id=phase_id("solo_phase"),
+        completion_phase_ids=[phase_id("solo_phase")],
+        allowed_action_ids=[action_id("answer")],
+        expiry_allowed=false,
+    )]
+    package.schedules = [schedule_one(), GovernedSchedule(
+        schedule_id=schedule_id("schedule_two"),
+        goal_id=goal_id("goal_two"),
+        total_target_seconds=60,
+        allowed_clock_sources=[HOST_CLOCK],
+        phases=[GovernedPhase(
+            phase_id=phase_id("solo_phase"),
+            minimum_seconds=0,
+            target_seconds=30,
+            maximum_seconds=120,
+            allowed_action_ids=[action_id("answer")],
+            next_phase_ids=[],
+        )],
+    )]
+    return rewitnessed(package)
+
+
+def validation_reason(package: ContinuityPackage) -> str:
+    """Return the specific reason ``validate_continuity_package`` gives for ``package``."""
+
+    return validate_continuity_package(package).reason
+
+
+def declaration_projection_json(package: ContinuityPackage) -> str:
+    """Return ``package``'s JSON without ``continuity_declaration_digest``, the projection its digest covers."""
+
+    whole = assert_is_some(assert_is_ok(JsonValue.parse(package.to_json())).as_object())
+    mut fields: Dict[str, JsonValue] = {}
+    for field in whole.keys():
+        if field != "continuity_declaration_digest":
+            fields[field] = assert_is_some(whole.get(field))
+    return assert_is_ok(JsonValue.object(fields).to_json())
+
+
+def state_witness_source(state: SessionContinuityState) -> str:
+    """Return the JSON a state witness covers: the whole state with its witness replaced by the placeholder."""
+
+    mut unstamped = state.clone()
+    unstamped.state_witness = unstamped_witness()
+    return unstamped.to_json()
+
+
+def stamped_with(key: WitnessKey, type_tag: str, state: SessionContinuityState) -> SessionContinuityState:
+    """Return ``state`` carrying a witness stamped under ``key`` and ``type_tag``."""
+
+    mut result = state.clone()
+    result.state_witness = assert_is_ok(stamp_keyed_witness(key, type_tag, state_witness_source(state)))
+    return result
+
+
+def witnessed(unwitnessed: SessionContinuityState) -> SessionContinuityState:
+    """Restamp ``state_witness`` under the host key so a hand-built state reaches the check under test."""
+
+    return stamped_with(host_key(), STATE_TYPE_TAG, unwitnessed)
+
+
+def witness_verifies(state: SessionContinuityState) -> bool:
+    """Return whether ``state``'s witness authenticates it under the host key."""
+
+    return keyed_witness_verifies(host_key(), STATE_TYPE_TAG, state_witness_source(state), state.state_witness)
+
+
+def session_state_for(
+    package: ContinuityPackage,
+    phase: str,
+    phase_started: int,
+    clock: int,
+    event_index: int,
+) -> SessionContinuityState:
+    """Return a witnessed open goal_one state bound to ``package``'s identity and the host clock."""
+
+    return witnessed(
+        SessionContinuityState(
+            session_id=session_id("session_one"),
+            profile_id=package.profile_id,
+            package_id=package.package_id,
+            domain_id=package.domain_id,
+            package_revision=package.package_revision,
+            continuity_declaration_digest=package.continuity_declaration_digest,
+            goal_id=goal_id("goal_one"),
+            schedule_id=schedule_id("schedule_one"),
+            phase_id=phase_id(phase),
+            started_at_seconds=SESSION_START,
+            phase_started_at_seconds=phase_started,
+            last_clock_seconds=clock,
+            last_event_index=event_index,
+            clock_source=HOST_CLOCK,
+            closed=false,
+            expired=false,
+            state_witness=unstamped_witness(),
+        ),
+    )
+
+
+def phase_one_state(clock: int, event_index: int) -> SessionContinuityState:
+    """Return a witnessed state that has been in phase_one since the session started."""
+
+    return session_state_for(continuity_package(), "phase_one", SESSION_START, clock, event_index)
+
+
+def phase_two_state(clock: int, event_index: int) -> SessionContinuityState:
+    """Return a witnessed state that entered phase_two at ``phase_two_start()``."""
+
+    return session_state_for(continuity_package(), "phase_two", phase_two_start(), clock, event_index)
+
+
+def proposal_for(
+    package: ContinuityPackage,
+    operation: ContinuityOperationKind,
+    prior: Option[SessionContinuityState],
+    proposed_phase: str,
+    clock: int,
+    event_index: int,
+) -> ContinuityProposal:
+    """Return a goal_one proposal on the host clock, bound to ``package``'s identity."""
+
+    return ContinuityProposal(
+        operation=operation,
+        session_id=session_id("session_one"),
+        event_id=session_event_id(f"event_{event_index}"),
+        event_index=event_index,
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        continuity_declaration_digest=package.continuity_declaration_digest,
+        goal_id=goal_id("goal_one"),
+        schedule_id=schedule_id("schedule_one"),
+        proposed_phase_id=phase_id(proposed_phase),
+        proposed_action_id=action_id("answer"),
+        clock_source=HOST_CLOCK,
+        current_clock_seconds=clock,
+        prior_state=prior,
+    )
+
+
+def proposal(
+    operation: ContinuityOperationKind,
+    prior: Option[SessionContinuityState],
+    proposed_phase: str,
+    clock: int,
+    event_index: int,
+) -> ContinuityProposal:
+    """Return a proposal bound to the single-goal fixture package."""
+
+    return proposal_for(continuity_package(), operation, prior, proposed_phase, clock, event_index)
+
+
+def on_clock(candidate: ContinuityProposal, source: str) -> ContinuityProposal:
+    """Return ``candidate`` claiming ``source`` as its clock (a parameter, so the field receives owned text)."""
+
+    mut result = candidate.clone()
+    result.clock_source = source
+    return result
+
+
+def start_proposal() -> ContinuityProposal:
+    """Return the admissible Start proposal for the fixture package."""
+
+    return proposal(ContinuityOperationKind.Start, None, "phase_one", SESSION_START, 0)
+
+
+def admitted_state(decision: ContinuityDecision, reason: str) -> SessionContinuityState:
+    """Assert an admission with ``reason`` and a re-verifying witness, then return the resulting state."""
+
+    assert_eq(decision.terminal, ContinuityTerminal.Admitted)
+    assert_eq(decision.reason, reason)
+    state = assert_is_some(decision.resulting_state)
+    assert_eq(state.state_witness.key_id, HOST_KEY_ID)
+    assert_eq(witness_verifies(state), true)
+    return state
+
+
+def rejection_under(key: WitnessKey, package: ContinuityPackage, candidate: ContinuityProposal) -> str:
+    """Evaluate ``candidate`` under ``key``, assert a rejection without resulting state, and return its reason."""
+
+    decision = evaluate_continuity(package, candidate, key)
+    assert_eq(decision.terminal, ContinuityTerminal.Rejected)
+    assert_is_none(decision.resulting_state)
+    return decision.reason
+
+
+def rejection(package: ContinuityPackage, candidate: ContinuityProposal) -> str:
+    """Evaluate ``candidate`` under the host key, assert a rejection without resulting state, and return its reason."""
+
+    return rejection_under(host_key(), package, candidate)
+
+
+def fixture_rejection(candidate: ContinuityProposal) -> str:
+    """Return the rejection reason for ``candidate`` against the single-goal fixture package."""
+
+    return rejection(continuity_package(), candidate)
+
+
+def admitted_closed_state() -> SessionContinuityState:
+    """Return the state ``evaluate_continuity`` itself produces when it admits Close at the total target."""
+
+    close = proposal(
+        ContinuityOperationKind.Close,
+        Some(phase_two_state(phase_two_start(), 2)),
+        "phase_two",
+        SESSION_START + TOTAL_TARGET,
+        3,
+    )
+    return admitted_state(evaluate(continuity_package(), close), "declared_goal_closed")
+
+
+def test_admitted_states_chain_from_start_through_close() -> None:
+    package = continuity_package()
+    started = admitted_state(evaluate(package, start_proposal()), "declared_goal_started")
+    assert_eq(started.phase_id, phase_id("phase_one"))
+    assert_eq(started.started_at_seconds, SESSION_START)
+    assert_eq(started.phase_started_at_seconds, SESSION_START)
+    assert_eq(started.last_clock_seconds, SESSION_START)
+    assert_eq(started.last_event_index, 0)
+    assert_eq(started.clock_source, HOST_CLOCK)
+    assert_eq(started.closed, false)
+
+    continue_clock = SESSION_START + PHASE_ONE_MINIMUM
+    continued = admitted_state(
+        evaluate(package, proposal(ContinuityOperationKind.Continue, Some(started), "phase_one", continue_clock, 1)),
+        "continue_current_phase",
+    )
+    assert_eq(continued.phase_id, phase_id("phase_one"))
+    assert_eq(continued.started_at_seconds, SESSION_START)
+    assert_eq(continued.phase_started_at_seconds, SESSION_START)
+    assert_eq(continued.last_clock_seconds, continue_clock)
+    assert_eq(continued.last_event_index, 1)
+    assert_eq(continued.closed, false)
+
+    transitioned = admitted_state(
+        evaluate(
+            package,
+            proposal(ContinuityOperationKind.Transition, Some(continued), "phase_two", phase_two_start(), 2),
+        ),
+        "declared_phase_transition",
+    )
+    assert_eq(transitioned.phase_id, phase_id("phase_two"))
+    assert_eq(transitioned.started_at_seconds, SESSION_START)
+    assert_eq(transitioned.phase_started_at_seconds, phase_two_start())
+    assert_eq(transitioned.last_clock_seconds, phase_two_start())
+    assert_eq(transitioned.last_event_index, 2)
+    assert_eq(transitioned.closed, false)
+
+    close_clock = SESSION_START + TOTAL_TARGET
+    closed = admitted_state(
+        evaluate(package, proposal(ContinuityOperationKind.Close, Some(transitioned), "phase_two", close_clock, 3)),
+        "declared_goal_closed",
+    )
+    assert_eq(closed.phase_id, phase_id("phase_two"))
+    assert_eq(closed.started_at_seconds, SESSION_START)
+    assert_eq(closed.phase_started_at_seconds, phase_two_start())
+    assert_eq(closed.last_clock_seconds, close_clock)
+    assert_eq(closed.last_event_index, 3)
+    assert_eq(closed.clock_source, HOST_CLOCK)
+    assert_eq(closed.closed, true)
+    assert_eq(closed.expired, false)
+
+    after_close = proposal(ContinuityOperationKind.Continue, Some(closed), "phase_two", close_clock, 4)
+    assert_eq(rejection(package, after_close), "session_already_closed")
+
+
+def test_every_operation_on_an_admitted_closed_session_is_rejected() -> None:
+    closed = admitted_closed_state()
+    clock = SESSION_START + TOTAL_TARGET + 1
+    continuing = proposal(ContinuityOperationKind.Continue, Some(closed.clone()), "phase_two", clock, 4)
+    assert_eq(fixture_rejection(continuing), "session_already_closed")
+    transitioning = proposal(ContinuityOperationKind.Transition, Some(closed.clone()), "phase_two", clock, 4)
+    assert_eq(fixture_rejection(transitioning), "session_already_closed")
+    closing_again = proposal(ContinuityOperationKind.Close, Some(closed.clone()), "phase_two", clock, 4)
+    assert_eq(fixture_rejection(closing_again), "session_already_closed")
+    expiring = proposal(ContinuityOperationKind.Expire, Some(closed.clone()), "phase_two", clock, 4)
+    assert_eq(fixture_rejection(expiring), "session_already_closed")
+    restarting = proposal(ContinuityOperationKind.Start, Some(closed), "phase_one", clock, 0)
+    assert_eq(fixture_rejection(restarting), "start_requires_empty_state")
+
+
+def test_invalid_package_rejects_every_proposal_at_the_evaluation_boundary() -> None:
+    mut duplicate_goals = continuity_package()
+    duplicate_goals.goals = [goal_one(), goal_one()]
+    invalid_package = rewitnessed(duplicate_goals)
+    assert_eq(validation_reason(invalid_package), "duplicate_goal_id")
+    assert_eq(rejection(invalid_package, start_proposal()), "invalid_continuity_package")
+
+    mut stale = continuity_package()
+    stale.goals = [goal_one(), goal_one()]
+    assert_eq(validation_reason(stale), "continuity_declaration_digest_mismatch")
+    assert_eq(rejection(stale, start_proposal()), "invalid_continuity_package")
+
+
+def test_proposal_with_unsafe_identifier_text_is_rejected() -> None:
+    mut spaced_session = start_proposal()
+    spaced_session.session_id = SessionId(SymbolicIdType(IdType(" session_one ")))
+    assert_eq(fixture_rejection(spaced_session), "invalid_proposal_identifier")
+
+    mut uppercase_event = start_proposal()
+    uppercase_event.event_id = SessionEventId(SymbolicIdType(IdType("Event_0")))
+    assert_eq(fixture_rejection(uppercase_event), "invalid_proposal_identifier")
+
+    mut uppercase_action = start_proposal()
+    uppercase_action.proposed_action_id = ActionId(SymbolicIdType(IdType("Answer")))
+    assert_eq(fixture_rejection(uppercase_action), "invalid_proposal_identifier")
+
+    assert_eq(fixture_rejection(on_clock(start_proposal(), "")), "invalid_proposal_identifier")
+    assert_eq(fixture_rejection(on_clock(start_proposal(), "Host Monotonic")), "invalid_proposal_identifier")
+    oversized_clock = on_clock(start_proposal(), repeated_a(MAX_IDENTIFIER_LENGTH + 1))
+    assert_eq(fixture_rejection(oversized_clock), "invalid_proposal_identifier")
+
+
+def test_proposal_for_another_package_identity_is_rejected() -> None:
+    mut foreign = start_proposal()
+    foreign.package_id = package_id("other_package")
+    assert_eq(fixture_rejection(foreign), "package_identity_mismatch")
+
+
+def test_proposal_for_an_undeclared_goal_is_rejected() -> None:
+    mut undeclared = start_proposal()
+    undeclared.goal_id = goal_id("other_goal")
+    assert_eq(fixture_rejection(undeclared), "unknown_goal")
+
+
+def test_proposal_for_an_undeclared_schedule_is_rejected() -> None:
+    mut undeclared = start_proposal()
+    undeclared.schedule_id = schedule_id("other_schedule")
+    assert_eq(fixture_rejection(undeclared), "unknown_schedule")
+
+
+def test_proposal_pairing_a_goal_with_another_goals_schedule_is_rejected() -> None:
+    package = two_goal_package()
+    mut crossed = proposal_for(package, ContinuityOperationKind.Start, None, "phase_one", SESSION_START, 0)
+    crossed.schedule_id = schedule_id("schedule_two")
+    assert_eq(rejection(package, crossed), "schedule_goal_mismatch")
+
+
+def test_undeclared_clock_source_is_rejected() -> None:
+    assert_eq(fixture_rejection(on_clock(start_proposal(), "wall_clock")), "clock_source_not_allowed")
+
+
+def test_undeclared_phase_is_rejected() -> None:
+    undeclared = proposal(ContinuityOperationKind.Start, None, "phase_unknown", SESSION_START, 0)
+    assert_eq(fixture_rejection(undeclared), "unknown_phase")
+
+
+def test_action_the_goal_does_not_declare_is_rejected() -> None:
+    mut undeclared = start_proposal()
+    undeclared.proposed_action_id = action_id("delete_everything")
+    assert_eq(fixture_rejection(undeclared), "action_not_allowed_for_goal")
+
+
+def test_goal_action_the_proposed_phase_does_not_declare_is_rejected() -> None:
+    mut guide_in_phase_two = proposal(ContinuityOperationKind.Start, None, "phase_two", SESSION_START, 0)
+    guide_in_phase_two.proposed_action_id = action_id("guide")
+    assert_eq(fixture_rejection(guide_in_phase_two), "action_not_allowed_for_phase")
+
+
+def test_negative_event_coordinates_are_rejected() -> None:
+    negative_clock = proposal(ContinuityOperationKind.Start, None, "phase_one", -1, 0)
+    assert_eq(fixture_rejection(negative_clock), "invalid_event_coordinates")
+    negative_index = proposal(ContinuityOperationKind.Start, None, "phase_one", SESSION_START, -1)
+    assert_eq(fixture_rejection(negative_index), "invalid_event_coordinates")
+
+
+def test_event_coordinates_at_the_bound_are_admitted_and_one_over_is_rejected() -> None:
+    at_bound = proposal(ContinuityOperationKind.Start, None, "phase_one", MAX_CONTINUITY_INTEGER, 0)
+    admitted_state(evaluate(continuity_package(), at_bound), "declared_goal_started")
+    clock_over = proposal(ContinuityOperationKind.Start, None, "phase_one", MAX_CONTINUITY_INTEGER + 1, 0)
+    assert_eq(fixture_rejection(clock_over), "invalid_event_coordinates")
+    index_over = proposal(ContinuityOperationKind.Start, None, "phase_one", SESSION_START, MAX_CONTINUITY_INTEGER + 1)
+    assert_eq(fixture_rejection(index_over), "invalid_event_coordinates")
+    largest_clock = proposal(ContinuityOperationKind.Start, None, "phase_one", LARGEST_INT, 0)
+    assert_eq(fixture_rejection(largest_clock), "invalid_event_coordinates")
+
+
+def test_start_with_a_prior_state_is_rejected() -> None:
+    restart = proposal(
+        ContinuityOperationKind.Start,
+        Some(phase_one_state(SESSION_START, 0)),
+        "phase_one",
+        SESSION_START,
+        0,
+    )
+    assert_eq(fixture_rejection(restart), "start_requires_empty_state")
+
+
+def test_start_with_a_nonzero_event_index_is_rejected() -> None:
+    late_start = proposal(ContinuityOperationKind.Start, None, "phase_one", SESSION_START, 1)
+    assert_eq(fixture_rejection(late_start), "start_event_index_invalid")
+
+
+def test_start_outside_the_entry_phase_is_rejected() -> None:
+    skipped_entry = proposal(ContinuityOperationKind.Start, None, "phase_two", SESSION_START, 0)
+    assert_eq(fixture_rejection(skipped_entry), "start_phase_not_declared")
+
+
+def test_every_non_start_operation_without_prior_state_is_rejected() -> None:
+    clock = SESSION_START + PHASE_ONE_MINIMUM
+    continuing = proposal(ContinuityOperationKind.Continue, None, "phase_one", clock, 1)
+    assert_eq(fixture_rejection(continuing), "prior_state_required")
+    transitioning = proposal(ContinuityOperationKind.Transition, None, "phase_two", clock, 1)
+    assert_eq(fixture_rejection(transitioning), "prior_state_required")
+    closing = proposal(ContinuityOperationKind.Close, None, "phase_two", clock, 1)
+    assert_eq(fixture_rejection(closing), "prior_state_required")
+    expiring = proposal(ContinuityOperationKind.Expire, None, "phase_one", SESSION_START + PHASE_ONE_MAXIMUM + 1, 1)
+    assert_eq(fixture_rejection(expiring), "prior_state_required")
+
+
+def test_prior_state_from_another_package_is_rejected() -> None:
+    mut foreign_state = phase_one_state(SESSION_START + 100, 1)
+    foreign_state.package_id = package_id("other_package")
+    cross_package = proposal(ContinuityOperationKind.Continue, Some(foreign_state), "phase_one", SESSION_START + 101, 2)
+    assert_eq(fixture_rejection(cross_package), "prior_state_identity_mismatch")
+
+
+def test_prior_state_from_another_session_is_rejected() -> None:
+    mut other_session = phase_one_state(SESSION_START + 100, 1)
+    other_session.session_id = session_id("session_two")
+    other_session = witnessed(other_session)
+    cross_session = proposal(ContinuityOperationKind.Continue, Some(other_session), "phase_one", SESSION_START + 101, 2)
+    assert_eq(fixture_rejection(cross_session), "prior_state_identity_mismatch")
+
+
+def test_switching_to_another_declared_goal_mid_session_is_rejected() -> None:
+    package = two_goal_package()
+    goal_one_prior = session_state_for(package, "phase_one", SESSION_START, SESSION_START + 100, 1)
+    mut drift = proposal_for(
+        package,
+        ContinuityOperationKind.Continue,
+        Some(goal_one_prior),
+        "solo_phase",
+        SESSION_START + 101,
+        2,
+    )
+    drift.goal_id = goal_id("goal_two")
+    drift.schedule_id = schedule_id("schedule_two")
+    assert_eq(rejection(package, drift), "prior_state_identity_mismatch")
+
+
+def test_hand_assembled_prior_state_with_forged_witness_is_rejected() -> None:
+    mut tampered = phase_one_state(SESSION_START + 150, 1)
+    tampered.last_event_index = 4
+    forged = proposal(ContinuityOperationKind.Continue, Some(tampered), "phase_one", SESSION_START + 200, 5)
+    assert_eq(fixture_rejection(forged), "prior_state_witness_invalid")
+
+
+def continue_from(prior: SessionContinuityState) -> ContinuityProposal:
+    """Return an otherwise admissible Continue in phase_one from a prior stamped at event 1."""
+
+    return proposal(ContinuityOperationKind.Continue, Some(prior), "phase_one", SESSION_START + 101, 2)
+
+
+def test_invalid_witness_key_is_rejected_before_anything_else() -> None:
+    short_secret = WitnessKey(key_id=HOST_KEY_ID, secret=secret_of("k", MIN_WITNESS_KEY_BYTES - 1))
+    assert_eq(rejection_under(short_secret, continuity_package(), start_proposal()), "invalid_witness_key")
+    unsafe_identifier = key_named("Host Key", "k")
+    assert_eq(rejection_under(unsafe_identifier, continuity_package(), start_proposal()), "invalid_witness_key")
+    mut stale = continuity_package()
+    stale.goals = [goal_one(), goal_one()]
+    assert_eq(rejection_under(short_secret, stale, start_proposal()), "invalid_witness_key")
+
+
+def test_admitted_state_is_stamped_under_the_host_key() -> None:
+    started = admitted_state(evaluate(continuity_package(), start_proposal()), "declared_goal_started")
+    assert_eq(started.state_witness.key_id, HOST_KEY_ID)
+    assert_eq(len(started.state_witness.tag), 64)
+
+
+def test_prior_state_stamped_under_another_key_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    admitted_state(evaluate(continuity_package(), continue_from(prior.clone())), "continue_current_phase")
+    rotated = stamped_with(key_named("host-key-2", "k"), STATE_TYPE_TAG, prior.clone())
+    assert_eq(fixture_rejection(continue_from(rotated)), "prior_state_witness_invalid")
+    wrong_secret = stamped_with(key_named(HOST_KEY_ID, "x"), STATE_TYPE_TAG, prior.clone())
+    assert_eq(fixture_rejection(continue_from(wrong_secret)), "prior_state_witness_invalid")
+    other_host_key = key_named("host-key-2", "k")
+    assert_eq(rejection_under(other_host_key, continuity_package(), continue_from(prior)), "prior_state_witness_invalid")
+
+
+def test_prior_state_stamped_under_another_type_tag_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    cross_type = stamped_with(host_key(), DECLARATION_TYPE_TAG, prior)
+    assert_eq(fixture_rejection(continue_from(cross_type)), "prior_state_witness_invalid")
+
+
+def test_prior_state_with_any_field_edited_after_stamping_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    mut later_clock = prior.clone()
+    later_clock.last_clock_seconds = SESSION_START + 101
+    assert_eq(fixture_rejection(continue_from(later_clock)), "prior_state_witness_invalid")
+    mut earlier_start = prior.clone()
+    earlier_start.started_at_seconds = SESSION_START - 1
+    earlier_start.phase_started_at_seconds = SESSION_START - 1
+    assert_eq(fixture_rejection(continue_from(earlier_start)), "prior_state_witness_invalid")
+    mut closed_flag = prior.clone()
+    closed_flag.closed = true
+    assert_eq(fixture_rejection(continue_from(closed_flag)), "prior_state_witness_invalid")
+    mut relabeled = prior.clone()
+    relabeled.state_witness = KeyedWitness(key_id="host-key-2", tag=prior.state_witness.tag)
+    assert_eq(fixture_rejection(continue_from(relabeled)), "prior_state_witness_invalid")
+
+
+def test_prior_state_with_a_malformed_witness_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    mut placeholder = prior.clone()
+    placeholder.state_witness = unstamped_witness()
+    assert_eq(fixture_rejection(continue_from(placeholder)), "prior_state_witness_invalid")
+    mut not_hex = prior.clone()
+    not_hex.state_witness = KeyedWitness(key_id=HOST_KEY_ID, tag=repeated_text("G", 64))
+    assert_eq(fixture_rejection(continue_from(not_hex)), "prior_state_witness_invalid")
+    mut truncated = prior.clone()
+    truncated.state_witness = KeyedWitness(key_id=HOST_KEY_ID, tag=repeated_a(63))
+    assert_eq(fixture_rejection(continue_from(truncated)), "prior_state_witness_invalid")
+    mut unsafe_key_id = prior.clone()
+    unsafe_key_id.state_witness = KeyedWitness(key_id="Host Key", tag=prior.state_witness.tag)
+    assert_eq(fixture_rejection(continue_from(unsafe_key_id)), "prior_state_witness_invalid")
+
+
+def test_clock_source_switch_mid_session_is_rejected() -> None:
+    package = continuity_package()
+    started = admitted_state(evaluate(package, start_proposal()), "declared_goal_started")
+    host_continue = proposal(
+        ContinuityOperationKind.Continue,
+        Some(started.clone()),
+        "phase_one",
+        SESSION_START + 100,
+        1,
+    )
+    assert_eq(rejection(package, on_clock(host_continue, EXTERNAL_CLOCK)), "clock_source_changed")
+    same_source = proposal(ContinuityOperationKind.Continue, Some(started), "phase_one", SESSION_START + 100, 1)
+    admitted_state(evaluate(package, same_source), "continue_current_phase")
+
+
+def test_session_started_on_another_declared_clock_keeps_that_clock() -> None:
+    package = continuity_package()
+    external_start = on_clock(start_proposal(), EXTERNAL_CLOCK)
+    started = admitted_state(evaluate(package, external_start), "declared_goal_started")
+    assert_eq(started.clock_source, EXTERNAL_CLOCK)
+    host_continue = proposal(ContinuityOperationKind.Continue, Some(started), "phase_one", SESSION_START + 100, 1)
+    assert_eq(rejection(package, host_continue), "clock_source_changed")
+
+
+def test_prior_state_in_an_undeclared_phase_is_rejected() -> None:
+    lost = session_state_for(continuity_package(), "phase_unknown", phase_two_start(), phase_two_start(), 2)
+    candidate = proposal(ContinuityOperationKind.Continue, Some(lost), "phase_one", phase_two_start() + 1, 3)
+    assert_eq(fixture_rejection(candidate), "prior_phase_unknown")
+
+
+def inconsistent_prior_reason(prior: SessionContinuityState, phase: str, clock: int) -> str:
+    """
+    Witness ``prior`` and return the rejection reason for continuing it in ``phase`` at ``clock``.
+
+    The proposal always carries event index 1. Prior-state invariants are checked before event order, so a prior that
+    fails them is rejected as inconsistent, and one that passes them is rejected for event order instead.
+    """
+
+    candidate = proposal(ContinuityOperationKind.Continue, Some(witnessed(prior)), phase, clock, 1)
+    return fixture_rejection(candidate)
+
+
+def test_prior_state_with_inconsistent_timestamps_is_rejected() -> None:
+    mut negative_start = phase_one_state(SESSION_START + 100, 1)
+    negative_start.started_at_seconds = -1000000000
+    negative_start.phase_started_at_seconds = -1000000000
+    assert_eq(inconsistent_prior_reason(negative_start, "phase_one", SESSION_START + 101), "prior_state_inconsistent")
+
+    mut phase_before_session = phase_two_state(phase_two_start(), 2)
+    phase_before_session.phase_started_at_seconds = SESSION_START - 1
+    assert_eq(
+        inconsistent_prior_reason(phase_before_session, "phase_two", phase_two_start() + 1),
+        "prior_state_inconsistent",
+    )
+
+    mut clock_before_phase = phase_two_state(phase_two_start(), 2)
+    clock_before_phase.last_clock_seconds = phase_two_start() - 1
+    assert_eq(
+        inconsistent_prior_reason(clock_before_phase, "phase_two", phase_two_start() + 1),
+        "prior_state_inconsistent",
+    )
+
+    mut clock_over_bound = phase_two_state(phase_two_start(), 2)
+    clock_over_bound.last_clock_seconds = MAX_CONTINUITY_INTEGER + 1
+    assert_eq(
+        inconsistent_prior_reason(clock_over_bound, "phase_two", MAX_CONTINUITY_INTEGER),
+        "prior_state_inconsistent",
+    )
+
+    mut overflowing_phase_start = phase_two_state(phase_two_start(), 2)
+    overflowing_phase_start.phase_started_at_seconds = -LARGEST_INT
+    assert_eq(
+        inconsistent_prior_reason(overflowing_phase_start, "phase_two", phase_two_start() + 1),
+        "prior_state_inconsistent",
+    )
+
+    mut entry_phase_restarted = phase_one_state(SESSION_START + 100, 1)
+    entry_phase_restarted.phase_started_at_seconds = SESSION_START + 10
+    assert_eq(
+        inconsistent_prior_reason(entry_phase_restarted, "phase_one", SESSION_START + 101),
+        "prior_state_inconsistent",
+    )
+
+
+def test_prior_state_with_inconsistent_event_index_is_rejected() -> None:
+    mut negative_index = phase_one_state(SESSION_START + 100, 1)
+    negative_index.last_event_index = -1
+    assert_eq(inconsistent_prior_reason(negative_index, "phase_one", SESSION_START + 101), "prior_state_inconsistent")
+
+    mut index_over_bound = phase_one_state(SESSION_START + 100, 1)
+    index_over_bound.last_event_index = MAX_CONTINUITY_INTEGER + 1
+    assert_eq(inconsistent_prior_reason(index_over_bound, "phase_one", SESSION_START + 101), "prior_state_inconsistent")
+
+    mut largest_index = phase_one_state(SESSION_START + 100, 1)
+    largest_index.last_event_index = LARGEST_INT
+    assert_eq(inconsistent_prior_reason(largest_index, "phase_one", SESSION_START + 101), "prior_state_inconsistent")
+
+    first_event_after_start = phase_one_state(SESSION_START + 100, 0)
+    assert_eq(
+        inconsistent_prior_reason(first_event_after_start, "phase_one", SESSION_START + 101),
+        "prior_state_inconsistent",
+    )
+
+    mut first_event_in_later_phase = phase_two_state(phase_two_start(), 2)
+    first_event_in_later_phase.last_event_index = 0
+    assert_eq(
+        inconsistent_prior_reason(first_event_in_later_phase, "phase_two", phase_two_start() + 1),
+        "prior_state_inconsistent",
+    )
+
+
+def test_prior_state_already_past_its_phase_maximum_is_rejected() -> None:
+    overrun = phase_one_state(SESSION_START + PHASE_ONE_MAXIMUM + 1, 1)
+    assert_eq(
+        inconsistent_prior_reason(overrun, "phase_one", SESSION_START + PHASE_ONE_MAXIMUM + 1),
+        "prior_state_inconsistent",
+    )
+
+
+def test_prior_state_closed_without_meeting_the_close_rules_is_rejected() -> None:
+    mut closed_in_entry_phase = phase_one_state(SESSION_START + 100, 1)
+    closed_in_entry_phase.closed = true
+    assert_eq(
+        inconsistent_prior_reason(closed_in_entry_phase, "phase_one", SESSION_START + 101),
+        "prior_state_inconsistent",
+    )
+
+    mut closed_before_target = phase_two_state(SESSION_START + TOTAL_TARGET - 1, 3)
+    closed_before_target.closed = true
+    assert_eq(
+        inconsistent_prior_reason(closed_before_target, "phase_two", SESSION_START + TOTAL_TARGET),
+        "prior_state_inconsistent",
+    )
+
+
+def test_prior_state_at_the_numeric_bounds_is_accepted() -> None:
+    mut at_bound = phase_two_state(MAX_CONTINUITY_INTEGER, 2)
+    at_bound.phase_started_at_seconds = MAX_CONTINUITY_INTEGER - PHASE_TWO_MAXIMUM
+    stamped = witnessed(at_bound)
+    candidate = proposal(ContinuityOperationKind.Continue, Some(stamped), "phase_two", MAX_CONTINUITY_INTEGER, 3)
+    admitted_state(evaluate(continuity_package(), candidate), "continue_current_phase")
+
+
+def test_replayed_or_skipped_event_index_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 3)
+    replay = proposal(ContinuityOperationKind.Continue, Some(prior.clone()), "phase_one", SESSION_START + 101, 3)
+    assert_eq(fixture_rejection(replay), "event_index_not_monotonic")
+    skipped = proposal(ContinuityOperationKind.Continue, Some(prior), "phase_one", SESSION_START + 101, 5)
+    assert_eq(fixture_rejection(skipped), "event_index_not_monotonic")
+
+
+def test_clock_regression_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    regression = proposal(ContinuityOperationKind.Continue, Some(prior), "phase_one", SESSION_START + 99, 2)
+    assert_eq(fixture_rejection(regression), "clock_regression")
+
+
+def test_continue_at_exact_phase_maximum_is_admitted() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    at_maximum = proposal(
+        ContinuityOperationKind.Continue,
+        Some(prior),
+        "phase_one",
+        SESSION_START + PHASE_ONE_MAXIMUM,
+        2,
+    )
+    admitted_state(evaluate(continuity_package(), at_maximum), "continue_current_phase")
+
+
+def test_continue_one_second_past_phase_maximum_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    past_maximum = proposal(
+        ContinuityOperationKind.Continue,
+        Some(prior),
+        "phase_one",
+        SESSION_START + PHASE_ONE_MAXIMUM + 1,
+        2,
+    )
+    assert_eq(fixture_rejection(past_maximum), "phase_maximum_exceeded")
+
+
+def test_transition_one_second_past_phase_maximum_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    past_maximum = proposal(
+        ContinuityOperationKind.Transition,
+        Some(prior),
+        "phase_two",
+        SESSION_START + PHASE_ONE_MAXIMUM + 1,
+        2,
+    )
+    assert_eq(fixture_rejection(past_maximum), "phase_maximum_exceeded")
+
+
+def test_close_one_second_past_phase_maximum_is_rejected() -> None:
+    prior = phase_two_state(phase_two_start(), 2)
+    past_maximum = proposal(
+        ContinuityOperationKind.Close,
+        Some(prior),
+        "phase_two",
+        phase_two_start() + PHASE_TWO_MAXIMUM + 1,
+        3,
+    )
+    assert_eq(fixture_rejection(past_maximum), "phase_maximum_exceeded")
+
+
+def test_continue_into_another_phase_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    moved = proposal(ContinuityOperationKind.Continue, Some(prior), "phase_two", SESSION_START + 101, 2)
+    assert_eq(fixture_rejection(moved), "continue_phase_mismatch")
+
+
+def test_transition_along_an_undeclared_edge_is_rejected() -> None:
+    to_itself = proposal(
+        ContinuityOperationKind.Transition,
+        Some(phase_one_state(SESSION_START + 100, 1)),
+        "phase_one",
+        SESSION_START + 101,
+        2,
+    )
+    assert_eq(fixture_rejection(to_itself), "phase_transition_not_declared")
+    backward = proposal(
+        ContinuityOperationKind.Transition,
+        Some(phase_two_state(phase_two_start(), 2)),
+        "phase_one",
+        phase_two_start() + PHASE_TWO_MINIMUM,
+        3,
+    )
+    assert_eq(fixture_rejection(backward), "phase_transition_not_declared")
+
+
+def test_transition_at_exact_phase_minimum_is_admitted() -> None:
+    prior = phase_one_state(SESSION_START, 1)
+    at_minimum = proposal(
+        ContinuityOperationKind.Transition,
+        Some(prior),
+        "phase_two",
+        SESSION_START + PHASE_ONE_MINIMUM,
+        2,
+    )
+    moved = admitted_state(evaluate(continuity_package(), at_minimum), "declared_phase_transition")
+    assert_eq(moved.phase_started_at_seconds, SESSION_START + PHASE_ONE_MINIMUM)
+
+
+def test_transition_one_second_before_phase_minimum_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START, 1)
+    early = proposal(
+        ContinuityOperationKind.Transition,
+        Some(prior),
+        "phase_two",
+        SESSION_START + PHASE_ONE_MINIMUM - 1,
+        2,
+    )
+    assert_eq(fixture_rejection(early), "phase_minimum_not_met")
+
+
+def test_close_outside_a_completion_phase_is_rejected() -> None:
+    from_entry = proposal(
+        ContinuityOperationKind.Close,
+        Some(phase_one_state(SESSION_START + 100, 1)),
+        "phase_one",
+        SESSION_START + 101,
+        2,
+    )
+    assert_eq(fixture_rejection(from_entry), "goal_close_not_declared")
+    into_other_phase = proposal(
+        ContinuityOperationKind.Close,
+        Some(phase_two_state(phase_two_start(), 2)),
+        "phase_one",
+        SESSION_START + TOTAL_TARGET,
+        3,
+    )
+    assert_eq(fixture_rejection(into_other_phase), "goal_close_not_declared")
+
+
+def test_close_one_second_before_total_target_is_rejected() -> None:
+    early = proposal(
+        ContinuityOperationKind.Close,
+        Some(phase_two_state(phase_two_start(), 2)),
+        "phase_two",
+        SESSION_START + TOTAL_TARGET - 1,
+        3,
+    )
+    assert_eq(fixture_rejection(early), "goal_budget_not_reached")
+
+
+def test_close_at_exact_total_target_is_admitted() -> None:
+    closed = admitted_closed_state()
+    assert_eq(closed.closed, true)
+    assert_eq(closed.last_clock_seconds, SESSION_START + TOTAL_TARGET)
+
+
+def expire_at(prior: SessionContinuityState, phase: str, clock: int) -> ContinuityProposal:
+    """Return an Expire proposal from ``prior`` in ``phase`` at ``clock``, at the next event index."""
+
+    return proposal(ContinuityOperationKind.Expire, Some(prior.clone()), phase, clock, prior.last_event_index + 1)
+
+
+def phase_one_overrun_clock() -> int:
+    """Return the first clock value at which phase_one has run past its declared maximum."""
+
+    return SESSION_START + PHASE_ONE_MAXIMUM + 1
+
+
+def admitted_expired_state() -> SessionContinuityState:
+    """Return the state ``evaluate_continuity`` produces when it admits Expire one second past phase_one's maximum."""
+
+    expire = expire_at(phase_one_state(SESSION_START + 100, 1), "phase_one", phase_one_overrun_clock())
+    return admitted_state(evaluate(continuity_package(), expire), "phase_maximum_expired")
+
+
+def test_expire_one_second_past_the_phase_maximum_closes_the_session_as_expired() -> None:
+    expired = admitted_expired_state()
+    assert_eq(expired.phase_id, phase_id("phase_one"))
+    assert_eq(expired.started_at_seconds, SESSION_START)
+    assert_eq(expired.phase_started_at_seconds, SESSION_START)
+    assert_eq(expired.last_clock_seconds, phase_one_overrun_clock())
+    assert_eq(expired.last_event_index, 2)
+    assert_eq(expired.clock_source, HOST_CLOCK)
+    assert_eq(expired.closed, true)
+    assert_eq(expired.expired, true)
+
+
+def test_expire_in_a_later_phase_keeps_both_start_times() -> None:
+    prior = phase_two_state(phase_two_start() + 10, 2)
+    overrun = phase_two_start() + PHASE_TWO_MAXIMUM + 1
+    expired = admitted_state(
+        evaluate(continuity_package(), expire_at(prior, "phase_two", overrun)),
+        "phase_maximum_expired",
+    )
+    assert_eq(expired.started_at_seconds, SESSION_START)
+    assert_eq(expired.phase_started_at_seconds, phase_two_start())
+    assert_eq(expired.expired, true)
+
+
+def test_expire_at_or_before_the_phase_maximum_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    at_maximum = expire_at(prior.clone(), "phase_one", SESSION_START + PHASE_ONE_MAXIMUM)
+    assert_eq(fixture_rejection(at_maximum), "phase_maximum_not_exceeded")
+    early = expire_at(prior, "phase_one", SESSION_START + 101)
+    assert_eq(fixture_rejection(early), "phase_maximum_not_exceeded")
+
+
+def test_expire_for_a_goal_without_declared_expiry_is_rejected() -> None:
+    mut no_expiry = goal_one()
+    no_expiry.expiry_allowed = false
+    package = with_goal(no_expiry)
+    prior = session_state_for(package, "phase_one", SESSION_START, SESSION_START + 100, 1)
+    assert_eq(
+        rejection(
+            package,
+            proposal_for(package, ContinuityOperationKind.Expire, Some(prior), "phase_one", phase_one_overrun_clock(), 2),
+        ),
+        "expiry_not_declared",
+    )
+
+
+def test_expire_naming_another_phase_is_rejected() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    assert_eq(fixture_rejection(expire_at(prior, "phase_two", phase_one_overrun_clock())), "expire_phase_mismatch")
+
+
+def test_expire_passes_the_shared_prior_state_checks() -> None:
+    prior = phase_one_state(SESSION_START + 100, 1)
+    mut replayed = expire_at(prior.clone(), "phase_one", phase_one_overrun_clock())
+    replayed.event_index = 1
+    assert_eq(fixture_rejection(replayed), "event_index_not_monotonic")
+    assert_eq(fixture_rejection(expire_at(prior.clone(), "phase_one", SESSION_START + 99)), "clock_regression")
+    external = on_clock(expire_at(prior.clone(), "phase_one", phase_one_overrun_clock()), EXTERNAL_CLOCK)
+    assert_eq(fixture_rejection(external), "clock_source_changed")
+    mut forged = prior.clone()
+    forged.last_clock_seconds = SESSION_START + 101
+    assert_eq(
+        fixture_rejection(expire_at(forged, "phase_one", phase_one_overrun_clock())),
+        "prior_state_witness_invalid",
+    )
+    mut undeclared_action = expire_at(prior, "phase_one", phase_one_overrun_clock())
+    undeclared_action.proposed_action_id = action_id("delete_everything")
+    assert_eq(fixture_rejection(undeclared_action), "action_not_allowed_for_goal")
+
+
+def test_expire_with_an_action_the_phase_does_not_declare_is_rejected() -> None:
+    prior = phase_two_state(phase_two_start(), 2)
+    mut guide = expire_at(prior, "phase_two", phase_two_start() + PHASE_TWO_MAXIMUM + 1)
+    guide.proposed_action_id = action_id("guide")
+    assert_eq(fixture_rejection(guide), "action_not_allowed_for_phase")
+
+
+def test_every_operation_on_an_expired_session_is_rejected() -> None:
+    expired = admitted_expired_state()
+    clock = phase_one_overrun_clock() + 1
+    continuing = proposal(ContinuityOperationKind.Continue, Some(expired.clone()), "phase_one", clock, 3)
+    assert_eq(fixture_rejection(continuing), "session_already_closed")
+    transitioning = proposal(ContinuityOperationKind.Transition, Some(expired.clone()), "phase_two", clock, 3)
+    assert_eq(fixture_rejection(transitioning), "session_already_closed")
+    closing = proposal(ContinuityOperationKind.Close, Some(expired.clone()), "phase_one", clock, 3)
+    assert_eq(fixture_rejection(closing), "session_already_closed")
+    expiring_again = proposal(ContinuityOperationKind.Expire, Some(expired.clone()), "phase_one", clock, 3)
+    assert_eq(fixture_rejection(expiring_again), "session_already_closed")
+    restarting = proposal(ContinuityOperationKind.Start, Some(expired), "phase_one", clock, 0)
+    assert_eq(fixture_rejection(restarting), "start_requires_empty_state")
+
+
+def test_forged_expired_flag_fails_the_witness() -> None:
+    mut flagged_open = phase_one_state(SESSION_START + 100, 1)
+    flagged_open.expired = true
+    assert_eq(fixture_rejection(continue_from(flagged_open)), "prior_state_witness_invalid")
+
+    mut unexpired = admitted_expired_state()
+    unexpired.expired = false
+    reopened = proposal(ContinuityOperationKind.Continue, Some(unexpired), "phase_one", phase_one_overrun_clock(), 3)
+    assert_eq(fixture_rejection(reopened), "prior_state_witness_invalid")
+
+    normal_close = admitted_closed_state()
+    mut relabeled_close = normal_close.clone()
+    relabeled_close.expired = true
+    relabeled = proposal(
+        ContinuityOperationKind.Continue,
+        Some(relabeled_close),
+        "phase_two",
+        SESSION_START + TOTAL_TARGET,
+        4,
+    )
+    assert_eq(fixture_rejection(relabeled), "prior_state_witness_invalid")
+
+
+def test_prior_state_with_inconsistent_expiry_is_rejected() -> None:
+    mut expired_but_open = phase_one_state(phase_one_overrun_clock(), 2)
+    expired_but_open.expired = true
+    assert_eq(
+        inconsistent_prior_reason(expired_but_open, "phase_one", phase_one_overrun_clock()),
+        "prior_state_inconsistent",
+    )
+
+    mut expired_within_maximum = phase_one_state(SESSION_START + PHASE_ONE_MAXIMUM, 2)
+    expired_within_maximum.closed = true
+    expired_within_maximum.expired = true
+    assert_eq(
+        inconsistent_prior_reason(expired_within_maximum, "phase_one", SESSION_START + PHASE_ONE_MAXIMUM),
+        "prior_state_inconsistent",
+    )
+
+    mut closed_past_maximum = phase_two_state(phase_two_start() + PHASE_TWO_MAXIMUM + 1, 3)
+    closed_past_maximum.closed = true
+    assert_eq(
+        inconsistent_prior_reason(closed_past_maximum, "phase_two", phase_two_start() + PHASE_TWO_MAXIMUM + 1),
+        "prior_state_inconsistent",
+    )
+
+    mut expired_past_maximum = phase_one_state(phase_one_overrun_clock(), 2)
+    expired_past_maximum.closed = true
+    expired_past_maximum.expired = true
+    assert_eq(
+        inconsistent_prior_reason(expired_past_maximum, "phase_one", phase_one_overrun_clock()),
+        "session_already_closed",
+    )
+
+
+def test_genuine_continuity_package_is_valid() -> None:
+    assert_eq(validation_reason(continuity_package()), "valid")
+    assert_eq(validation_reason(two_goal_package()), "valid")
+
+
+def test_stale_continuity_package_digest_after_schedule_change_is_rejected() -> None:
+    mut mutated = continuity_package()
+    mut first_schedule = mutated.schedules[0]
+    first_schedule.total_target_seconds = first_schedule.total_target_seconds + 1
+    mutated.schedules[0] = first_schedule
+    assert_eq(validation_reason(mutated), "continuity_declaration_digest_mismatch")
+
+
+def test_stale_continuity_package_digest_after_goal_change_is_rejected() -> None:
+    mut mutated = continuity_package()
+    mut first_goal = mutated.goals[0]
+    first_goal.allowed_action_ids = [action_id("answer")]
+    mutated.goals[0] = first_goal
+    assert_eq(validation_reason(mutated), "continuity_declaration_digest_mismatch")
+
+
+def test_stale_continuity_package_digest_after_expiry_declaration_change_is_rejected() -> None:
+    mut mutated = continuity_package()
+    mut first_goal = mutated.goals[0]
+    first_goal.expiry_allowed = false
+    mutated.goals[0] = first_goal
+    assert_eq(validation_reason(mutated), "continuity_declaration_digest_mismatch")
+
+
+def test_continuity_declaration_digest_hashes_its_type_tag() -> None:
+    package = continuity_package()
+    projection = declaration_projection_json(package)
+    tagged = assert_is_ok(digest_tagged_json(DECLARATION_TYPE_TAG, projection))
+    assert_eq(digest_continuity_package(package), tagged)
+    assert_eq(digest_continuity_package(package) == assert_is_ok(digest_canonical_json(projection)), false)
+    assert_eq(digest_continuity_package(package) == assert_is_ok(digest_tagged_json(STATE_TYPE_TAG, projection)), false)
+
+
+def test_package_without_goals_or_schedules_is_rejected() -> None:
+    mut no_goals = continuity_package()
+    no_goals.goals = []
+    assert_eq(validation_reason(rewitnessed(no_goals)), "continuity_declarations_empty")
+    mut no_schedules = continuity_package()
+    no_schedules.schedules = []
+    assert_eq(validation_reason(rewitnessed(no_schedules)), "continuity_declarations_empty")
+
+
+def repeated_goals(count: int) -> list[GovernedGoal]:
+    """Return ``count`` copies of the fixture goal."""
+
+    mut goals: list[GovernedGoal] = []
+    for _index in range(count):
+        goals.append(goal_one())
+    return goals
+
+
+def repeated_schedules(count: int) -> list[GovernedSchedule]:
+    """Return ``count`` copies of the fixture schedule."""
+
+    mut schedules: list[GovernedSchedule] = []
+    for _index in range(count):
+        schedules.append(schedule_one())
+    return schedules
+
+
+def repeated_phases(count: int) -> list[GovernedPhase]:
+    """Return ``count`` copies of the fixture entry phase."""
+
+    mut phases: list[GovernedPhase] = []
+    for _index in range(count):
+        phases.append(phase_one())
+    return phases
+
+
+def repeated_phase_two_ids(count: int) -> list[PhaseId]:
+    """Return ``count`` copies of the phase_two identifier."""
+
+    mut ids: list[PhaseId] = []
+    for _index in range(count):
+        ids.append(phase_id("phase_two"))
+    return ids
+
+
+def distinct_actions(count: int) -> list[ActionId]:
+    """Return ``count`` distinct canonical action identifiers."""
+
+    mut ids: list[ActionId] = []
+    for index in range(count):
+        ids.append(action_id(f"action_{index}"))
+    return ids
+
+
+def distinct_clock_sources(count: int) -> list[str]:
+    """Return ``count`` distinct canonical clock-source names."""
+
+    mut sources: list[str] = []
+    for index in range(count):
+        sources.append(f"clock_{index}")
+    return sources
+
+
+def test_goal_and_schedule_counts_at_bound_pass_and_one_over_are_rejected() -> None:
+    mut goals_at_bound = continuity_package()
+    goals_at_bound.goals = repeated_goals(MAX_CONTINUITY_GOALS)
+    assert_eq(validation_reason(rewitnessed(goals_at_bound)), "duplicate_goal_id")
+    mut goals_over = continuity_package()
+    goals_over.goals = repeated_goals(MAX_CONTINUITY_GOALS + 1)
+    assert_eq(validation_reason(rewitnessed(goals_over)), "continuity_bounds_exceeded")
+
+    mut schedules_at_bound = continuity_package()
+    schedules_at_bound.schedules = repeated_schedules(MAX_CONTINUITY_SCHEDULES)
+    assert_eq(validation_reason(rewitnessed(schedules_at_bound)), "duplicate_schedule_id")
+    mut schedules_over = continuity_package()
+    schedules_over.schedules = repeated_schedules(MAX_CONTINUITY_SCHEDULES + 1)
+    assert_eq(validation_reason(rewitnessed(schedules_over)), "continuity_bounds_exceeded")
+
+
+def test_phase_count_at_bound_passes_and_one_over_is_rejected() -> None:
+    assert_eq(validation_reason(with_phases(repeated_phases(MAX_SCHEDULE_PHASES))), "duplicate_phase_id")
+    assert_eq(validation_reason(with_phases(repeated_phases(MAX_SCHEDULE_PHASES + 1))), "continuity_bounds_exceeded")
+
+
+def test_clock_source_count_at_bound_passes_and_one_over_is_rejected() -> None:
+    mut at_bound = schedule_one()
+    at_bound.allowed_clock_sources = distinct_clock_sources(MAX_SCHEDULE_CLOCK_SOURCES)
+    assert_eq(validation_reason(with_schedule(at_bound)), "valid")
+    mut over = schedule_one()
+    over.allowed_clock_sources = distinct_clock_sources(MAX_SCHEDULE_CLOCK_SOURCES + 1)
+    assert_eq(validation_reason(with_schedule(over)), "continuity_bounds_exceeded")
+
+
+def test_action_counts_at_bound_pass_and_one_over_are_rejected() -> None:
+    mut phase_at_bound = phase_one()
+    phase_at_bound.allowed_action_ids = distinct_actions(MAX_DECLARED_ACTIONS)
+    assert_eq(validation_reason(with_first_phase(phase_at_bound)), "valid")
+    mut phase_over = phase_one()
+    phase_over.allowed_action_ids = distinct_actions(MAX_DECLARED_ACTIONS + 1)
+    assert_eq(validation_reason(with_first_phase(phase_over)), "continuity_bounds_exceeded")
+
+    mut goal_at_bound = goal_one()
+    goal_at_bound.allowed_action_ids = distinct_actions(MAX_DECLARED_ACTIONS)
+    assert_eq(validation_reason(with_goal(goal_at_bound)), "valid")
+    mut goal_over = goal_one()
+    goal_over.allowed_action_ids = distinct_actions(MAX_DECLARED_ACTIONS + 1)
+    assert_eq(validation_reason(with_goal(goal_over)), "continuity_bounds_exceeded")
+
+
+def test_phase_reference_counts_at_bound_pass_and_one_over_are_rejected() -> None:
+    mut completion_at_bound = goal_one()
+    completion_at_bound.completion_phase_ids = repeated_phase_two_ids(MAX_SCHEDULE_PHASES)
+    assert_eq(validation_reason(with_goal(completion_at_bound)), "valid")
+    mut completion_over = goal_one()
+    completion_over.completion_phase_ids = repeated_phase_two_ids(MAX_SCHEDULE_PHASES + 1)
+    assert_eq(validation_reason(with_goal(completion_over)), "continuity_bounds_exceeded")
+
+    mut next_at_bound = phase_one()
+    next_at_bound.next_phase_ids = repeated_phase_two_ids(MAX_SCHEDULE_PHASES)
+    assert_eq(validation_reason(with_first_phase(next_at_bound)), "valid")
+    mut next_over = phase_one()
+    next_over.next_phase_ids = repeated_phase_two_ids(MAX_SCHEDULE_PHASES + 1)
+    assert_eq(validation_reason(with_first_phase(next_over)), "continuity_bounds_exceeded")
+
+
+def test_seconds_at_bound_pass_and_one_over_are_rejected() -> None:
+    mut longest_phase = phase_two()
+    longest_phase.maximum_seconds = MAX_CONTINUITY_INTEGER
+    mut at_bound = schedule_one()
+    at_bound.phases = [phase_one(), longest_phase.clone()]
+    at_bound.total_target_seconds = MAX_CONTINUITY_INTEGER
+    assert_eq(validation_reason(with_schedule(at_bound)), "valid")
+
+    mut phase_over = longest_phase.clone()
+    phase_over.maximum_seconds = MAX_CONTINUITY_INTEGER + 1
+    assert_eq(validation_reason(with_phases([phase_one(), phase_over])), "continuity_bounds_exceeded")
+
+    mut target_over = at_bound.clone()
+    target_over.total_target_seconds = MAX_CONTINUITY_INTEGER + 1
+    assert_eq(validation_reason(with_schedule(target_over)), "continuity_bounds_exceeded")
+
+
+def test_package_with_unsafe_identifier_text_is_rejected() -> None:
+    mut spaced_package = continuity_package()
+    spaced_package.package_id = PackageId(SymbolicIdType(IdType("Package One")))
+    assert_eq(validation_reason(rewitnessed(spaced_package)), "invalid_continuity_identifier")
+
+    mut malformed_digest = continuity_package()
+    malformed_digest.continuity_declaration_digest = DigestIdType(IdType("sha256:not-a-digest"))
+    assert_eq(validation_reason(malformed_digest), "invalid_continuity_identifier")
+
+    mut uppercase_goal = goal_one()
+    uppercase_goal.goal_id = GoalId(SymbolicIdType(IdType("Goal_One")))
+    assert_eq(validation_reason(with_goal(uppercase_goal)), "invalid_continuity_identifier")
+
+    mut spaced_phase = phase_one()
+    spaced_phase.phase_id = PhaseId(SymbolicIdType(IdType(" phase_one")))
+    assert_eq(validation_reason(with_first_phase(spaced_phase)), "invalid_continuity_identifier")
+
+    mut uppercase_action = phase_one()
+    uppercase_action.allowed_action_ids = [ActionId(SymbolicIdType(IdType("Answer")))]
+    assert_eq(validation_reason(with_first_phase(uppercase_action)), "invalid_continuity_identifier")
+
+
+def test_clock_source_text_is_validated_and_bounded() -> None:
+    mut empty = schedule_one()
+    empty.allowed_clock_sources = [""]
+    assert_eq(validation_reason(with_schedule(empty)), "invalid_continuity_identifier")
+    mut spaced = schedule_one()
+    spaced.allowed_clock_sources = ["Host Clock"]
+    assert_eq(validation_reason(with_schedule(spaced)), "invalid_continuity_identifier")
+    mut at_bound = schedule_one()
+    at_bound.allowed_clock_sources = [repeated_a(MAX_IDENTIFIER_LENGTH)]
+    assert_eq(validation_reason(with_schedule(at_bound)), "valid")
+    mut over = schedule_one()
+    over.allowed_clock_sources = [repeated_a(MAX_IDENTIFIER_LENGTH + 1)]
+    assert_eq(validation_reason(with_schedule(over)), "invalid_continuity_identifier")
+
+
+def test_duplicate_clock_source_is_rejected() -> None:
+    mut duplicated = schedule_one()
+    duplicated.allowed_clock_sources = [HOST_CLOCK, HOST_CLOCK]
+    assert_eq(validation_reason(with_schedule(duplicated)), "duplicate_clock_source")
+
+
+def test_schedule_for_an_undeclared_goal_is_rejected() -> None:
+    mut orphan = schedule_one()
+    orphan.goal_id = goal_id("other_goal")
+    assert_eq(validation_reason(with_schedule(orphan)), "schedule_goal_unknown")
+
+
+def test_goal_without_a_schedule_is_rejected() -> None:
+    mut package = continuity_package()
+    mut unscheduled = goal_one()
+    unscheduled.goal_id = goal_id("goal_two")
+    package.goals = [goal_one(), unscheduled]
+    assert_eq(validation_reason(rewitnessed(package)), "goal_schedule_missing")
+
+
+def test_empty_schedule_declarations_are_rejected() -> None:
+    mut zero_target = schedule_one()
+    zero_target.total_target_seconds = 0
+    assert_eq(validation_reason(with_schedule(zero_target)), "schedule_declaration_empty")
+    mut no_clock_sources = schedule_one()
+    no_clock_sources.allowed_clock_sources = []
+    assert_eq(validation_reason(with_schedule(no_clock_sources)), "schedule_declaration_empty")
+    assert_eq(validation_reason(with_phases([])), "schedule_declaration_empty")
+
+
+def test_duplicate_phase_is_rejected() -> None:
+    assert_eq(validation_reason(with_phases([phase_one(), phase_two(), phase_two()])), "duplicate_phase_id")
+
+
+def test_inconsistent_phase_budgets_are_rejected() -> None:
+    mut negative_minimum = phase_one()
+    negative_minimum.minimum_seconds = -1
+    assert_eq(validation_reason(with_first_phase(negative_minimum)), "invalid_phase_budget")
+    mut target_below_minimum = phase_one()
+    target_below_minimum.target_seconds = PHASE_ONE_MINIMUM - 1
+    assert_eq(validation_reason(with_first_phase(target_below_minimum)), "invalid_phase_budget")
+    mut maximum_below_target = phase_one()
+    maximum_below_target.maximum_seconds = PHASE_ONE_TARGET - 1
+    assert_eq(validation_reason(with_first_phase(maximum_below_target)), "invalid_phase_budget")
+
+
+def test_phase_with_equal_minimum_target_and_maximum_is_valid() -> None:
+    mut fixed = phase_one()
+    fixed.minimum_seconds = PHASE_ONE_TARGET
+    fixed.maximum_seconds = PHASE_ONE_TARGET
+    assert_eq(validation_reason(with_first_phase(fixed)), "valid")
+
+
+def test_phase_without_actions_is_rejected() -> None:
+    mut silent = phase_one()
+    silent.allowed_action_ids = []
+    assert_eq(validation_reason(with_first_phase(silent)), "phase_actions_empty")
+
+
+def test_phase_linking_to_itself_is_rejected() -> None:
+    mut looping = phase_one()
+    looping.next_phase_ids = [phase_id("phase_one")]
+    assert_eq(validation_reason(with_first_phase(looping)), "phase_self_cycle")
+
+
+def test_phase_linking_to_an_undeclared_phase_is_rejected() -> None:
+    mut dangling = phase_one()
+    dangling.next_phase_ids = [phase_id("phase_unknown")]
+    assert_eq(validation_reason(with_first_phase(dangling)), "unknown_next_phase")
+
+
+def test_phase_graph_must_be_declared_in_topological_order() -> None:
+    mut backward = phase_two()
+    backward.next_phase_ids = [phase_id("phase_one")]
+    assert_eq(validation_reason(with_phases([phase_one(), backward])), "phase_graph_not_topological")
+
+
+def test_goal_without_completion_phases_or_actions_is_rejected() -> None:
+    mut no_completion = goal_one()
+    no_completion.completion_phase_ids = []
+    assert_eq(validation_reason(with_goal(no_completion)), "goal_declaration_empty")
+    mut no_actions = goal_one()
+    no_actions.allowed_action_ids = []
+    assert_eq(validation_reason(with_goal(no_actions)), "goal_declaration_empty")
+
+
+def test_goal_naming_undeclared_phases_is_rejected() -> None:
+    mut unknown_entry = goal_one()
+    unknown_entry.entry_phase_id = phase_id("phase_unknown")
+    assert_eq(validation_reason(with_goal(unknown_entry)), "goal_entry_phase_unknown")
+    mut unknown_completion = goal_one()
+    unknown_completion.completion_phase_ids = [phase_id("phase_unknown")]
+    assert_eq(validation_reason(with_goal(unknown_completion)), "goal_completion_phase_unknown")
+
+
+def test_total_target_at_the_longest_reachable_maximum_is_valid() -> None:
+    mut at_limit = schedule_one()
+    at_limit.total_target_seconds = PHASE_ONE_MAXIMUM + PHASE_TWO_MAXIMUM
+    assert_eq(validation_reason(with_schedule(at_limit)), "valid")
+
+
+def test_total_target_beyond_the_longest_reachable_maximum_is_rejected() -> None:
+    mut unreachable = schedule_one()
+    unreachable.total_target_seconds = PHASE_ONE_MAXIMUM + PHASE_TWO_MAXIMUM + 1
+    package = with_schedule(unreachable)
+    assert_eq(validation_reason(package), "schedule_target_unreachable")
+    assert_eq(rejection(package, start_proposal()), "invalid_continuity_package")
+
+
+def test_completion_phase_unreachable_from_entry_is_rejected() -> None:
+    mut reversed_goal = goal_one()
+    reversed_goal.entry_phase_id = phase_id("phase_two")
+    reversed_goal.completion_phase_ids = [phase_id("phase_one")]
+    assert_eq(validation_reason(with_goal(reversed_goal)), "schedule_target_unreachable")
+
+
+def test_an_earlier_state_still_verifies_so_the_host_owns_freshness() -> None:
+    """Hees.ai holds no store: a state from before an admitted Close stays valid input, as RFC 013 Drawbacks states."""
+
+    package = continuity_package()
+    started = admitted_state(evaluate(package, start_proposal()), "declared_goal_started")
+    first = proposal(ContinuityOperationKind.Continue, Some(started), "phase_one", SESSION_START + 1, 1)
+    admitted_state(evaluate(package, first), "continue_current_phase")
+    replayed = proposal(ContinuityOperationKind.Continue, Some(started), "phase_one", SESSION_START + 2, 1)
+    admitted_state(evaluate(package, replayed), "continue_current_phase")

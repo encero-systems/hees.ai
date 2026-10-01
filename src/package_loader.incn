@@ -5,7 +5,7 @@ This module validates descriptor metadata only. It does not read, parse, verify,
 """
 
 from std.serde import json
-from crate.identifiers import DomainId, PackageId, domain_id, domain_id_text, package_id_text, package_id
+from crate.identifiers import DomainId, PackageId, domain_id, package_id
 
 const PACKAGE_SCHEMA_VERSION: str = "0.1"
 const SOURCE_CONTROLLED_PACKAGE: str = "source_controlled_domain_package"
@@ -84,6 +84,4 @@ pub def validate_package_loader_descriptor(descriptor: PackageLoaderDescriptor) 
 
 pub def package_loader_summary(validation: PackageLoaderValidation) -> str:
     """Render a stable, path-free summary suitable for logs and examples."""
-    return (f"package_loader package={package_id_text(validation.descriptor.package_id)} " + f"domain={domain_id_text(
-        validation.descriptor.domain_id,
-    )} " + f"source={validation.descriptor.source_kind} " + f"valid={validation.valid} reason={validation.reason}")
+    return (f"package_loader package={validation.descriptor.package_id.text()} " + f"domain={validation.descriptor.domain_id.text()} " + f"source={validation.descriptor.source_kind} " + f"valid={validation.valid} reason={validation.reason}")

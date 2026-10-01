@@ -1,0 +1,1151 @@
+"""Contract tests for independent governed memory inspection, selection, and lifecycle operations."""
+
+from rust::std::string import String as RustString
+from std.serde import json
+from std.testing import assert_eq, assert_is_none, assert_is_ok, assert_is_some
+from crate.content_dna import digest_canonical_json
+from crate.governed_memory_operations import (
+    GovernedMemoryClass,
+    GovernedMemoryOperation,
+    GovernedMemoryPolicy,
+    GovernedMemoryRecord,
+    MemoryOperationDecision,
+    MemoryOperationKind,
+    MemoryOperationProposal,
+    MemoryOperationTerminal,
+    MemoryOwner,
+    digest_governed_memory_policy,
+    evaluate_memory_operation,
+    validate_governed_memory_policy,
+)
+from crate.identifiers import (
+    ArtifactRevisionType,
+    DigestIdType,
+    DomainId,
+    IdType,
+    MemoryClassId,
+    MemoryId,
+    PackageId,
+    ProfileId,
+    SessionId,
+    SymbolicIdType,
+    artifact_revision,
+    digest_id_type,
+    domain_id,
+    memory_class_id,
+    memory_id,
+    memory_operation_id,
+    package_id,
+    profile_id,
+    session_id,
+)
+from crate.witness import (
+    MIN_WITNESS_KEY_BYTES,
+    KeyedWitness,
+    WitnessKey,
+    digest_tagged_json,
+    stamp_keyed_witness,
+    unstamped_witness,
+)
+
+const PACKAGE_CLASS: str = "reviewed_package_memory"
+const SUBJECT_CLASS: str = "subject_preference_memory"
+const TRACE_CLASS: str = "operational_trace"
+const CREATED_AT: int = 1000
+const NOW: int = 1100
+const SUBJECT_MAXIMUM_AGE: int = 31536000
+const TRACE_MAXIMUM_AGE: int = 2592000
+const LATEST_SECONDS: int = 9223372036854775807
+const HOST_KEY_ID: str = "host-key-1"
+const POLICY_TYPE_TAG: str = "hees.ai/memory-policy/v0"
+const RECORD_TYPE_TAG: str = "hees.ai/memory-record/v0"
+
+
+@derive(Clone, json)
+model PolicyDigestMirror:
+    """Test-side copy of the kernel's private policy projection, to pin the bytes its digest covers."""
+
+    profile_id: ProfileId
+    package_id: PackageId
+    domain_id: DomainId
+    package_revision: ArtifactRevisionType
+    classes: list[GovernedMemoryClass]
+    operations: list[GovernedMemoryOperation]
+
+
+@derive(Clone, json)
+model RecordWitnessMirror:
+    """Test-side copy of the kernel's private record projection, so a test holding the host key can stamp a record."""
+
+    memory_id: MemoryId
+    memory_class_id: MemoryClassId
+    profile_id: ProfileId
+    package_id: PackageId
+    domain_id: DomainId
+    package_revision: ArtifactRevisionType
+    memory_policy_digest: DigestIdType
+    session_id: Option[SessionId]
+    memory_key: Option[str]
+    created_at_seconds: int
+    expires_at_seconds: Option[int]
+    revoked: bool
+    superseded_by: Option[MemoryId]
+    provenance_fields: list[str]
+
+
+def digest() -> str:
+    """Return a well-formed placeholder digest that a fixture replaces before use."""
+
+    return "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+
+def repeated_text(count: int) -> str:
+    """Return ``count`` lowercase letters, for exact length-bound tests."""
+
+    mut value = ""
+    for _ in range(count):
+        value = value + "a"
+    return value
+
+
+def key_named(key_id: str, fill: str) -> WitnessKey:
+    """Return a witness key named ``key_id`` whose secret repeats ``fill`` to the minimum accepted length."""
+
+    mut secret = ""
+    for _ in range(MIN_WITNESS_KEY_BYTES):
+        secret = secret + fill
+    return WitnessKey(key_id=key_id, secret=RustString.from(secret).into_bytes())
+
+
+def host_key() -> WitnessKey:
+    """Return the fixture host's witness key."""
+
+    return key_named(HOST_KEY_ID, "k")
+
+
+def record_source(record: GovernedMemoryRecord) -> str:
+    """Render the JSON a record witness covers: every record field except ``record_witness``."""
+
+    return RecordWitnessMirror(
+        memory_id=record.memory_id,
+        memory_class_id=record.memory_class_id,
+        profile_id=record.profile_id,
+        package_id=record.package_id,
+        domain_id=record.domain_id,
+        package_revision=record.package_revision,
+        memory_policy_digest=record.memory_policy_digest,
+        session_id=record.session_id,
+        memory_key=record.memory_key,
+        created_at_seconds=record.created_at_seconds,
+        expires_at_seconds=record.expires_at_seconds,
+        revoked=record.revoked,
+        superseded_by=record.superseded_by,
+        provenance_fields=record.provenance_fields,
+    ).to_json()
+
+
+def stamped_under(key: WitnessKey, type_tag: str, unwitnessed: GovernedMemoryRecord) -> GovernedMemoryRecord:
+    """Stamp ``unwitnessed`` under ``key`` and ``type_tag``, as only a holder of the key can."""
+
+    mut result = unwitnessed.clone()
+    result.record_witness = assert_is_ok(stamp_keyed_witness(key, type_tag, record_source(unwitnessed)))
+    return result
+
+
+def unwitnessed_memory_policy() -> GovernedMemoryPolicy:
+    """
+    Return the fixture policy before its digest is stamped.
+
+    Classes, by index: 0 package-owned reviewed memory, 1 subject-owned consent-gated preferences, 2 runtime-owned
+    traces. Operations, by index: 0 select_prompt, 1 inspect, 2 write, 3 revoke, 4 supersede.
+    """
+
+    return GovernedMemoryPolicy(
+        profile_id=profile_id("profile_one"),
+        package_id=package_id("package_one"),
+        domain_id=domain_id("domain_one"),
+        package_revision=artifact_revision("1.0.0"),
+        memory_policy_digest=digest_id_type(digest()),
+        classes=[GovernedMemoryClass(
+            memory_class_id=memory_class_id(PACKAGE_CLASS),
+            owner=MemoryOwner.Package,
+            prompt_eligible=true,
+            hyperquant_eligible=true,
+            runtime_writable=false,
+            maximum_age_seconds=None,
+            explicit_consent_required=false,
+            revoke_allowed=false,
+            supersede_allowed=false,
+            allowed_keys=[],
+            required_provenance=["evidence_ids", "package_revision"],
+        ), GovernedMemoryClass(
+            memory_class_id=memory_class_id(SUBJECT_CLASS),
+            owner=MemoryOwner.Subject,
+            prompt_eligible=true,
+            hyperquant_eligible=false,
+            runtime_writable=true,
+            maximum_age_seconds=Some(SUBJECT_MAXIMUM_AGE),
+            explicit_consent_required=true,
+            revoke_allowed=true,
+            supersede_allowed=true,
+            allowed_keys=["preferred_language"],
+            required_provenance=["consent_receipt_id"],
+        ), GovernedMemoryClass(
+            memory_class_id=memory_class_id(TRACE_CLASS),
+            owner=MemoryOwner.Runtime,
+            prompt_eligible=false,
+            hyperquant_eligible=false,
+            runtime_writable=true,
+            maximum_age_seconds=Some(TRACE_MAXIMUM_AGE),
+            explicit_consent_required=false,
+            revoke_allowed=false,
+            supersede_allowed=false,
+            allowed_keys=[],
+            required_provenance=["terminal_receipt_id"],
+        )],
+        operations=[GovernedMemoryOperation(
+            operation_id=memory_operation_id("select_prompt_memory"),
+            operation_kind=MemoryOperationKind.SelectPrompt,
+            allowed_class_ids=[memory_class_id(PACKAGE_CLASS), memory_class_id(SUBJECT_CLASS), memory_class_id(
+                TRACE_CLASS,
+            )],
+        ), GovernedMemoryOperation(
+            operation_id=memory_operation_id("inspect_memory"),
+            operation_kind=MemoryOperationKind.Inspect,
+            allowed_class_ids=[memory_class_id(PACKAGE_CLASS), memory_class_id(SUBJECT_CLASS), memory_class_id(
+                TRACE_CLASS,
+            )],
+        ), GovernedMemoryOperation(
+            operation_id=memory_operation_id("write_memory"),
+            operation_kind=MemoryOperationKind.Write,
+            allowed_class_ids=[memory_class_id(PACKAGE_CLASS), memory_class_id(SUBJECT_CLASS), memory_class_id(
+                TRACE_CLASS,
+            )],
+        ), GovernedMemoryOperation(
+            operation_id=memory_operation_id("revoke_memory"),
+            operation_kind=MemoryOperationKind.Revoke,
+            allowed_class_ids=[memory_class_id(SUBJECT_CLASS), memory_class_id(TRACE_CLASS)],
+        ), GovernedMemoryOperation(
+            operation_id=memory_operation_id("supersede_memory"),
+            operation_kind=MemoryOperationKind.Supersede,
+            allowed_class_ids=[memory_class_id(SUBJECT_CLASS), memory_class_id(TRACE_CLASS)],
+        )],
+    )
+
+
+def rewitnessed(unwitnessed: GovernedMemoryPolicy) -> GovernedMemoryPolicy:
+    """Stamp the real digest onto a mutated policy so a test reaches the check it targets."""
+
+    mut policy = unwitnessed.clone()
+    policy.memory_policy_digest = digest_governed_memory_policy(unwitnessed)
+    return policy
+
+
+def memory_policy() -> GovernedMemoryPolicy:
+    """Return the valid, witnessed fixture policy."""
+
+    return rewitnessed(unwitnessed_memory_policy())
+
+
+def with_class(index: int, memory_class: GovernedMemoryClass) -> GovernedMemoryPolicy:
+    """Return the fixture policy with one class replaced and the digest re-stamped."""
+
+    mut policy = unwitnessed_memory_policy()
+    policy.classes[index] = memory_class
+    return rewitnessed(policy)
+
+
+def fixture_class(index: int) -> GovernedMemoryClass:
+    """Return one fixture class for a test to mutate."""
+
+    return unwitnessed_memory_policy().classes[index]
+
+
+def with_operation(index: int, operation: GovernedMemoryOperation) -> GovernedMemoryPolicy:
+    """Return the fixture policy with one operation replaced and the digest re-stamped."""
+
+    mut policy = unwitnessed_memory_policy()
+    policy.operations[index] = operation
+    return rewitnessed(policy)
+
+
+def fixture_operation(index: int) -> GovernedMemoryOperation:
+    """Return one fixture operation for a test to mutate."""
+
+    return unwitnessed_memory_policy().operations[index]
+
+
+def witnessed(unwitnessed: GovernedMemoryRecord) -> GovernedMemoryRecord:
+    """Stamp a record under the host key, so a test reaches the record check it targets past the witness."""
+
+    return stamped_under(host_key(), RECORD_TYPE_TAG, unwitnessed)
+
+
+def record(class_name: str, revoked: bool, expires_at: Option[int]) -> GovernedMemoryRecord:
+    """Return a host-stamped record shaped the way its fixture class requires."""
+
+    return witnessed(hand_assembled_record(class_name, revoked, expires_at))
+
+
+def hand_assembled_record(class_name: str, revoked: bool, expires_at: Option[int]) -> GovernedMemoryRecord:
+    """Return a record shaped the way its fixture class requires, carrying only the unstamped placeholder witness."""
+
+    policy = memory_policy()
+    mut provenance_fields = ["consent_receipt_id"]
+    mut memory_key: Option[str] = Some("preferred_language")
+    mut record_session: Option[SessionId] = Some(session_id("session_one"))
+    if class_name == TRACE_CLASS:
+        provenance_fields = ["terminal_receipt_id"]
+        memory_key = None
+    if class_name == PACKAGE_CLASS:
+        provenance_fields = ["evidence_ids", "package_revision"]
+        memory_key = None
+        record_session = None
+    return GovernedMemoryRecord(
+        memory_id=memory_id("memory_one"),
+        memory_class_id=memory_class_id(class_name),
+        profile_id=policy.profile_id,
+        package_id=policy.package_id,
+        domain_id=policy.domain_id,
+        package_revision=policy.package_revision,
+        memory_policy_digest=policy.memory_policy_digest,
+        session_id=record_session,
+        memory_key=memory_key,
+        created_at_seconds=CREATED_AT,
+        expires_at_seconds=expires_at,
+        revoked=revoked,
+        superseded_by=None,
+        provenance_fields=provenance_fields,
+        record_witness=unstamped_witness(),
+    )
+
+
+def subject_record() -> GovernedMemoryRecord:
+    """Return an eligible, witnessed subject-owned record bound to ``session_one``."""
+
+    return record(SUBJECT_CLASS, false, Some(2000))
+
+
+def proposal(
+    operation_name: str,
+    kind: MemoryOperationKind,
+    class_name: str,
+    existing: Option[GovernedMemoryRecord],
+    consent: bool,
+) -> MemoryOperationProposal:
+    """Return a proposal in ``session_one`` bound to the fixture policy's identity."""
+
+    policy = memory_policy()
+    return MemoryOperationProposal(
+        operation_id=memory_operation_id(operation_name),
+        operation_kind=kind,
+        profile_id=policy.profile_id,
+        package_id=policy.package_id,
+        domain_id=policy.domain_id,
+        package_revision=policy.package_revision,
+        memory_policy_digest=policy.memory_policy_digest,
+        session_id=Some(session_id("session_one")),
+        memory_class_id=memory_class_id(class_name),
+        target_memory_id=memory_id("memory_one"),
+        replacement_memory_id=None,
+        memory_key=Some("preferred_language"),
+        current_time_seconds=NOW,
+        consent_present=consent,
+        provenance_fields=["consent_receipt_id"],
+        existing_record=existing,
+    )
+
+
+def select_record(class_name: str, existing: GovernedMemoryRecord) -> MemoryOperationProposal:
+    """Return a prompt-selection proposal for ``existing``."""
+
+    return proposal("select_prompt_memory", MemoryOperationKind.SelectPrompt, class_name, Some(existing), false)
+
+
+def inspect_record(class_name: str, existing: GovernedMemoryRecord) -> MemoryOperationProposal:
+    """Return an inspection proposal for ``existing``."""
+
+    return proposal("inspect_memory", MemoryOperationKind.Inspect, class_name, Some(existing), false)
+
+
+def revoke_record(class_name: str, existing: GovernedMemoryRecord) -> MemoryOperationProposal:
+    """Return a revocation proposal for ``existing``."""
+
+    return proposal("revoke_memory", MemoryOperationKind.Revoke, class_name, Some(existing), false)
+
+
+def subject_write() -> MemoryOperationProposal:
+    """Return a consented write of a declared key with complete provenance into the subject class."""
+
+    return proposal("write_memory", MemoryOperationKind.Write, SUBJECT_CLASS, None, true)
+
+
+def subject_supersede() -> MemoryOperationProposal:
+    """Return a consented supersession of the subject record by ``memory_two``."""
+
+    mut supersede = proposal(
+        "supersede_memory",
+        MemoryOperationKind.Supersede,
+        SUBJECT_CLASS,
+        Some(subject_record()),
+        true,
+    )
+    supersede.replacement_memory_id = Some(memory_id("memory_two"))
+    return supersede
+
+
+def evaluate(candidate: MemoryOperationProposal) -> MemoryOperationDecision:
+    """Evaluate ``candidate`` against the fixture policy under the host key."""
+
+    return evaluate_memory_operation(memory_policy(), candidate, host_key())
+
+
+def resulting_record(candidate: MemoryOperationProposal) -> GovernedMemoryRecord:
+    """Evaluate ``candidate`` and return the record its admission carries."""
+
+    return assert_is_some(evaluate(candidate).resulting_record)
+
+
+def written_subject_record() -> GovernedMemoryRecord:
+    """Return the record the kernel builds and stamps for the admitted subject write."""
+
+    return resulting_record(subject_write())
+
+
+def assert_rejected(decision: MemoryOperationDecision, reason: str) -> None:
+    """Assert a rejection with ``reason`` that carries no replacement identifier and no record."""
+
+    assert_eq(decision.terminal, MemoryOperationTerminal.Rejected)
+    assert_eq(decision.reason, reason)
+    assert_is_none(decision.replacement_memory_id)
+    assert_is_none(decision.resulting_record)
+
+
+def assert_admitted(decision: MemoryOperationDecision, reason: str, operation_name: str) -> None:
+    """Assert an admission with ``reason`` echoing the proposal's operation and target identifiers."""
+
+    assert_eq(decision.terminal, MemoryOperationTerminal.Admitted)
+    assert_eq(decision.reason, reason)
+    assert_eq(decision.operation_id, memory_operation_id(operation_name))
+    assert_eq(decision.target_memory_id, memory_id("memory_one"))
+
+
+def non_canonical_memory_id() -> MemoryId:
+    """Construct a memory identifier directly, skipping the validating constructor."""
+# Admissions
+
+    return MemoryId(SymbolicIdType(IdType("Memory One")))
+
+
+def test_inspection_admits_an_eligible_record_without_prompt_eligibility() -> None:
+    inspected = evaluate(inspect_record(TRACE_CLASS, record(TRACE_CLASS, false, Some(2000))))
+    assert_admitted(inspected, "declared_memory_inspection", "inspect_memory")
+    assert_is_none(inspected.replacement_memory_id)
+    assert_is_none(inspected.resulting_record)
+    assert_rejected(
+        evaluate(select_record(TRACE_CLASS, record(TRACE_CLASS, false, Some(2000)))),
+        "memory_not_prompt_eligible",
+    )
+
+
+def test_prompt_selection_admits_an_eligible_subject_record() -> None:
+    selected = evaluate(select_record(SUBJECT_CLASS, subject_record()))
+    assert_admitted(selected, "declared_memory_read", "select_prompt_memory")
+    assert_is_none(selected.replacement_memory_id)
+    assert_is_none(selected.resulting_record)
+
+
+def test_consented_write_with_declared_key_and_provenance_is_admitted() -> None:
+    written = evaluate(subject_write())
+    assert_admitted(written, "declared_memory_write", "write_memory")
+    assert_is_none(written.replacement_memory_id)
+    assert_is_some(written.resulting_record)
+
+
+def test_revoke_of_an_eligible_record_is_admitted() -> None:
+    revoked = evaluate(revoke_record(SUBJECT_CLASS, subject_record()))
+    assert_admitted(revoked, "declared_memory_revoke", "revoke_memory")
+    assert_is_none(revoked.replacement_memory_id)
+    assert_eq(assert_is_some(revoked.resulting_record).revoked, true)
+
+
+def test_supersede_admission_carries_the_validated_replacement() -> None:
+    superseded = evaluate(subject_supersede())
+    assert_admitted(superseded, "declared_memory_supersede", "supersede_memory")
+    assert_eq(assert_is_some(superseded.replacement_memory_id), memory_id("memory_two"))
+    assert_eq(assert_is_some(assert_is_some(superseded.resulting_record).superseded_by), memory_id("memory_two"))
+# Host-built records
+
+
+def test_admitted_write_returns_a_kernel_built_record() -> None:
+    written = written_subject_record()
+    policy = memory_policy()
+    assert_eq(written.memory_id, memory_id("memory_one"))
+    assert_eq(written.memory_class_id, memory_class_id(SUBJECT_CLASS))
+    assert_eq(written.profile_id, policy.profile_id)
+    assert_eq(written.package_id, policy.package_id)
+    assert_eq(written.domain_id, policy.domain_id)
+    assert_eq(written.package_revision, policy.package_revision)
+    assert_eq(written.memory_policy_digest, policy.memory_policy_digest)
+    assert_eq(assert_is_some(written.session_id), session_id("session_one"))
+    assert_eq(assert_is_some(written.memory_key), "preferred_language")
+    assert_eq(written.created_at_seconds, NOW)
+    assert_eq(assert_is_some(written.expires_at_seconds), NOW + SUBJECT_MAXIMUM_AGE)
+    assert_eq(written.revoked, false)
+    assert_is_none(written.superseded_by)
+    assert_eq(written.provenance_fields, ["consent_receipt_id"])
+
+
+def test_kernel_witness_is_the_host_key_mac_over_the_record_type_tag() -> None:
+    written = written_subject_record()
+    assert_eq(written.record_witness.key_id, HOST_KEY_ID)
+    assert_eq(written.record_witness, witnessed(written.clone()).record_witness)
+
+
+def test_kernel_built_record_is_admitted_by_later_operations() -> None:
+    written = written_subject_record()
+    assert_admitted(evaluate(inspect_record(SUBJECT_CLASS, written)), "declared_memory_inspection", "inspect_memory")
+    assert_admitted(evaluate(select_record(SUBJECT_CLASS, written)), "declared_memory_read", "select_prompt_memory")
+    assert_admitted(evaluate(revoke_record(SUBJECT_CLASS, written)), "declared_memory_revoke", "revoke_memory")
+    mut supersede = subject_supersede()
+    supersede.existing_record = Some(written)
+    assert_admitted(evaluate(supersede), "declared_memory_supersede", "supersede_memory")
+
+
+def test_record_revoked_by_the_kernel_is_then_rejected() -> None:
+    revoked = resulting_record(revoke_record(SUBJECT_CLASS, written_subject_record()))
+    assert_eq(revoked.revoked, true)
+    assert_is_none(revoked.superseded_by.clone())
+    assert_eq(revoked.created_at_seconds, NOW)
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, revoked)), "memory_revoked")
+    assert_rejected(evaluate(revoke_record(SUBJECT_CLASS, revoked)), "memory_revoked")
+
+    mut restored = revoked.clone()
+    restored.revoked = false
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, restored)), "memory_record_witness_invalid")
+
+
+def test_record_superseded_by_the_kernel_is_then_rejected() -> None:
+    mut supersede = subject_supersede()
+    supersede.existing_record = Some(written_subject_record())
+    superseded = resulting_record(supersede)
+    assert_eq(assert_is_some(superseded.superseded_by.clone()), memory_id("memory_two"))
+    assert_eq(superseded.revoked, false)
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, superseded)), "memory_superseded")
+
+    mut restored = superseded.clone()
+    restored.superseded_by = None
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, restored)), "memory_record_witness_invalid")
+
+
+def test_kernel_built_record_with_one_edited_field_is_rejected() -> None:
+    mut older = written_subject_record()
+    older.created_at_seconds = NOW - 1
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, older)), "memory_record_witness_invalid")
+
+    mut unexpiring = written_subject_record()
+    unexpiring.expires_at_seconds = None
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, unexpiring)), "memory_record_witness_invalid")
+
+    mut provenance = written_subject_record()
+    provenance.provenance_fields = ["consent_receipt_id", "extra_receipt_id"]
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, provenance)), "memory_record_witness_invalid")
+
+
+def test_hand_assembled_record_with_the_placeholder_witness_is_rejected() -> None:
+    assert_rejected(
+        evaluate(select_record(SUBJECT_CLASS, hand_assembled_record(SUBJECT_CLASS, false, Some(2000)))),
+        "memory_record_witness_invalid",
+    )
+
+
+def test_record_witness_from_another_key_or_type_tag_is_rejected() -> None:
+    other_key_id = stamped_under(key_named("host-key-2", "k"), RECORD_TYPE_TAG, subject_record())
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, other_key_id)), "memory_record_witness_invalid")
+
+    wrong_secret = stamped_under(key_named(HOST_KEY_ID, "x"), RECORD_TYPE_TAG, subject_record())
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, wrong_secret)), "memory_record_witness_invalid")
+
+    other_tag = stamped_under(host_key(), POLICY_TYPE_TAG, subject_record())
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, other_tag)), "memory_record_witness_invalid")
+
+
+def test_malformed_record_witness_is_rejected() -> None:
+    mut short_tag = subject_record()
+    short_tag.record_witness = KeyedWitness(key_id=HOST_KEY_ID, tag=repeated_text(63))
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, short_tag)), "memory_record_witness_invalid")
+
+    mut not_hex = subject_record()
+    not_hex.record_witness = KeyedWitness(key_id=HOST_KEY_ID, tag=f"{repeated_text(63)}g")
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, not_hex)), "memory_record_witness_invalid")
+
+    mut forged_tag = subject_record()
+    forged_tag.record_witness = KeyedWitness(key_id=HOST_KEY_ID, tag=repeated_text(64))
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, forged_tag)), "memory_record_witness_invalid")
+
+
+def test_invalid_witness_key_is_rejected_before_anything_else() -> None:
+    short_secret = WitnessKey(
+        key_id=HOST_KEY_ID,
+        secret=RustString.from(repeated_text(MIN_WITNESS_KEY_BYTES - 1)).into_bytes(),
+    )
+    assert_rejected(evaluate_memory_operation(memory_policy(), subject_write(), short_secret), "invalid_witness_key")
+
+    bad_identifier = key_named("Host Key", "k")
+    assert_rejected(evaluate_memory_operation(memory_policy(), subject_write(), bad_identifier), "invalid_witness_key")
+
+    mut stale = memory_policy()
+    stale.classes[1] = fixture_class(0)
+    assert_rejected(evaluate_memory_operation(stale, subject_write(), short_secret), "invalid_witness_key")
+
+
+def test_write_at_the_latest_time_clamps_the_record_expiry() -> None:
+    mut latest = subject_write()
+    latest.current_time_seconds = LATEST_SECONDS
+    written = resulting_record(latest)
+    assert_eq(written.created_at_seconds, LATEST_SECONDS)
+    assert_eq(assert_is_some(written.expires_at_seconds), LATEST_SECONDS)
+# Admission stages
+
+
+def test_invalid_policy_is_coarsened_at_the_evaluation_boundary() -> None:
+    mut stale = memory_policy()
+    stale.classes[1] = fixture_class(0)
+    assert_rejected(evaluate_memory_operation(stale, subject_write(), host_key()), "invalid_memory_policy")
+
+
+def test_foreign_package_identity_is_rejected() -> None:
+    mut foreign = subject_write()
+    foreign.package_id = package_id("other_package")
+    assert_rejected(evaluate(foreign), "package_identity_mismatch")
+
+
+def test_negative_evaluation_time_is_rejected() -> None:
+    mut early = subject_write()
+    early.current_time_seconds = -1
+    assert_rejected(evaluate(early), "invalid_evaluation_time")
+
+
+def test_non_canonical_proposal_identifiers_are_rejected() -> None:
+    mut target = subject_write()
+    target.target_memory_id = non_canonical_memory_id()
+    assert_rejected(evaluate(target), "invalid_memory_proposal")
+
+    mut replacement = subject_supersede()
+    replacement.replacement_memory_id = Some(non_canonical_memory_id())
+    assert_rejected(evaluate(replacement), "invalid_memory_proposal")
+
+    mut session = subject_write()
+    session.session_id = Some(SessionId(SymbolicIdType(IdType(" session_one"))))
+    assert_rejected(evaluate(session), "invalid_memory_proposal")
+
+
+def test_unbounded_or_non_canonical_proposal_text_is_rejected() -> None:
+    mut key = subject_write()
+    key.memory_key = Some("Preferred Language")
+    assert_rejected(evaluate(key), "invalid_memory_proposal")
+
+    mut long_key = subject_write()
+    long_key.memory_key = Some(repeated_text(129))
+    assert_rejected(evaluate(long_key), "invalid_memory_proposal")
+
+    mut duplicated = subject_write()
+    duplicated.provenance_fields = ["consent_receipt_id", "consent_receipt_id"]
+    assert_rejected(evaluate(duplicated), "invalid_memory_proposal")
+
+    mut at_bound = subject_write()
+    at_bound.provenance_fields = ["consent_receipt_id"] + [f"field_{index}" for index in range(15)]
+    assert_eq(evaluate(at_bound).reason, "declared_memory_write")
+
+    mut over_bound = subject_write()
+    over_bound.provenance_fields = ["consent_receipt_id"] + [f"field_{index}" for index in range(16)]
+    assert_rejected(evaluate(over_bound), "invalid_memory_proposal")
+
+
+def test_undeclared_operation_is_rejected() -> None:
+    mut undeclared = subject_write()
+    undeclared.operation_id = memory_operation_id("delete_memory")
+    assert_rejected(evaluate(undeclared), "unknown_memory_operation")
+
+
+def test_operation_kind_mismatch_is_checked_before_the_class() -> None:
+    mut mismatched = subject_write()
+    mismatched.operation_kind = MemoryOperationKind.Inspect
+    assert_rejected(evaluate(mismatched), "memory_operation_kind_mismatch")
+
+    mismatched.memory_class_id = memory_class_id("undeclared_memory")
+    assert_rejected(evaluate(mismatched), "memory_operation_kind_mismatch")
+
+
+def test_undeclared_class_is_rejected() -> None:
+    mut undeclared = subject_write()
+    undeclared.memory_class_id = memory_class_id("undeclared_memory")
+    assert_rejected(evaluate(undeclared), "unknown_memory_class")
+
+
+def test_class_outside_the_operation_binding_is_rejected() -> None:
+    assert_rejected(
+        evaluate(revoke_record(PACKAGE_CLASS, record(PACKAGE_CLASS, false, None))),
+        "memory_class_not_allowed_for_operation",
+    )
+
+
+def test_replacement_outside_supersede_is_rejected() -> None:
+    mut revoking = revoke_record(SUBJECT_CLASS, subject_record())
+    revoking.replacement_memory_id = Some(memory_id("memory_two"))
+    assert_rejected(evaluate(revoking), "replacement_memory_not_allowed")
+# Session ownership
+
+    mut writing = subject_write()
+    writing.replacement_memory_id = Some(memory_id("memory_two"))
+    assert_rejected(evaluate(writing), "replacement_memory_not_allowed")
+
+    mut selecting = select_record(SUBJECT_CLASS, subject_record())
+    selecting.replacement_memory_id = Some(memory_id("memory_two"))
+    assert_rejected(evaluate(selecting), "replacement_memory_not_allowed")
+
+
+def test_sessionless_write_into_a_subject_class_is_rejected() -> None:
+    mut write = subject_write()
+    write.session_id = None
+    assert_rejected(evaluate(write), "memory_session_required")
+
+
+def test_sessionless_write_into_a_session_class_is_rejected() -> None:
+    mut session_class = fixture_class(1)
+    session_class.owner = MemoryOwner.Session
+    mut unwitnessed = unwitnessed_memory_policy()
+    unwitnessed.classes[1] = session_class
+    policy = rewitnessed(unwitnessed)
+    mut write = subject_write()
+    write.memory_policy_digest = digest_governed_memory_policy(unwitnessed)
+    written = assert_is_some(evaluate_memory_operation(policy, write, host_key()).resulting_record)
+    assert_eq(assert_is_some(written.session_id), session_id("session_one"))
+    write.session_id = None
+    assert_rejected(evaluate_memory_operation(policy, write, host_key()), "memory_session_required")
+
+
+def test_sessionless_selection_of_a_subject_record_is_rejected() -> None:
+    mut select = select_record(SUBJECT_CLASS, subject_record())
+    select.session_id = None
+    assert_rejected(evaluate(select), "memory_session_required")
+
+
+def test_sessionless_subject_record_does_not_leak_into_any_session() -> None:
+    mut sessionless = subject_record()
+    sessionless.session_id = None
+    leaked = witnessed(sessionless)
+
+    mut other_session = select_record(SUBJECT_CLASS, leaked)
+    other_session.session_id = Some(session_id("session_two"))
+    assert_rejected(evaluate(other_session), "memory_record_identity_mismatch")
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, leaked)), "memory_record_identity_mismatch")
+
+
+def test_subject_record_is_rejected_in_another_session() -> None:
+    mut other_session = select_record(SUBJECT_CLASS, subject_record())
+    other_session.session_id = Some(session_id("session_two"))
+    assert_rejected(evaluate(other_session), "memory_record_identity_mismatch")
+
+
+def test_package_record_is_selectable_from_any_session_and_never_session_bound() -> None:
+    mut other_session = select_record(PACKAGE_CLASS, record(PACKAGE_CLASS, false, None))
+    other_session.session_id = Some(session_id("session_two"))
+    assert_admitted(evaluate(other_session), "declared_memory_read", "select_prompt_memory")
+
+    mut bound = record(PACKAGE_CLASS, false, None)
+    bound.session_id = Some(session_id("session_one"))
+    assert_rejected(evaluate(select_record(PACKAGE_CLASS, witnessed(bound))), "memory_record_identity_mismatch")
+
+
+def test_runtime_record_binds_to_its_session_only_when_it_carries_one() -> None:
+    mut unbound = record(TRACE_CLASS, false, Some(2000))
+    unbound.session_id = None
+    mut from_other_session = inspect_record(TRACE_CLASS, witnessed(unbound))
+    from_other_session.session_id = Some(session_id("session_two"))
+    assert_admitted(evaluate(from_other_session), "declared_memory_inspection", "inspect_memory")
+
+    mut bound = inspect_record(TRACE_CLASS, record(TRACE_CLASS, false, Some(2000)))
+    bound.session_id = Some(session_id("session_two"))
+    assert_rejected(evaluate(bound), "memory_record_identity_mismatch")
+
+
+def test_sessionless_runtime_write_is_admitted() -> None:
+    mut trace = proposal("write_memory", MemoryOperationKind.Write, TRACE_CLASS, None, false)
+    trace.session_id = None
+    trace.memory_key = None
+    trace.provenance_fields = ["terminal_receipt_id"]
+    admitted = evaluate(trace)
+    assert_admitted(admitted, "declared_memory_write", "write_memory")
+    written = assert_is_some(admitted.resulting_record)
+    assert_is_none(written.session_id.clone())
+    assert_is_none(written.memory_key.clone())
+    assert_eq(assert_is_some(written.expires_at_seconds.clone()), NOW + TRACE_MAXIMUM_AGE)
+    assert_eq(written.provenance_fields, ["terminal_receipt_id"])
+
+    mut from_other_session = inspect_record(TRACE_CLASS, written)
+    from_other_session.session_id = Some(session_id("session_two"))
+    assert_admitted(evaluate(from_other_session), "declared_memory_inspection", "inspect_memory")
+
+
+def test_runtime_write_in_a_session_binds_the_record_to_it() -> None:
+    mut trace = proposal("write_memory", MemoryOperationKind.Write, TRACE_CLASS, None, false)
+    trace.memory_key = None
+    trace.provenance_fields = ["terminal_receipt_id"]
+    written = resulting_record(trace)
+    assert_eq(assert_is_some(written.session_id.clone()), session_id("session_one"))
+    assert_admitted(
+        evaluate(inspect_record(TRACE_CLASS, written.clone())),
+        "declared_memory_inspection",
+        "inspect_memory",
+    )
+    mut from_other_session = inspect_record(TRACE_CLASS, written)
+    from_other_session.session_id = Some(session_id("session_two"))
+    assert_rejected(evaluate(from_other_session), "memory_record_identity_mismatch")
+# Write rules
+
+
+def test_write_over_an_existing_record_is_rejected() -> None:
+    mut overwrite = subject_write()
+    overwrite.existing_record = Some(subject_record())
+    assert_rejected(evaluate(overwrite), "memory_already_exists")
+
+
+def test_write_into_an_immutable_package_class_is_rejected() -> None:
+    mut package_write = proposal("write_memory", MemoryOperationKind.Write, PACKAGE_CLASS, None, true)
+    package_write.provenance_fields = ["evidence_ids", "package_revision"]
+    assert_rejected(evaluate(package_write), "memory_class_not_writable")
+
+
+def test_write_without_required_consent_is_rejected() -> None:
+    assert_rejected(
+        evaluate(proposal("write_memory", MemoryOperationKind.Write, SUBJECT_CLASS, None, false)),
+        "explicit_consent_required",
+    )
+
+
+def test_write_with_an_undeclared_or_missing_key_is_rejected() -> None:
+    mut undeclared = subject_write()
+    undeclared.memory_key = Some("favorite_color")
+    assert_rejected(evaluate(undeclared), "memory_key_not_allowed")
+
+    mut missing = subject_write()
+    missing.memory_key = None
+    assert_rejected(evaluate(missing), "memory_key_not_allowed")
+
+
+def test_empty_key_list_places_no_key_restriction() -> None:
+    mut trace = proposal("write_memory", MemoryOperationKind.Write, TRACE_CLASS, None, false)
+    trace.memory_key = Some("any_declared_key")
+    trace.provenance_fields = ["terminal_receipt_id"]
+    assert_admitted(evaluate(trace), "declared_memory_write", "write_memory")
+
+
+def test_write_missing_required_provenance_is_rejected() -> None:
+    mut incomplete = subject_write()
+    incomplete.provenance_fields = ["terminal_receipt_id"]
+    assert_rejected(evaluate(incomplete), "memory_provenance_incomplete")
+# Supersede and revoke rules
+
+
+def test_supersede_rejections_follow_rfc_order() -> None:
+    mut missing_record = subject_supersede()
+    missing_record.existing_record = None
+    assert_rejected(evaluate(missing_record), "memory_record_required")
+
+    mut trace = proposal(
+        "supersede_memory",
+        MemoryOperationKind.Supersede,
+        TRACE_CLASS,
+        Some(record(TRACE_CLASS, false, Some(2000))),
+        true,
+    )
+    trace.replacement_memory_id = Some(memory_id("memory_two"))
+    assert_rejected(evaluate(trace), "memory_supersede_not_allowed")
+
+    mut no_replacement = subject_supersede()
+    no_replacement.replacement_memory_id = None
+    assert_rejected(evaluate(no_replacement), "replacement_memory_required")
+
+    mut same_replacement = subject_supersede()
+    same_replacement.replacement_memory_id = Some(memory_id("memory_one"))
+    assert_rejected(evaluate(same_replacement), "replacement_memory_must_differ")
+
+    mut no_consent = subject_supersede()
+    no_consent.consent_present = false
+    assert_rejected(evaluate(no_consent), "explicit_consent_required")
+
+    mut bad_key = subject_supersede()
+    bad_key.memory_key = Some("favorite_color")
+    assert_rejected(evaluate(bad_key), "memory_key_not_allowed")
+
+    mut no_provenance = subject_supersede()
+    no_provenance.provenance_fields = []
+    assert_rejected(evaluate(no_provenance), "memory_provenance_incomplete")
+
+
+def test_revoke_in_a_class_without_revocation_is_rejected() -> None:
+    assert_rejected(
+        evaluate(revoke_record(TRACE_CLASS, record(TRACE_CLASS, false, Some(2000)))),
+        "memory_revoke_not_allowed",
+    )
+
+
+def test_revoke_of_an_already_revoked_record_is_rejected() -> None:
+    assert_rejected(evaluate(revoke_record(SUBJECT_CLASS, record(SUBJECT_CLASS, true, Some(2000)))), "memory_revoked")
+
+
+def test_revoke_of_an_expired_record_is_rejected() -> None:
+    assert_rejected(evaluate(revoke_record(SUBJECT_CLASS, record(SUBJECT_CLASS, false, Some(NOW)))), "memory_expired")
+# Record eligibility
+
+
+def test_absent_record_is_rejected() -> None:
+    assert_rejected(
+        evaluate(proposal("select_prompt_memory", MemoryOperationKind.SelectPrompt, SUBJECT_CLASS, None, false)),
+        "memory_record_required",
+    )
+
+
+def test_cross_package_record_is_rejected() -> None:
+    mut cross_package = subject_record()
+    cross_package.package_id = package_id("other_package")
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, witnessed(cross_package))), "memory_record_identity_mismatch")
+
+
+def test_non_canonical_record_text_is_rejected() -> None:
+    mut bad_provenance = subject_record()
+    bad_provenance.provenance_fields = ["consent_receipt_id", "Not Canonical"]
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, witnessed(bad_provenance))), "invalid_memory_record")
+
+    mut bad_replacement = subject_record()
+    bad_replacement.superseded_by = Some(non_canonical_memory_id())
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, witnessed(bad_replacement))), "invalid_memory_record")
+
+
+def test_record_edited_without_restamping_is_rejected() -> None:
+    mut tampered = subject_record()
+    tampered.revoked = true
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, tampered)), "memory_record_witness_invalid")
+
+
+def test_record_created_in_the_future_is_rejected() -> None:
+    mut future = subject_record()
+    future.created_at_seconds = NOW + 1
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, witnessed(future))), "memory_record_time_invalid")
+
+
+def test_record_at_exact_class_maximum_age_is_expired() -> None:
+    mut near_maximum = select_record(SUBJECT_CLASS, record(SUBJECT_CLASS, false, None))
+    near_maximum.current_time_seconds = CREATED_AT + SUBJECT_MAXIMUM_AGE - 1
+    assert_admitted(evaluate(near_maximum), "declared_memory_read", "select_prompt_memory")
+
+    near_maximum.current_time_seconds = CREATED_AT + SUBJECT_MAXIMUM_AGE
+    assert_rejected(evaluate(near_maximum), "memory_expired")
+
+
+def test_record_missing_class_provenance_is_rejected() -> None:
+    mut incomplete = subject_record()
+    incomplete.provenance_fields = []
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, witnessed(incomplete))), "memory_record_provenance_incomplete")
+
+
+def test_record_with_an_undeclared_key_is_rejected() -> None:
+    mut undeclared = subject_record()
+    undeclared.memory_key = Some("favorite_color")
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, witnessed(undeclared))), "memory_record_key_not_allowed")
+
+
+def test_revoked_and_superseded_records_are_rejected() -> None:
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, record(SUBJECT_CLASS, true, Some(2000)))), "memory_revoked")
+
+    mut superseded = subject_record()
+    superseded.superseded_by = Some(memory_id("memory_two"))
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, witnessed(superseded))), "memory_superseded")
+
+
+def test_record_expiring_exactly_now_is_expired() -> None:
+    assert_rejected(evaluate(select_record(SUBJECT_CLASS, record(SUBJECT_CLASS, false, Some(NOW)))), "memory_expired")
+    assert_admitted(
+        evaluate(select_record(SUBJECT_CLASS, record(SUBJECT_CLASS, false, Some(NOW + 1)))),
+        "declared_memory_read",
+        "select_prompt_memory",
+    )
+# Policy validation
+
+
+def test_genuine_memory_policy_is_valid() -> None:
+    assert_eq(validate_governed_memory_policy(memory_policy()).reason, "valid")
+
+
+def test_stale_memory_policy_digest_after_class_change_is_rejected() -> None:
+    mut mutated = memory_policy()
+    mut first_class = mutated.classes[0]
+    first_class.prompt_eligible = not first_class.prompt_eligible
+    mutated.classes[0] = first_class
+    assert_eq(validate_governed_memory_policy(mutated).reason, "memory_policy_digest_mismatch")
+
+
+def test_stale_memory_policy_digest_after_operation_change_is_rejected() -> None:
+    mut mutated = memory_policy()
+    mut first_operation = mutated.operations[0]
+    first_operation.allowed_class_ids = [memory_class_id(TRACE_CLASS)]
+    mutated.operations[0] = first_operation
+    assert_eq(validate_governed_memory_policy(mutated).reason, "memory_policy_digest_mismatch")
+
+
+def test_memory_policy_digest_hashes_the_policy_type_tag() -> None:
+    policy = unwitnessed_memory_policy()
+    source = PolicyDigestMirror(
+        profile_id=policy.profile_id,
+        package_id=policy.package_id,
+        domain_id=policy.domain_id,
+        package_revision=policy.package_revision,
+        classes=policy.classes,
+        operations=policy.operations,
+    ).to_json()
+    digest_value = digest_governed_memory_policy(policy)
+    assert_eq(digest_value, assert_is_ok(digest_tagged_json(POLICY_TYPE_TAG, source)))
+    assert_eq(digest_value == assert_is_ok(digest_canonical_json(source)), false)
+    assert_eq(digest_value == assert_is_ok(digest_tagged_json(RECORD_TYPE_TAG, source)), false)
+
+
+def test_empty_memory_policy_is_rejected() -> None:
+    mut no_classes = unwitnessed_memory_policy()
+    no_classes.classes = []
+    assert_eq(validate_governed_memory_policy(rewitnessed(no_classes)).reason, "memory_policy_empty")
+
+    mut no_operations = unwitnessed_memory_policy()
+    no_operations.operations = []
+    assert_eq(validate_governed_memory_policy(rewitnessed(no_operations)).reason, "memory_policy_empty")
+
+
+def test_memory_policy_collection_bounds_are_enforced() -> None:
+    mut extra_operation = unwitnessed_memory_policy()
+    extra_operation.operations = extra_operation.operations + [fixture_operation(0)]
+    assert_eq(validate_governed_memory_policy(rewitnessed(extra_operation)).reason, "memory_policy_too_large")
+
+    mut keys_at_bound = fixture_class(2)
+    keys_at_bound.allowed_keys = [f"key_{index}" for index in range(32)]
+    assert_eq(validate_governed_memory_policy(with_class(2, keys_at_bound)).reason, "valid")
+
+    mut keys_over_bound = fixture_class(2)
+    keys_over_bound.allowed_keys = [f"key_{index}" for index in range(33)]
+    assert_eq(validate_governed_memory_policy(with_class(2, keys_over_bound)).reason, "memory_policy_too_large")
+
+    mut provenance_at_bound = fixture_class(2)
+    provenance_at_bound.required_provenance = [f"field_{index}" for index in range(16)]
+    assert_eq(validate_governed_memory_policy(with_class(2, provenance_at_bound)).reason, "valid")
+
+    mut provenance_over_bound = fixture_class(2)
+    provenance_over_bound.required_provenance = [f"field_{index}" for index in range(17)]
+    assert_eq(validate_governed_memory_policy(with_class(2, provenance_over_bound)).reason, "memory_policy_too_large")
+
+
+def test_non_canonical_policy_identifiers_are_rejected() -> None:
+    mut package = unwitnessed_memory_policy()
+    package.package_id = PackageId(SymbolicIdType(IdType("Package One")))
+    assert_eq(validate_governed_memory_policy(rewitnessed(package)).reason, "invalid_memory_policy_identifier")
+
+    mut memory_class = fixture_class(2)
+    memory_class.memory_class_id = MemoryClassId(SymbolicIdType(IdType("Operational Trace")))
+    assert_eq(validate_governed_memory_policy(with_class(2, memory_class)).reason, "invalid_memory_policy_identifier")
+
+
+def test_duplicate_memory_class_and_operation_ids_are_rejected() -> None:
+    mut duplicate_class = fixture_class(2)
+    duplicate_class.memory_class_id = memory_class_id(SUBJECT_CLASS)
+    assert_eq(validate_governed_memory_policy(with_class(2, duplicate_class)).reason, "duplicate_memory_class_id")
+
+    mut duplicate_operation = fixture_operation(4)
+    duplicate_operation.operation_id = memory_operation_id("revoke_memory")
+    assert_eq(
+        validate_governed_memory_policy(with_operation(4, duplicate_operation)).reason,
+        "duplicate_memory_operation_id",
+    )
+
+
+def test_hyperquant_eligibility_requires_prompt_eligibility() -> None:
+    mut memory_class = fixture_class(0)
+    memory_class.prompt_eligible = false
+    assert_eq(
+        validate_governed_memory_policy(with_class(0, memory_class)).reason,
+        "hyperquant_memory_not_prompt_eligible",
+    )
+
+
+def test_class_keys_and_provenance_must_be_canonical_identifiers() -> None:
+    mut empty_key = fixture_class(1)
+    empty_key.allowed_keys = [""]
+    assert_eq(validate_governed_memory_policy(with_class(1, empty_key)).reason, "invalid_memory_class_value")
+
+    mut uppercase = fixture_class(1)
+    uppercase.required_provenance = ["Consent Receipt"]
+    assert_eq(validate_governed_memory_policy(with_class(1, uppercase)).reason, "invalid_memory_class_value")
+
+    mut at_length_bound = fixture_class(2)
+    at_length_bound.allowed_keys = [repeated_text(128)]
+    assert_eq(validate_governed_memory_policy(with_class(2, at_length_bound)).reason, "valid")
+
+    mut over_length_bound = fixture_class(2)
+    over_length_bound.allowed_keys = [repeated_text(129)]
+    assert_eq(validate_governed_memory_policy(with_class(2, over_length_bound)).reason, "invalid_memory_class_value")
+
+
+def test_duplicate_class_key_is_rejected() -> None:
+    mut memory_class = fixture_class(1)
+    memory_class.allowed_keys = ["preferred_language", "preferred_language"]
+    assert_eq(validate_governed_memory_policy(with_class(1, memory_class)).reason, "duplicate_memory_class_declaration")
+
+
+def test_non_positive_maximum_age_is_rejected() -> None:
+    mut memory_class = fixture_class(1)
+    memory_class.maximum_age_seconds = Some(0)
+    assert_eq(validate_governed_memory_policy(with_class(1, memory_class)).reason, "invalid_memory_maximum_age")
+
+
+def test_immutable_class_with_lifecycle_mutation_is_rejected() -> None:
+    mut memory_class = fixture_class(0)
+    memory_class.revoke_allowed = true
+    assert_eq(
+        validate_governed_memory_policy(with_class(0, memory_class)).reason,
+        "immutable_memory_has_lifecycle_mutation",
+    )
+
+
+def test_runtime_writable_package_class_is_rejected() -> None:
+    mut memory_class = fixture_class(0)
+    memory_class.runtime_writable = true
+    assert_eq(validate_governed_memory_policy(with_class(0, memory_class)).reason, "package_memory_runtime_writable")
+
+
+def test_duplicate_operation_kind_is_rejected() -> None:
+    mut operation = fixture_operation(4)
+    operation.operation_kind = MemoryOperationKind.Revoke
+    assert_eq(validate_governed_memory_policy(with_operation(4, operation)).reason, "duplicate_memory_operation_kind")
+
+
+def test_operation_class_binding_rules_are_enforced() -> None:
+    mut empty = fixture_operation(3)
+    empty.allowed_class_ids = []
+    assert_eq(validate_governed_memory_policy(with_operation(3, empty)).reason, "memory_operation_classes_empty")
+
+    mut duplicated = fixture_operation(3)
+    duplicated.allowed_class_ids = [memory_class_id(SUBJECT_CLASS), memory_class_id(SUBJECT_CLASS)]
+    assert_eq(validate_governed_memory_policy(with_operation(3, duplicated)).reason, "duplicate_operation_memory_class")
+
+    mut unknown = fixture_operation(3)
+    unknown.allowed_class_ids = [memory_class_id("undeclared_memory")]
+    assert_eq(validate_governed_memory_policy(with_operation(3, unknown)).reason, "operation_memory_class_unknown")
+
+
+def test_write_over_a_revoked_or_superseded_record_the_host_supplies_is_rejected() -> None:
+    mut over_revoked = subject_write()
+    over_revoked.existing_record = Some(record(SUBJECT_CLASS, true, Some(2000)))
+    assert_rejected(evaluate(over_revoked), "memory_already_exists")
+
+    mut superseded = hand_assembled_record(SUBJECT_CLASS, false, Some(2000))
+    superseded.superseded_by = Some(memory_id("memory_two"))
+    mut over_superseded = subject_write()
+    over_superseded.existing_record = Some(witnessed(superseded))
+    assert_rejected(evaluate(over_superseded), "memory_already_exists")

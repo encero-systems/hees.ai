@@ -6,33 +6,14 @@ against one structurally valid programme declaration. They do not retrieve or se
 or terminal authority.
 """
 
-from crate.identifiers import ChoiceId, GuidedCardId, guided_card_id_text
+from crate.identifiers import GuidedCardId, find_declared
 from crate.programme.models import (
     MAX_GUIDED_PROGRAMME_HISTORY,
     GuidedProgramme,
     GuidedProgrammeCard,
-    GuidedProgrammeChoice,
     ProgrammeProgressSnapshot,
     ProgrammeRuntimeFrame,
 )
-
-
-pub def find_programme_card(programme: GuidedProgramme, card_id: GuidedCardId) -> Option[GuidedProgrammeCard]:
-    """Return the declared card with the requested nominal identity."""
-
-    for card in programme.cards:
-        if card.card_id == card_id:
-            return Some(card)
-    return None
-
-
-pub def find_programme_choice(card: GuidedProgrammeCard, choice_id: ChoiceId) -> Option[GuidedProgrammeChoice]:
-    """Return the bounded session choice declared by one card."""
-
-    for choice in card.choices:
-        if choice.choice_id == choice_id:
-            return Some(choice)
-    return None
 
 
 def history_follows_programme(
@@ -42,18 +23,18 @@ def history_follows_programme(
 ) -> bool:
     """Check that untrusted prior cards form the exact declared path to the current card."""
 
-    mut expected_card_id = guided_card_id_text(programme.entry_card_id)
+    mut expected_card_id = programme.entry_card_id.text()
     for history_card_id in history:
-        if guided_card_id_text(history_card_id) != expected_card_id:
+        if history_card_id.text() != expected_card_id:
             return false
-        maybe_card = find_programme_card(programme, history_card_id)
+        maybe_card = find_declared(programme.cards, history_card_id)
         if maybe_card is None:
             return false
         match maybe_card.unwrap().next_card_id:
             Some(next_card_id) =>
-                expected_card_id = guided_card_id_text(next_card_id)
+                expected_card_id = next_card_id.text()
             None => return false
-    return guided_card_id_text(current_card_id) == expected_card_id
+    return current_card_id.text() == expected_card_id
 
 
 pub def runtime_frame_reason(programme: GuidedProgramme, frame: ProgrammeRuntimeFrame) -> Option[str]:
@@ -72,11 +53,11 @@ pub def runtime_frame_reason(programme: GuidedProgramme, frame: ProgrammeRuntime
     if len(frame.history) > MAX_GUIDED_PROGRAMME_HISTORY:
         return Some("history_limit_exceeded")
     if let Some(current_card_id) = frame.current_card_id:
-        match find_programme_card(programme, current_card_id):
+        match find_declared(programme.cards, current_card_id):
             Some(_card) => pass
             None => return Some("current_card_unknown")
         for history_card_id in frame.history:
-            match find_programme_card(programme, history_card_id):
+            match find_declared(programme.cards, history_card_id):
                 Some(_card) => pass
                 None => return Some("history_card_unknown")
         if not history_follows_programme(programme, frame.history, current_card_id):
@@ -122,11 +103,11 @@ pub def progress_snapshot_reason(programme: GuidedProgramme, snapshot: Programme
         return Some("progress_revision_mismatch")
     if len(snapshot.history) > MAX_GUIDED_PROGRAMME_HISTORY:
         return Some("progress_history_limit_exceeded")
-    match find_programme_card(programme, snapshot.current_card_id):
+    match find_declared(programme.cards, snapshot.current_card_id):
         Some(_card) => pass
         None => return Some("progress_card_unknown")
     for card_id in snapshot.history:
-        match find_programme_card(programme, card_id):
+        match find_declared(programme.cards, card_id):
             Some(_card) => pass
             None => return Some("progress_history_card_unknown")
     if not history_follows_programme(programme, snapshot.history, snapshot.current_card_id):

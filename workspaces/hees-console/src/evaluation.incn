@@ -14,13 +14,9 @@ from pub::hees_ai import (
     compile_console_package_candidate,
     console_package_candidate_diagnostic,
     console_package_artifact_identity_is_valid,
-    digest_id_type_text,
-    evidence_id_text,
     evaluate_console_profile_json,
-    memory_id_text,
     plan_console_manifest_json,
     plan_console_provider_context_json,
-    proposal_id_text,
 )
 from std.json import JsonValue
 from std.serde import json
@@ -454,21 +450,21 @@ pub def probe_candidate_scenario(evidence_ids: list[str], memory_ids: list[str])
     scenario = load_offline_scenario("valid")?
     inputs = decode_authority_input(scenario)?
     mut package = inputs.package
-    baseline_artifact_digest = digest_id_type_text(package.artifact_digest)
-    package_evidence_ids = [evidence_id_text(atom.evidence_id) for atom in package.atoms]
-    package_memory_ids = [memory_id_text(atom.memory_id) for atom in package.atoms]
+    baseline_artifact_digest = package.artifact_digest.text()
+    package_evidence_ids = [atom.evidence_id.text() for atom in package.atoms]
+    package_memory_ids = [atom.memory_id.text() for atom in package.atoms]
     for evidence_id in evidence_ids:
         if not package_evidence_ids.contains(evidence_id):
             return Err("candidate_probe_input_invalid")
     for memory_id in memory_ids:
         if not package_memory_ids.contains(memory_id):
             return Err("candidate_probe_input_invalid")
-    package.atoms = [atom for atom in package.atoms if memory_ids.contains(memory_id_text(atom.memory_id)) and evidence_ids.contains(
-        evidence_id_text(atom.evidence_id),
+    package.atoms = [atom for atom in package.atoms if memory_ids.contains(atom.memory_id.text()) and evidence_ids.contains(
+        atom.evidence_id.text(),
     )]
     retained_atom_count = len(package.atoms)
     package = compile_console_package_candidate(package)
-    candidate_artifact_digest = digest_id_type_text(package.artifact_digest)
+    candidate_artifact_digest = package.artifact_digest.text()
     candidate_identity_valid = console_package_artifact_identity_is_valid(package)
     if not candidate_identity_valid:
         return Err("candidate_identity_invalid")
@@ -637,7 +633,7 @@ pub def evaluate_live_interaction(
         mode="LIVE",
         slug="live",
         title="Live GPT-5.6 proposal",
-        input_id=proposal_id_text(proposal.proposal_id),
+        input_id=proposal.proposal_id.text(),
         package=inspection,
         body=body,
     )

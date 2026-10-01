@@ -166,7 +166,7 @@ The relevant provider contracts follow the official [GPT-5.6 Sol model](https://
 | Self-contained executable | The tagged release publishes an archive only after its native lane completes extracted offline-replay smoke. The release notes name every supported platform, architecture, minimum system requirement, artifact, and digest. Earlier candidates are historical development evidence only. |
 | Publication state | The `hees-console-v0.1.0` release is the authoritative source for current artifacts. It is not a claim that an unpublished tag or draft release is available to judges. |
 | Hosted equivalent | Not configured; any later hosted surface must run the same frozen executable in bounded, isolated, no-shell sessions |
-| Source build | Contributor-only; commit-pinned Incan `0.5.1`, Rust `1.98.0`, and `make ci`, with the exact release-candidate command documented below |
+| Source build | Contributor-only; commit-pinned Incan `0.6.0-dev.6`, Rust `1.98.0`, and `make ci`, with the exact release-candidate command documented below |
 
 Unsupported platforms will be stated explicitly in the final release notes. Source portability is not evidence that a self-contained artifact works on a platform.
 
@@ -213,6 +213,9 @@ Implemented now:
 - fail-closed proposal admission against package-owned actions and reviewed, rights-allowed evidence records;
 - exact and faithful compressed Hyperquant profiles that nominate bounded package-owned memory identifiers without granting authority;
 - guided-programme declaration validation and operation eligibility with closed action payloads, deterministic topology, bounded progress and non-authoritative support nominations;
+- goal, schedule, and session-continuity admission over package-declared phase graphs, with caller-supplied time, a governed ending for overrun sessions, and caller-held session state authenticated under a host-held key (Draft [RFC 013](rfcs/013-governed-continuity-goal-schedule-session-admission.md));
+- memory-operation admission for prompt selection, inspection, write, revoke, and supersede against package-declared memory classes, returning key-authenticated records without storage mutation (Draft [RFC 014](rfcs/014-governed-memory-lifecycle-operations.md));
+- package-neutral governed profile evaluation that validates package, request, proposal, and committee-observation identity, delegates structural admission to the kernel, and returns one `deliver`, `refuse`, `escalate`, or rejected result with selected memory, Content DNA, and receipts where the outcome allows them (Draft [RFC 015](rfcs/015-generic-governed-profile-evaluation.md)); the exported surface of these three Draft RFCs may change with their review;
 - the closed, fixture-bounded `console_profile_0_1` package, request, proposal, manifest, observation, finding, and reason contracts;
 - deterministic relation and synthesis classification, checked structural-kernel delegation, and exact selected-memory freezing;
 - admitted-answer Content DNA, admitted receipts, and identity-safe rejection receipts with frozen canonical SHA-256 goldens;
@@ -237,7 +240,7 @@ Not implemented by the checked `0.0.1` library:
 
 ### Toolchain
 
-The current branch requires Incan `0.5.1` from release tag `v0.5.1`, source commit [`864ee9243eac9454e3dad5c34b032851038b8c93`](https://github.com/encero-systems/incan/commit/864ee9243eac9454e3dad5c34b032851038b8c93). Release tooling pins that source identity separately from the canonical root `incan.lock`. The release workflow fails closed unless it obtains a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the tagged Hees.ai head. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
+The current branch requires Incan `0.6.0-dev.6` at source commit [`614df3645bfd213d9f1b867acac066ed051b5542`](https://github.com/encero-systems/incan/commit/614df3645bfd213d9f1b867acac066ed051b5542). Release tooling pins that source identity separately from the canonical root `oven.lock`. The release workflow fails closed unless it obtains a byte-identical lock fixed point, the complete local gate, and a fresh native release matrix from the tagged Hees.ai head. Make the exact compiler binary available on `PATH`, or pass it explicitly to Make:
 
 ```bash
 make ci INCAN=/path/to/incan
@@ -256,7 +259,7 @@ The current gate formats and builds the public library, runs the package and run
 The standalone Console has focused source and native smoke gates:
 
 ```bash
-make console-test console-native-smoke INCAN=/path/to/incan-0.5.1/bin/incan
+make console-test console-native-smoke INCAN=/path/to/incan-0.6.0-dev.6/bin/incan
 ```
 
 They compile the Incan-authored Console, run the native application and provider-boundary suites, build the native artifact, and execute all five headless replay smokes against the fictional profile corpus.
@@ -265,7 +268,7 @@ The separate release-candidate lane wraps that proof in a checked archive:
 
 ```bash
 make console-release-candidate \
-  INCAN=/path/to/incan-0.5.1/bin/incan \
+  INCAN=/path/to/incan-0.6.0-dev.6/bin/incan \
   RELEASE_PLATFORM=macos-aarch64
 ```
 
@@ -277,7 +280,7 @@ Release-candidate archives are not Developer ID-signed and not notarized; linker
 
 ### External package descriptor
 
-Public Hees.ai contracts use nominal identifier types such as `PackageId`, `ActionId`, and `EvidenceId` over one shared, bounded `IdType`. Its symbolic specialization accepts at most 128 lowercase ASCII letters, digits, underscores, or hyphens and requires a letter or digit first. Its fixed-form digest specialization supplies content-addressed `ContentDnaId` and `ReceiptId` values. Every concrete identifier therefore derives from the same bounded string base while remaining a plain JSON string on the wire. The public constructors and text projections preserve namespace separation in Incan code without changing the existing JSON contracts.
+Public Hees.ai contracts use nominal identifier types such as `PackageId`, `ActionId`, and `EvidenceId` over one shared, bounded `IdType`. Its symbolic specialization accepts at most 128 lowercase ASCII letters, digits, underscores, or hyphens and requires a letter or digit first. Its fixed-form digest specialization supplies content-addressed `ContentDnaId` and `ReceiptId` values. Every concrete identifier therefore derives from the same bounded string base while remaining a plain JSON string on the wire. Every identifier and revision type exposes its canonical text through one `.text()` method: symbolic and digest identifiers inherit it from the `SymbolicIdentifier` and `DigestIdentifier` traits, and the base types define it directly. The public constructors and the `.text()` projection preserve namespace separation in Incan code without changing the existing JSON contracts.
 
 The pinned Incan compiler invokes validated-newtype construction during derived JSON deserialization ([Incan #904](https://github.com/encero-systems/incan/issues/904), [merged fix](https://github.com/encero-systems/incan/commit/3802fe8e03b1d61237abb0d48abbddb17c4044b4)). Malformed identifier text is therefore rejected before it can inhabit a typed Hees.ai contract. Admission still validates what those well-formed identifiers are allowed to reference; decoding success never establishes authority.
 

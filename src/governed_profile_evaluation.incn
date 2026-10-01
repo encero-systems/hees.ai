@@ -1,0 +1,516 @@
+"""Atomic terminal evaluation for generic package-governed interactions."""
+
+from std.serde.json import Serialize
+from crate.governed_profile_artifacts import construct_governed_content_dna, construct_governed_receipt
+from crate.governed_profile_committee import assess_committee
+from crate.governed_profile_identity import derive_bounded_identifier_text
+from crate.governed_profile_models import (
+    GOVERNED_REASON_NAMESPACE,
+    AdmittedGuidedMaterial,
+    CommitteeObservation,
+    CompleteGovernedEvaluation,
+    GovernedAction,
+    GovernedDeliveredOutput,
+    GovernedFinding,
+    GovernedMemory,
+    GovernedOutcomeKind,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedRequest,
+    GovernedSpectrumResult,
+    GovernedStructuralAdmission,
+    GovernedTerminalClass,
+    GovernedVisibleOutputSource,
+)
+from crate.governed_profile_validation import (
+    action_is_terminal_boundary,
+    validate_governed_profile_package,
+    validate_governed_proposal,
+    validate_governed_proposal_identity,
+    validate_governed_request,
+)
+from crate.identifiers import (
+    ContentDnaId,
+    DecisionId,
+    EvidenceId,
+    GuidedMaterialId,
+    MemoryId,
+    ProposalId,
+    decision_id,
+    find_declared,
+)
+from crate.runtime import (
+    action_contract,
+    admission_evidence_ids,
+    admission_is_admitted,
+    admission_reason,
+    admit_model_proposal,
+    approved_evidence_record,
+    governed_package,
+    model_proposal,
+)
+
+const KERNEL_PACKAGE_SCHEMA_VERSION: str = "0.1"
+
+
+def no_content_dna_id() -> Option[ContentDnaId]:
+    """Return an explicitly typed absent Content DNA identity for rejected receipts."""
+
+    return None
+
+
+def no_delivered_output() -> Option[GovernedDeliveredOutput]:
+    """Return an explicitly typed absent delivered text for rejected receipts."""
+
+    return None
+
+
+def derive_decision_id(proposal_id: ProposalId) -> DecisionId:
+    """
+    Derive the decision identity from the proposal identity without ever failing.
+
+    The proposal identifier is untrusted and may be invalid or up to 128 characters long, and this runs on every
+    rejection path, including those before the proposal identifier is validated. ``derive_bounded_identifier_text``
+    always returns canonical identifier text, so the trusted ``decision_id`` constructor cannot fail here.
+    """
+
+    return decision_id(derive_bounded_identifier_text(proposal_id.text(), "proposal_", "decision_"))
+
+
+def spectrum(
+    proposal_id: ProposalId,
+    admitted: bool,
+    decision: str,
+    reason: str,
+    structural_reason: Option[str],
+    evidence_ids: list[EvidenceId],
+    memory_ids: list[MemoryId],
+    guided_material_id: Option[GuidedMaterialId],
+) -> GovernedSpectrumResult:
+    """Construct one terminal result in the ``governed_profile_admission_0_1`` reason namespace."""
+
+    return GovernedSpectrumResult(
+        decision_id=derive_decision_id(proposal_id),
+        admitted=admitted,
+        decision=decision,
+        reason_namespace=GOVERNED_REASON_NAMESPACE,
+        reason=reason,
+        structural_reason=structural_reason,
+        admitted_evidence_ids=evidence_ids,
+        selected_memory_ids=memory_ids,
+        admitted_guided_material_id=guided_material_id,
+    )
+
+
+def rejected_spectrum(
+    proposal: GovernedProposal,
+    reason: str,
+    structural_reason: Option[str],
+) -> GovernedSpectrumResult:
+    """Construct a ``reject`` terminal result that admits no evidence, memory, or guided material."""
+
+    return spectrum(proposal.proposal_id, false, "reject", reason, structural_reason, [], [], None)
+
+
+def complete(
+    findings: list[GovernedFinding],
+    spectrum: GovernedSpectrumResult,
+    visible_output: Option[str],
+    selected_memory: list[GovernedMemory],
+    guided_material: Option[AdmittedGuidedMaterial],
+    content_dna_json: Option[str],
+    receipt_json: Option[str],
+) -> CompleteGovernedEvaluation:
+    """Assemble the one complete evaluation an application may observe."""
+
+    return CompleteGovernedEvaluation(
+        findings=findings,
+        spectrum=spectrum,
+        admitted_visible_output=visible_output,
+        selected_memory=selected_memory,
+        admitted_guided_material=guided_material,
+        content_dna_json=content_dna_json,
+        receipt_json=receipt_json,
+    )
+
+
+def rejected_without_receipt(
+    proposal: GovernedProposal,
+    reason: str,
+    structural_reason: Option[str],
+    findings: list[GovernedFinding],
+) -> CompleteGovernedEvaluation:
+    """Reject before proposal identity is established, or when receipt projection itself failed, with no receipt."""
+
+    return complete(findings, rejected_spectrum(proposal, reason, structural_reason), None, [], None, None, None)
+
+
+def rejected_with_receipt(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    reason: str,
+    structural_reason: Option[str],
+    findings: list[GovernedFinding],
+) -> CompleteGovernedEvaluation:
+    """Reject an identity-bound proposal and record the rejection in a receipt without Content DNA."""
+
+    terminal = rejected_spectrum(proposal, reason, structural_reason)
+    receipt_json = match construct_governed_receipt(
+        package,
+        request,
+        proposal,
+        terminal,
+        None,
+        no_content_dna_id(),
+        no_delivered_output(),
+    ):
+        None => None
+        Some(receipt) => Some(receipt.to_json())
+
+    return complete(findings, terminal, None, [], None, None, receipt_json)
+
+
+def reject_after_identity(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    reason: str,
+    structural_reason: Option[str],
+    findings: list[GovernedFinding],
+) -> CompleteGovernedEvaluation:
+    """Reject with a receipt only when ``validate_governed_proposal_identity`` accepts the proposal."""
+
+    if not validate_governed_proposal_identity(package, request, proposal).valid:
+        return rejected_without_receipt(proposal, reason, structural_reason, findings)
+    return rejected_with_receipt(package, request, proposal, reason, structural_reason, findings)
+
+
+def delivered_output(action: GovernedAction, proposal: GovernedProposal) -> GovernedDeliveredOutput:
+    """
+    Return the text an admitted result for ``action`` delivers and where it came from.
+
+    A refusal or escalation delivers the package's ``boundary_text``; any other action delivers the proposal's
+    visible output. Package validation guarantees a boundary action declares its text; were it absent, the empty
+    text here fails the structural kernel's visible-output check, so the evaluation still fails closed.
+    """
+
+    if action_is_terminal_boundary(action):
+        mut text = ""
+        if let Some(declared) = action.boundary_text:
+            text = declared
+        return GovernedDeliveredOutput(source=GovernedVisibleOutputSource.PackageBoundaryText, text=text)
+    return GovernedDeliveredOutput(source=GovernedVisibleOutputSource.AdmittedProposal, text=proposal.visible_output)
+
+
+def structural_admission(
+    package: GovernedProfilePackage,
+    proposal: GovernedProposal,
+    delivered: GovernedDeliveredOutput,
+) -> GovernedStructuralAdmission:
+    """Delegate declared-action and reviewed-evidence checks over the text to be delivered to the generic kernel."""
+
+    actions = [action_contract(value.action_id, value.evidence_required) for value in package.actions]
+    evidence = [approved_evidence_record(value.evidence_id, value.claim, value.guidance, value.source_ref) for value in package.evidence]
+    kernel_package = governed_package(
+        KERNEL_PACKAGE_SCHEMA_VERSION,
+        package.package_id,
+        package.domain_id,
+        package.mission,
+        actions,
+        evidence,
+    )
+    kernel_proposal = model_proposal(
+        proposal.package_id,
+        proposal.domain_id,
+        proposal.action_id,
+        delivered.text,
+        proposal.evidence_ids,
+    )
+    raw = admit_model_proposal(kernel_package, kernel_proposal)
+    return GovernedStructuralAdmission(
+        admitted=admission_is_admitted(raw),
+        reason=admission_reason(raw),
+        evidence_ids=admission_evidence_ids(raw),
+    )
+
+
+def selected_memory(package: GovernedProfilePackage, memory_ids: list[MemoryId]) -> list[GovernedMemory]:
+    """Resolve the nominated memory atoms in proposal order; an unresolved identifier yields a shorter list."""
+
+    mut result: list[GovernedMemory] = []
+    for memory_id in memory_ids:
+        match find_declared(package.memory, memory_id):
+            None => return []
+            Some(atom) => result.append(atom)
+    return result
+
+
+def admitted_guided_material(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+) -> Option[AdmittedGuidedMaterial]:
+    """Project the exact package-owned identity of the nominated guided material, if one is nominated and declared."""
+
+    if let Some(identifier) = proposal.guided_material_id:
+        match find_declared(package.guided_material, identifier):
+            None => return None
+            Some(material) =>
+                return Some(
+                    AdmittedGuidedMaterial(
+                        package_id=package.package_id,
+                        package_revision=package.package_revision,
+                        profile_package_digest=package.profile_package_digest,
+                        guided_material_id=material.guided_material_id,
+                        artifact_revision=material.artifact_revision,
+                        artifact_digest=material.artifact_digest,
+                        language=request.language,
+                        audience=request.audience,
+                    ),
+                )
+    return None
+
+
+def terminal_decision(action: GovernedAction) -> GovernedTerminalClass:
+    """Map the package-declared outcome kind to its terminal decision and domain-neutral reason."""
+
+    if action.outcome_kind == GovernedOutcomeKind.Refusal:
+        return GovernedTerminalClass(decision="refuse", reason="unsupported_by_package")
+    if action.outcome_kind == GovernedOutcomeKind.Escalation:
+        return GovernedTerminalClass(decision="escalate", reason="escalation_declared_by_package")
+    return GovernedTerminalClass(decision="deliver", reason="supported_by_package")
+
+
+def guided_projection_is_valid(proposal: GovernedProposal, admitted_material: Option[AdmittedGuidedMaterial]) -> bool:
+    """Return whether a nominated guided material produced an admitted projection."""
+
+    if let Some(_identifier) = proposal.guided_material_id:
+        if let Some(_material) = admitted_material:
+            return true
+        return false
+    return true
+
+
+def complete_deliverable(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    structural: GovernedStructuralAdmission,
+    findings: list[GovernedFinding],
+    terminal: GovernedSpectrumResult,
+    delivered: GovernedDeliveredOutput,
+    selected: list[GovernedMemory],
+    admitted_material: Option[AdmittedGuidedMaterial],
+) -> CompleteGovernedEvaluation:
+    """Construct Content DNA, then the receipt that references it; expose the output only when both succeed."""
+
+    match construct_governed_content_dna(package, request, proposal, terminal, selected, admitted_material):
+        None =>
+            return reject_after_identity(
+                package,
+                request,
+                proposal,
+                "content_dna_projection_failed",
+                Some(structural.reason),
+                findings,
+            )
+        Some(content_dna) =>
+            match construct_governed_receipt(
+                package,
+                request,
+                proposal,
+                terminal,
+                admitted_material,
+                Some(content_dna.content_dna_id),
+                Some(delivered.clone()),
+            ):
+                None =>
+                    return rejected_without_receipt(
+                        proposal,
+                        "receipt_projection_failed",
+                        Some(structural.reason),
+                        findings,
+                    )
+                Some(receipt) =>
+                    return complete(
+                        findings,
+                        terminal,
+                        Some(delivered.text),
+                        selected,
+                        admitted_material,
+                        Some(content_dna.to_json()),
+                        Some(receipt.to_json()),
+                    )
+
+
+def complete_terminal_boundary(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    structural: GovernedStructuralAdmission,
+    findings: list[GovernedFinding],
+    terminal: GovernedSpectrumResult,
+    delivered: GovernedDeliveredOutput,
+) -> CompleteGovernedEvaluation:
+    """
+    Record an admitted refusal or escalation in a receipt, with no Content DNA and no selected memory.
+
+    The exposed text is the package's ``boundary_text``, never proposal prose, and the receipt records that source.
+    """
+
+    match construct_governed_receipt(
+        package,
+        request,
+        proposal,
+        terminal,
+        None,
+        no_content_dna_id(),
+        Some(delivered.clone()),
+    ):
+        None =>
+            return rejected_without_receipt(proposal, "receipt_projection_failed", Some(structural.reason), findings)
+        Some(receipt) =>
+            return complete(findings, terminal, Some(delivered.text), [], None, None, Some(receipt.to_json()))
+
+
+def evaluate_validated_action(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observations: list[CommitteeObservation],
+    action: GovernedAction,
+) -> CompleteGovernedEvaluation:
+    """
+    Run the post-validation stages for a proposal whose package, request, and proposal checks all passed.
+
+    Structural admission, committee assessment, memory resolution, and guided projection each reject with a receipt;
+    the last two are defensive re-checks of relationships ``validate_governed_proposal`` already established.
+    """
+
+    delivered = delivered_output(action, proposal)
+    structural = structural_admission(package, proposal, delivered)
+    if not structural.admitted:
+        return reject_after_identity(
+            package,
+            request,
+            proposal,
+            "structural_admission_rejected",
+            Some(structural.reason),
+            [],
+        )
+    committee = assess_committee(package, request, proposal, action, observations)
+    if not committee.valid:
+        return reject_after_identity(
+            package,
+            request,
+            proposal,
+            committee.reason,
+            Some(structural.reason),
+            committee.findings,
+        )
+    selected = selected_memory(package, proposal.memory_ids)
+    if len(selected) != len(proposal.memory_ids):
+        return reject_after_identity(
+            package,
+            request,
+            proposal,
+            "selected_memory_invalid",
+            Some(structural.reason),
+            committee.findings,
+        )
+    admitted_material = admitted_guided_material(package, request, proposal)
+    if not guided_projection_is_valid(proposal, admitted_material):
+        return reject_after_identity(
+            package,
+            request,
+            proposal,
+            "guided_material_projection_failed",
+            Some(structural.reason),
+            committee.findings,
+        )
+    decision = terminal_decision(action)
+    terminal = spectrum(
+        proposal.proposal_id,
+        true,
+        decision.decision,
+        decision.reason,
+        Some(structural.reason),
+        structural.evidence_ids,
+        proposal.memory_ids,
+        proposal.guided_material_id,
+    )
+    if action_is_terminal_boundary(action):
+        return complete_terminal_boundary(
+            package,
+            request,
+            proposal,
+            structural,
+            committee.findings,
+            terminal,
+            delivered,
+        )
+    return complete_deliverable(
+        package,
+        request,
+        proposal,
+        structural,
+        committee.findings,
+        terminal,
+        delivered,
+        selected,
+        admitted_material,
+    )
+
+
+pub def evaluate_governed_profile_with_artifacts(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observations: list[CommitteeObservation],
+) -> CompleteGovernedEvaluation:
+    """
+    Evaluate one proposal and expose only one internally consistent terminal result.
+
+    Args:
+        package: Untrusted package projection; revalidated on every call, including both digests.
+        request: Request whose ``request_digest`` must bind its exact fields (see ``bind_governed_request``).
+        proposal: Untrusted candidate behavior, bound to the package and request identity.
+        observations: Untrusted committee observations; required exactly when the matched action requires them.
+
+    Returns:
+        A ``CompleteGovernedEvaluation`` whose ``spectrum.decision`` is ``deliver``, ``refuse`` or ``escalate`` when
+        admitted and ``reject`` otherwise, with ``spectrum.reason`` in the ``governed_profile_admission_0_1``
+        namespace (RFC 015 lists every reason). A receipt is present for every result once
+        ``validate_governed_proposal_identity`` accepts the proposal; Content DNA is present only for ``deliver``.
+        Visible output is never exposed without the artifacts its decision requires.
+    """
+
+    package_validation = validate_governed_profile_package(package)
+    if not package_validation.valid:
+        return rejected_without_receipt(proposal, package_validation.reason, None, [])
+    request_validation = validate_governed_request(request)
+    if not request_validation.valid:
+        return rejected_without_receipt(proposal, request_validation.reason, None, [])
+    proposal_validation = validate_governed_proposal(package, request, proposal)
+    if not proposal_validation.valid:
+        return reject_after_identity(package, request, proposal, proposal_validation.reason, None, [])
+    match find_declared(package.actions, proposal.action_id):
+        None => return reject_after_identity(package, request, proposal, "unknown_action", None, [])
+        Some(action) => return evaluate_validated_action(package, request, proposal, observations, action)
+
+
+pub def evaluate_governed_profile_json(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observations: list[CommitteeObservation],
+) -> str:
+    """
+    Return one complete terminal evaluation as serializer JSON across the public ABI.
+
+    The JSON is the Incan serializer's output for ``CompleteGovernedEvaluation``; it is not a durable cross-version
+    canonical encoding.
+    """
+
+    return evaluate_governed_profile_with_artifacts(package, request, proposal, observations).to_json()

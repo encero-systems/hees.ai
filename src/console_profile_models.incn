@@ -10,6 +10,7 @@ from crate.identifiers import (
     DomainId,
     EvidenceId,
     FindingId,
+    Identified,
     MemoryId,
     ObservationId,
     PackageId,
@@ -35,7 +36,7 @@ pub model SourceSpan:
 
 
 @derive(Clone, json)
-pub model ConsoleSource:
+pub model ConsoleSource with Identified[SourceId]:
     """Reviewed source identity admitted by the fixed console package."""
 
     pub source_id: SourceId
@@ -46,25 +47,40 @@ pub model ConsoleSource:
     pub rights_state: str
     pub text: str
 
+    def identity(self) -> SourceId:
+        """Return the identity this source is declared under."""
+
+        return self.source_id
+
 
 @derive(Clone, json)
-pub model ConsoleAction:
+pub model ConsoleAction with Identified[ActionId]:
     """Package-owned action and its evidence requirement."""
 
     pub action_id: ActionId
     pub evidence_required: bool
 
+    def identity(self) -> ActionId:
+        """Return the identity this action is declared under."""
+
+        return self.action_id
+
 
 @derive(Clone, json)
-pub model ConsoleRequirement:
+pub model ConsoleRequirement with Identified[RequirementId]:
     """Package-owned visible-answer requirement checked by synthesis findings."""
 
     pub requirement_id: RequirementId
     pub description: str
 
+    def identity(self) -> RequirementId:
+        """Return the identity this requirement is declared under."""
+
+        return self.requirement_id
+
 
 @derive(Clone, json)
-pub model ConsoleAtom:
+pub model ConsoleAtom with Identified[MemoryId]:
     """Governed memory atom with review, rights, evidence, and provenance identity."""
 
     pub memory_id: MemoryId
@@ -83,6 +99,11 @@ pub model ConsoleAtom:
     pub authority_class: str
     pub evidence_kind: str
     pub provenance_digest: DigestIdType
+
+    def identity(self) -> MemoryId:
+        """Return the memory identity this atom is declared under."""
+
+        return self.memory_id
 
 
 @derive(Clone, json)
@@ -129,12 +150,17 @@ pub model ConsoleRequestBinding:
 
 
 @derive(Clone, json)
-pub model VisibleUnit:
+pub model VisibleUnit with Identified[UnitId]:
     """One bounded piece of model-authored visible answer text."""
 
     pub unit_id: UnitId
     pub text: str
     pub requirement_ids: list[RequirementId]
+
+    def identity(self) -> UnitId:
+        """Return the identity this visible unit is declared under."""
+
+        return self.unit_id
 
 
 @derive(Clone, json)

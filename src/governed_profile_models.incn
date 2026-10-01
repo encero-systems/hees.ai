@@ -1,0 +1,511 @@
+"""Generic data contracts for package-governed interaction evaluation."""
+
+from std.serde import json
+from crate.identifiers import (
+    ActionId,
+    ArtifactRevisionType,
+    AudienceId,
+    CommitteeRoleId,
+    ConstraintPlanId,
+    ContentDnaId,
+    ContractId,
+    DecisionId,
+    DigestIdType,
+    DomainId,
+    EvidenceId,
+    FindingId,
+    GuidedMaterialId,
+    GuidedStepId,
+    Identified,
+    MemoryId,
+    ObservationId,
+    PackageId,
+    ProfileId,
+    ProposalId,
+    ReceiptId,
+    RequestId,
+    RevisionType,
+)
+
+# Contract identifiers for profile 0.1, declared once and shared by every producer and validator in this profile.
+pub const GOVERNED_PROFILE_ID: str = "governed_profile_0_1"
+pub const GOVERNED_PACKAGE_CONTRACT: str = "governed_profile_package_0_1"
+pub const GOVERNED_PROPOSAL_CONTRACT: str = "governed_profile_proposal_0_1"
+pub const GOVERNED_OBSERVATION_CONTRACT: str = "governed_committee_observation_0_1"
+pub const GOVERNED_FINDING_CONTRACT: str = "governed_committee_finding_0_1"
+pub const GOVERNED_CONTENT_DNA_CONTRACT: str = "governed_content_dna_0_1"
+pub const GOVERNED_RECEIPT_CONTRACT: str = "governed_profile_receipt_0_1"
+pub const GOVERNED_REASON_NAMESPACE: str = "governed_profile_admission_0_1"
+pub const GOVERNED_CONTENT_DNA_STATE: str = "admitted_delivery"
+
+
+@derive(Clone, Eq, json)
+pub enum GovernedOutcomeKind(str):
+    """Package-declared terminal behavior class for one action."""
+
+    Answer = "answer"
+    GuidedMaterial = "guided_material"
+    GuidedNavigation = "guided_navigation"
+    Refusal = "refusal"
+    Escalation = "escalation"
+
+
+@derive(Clone, Eq, json)
+pub enum CommitteeVerdict(str):
+    """One non-authoritative committee observation classification."""
+
+    Pass = "pass"
+    Fail = "fail"
+    Uncertain = "uncertain"
+
+
+@derive(Clone, Eq, json)
+pub enum GovernedVisibleOutputSource(str):
+    """Where the visible text an admitted result delivers came from, as recorded in its receipt."""
+
+    AdmittedProposal = "admitted_proposal"
+    PackageBoundaryText = "package_boundary_text"
+
+
+@derive(Clone, json)
+pub model GovernedAction with Identified[ActionId]:
+    """
+    Package-owned action and the authority inputs it requires.
+
+    ``boundary_text`` is the reviewed text a ``Refusal`` or ``Escalation`` action delivers in place of any model
+    prose. Those two kinds must declare it; every other kind must leave it absent.
+    """
+
+    pub action_id: ActionId
+    pub outcome_kind: GovernedOutcomeKind
+    pub evidence_required: bool
+    pub committee_required: bool
+    pub boundary_text: Option[str]
+
+    def identity(self) -> ActionId:
+        """Return the identity this action is declared under."""
+
+        return self.action_id
+
+
+@derive(Clone, json)
+pub model GovernedEvidence with Identified[EvidenceId]:
+    """Reviewed source-safe evidence record admitted into one package."""
+
+    pub evidence_id: EvidenceId
+    pub claim: str
+    pub guidance: str
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: DigestIdType
+    pub language: str
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+    pub authority_class: str
+    pub evidence_kind: str
+
+    def identity(self) -> EvidenceId:
+        """Return the identity this evidence record is declared under."""
+
+        return self.evidence_id
+
+
+@derive(Clone, json)
+pub model GovernedMemory with Identified[MemoryId]:
+    """Reviewed memory atom and its exact package evidence relationships."""
+
+    pub memory_id: MemoryId
+    pub concept: str
+    pub evidence_ids: list[EvidenceId]
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+    pub provenance_digest: DigestIdType
+
+    def identity(self) -> MemoryId:
+        """Return the identity this memory atom is declared under."""
+
+        return self.memory_id
+
+
+@derive(Clone, json)
+pub model GuidedTransition:
+    """One package-declared navigation edge inside guided material."""
+
+    pub current_step_id: GuidedStepId
+    pub next_step_id: GuidedStepId
+
+
+@derive(Clone, json)
+pub model GuidedMaterial with Identified[GuidedMaterialId]:
+    """Source-safe identity and authority relationships for one package-owned artifact."""
+
+    pub guided_material_id: GuidedMaterialId
+    pub artifact_revision: ArtifactRevisionType
+    pub artifact_digest: DigestIdType
+    pub language: str
+    pub audience: AudienceId
+    pub evidence_ids: list[EvidenceId]
+    pub memory_ids: list[MemoryId]
+    pub presentation_action_id: ActionId
+    pub navigation_action_id: ActionId
+    pub steps: list[GuidedStepId]
+    pub transitions: list[GuidedTransition]
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+
+    def identity(self) -> GuidedMaterialId:
+        """Return the identity this guided material is declared under."""
+
+        return self.guided_material_id
+
+
+@derive(Clone, json)
+pub model GovernedPolicy:
+    """Package-owned committee requirements evaluated by Hees.ai."""
+
+    pub constraint_plan_id: ConstraintPlanId
+    pub constraint_plan_revision: RevisionType
+    pub required_roles: list[CommitteeRoleId]
+    pub require_all_passed: bool
+
+
+@derive(Clone, json)
+pub model GovernedProfilePackage:
+    """
+    Generic runtime package projection.
+
+    ``validate_governed_profile_package`` recomputes and checks ``profile_package_digest``.
+    """
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub profile_package_digest: DigestIdType
+    pub mission: str
+    pub actions: list[GovernedAction]
+    pub evidence: list[GovernedEvidence]
+    pub memory: list[GovernedMemory]
+    pub guided_material: list[GuidedMaterial]
+    pub policy: GovernedPolicy
+
+
+@derive(Clone, json)
+pub model GovernedMemoryArtifactProjection:
+    """One memory atom's fields except ``provenance_digest``, which binds separately once the package digest is known."""
+
+    pub memory_id: MemoryId
+    pub concept: str
+    pub evidence_ids: list[EvidenceId]
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+
+
+@derive(Clone, json)
+pub model GovernedProfilePackageArtifactProjection:
+    """Every ``GovernedProfilePackage`` field except ``profile_package_digest`` itself, used to recompute and verify it."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub mission: str
+    pub actions: list[GovernedAction]
+    pub evidence: list[GovernedEvidence]
+    pub memory: list[GovernedMemoryArtifactProjection]
+    pub guided_material: list[GuidedMaterial]
+    pub policy: GovernedPolicy
+
+
+@derive(Clone, json)
+pub model GovernedMemoryProvenanceProjection:
+    """One memory atom's core fields bound to the exact package identity, covered by its ``provenance_digest``."""
+
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub profile_package_digest: DigestIdType
+    pub memory_id: MemoryId
+    pub concept: str
+    pub evidence_ids: list[EvidenceId]
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+
+
+@derive(Clone, json)
+pub model GovernedRequest:
+    """Exact caller request and its trusted language and audience context."""
+
+    pub request_id: RequestId
+    pub question: str
+    pub language: str
+    pub audience: AudienceId
+    pub request_digest: DigestIdType
+
+
+@derive(Clone, json)
+pub model GovernedProposal:
+    """
+    Untrusted candidate behavior, visible output, and package-artifact nominations.
+
+    ``visible_output`` must be empty for a refusal or escalation action, whose delivered text is the package's
+    ``boundary_text``, and non-blank for every other action.
+    """
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub profile_package_digest: DigestIdType
+    pub request_id: RequestId
+    pub request_digest: DigestIdType
+    pub proposal_id: ProposalId
+    pub action_id: ActionId
+    pub visible_output: str
+    pub evidence_ids: list[EvidenceId]
+    pub memory_ids: list[MemoryId]
+    pub guided_material_id: Option[GuidedMaterialId]
+    pub current_step_id: Option[GuidedStepId]
+    pub next_step_id: Option[GuidedStepId]
+
+
+@derive(Clone, json)
+pub model CommitteeObservation:
+    """One identity-bound, non-authoritative committee observation."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub observation_id: ObservationId
+    pub role: CommitteeRoleId
+    pub verdict: CommitteeVerdict
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub profile_package_digest: DigestIdType
+    pub request_id: RequestId
+    pub request_digest: DigestIdType
+    pub candidate_digest: DigestIdType
+    pub evaluator_fingerprint: DigestIdType
+
+
+@derive(Clone, json)
+pub model GovernedFinding:
+    """Hees.ai-owned finding derived from one validated committee observation."""
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub finding_id: FindingId
+    pub observation_id: ObservationId
+    pub role: CommitteeRoleId
+    pub classification: CommitteeVerdict
+    pub constraint_plan_id: ConstraintPlanId
+    pub constraint_plan_revision: RevisionType
+
+
+@derive(Clone, json)
+pub model AdmittedGuidedMaterial:
+    """Exact package-owned artifact identity an application may materialize."""
+
+    pub package_id: PackageId
+    pub package_revision: ArtifactRevisionType
+    pub profile_package_digest: DigestIdType
+    pub guided_material_id: GuidedMaterialId
+    pub artifact_revision: ArtifactRevisionType
+    pub artifact_digest: DigestIdType
+    pub language: str
+    pub audience: AudienceId
+
+
+@derive(Clone, json)
+pub model GovernedSpectrumResult:
+    """
+    Terminal Hees.ai decision over proposal, committee findings, and package relationships.
+
+    ``decision`` is ``deliver``, ``refuse`` or ``escalate`` when ``admitted`` is true, and ``reject`` otherwise.
+    ``reason`` is a stable code in the ``governed_profile_admission_0_1`` namespace.
+    """
+
+    pub decision_id: DecisionId
+    pub admitted: bool
+    pub decision: str
+    pub reason_namespace: str
+    pub reason: str
+    pub structural_reason: Option[str]
+    pub admitted_evidence_ids: list[EvidenceId]
+    pub selected_memory_ids: list[MemoryId]
+    pub admitted_guided_material_id: Option[GuidedMaterialId]
+
+
+@derive(Clone, json)
+pub model CompleteGovernedEvaluation:
+    """Atomic terminal evaluation and every projection an application may observe."""
+
+    pub findings: list[GovernedFinding]
+    pub spectrum: GovernedSpectrumResult
+    pub admitted_visible_output: Option[str]
+    pub selected_memory: list[GovernedMemory]
+    pub admitted_guided_material: Option[AdmittedGuidedMaterial]
+    pub content_dna_json: Option[str]
+    pub receipt_json: Option[str]
+
+
+@derive(Clone, json)
+pub model GovernedValidation:
+    """Closed validation result with one stable reason and bounded diagnostics."""
+
+    pub valid: bool
+    pub reason: str
+    pub errors: list[str]
+
+
+@derive(Clone)
+pub model CommitteeAssessment:
+    """Crate-internal validation and finding projection for one committee set; not re-exported from ``lib.incn``."""
+
+    pub valid: bool
+    pub reason: str
+    pub findings: list[GovernedFinding]
+
+
+@derive(Clone)
+pub model GovernedStructuralAdmission:
+    """Crate-internal projection of the structural kernel result; not re-exported from ``lib.incn``."""
+
+    pub admitted: bool
+    pub reason: str
+    pub evidence_ids: list[EvidenceId]
+
+
+@derive(Clone)
+pub model GovernedDeliveredOutput:
+    """Crate-internal visible text an admitted result delivers and its source; not re-exported from ``lib.incn``."""
+
+    pub source: GovernedVisibleOutputSource
+    pub text: str
+
+
+@derive(Clone)
+pub model GovernedTerminalClass:
+    """Crate-internal decision and reason for one package-declared outcome; not re-exported from ``lib.incn``."""
+
+    pub decision: str
+    pub reason: str
+
+
+@derive(Clone, json)
+pub model GovernedRequestDigestProjection:
+    """Exact trusted request fields covered by the request digest."""
+
+    pub request_id: RequestId
+    pub question: str
+    pub language: str
+    pub audience: AudienceId
+
+
+@derive(Clone, json)
+pub model GovernedAnswerProjection:
+    """Exact delivered text covered by Content DNA's ``answer_digest`` and a receipt's ``visible_output_digest``."""
+
+    pub visible_output: str
+
+
+@derive(Clone, json)
+pub model GovernedContentDnaEntry:
+    """Source-safe selected-memory and evidence provenance."""
+
+    pub memory_id: MemoryId
+    pub evidence_id: EvidenceId
+    pub source_ref: str
+    pub source_kind: str
+    pub source_fingerprint: DigestIdType
+    pub provenance_digest: DigestIdType
+    pub review_state: str
+    pub review_revision: RevisionType
+    pub rights_state: str
+    pub authority_class: str
+    pub evidence_kind: str
+
+
+@derive(Clone, json)
+pub model GovernedPackageIdentity:
+    """Exact installed package identity carried by authority-bearing artifacts."""
+
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub profile_package_digest: DigestIdType
+
+
+@derive(Clone, json)
+pub model GovernedContentDnaBody:
+    """Closed source-safe provenance body for one deliverable result."""
+
+    pub contract_version: ContractId
+    pub state: str
+    pub package: GovernedPackageIdentity
+    pub request_id: RequestId
+    pub request_digest: DigestIdType
+    pub proposal_id: ProposalId
+    pub candidate_digest: DigestIdType
+    pub spectrum_decision_id: DecisionId
+    pub terminal_decision: str
+    pub terminal_reason: str
+    pub constraint_plan_id: ConstraintPlanId
+    pub constraint_plan_revision: RevisionType
+    pub entries: list[GovernedContentDnaEntry]
+    pub answer_digest: DigestIdType
+    pub guided_material: Option[AdmittedGuidedMaterial]
+
+
+@derive(Clone, json)
+pub model GovernedContentDna:
+    """Internally sealed governed-profile Content DNA envelope."""
+
+    pub body: GovernedContentDnaBody
+    pub content_dna_id: ContentDnaId
+
+
+@derive(Clone, json)
+pub model GovernedReceiptBody:
+    """
+    Redacted terminal receipt for delivery, refusal, escalation, or rejection.
+
+    ``visible_output_source`` and ``visible_output_digest`` record which text an admitted result delivered and where
+    it came from: the admitted proposal for ``deliver``, the package's ``boundary_text`` for ``refuse`` and
+    ``escalate``. Both are absent for ``reject``, which delivers no text.
+    """
+
+    pub contract_version: ContractId
+    pub profile_id: ProfileId
+    pub package: GovernedPackageIdentity
+    pub request_id: RequestId
+    pub request_digest: DigestIdType
+    pub proposal_id: ProposalId
+    pub candidate_digest: DigestIdType
+    pub decision_id: DecisionId
+    pub decision: str
+    pub reason_namespace: str
+    pub reason: str
+    pub structural_reason: Option[str]
+    pub admitted_evidence_ids: list[EvidenceId]
+    pub selected_memory_ids: list[MemoryId]
+    pub admitted_guided_material: Option[AdmittedGuidedMaterial]
+    pub content_dna_id: Option[ContentDnaId]
+    pub visible_output_source: Option[GovernedVisibleOutputSource]
+    pub visible_output_digest: Option[DigestIdType]
+
+
+@derive(Clone, json)
+pub model GovernedReceipt:
+    """Internally sealed governed-profile receipt."""
+
+    pub body: GovernedReceiptBody
+    pub receipt_id: ReceiptId

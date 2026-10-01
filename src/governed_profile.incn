@@ -1,0 +1,52 @@
+"""
+Checked public facade for generic package-governed interactions (RFC 015).
+
+Callers may supply package projections, requests, proposals, and committee observations. Hees.ai validates their exact
+relationships and returns one atomic terminal result. This surface does not author packages, retrieve memory, invoke
+models, or materialize guided payloads.
+
+A caller builds a valid package in two phases: stamp ``profile_package_digest`` with ``digest_governed_profile_package``,
+then stamp each memory atom's ``provenance_digest`` with ``digest_governed_memory_provenance`` against the stamped
+package. The Content DNA and receipt types describe the JSON returned in ``content_dna_json`` and ``receipt_json``;
+Hees.ai never accepts them as input.
+"""
+
+pub from crate.governed_profile_evaluation import (
+    evaluate_governed_profile_json,
+    evaluate_governed_profile_with_artifacts,
+)
+pub from crate.governed_profile_identity import (
+    bind_governed_request,
+    committee_observation,
+    digest_governed_memory_provenance,
+    digest_governed_proposal,
+    digest_governed_profile_package,
+    governed_proposal,
+)
+pub from crate.governed_profile_models import (
+    AdmittedGuidedMaterial,
+    CommitteeObservation,
+    CommitteeVerdict,
+    CompleteGovernedEvaluation,
+    GovernedAction,
+    GovernedContentDna,
+    GovernedContentDnaBody,
+    GovernedContentDnaEntry,
+    GovernedEvidence,
+    GovernedFinding,
+    GovernedMemory,
+    GovernedOutcomeKind,
+    GovernedPackageIdentity,
+    GovernedPolicy,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedReceipt,
+    GovernedReceiptBody,
+    GovernedRequest,
+    GovernedSpectrumResult,
+    GovernedValidation,
+    GovernedVisibleOutputSource,
+    GuidedMaterial,
+    GuidedTransition,
+)
+pub from crate.governed_profile_validation import validate_governed_profile_package

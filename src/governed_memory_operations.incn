@@ -1,0 +1,991 @@
+"""
+Independent admission for governed memory inspection, prompt selection, and lifecycle operations.
+
+Retrieval providers may nominate identifiers, but package declarations and Hees.ai determine whether a record is eligible
+for the proposed operation. This module is adjacent to RFC 003 and does not implement its retrieval ingress; RFC 014
+specifies its contract.
+"""
+
+from std.serde import json
+from crate.identifiers import (
+    ArtifactRevisionType,
+    DigestIdType,
+    DomainId,
+    MemoryClassId,
+    MemoryId,
+    MemoryOperationId,
+    PackageId,
+    ProfileId,
+    SessionId,
+    Identified,
+    artifact_revision_text_is_safe,
+    digest_id_text_is_safe,
+    find_declared,
+    has_duplicate_identifiers,
+    identifier_text_is_safe,
+    is_declared,
+)
+from crate.witness import (
+    KeyedWitness,
+    WitnessKey,
+    digest_tagged_json,
+    keyed_witness_verifies,
+    stamp_keyed_witness,
+    unstamped_witness,
+    witness_key_is_valid,
+)
+
+const MAX_MEMORY_CLASSES: int = 32
+const MAX_MEMORY_OPERATIONS: int = 5
+const MAX_MEMORY_CLASS_KEYS: int = 32
+const MAX_MEMORY_PROVENANCE_FIELDS: int = 16
+# Type tag hashed ahead of the policy projection, so no other projection type can share a policy digest.
+const MEMORY_POLICY_TYPE_TAG: str = "hees.ai/memory-policy/v0"
+# Type tag the record witness authenticates ahead of the record projection.
+const MEMORY_RECORD_TYPE_TAG: str = "hees.ai/memory-record/v0"
+# Latest representable time; a kernel-built record's expiry clamps to it rather than overflowing.
+const LATEST_EXPIRY_SECONDS: int = 9223372036854775807
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryOperationKind(str):
+    """Closed operation kinds with distinct admission semantics."""
+
+    SelectPrompt = "select_prompt"
+    Inspect = "inspect"
+    Write = "write"
+    Revoke = "revoke"
+    Supersede = "supersede"
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryOperationTerminal(str):
+    """Independent terminal result for one memory-operation proposal."""
+
+    Admitted = "admitted"
+    Rejected = "rejected"
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryOwner(str):
+    """
+    Closed owner vocabulary that decides how a memory class binds its records to a session.
+
+    ``package`` records are package-authored, never runtime-writable, and carry no session. ``session`` and ``subject``
+    records are session-scoped: every operation on them names a session, and a record matches only the session it
+    carries. ``subject`` marks memory about the person a session serves; this contract carries no identity for that
+    person beyond the session, so ``subject`` records bind to a session exactly like ``session`` records. ``runtime``
+    records match any session when they carry none, and only their own session when they carry one.
+    """
+
+    Package = "package"
+    Session = "session"
+    Subject = "subject"
+    Runtime = "runtime"
+
+
+@derive(Clone, json)
+pub model GovernedMemoryClass with Identified[MemoryClassId]:
+    """
+    Package-owned runtime rules for one distinct memory class.
+
+    ``hyperquant_eligible`` is a declaration only: policy validation requires it to imply ``prompt_eligible``, but no
+    operation in this contract reads it.
+    """
+
+    pub memory_class_id: MemoryClassId
+    pub owner: MemoryOwner
+    pub prompt_eligible: bool
+    pub hyperquant_eligible: bool
+    pub runtime_writable: bool
+    pub maximum_age_seconds: Option[int]
+    pub explicit_consent_required: bool
+    pub revoke_allowed: bool
+    pub supersede_allowed: bool
+    pub allowed_keys: list[str]
+    pub required_provenance: list[str]
+
+    def identity(self) -> MemoryClassId:
+        """Return the identity this memory class is declared under."""
+
+        return self.memory_class_id
+
+
+@derive(Clone, json)
+pub model GovernedMemoryOperation with Identified[MemoryOperationId]:
+    """Package-declared class authority for one typed memory operation."""
+
+    pub operation_id: MemoryOperationId
+    pub operation_kind: MemoryOperationKind
+    pub allowed_class_ids: list[MemoryClassId]
+
+    def identity(self) -> MemoryOperationId:
+        """Return the identity this operation is declared under."""
+
+        return self.operation_id
+
+
+@derive(Clone, json)
+pub model GovernedMemoryPolicy:
+    """Package projection whose ``memory_policy_digest`` validate_governed_memory_policy recomputes and checks."""
+
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub memory_policy_digest: DigestIdType
+    pub classes: list[GovernedMemoryClass]
+    pub operations: list[GovernedMemoryOperation]
+
+
+@derive(Clone, json)
+model GovernedMemoryPolicyDigestProjection:
+    """Every ``GovernedMemoryPolicy`` field except ``memory_policy_digest`` itself, used to recompute and verify it."""
+
+    profile_id: ProfileId
+    package_id: PackageId
+    domain_id: DomainId
+    package_revision: ArtifactRevisionType
+    classes: list[GovernedMemoryClass]
+    operations: list[GovernedMemoryOperation]
+
+
+@derive(Clone, json)
+pub model GovernedMemoryRecord:
+    """
+    Memory record built and stamped by ``evaluate_memory_operation``, presented back as a later operation's target.
+
+    An admitted ``write``, ``revoke``, or ``supersede`` returns the record in the decision's ``resulting_record``; the
+    host persists that record unchanged and supplies it as ``existing_record`` on every later operation. Hees.ai checks
+    the record against the proposal, the class policy, and its ``record_witness`` before any operation-specific rule.
+
+    ``record_witness`` authenticates that the record was returned by ``evaluate_memory_operation`` under the host's
+    ``WitnessKey``; any edited field, another key, or a malformed witness fails verification. The host keeps the key out
+    of every model, provider, and package input. Anyone holding the key can stamp a record, so the key is the host's
+    trust anchor.
+    """
+
+    pub memory_id: MemoryId
+    pub memory_class_id: MemoryClassId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub memory_policy_digest: DigestIdType
+    pub session_id: Option[SessionId]
+    pub memory_key: Option[str]
+    pub created_at_seconds: int
+    pub expires_at_seconds: Option[int]
+    pub revoked: bool
+    pub superseded_by: Option[MemoryId]
+    pub provenance_fields: list[str]
+    pub record_witness: KeyedWitness
+
+
+@derive(Clone, json)
+model MemoryRecordWitnessProjection:
+    """
+    Every ``GovernedMemoryRecord`` field except ``record_witness`` itself.
+
+    ``record_witness`` is the HMAC-SHA256 tag of this projection's JSON, hashed after ``MEMORY_RECORD_TYPE_TAG``, under
+    the host's ``WitnessKey``.
+    """
+
+    memory_id: MemoryId
+    memory_class_id: MemoryClassId
+    profile_id: ProfileId
+    package_id: PackageId
+    domain_id: DomainId
+    package_revision: ArtifactRevisionType
+    memory_policy_digest: DigestIdType
+    session_id: Option[SessionId]
+    memory_key: Option[str]
+    created_at_seconds: int
+    expires_at_seconds: Option[int]
+    revoked: bool
+    superseded_by: Option[MemoryId]
+    provenance_fields: list[str]
+
+
+pub def digest_governed_memory_policy(policy: GovernedMemoryPolicy) -> DigestIdType:
+    """
+    Recompute the policy digest over every field except ``memory_policy_digest`` itself.
+
+    The digest hashes ``MEMORY_POLICY_TYPE_TAG`` ahead of the current serializer's JSON rendering of the projection.
+    That encoding is interim and does not yet conform to RFC 011 structural identity.
+    """
+
+    projection = GovernedMemoryPolicyDigestProjection(
+        profile_id=policy.profile_id,
+        package_id=policy.package_id,
+        domain_id=policy.domain_id,
+        package_revision=policy.package_revision,
+        classes=policy.classes,
+        operations=policy.operations,
+    )
+    return digest_tagged_json(MEMORY_POLICY_TYPE_TAG, projection.to_json()).unwrap()
+
+
+def memory_record_witness_source(record: GovernedMemoryRecord) -> str:
+    """Render the JSON that ``record_witness`` authenticates: every field of ``record`` except the witness itself."""
+
+    projection = MemoryRecordWitnessProjection(
+        memory_id=record.memory_id,
+        memory_class_id=record.memory_class_id,
+        profile_id=record.profile_id,
+        package_id=record.package_id,
+        domain_id=record.domain_id,
+        package_revision=record.package_revision,
+        memory_policy_digest=record.memory_policy_digest,
+        session_id=record.session_id,
+        memory_key=record.memory_key,
+        created_at_seconds=record.created_at_seconds,
+        expires_at_seconds=record.expires_at_seconds,
+        revoked=record.revoked,
+        superseded_by=record.superseded_by,
+        provenance_fields=record.provenance_fields,
+    )
+    return projection.to_json()
+
+
+def record_witness_verifies(witness_key: WitnessKey, record: GovernedMemoryRecord) -> bool:
+    """Return whether ``record.record_witness`` authenticates the record's other fields under the host's key."""
+
+    return keyed_witness_verifies(
+        witness_key,
+        MEMORY_RECORD_TYPE_TAG,
+        memory_record_witness_source(record),
+        record.record_witness,
+    )
+
+
+def stamped_record(witness_key: WitnessKey, unstamped: GovernedMemoryRecord) -> Result[GovernedMemoryRecord, str]:
+    """Return ``unstamped`` carrying the witness of its other fields under the host's key."""
+
+    match stamp_keyed_witness(witness_key, MEMORY_RECORD_TYPE_TAG, memory_record_witness_source(unstamped)):
+        Err(error) => return Err(error)
+        Ok(witness) =>
+            mut result = unstamped.clone()
+            result.record_witness = witness
+            return Ok(result)
+
+
+@derive(Clone, json)
+pub model MemoryOperationProposal:
+    """
+    Untrusted request to inspect, select, write, revoke, or supersede one memory record.
+
+    ``replacement_memory_id`` is accepted only on ``supersede``. ``existing_record`` must be absent on ``write`` and
+    present on every other kind. ``consent_present`` and ``provenance_fields`` are caller attestations.
+    """
+
+    pub operation_id: MemoryOperationId
+    pub operation_kind: MemoryOperationKind
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub memory_policy_digest: DigestIdType
+    pub session_id: Option[SessionId]
+    pub memory_class_id: MemoryClassId
+    pub target_memory_id: MemoryId
+    pub replacement_memory_id: Option[MemoryId]
+    pub memory_key: Option[str]
+    pub current_time_seconds: int
+    pub consent_present: bool
+    pub provenance_fields: list[str]
+    pub existing_record: Option[GovernedMemoryRecord]
+
+
+@derive(Clone, json)
+pub model MemoryOperationDecision:
+    """
+    Hees.ai terminal result, independent of answer delivery and storage mutation.
+
+    ``replacement_memory_id`` is present only on an admitted ``supersede`` and is then the validated replacement.
+    ``resulting_record`` is present only on an admitted ``write``, ``revoke``, or ``supersede``: the new record, the
+    record with ``revoked`` set, or the record with ``superseded_by`` linked, stamped under the host's key. The host
+    persists it unchanged. ``select_prompt``, ``inspect``, and every rejection carry none.
+    """
+
+    pub terminal: MemoryOperationTerminal
+    pub reason: str
+    pub operation_id: MemoryOperationId
+    pub target_memory_id: MemoryId
+    pub replacement_memory_id: Option[MemoryId]
+    pub resulting_record: Option[GovernedMemoryRecord]
+
+
+@derive(Clone, json)
+pub model MemoryPolicyValidation:
+    """Closed structural validation result for memory policy declarations."""
+
+    pub valid: bool
+    pub reason: str
+
+
+def valid() -> MemoryPolicyValidation:
+    """Construct the successful policy validation result."""
+
+    return MemoryPolicyValidation(valid=true, reason="valid")
+
+
+def invalid(reason: str) -> MemoryPolicyValidation:
+    """Construct one failed policy validation result carrying its RFC 014 reason."""
+
+    return MemoryPolicyValidation(valid=false, reason=reason)
+
+
+def rejected(proposal: MemoryOperationProposal, reason: str) -> MemoryOperationDecision:
+    """Construct a rejection for ``proposal`` that never carries a replacement identifier or a record."""
+
+    return MemoryOperationDecision(
+        terminal=MemoryOperationTerminal.Rejected,
+        reason=reason,
+        operation_id=proposal.operation_id,
+        target_memory_id=proposal.target_memory_id,
+        replacement_memory_id=None,
+        resulting_record=None,
+    )
+
+
+def admitted(proposal: MemoryOperationProposal, reason: str) -> MemoryOperationDecision:
+    """Construct an admission of a read-only operation, which carries no replacement identifier and no record."""
+
+    return MemoryOperationDecision(
+        terminal=MemoryOperationTerminal.Admitted,
+        reason=reason,
+        operation_id=proposal.operation_id,
+        target_memory_id=proposal.target_memory_id,
+        replacement_memory_id=None,
+        resulting_record=None,
+    )
+
+
+def admitted_with_record(
+    proposal: MemoryOperationProposal,
+    witness_key: WitnessKey,
+    reason: str,
+    replacement_memory_id: Option[MemoryId],
+    unstamped: GovernedMemoryRecord,
+) -> MemoryOperationDecision:
+    """
+    Admit a mutation carrying ``unstamped`` stamped under the host's key and the replacement the rule validated.
+
+    Stamping cannot fail for a projection the serializer rendered; if it ever does, the operation is rejected with
+    ``memory_record_witness_invalid`` rather than admitted without a witness.
+    """
+
+    match stamped_record(witness_key, unstamped):
+        Err(_) => return rejected(proposal, "memory_record_witness_invalid")
+        Ok(record) =>
+            return MemoryOperationDecision(
+                terminal=MemoryOperationTerminal.Admitted,
+                reason=reason,
+                operation_id=proposal.operation_id,
+                target_memory_id=proposal.target_memory_id,
+                replacement_memory_id=replacement_memory_id,
+                resulting_record=Some(record),
+            )
+
+
+def memory_record_present(record: Option[GovernedMemoryRecord]) -> bool:
+    """Return whether a proposal supplied an existing record."""
+
+    return match record:
+        None => false
+        Some(_) => true
+
+
+def memory_id_present(identifier: Option[MemoryId]) -> bool:
+    """Return whether an optional memory identifier is supplied."""
+
+    return match identifier:
+        None => false
+        Some(_) => true
+
+
+def session_present(identifier: Option[SessionId]) -> bool:
+    """Return whether an optional session identifier is supplied."""
+
+    return match identifier:
+        None => false
+        Some(_) => true
+
+
+def has_duplicate_strings(values: list[str]) -> bool:
+    """Return whether one bounded text projection repeats an earlier value."""
+
+    mut seen: list[str] = []
+    for value in values:
+        if seen.contains(value):
+            return true
+        seen.append(value)
+    return false
+
+
+def contains_all(required: list[str], supplied: list[str]) -> bool:
+    """Return whether ``supplied`` contains every entry of ``required``."""
+
+    for value in required:
+        if not supplied.contains(value):
+            return false
+    return true
+
+
+def owner_is_session_scoped(owner: MemoryOwner) -> bool:
+    """Return whether every operation on a class with this owner must name a session."""
+
+    return match owner:
+        MemoryOwner.Session | MemoryOwner.Subject => true
+        MemoryOwner.Package | MemoryOwner.Runtime => false
+
+
+def bound_session_matches(record_session: Option[SessionId], proposal_session: Option[SessionId]) -> bool:
+    """Return whether a record carries a session and the proposal names exactly that session."""
+
+    return match (record_session, proposal_session):
+        (Some(record_value), Some(proposal_value)) => record_value == proposal_value
+        (Some(_), None) => false
+        (None, _) => false
+
+
+def optional_session_matches(record_session: Option[SessionId], proposal_session: Option[SessionId]) -> bool:
+    """Return whether a record carries no session, or carries the session the proposal names."""
+
+    return match (record_session, proposal_session):
+        (None, _) => true
+        (Some(record_value), Some(proposal_value)) => record_value == proposal_value
+        (Some(_), None) => false
+
+
+def session_binding_matches(
+    owner: MemoryOwner,
+    record_session: Option[SessionId],
+    proposal_session: Option[SessionId],
+) -> bool:
+    """Apply the class owner's session rule from ``MemoryOwner`` to one record and proposal."""
+
+    return match owner:
+        MemoryOwner.Package => not session_present(record_session)
+        MemoryOwner.Session | MemoryOwner.Subject => bound_session_matches(record_session, proposal_session)
+        MemoryOwner.Runtime => optional_session_matches(record_session, proposal_session)
+
+
+def optional_memory_id_is_canonical(identifier: Option[MemoryId]) -> bool:
+    """Return whether an optional memory identifier is absent or canonical identifier text."""
+
+    return match identifier:
+        None => true
+        Some(value) => identifier_text_is_safe(value.text())
+
+
+def optional_session_id_is_canonical(identifier: Option[SessionId]) -> bool:
+    """Return whether an optional session identifier is absent or canonical identifier text."""
+
+    return match identifier:
+        None => true
+        Some(value) => identifier_text_is_safe(value.text())
+
+
+def memory_text_fields_are_canonical(memory_key: Option[str], provenance_fields: list[str]) -> bool:
+    """
+    Return whether a key and provenance list are bounded, canonical, and duplicate-free.
+
+    The provenance count bound is checked before the per-entry and duplicate scans so an oversized list costs one
+    length check.
+    """
+
+    match memory_key:
+        None => pass
+        Some(value) =>
+            if not identifier_text_is_safe(value):
+                return false
+    if len(provenance_fields) > MAX_MEMORY_PROVENANCE_FIELDS:
+        return false
+    for value in provenance_fields:
+        if not identifier_text_is_safe(value):
+            return false
+    return not has_duplicate_strings(provenance_fields)
+
+
+def policy_is_bounded(policy: GovernedMemoryPolicy) -> bool:
+    """Return whether every policy collection is within its RFC 014 count bound."""
+
+    if len(policy.classes) > MAX_MEMORY_CLASSES or len(policy.operations) > MAX_MEMORY_OPERATIONS:
+        return false
+    for memory_class in policy.classes:
+        if len(memory_class.allowed_keys) > MAX_MEMORY_CLASS_KEYS:
+            return false
+        if len(memory_class.required_provenance) > MAX_MEMORY_PROVENANCE_FIELDS:
+            return false
+    for operation in policy.operations:
+        if len(operation.allowed_class_ids) > MAX_MEMORY_CLASSES:
+            return false
+    return true
+
+
+def policy_identity_is_canonical(policy: GovernedMemoryPolicy) -> bool:
+    """Return whether every package identity field of the policy is canonical text for its namespace."""
+
+    return (identifier_text_is_safe(policy.profile_id.text()) and identifier_text_is_safe(policy.package_id.text()) and identifier_text_is_safe(
+        policy.domain_id.text(),
+    ) and artifact_revision_text_is_safe(policy.package_revision.text()) and digest_id_text_is_safe(
+        policy.memory_policy_digest.text(),
+    ))
+
+
+def policy_identifiers_are_canonical(policy: GovernedMemoryPolicy) -> bool:
+    """
+    Return whether the package identity, class identifiers, and operation identifiers are canonical text.
+
+    Directly constructed identifier newtypes skip their validating constructors, so the kernel re-checks the text.
+    """
+
+    if not policy_identity_is_canonical(policy):
+        return false
+    for memory_class in policy.classes:
+        if not identifier_text_is_safe(memory_class.memory_class_id.text()):
+            return false
+    for operation in policy.operations:
+        if not identifier_text_is_safe(operation.operation_id.text()):
+            return false
+    return true
+
+
+def memory_class_is_valid(memory_class: GovernedMemoryClass) -> MemoryPolicyValidation:
+    """Validate one class declaration's internal consistency, in RFC 014 order."""
+
+    if memory_class.hyperquant_eligible and not memory_class.prompt_eligible:
+        return invalid("hyperquant_memory_not_prompt_eligible")
+    for value in memory_class.allowed_keys + memory_class.required_provenance:
+        if not identifier_text_is_safe(value):
+            return invalid("invalid_memory_class_value")
+    if has_duplicate_strings(memory_class.allowed_keys) or has_duplicate_strings(memory_class.required_provenance):
+        return invalid("duplicate_memory_class_declaration")
+    match memory_class.maximum_age_seconds:
+        None => pass
+        Some(value) =>
+            if value <= 0:
+                return invalid("invalid_memory_maximum_age")
+    if not memory_class.runtime_writable and (memory_class.revoke_allowed or memory_class.supersede_allowed):
+        return invalid("immutable_memory_has_lifecycle_mutation")
+    if memory_class.owner == MemoryOwner.Package and memory_class.runtime_writable:
+        return invalid("package_memory_runtime_writable")
+    return valid()
+
+
+def memory_operations_are_valid(policy: GovernedMemoryPolicy) -> MemoryPolicyValidation:
+    """Validate operation kinds are unique and every operation binds a non-empty set of declared classes."""
+
+    if has_duplicate_strings([operation.operation_kind.value() for operation in policy.operations]):
+        return invalid("duplicate_memory_operation_kind")
+    for operation in policy.operations:
+        if len(operation.allowed_class_ids) == 0:
+            return invalid("memory_operation_classes_empty")
+        if has_duplicate_identifiers(operation.allowed_class_ids):
+            return invalid("duplicate_operation_memory_class")
+        for memory_class_id in operation.allowed_class_ids:
+            if not is_declared(policy.classes, memory_class_id):
+                return invalid("operation_memory_class_unknown")
+    return valid()
+
+
+pub def validate_governed_memory_policy(policy: GovernedMemoryPolicy) -> MemoryPolicyValidation:
+    """
+    Validate class and operation declarations without admitting a runtime operation.
+
+    Checks run in RFC 014 order and stop at the first failure: non-empty declarations, collection bounds, canonical
+    identifiers, the recomputed ``memory_policy_digest``, unique identifiers, per-class rules, then operation bindings.
+    Bounds run before the digest and every duplicate scan so an oversized policy is rejected in linear time.
+    """
+
+    if len(policy.classes) == 0 or len(policy.operations) == 0:
+        return invalid("memory_policy_empty")
+    if not policy_is_bounded(policy):
+        return invalid("memory_policy_too_large")
+    if not policy_identifiers_are_canonical(policy):
+        return invalid("invalid_memory_policy_identifier")
+    if policy.memory_policy_digest != digest_governed_memory_policy(policy):
+        return invalid("memory_policy_digest_mismatch")
+    if has_duplicate_strings([value.memory_class_id.text() for value in policy.classes]):
+        return invalid("duplicate_memory_class_id")
+    if has_duplicate_strings([value.operation_id.text() for value in policy.operations]):
+        return invalid("duplicate_memory_operation_id")
+    for memory_class in policy.classes:
+        class_validation = memory_class_is_valid(memory_class)
+        if not class_validation.valid:
+            return class_validation
+    return memory_operations_are_valid(policy)
+
+
+def proposal_identity_matches(policy: GovernedMemoryPolicy, proposal: MemoryOperationProposal) -> bool:
+    """Return whether the proposal names exactly the validated policy's package identity."""
+
+    return (
+        proposal.profile_id == policy.profile_id
+        and proposal.package_id == policy.package_id
+        and proposal.domain_id == policy.domain_id
+        and proposal.package_revision == policy.package_revision
+        and proposal.memory_policy_digest == policy.memory_policy_digest
+    )
+
+
+def proposal_identifiers_are_canonical(proposal: MemoryOperationProposal) -> bool:
+    """Return whether every identifier the proposal names is canonical text for its namespace."""
+
+    return (identifier_text_is_safe(proposal.operation_id.text()) and identifier_text_is_safe(
+        proposal.memory_class_id.text(),
+    ) and identifier_text_is_safe(proposal.target_memory_id.text()) and optional_memory_id_is_canonical(
+        proposal.replacement_memory_id,
+    ) and optional_session_id_is_canonical(proposal.session_id))
+
+
+def proposal_is_well_formed(proposal: MemoryOperationProposal) -> bool:
+    """Return whether every proposal identifier is canonical and its key and provenance claims are bounded."""
+
+    if not proposal_identifiers_are_canonical(proposal):
+        return false
+    return memory_text_fields_are_canonical(proposal.memory_key, proposal.provenance_fields)
+
+
+def record_identity_matches(proposal: MemoryOperationProposal, record: GovernedMemoryRecord) -> bool:
+    """Return whether the record's package identity, class, and memory id equal the proposal's."""
+
+    return (
+        record.profile_id == proposal.profile_id
+        and record.package_id == proposal.package_id
+        and record.domain_id == proposal.domain_id
+        and record.package_revision == proposal.package_revision
+        and record.memory_policy_digest == proposal.memory_policy_digest
+        and record.memory_class_id == proposal.memory_class_id
+        and record.memory_id == proposal.target_memory_id
+    )
+
+
+def record_is_well_formed(record: GovernedMemoryRecord) -> bool:
+    """Return whether the record fields not already compared to the proposal are canonical and bounded."""
+
+    if not optional_memory_id_is_canonical(record.superseded_by):
+        return false
+    return memory_text_fields_are_canonical(record.memory_key, record.provenance_fields)
+
+
+def key_is_allowed(memory_class: GovernedMemoryClass, memory_key: Option[str]) -> bool:
+    """Return whether ``memory_key`` satisfies the class key list; an empty list places no key restriction."""
+
+    if len(memory_class.allowed_keys) == 0:
+        return true
+    return match memory_key:
+        None => false
+        Some(value) => memory_class.allowed_keys.contains(value)
+
+
+def record_age_rejection(
+    proposal: MemoryOperationProposal,
+    record: GovernedMemoryRecord,
+    memory_class: GovernedMemoryClass,
+) -> Option[str]:
+    """Reject a record created in the future or as old as the class maximum age; an age equal to it is expired."""
+
+    if record.created_at_seconds < 0 or record.created_at_seconds > proposal.current_time_seconds:
+        return Some("memory_record_time_invalid")
+    match memory_class.maximum_age_seconds:
+        None => pass
+        Some(maximum_age_seconds) =>
+            if proposal.current_time_seconds - record.created_at_seconds >= maximum_age_seconds:
+                return Some("memory_expired")
+    return None
+
+
+def record_lifecycle_rejection(proposal: MemoryOperationProposal, record: GovernedMemoryRecord) -> Option[str]:
+    """Reject a revoked or superseded record, or one whose ``expires_at_seconds`` is not after evaluation time."""
+
+    if record.revoked:
+        return Some("memory_revoked")
+    if memory_id_present(record.superseded_by):
+        return Some("memory_superseded")
+    match record.expires_at_seconds:
+        None => pass
+        Some(value) =>
+            if value <= proposal.current_time_seconds:
+                return Some("memory_expired")
+    return None
+
+
+def record_rejection(
+    proposal: MemoryOperationProposal,
+    record: GovernedMemoryRecord,
+    memory_class: GovernedMemoryClass,
+    witness_key: WitnessKey,
+) -> Option[str]:
+    """Return the first RFC 014 eligibility failure of ``record`` for ``proposal``, or none when it is eligible."""
+
+    if not record_identity_matches(proposal, record):
+        return Some("memory_record_identity_mismatch")
+    if not session_binding_matches(memory_class.owner, record.session_id, proposal.session_id):
+        return Some("memory_record_identity_mismatch")
+    if not record_is_well_formed(record):
+        return Some("invalid_memory_record")
+    if not record_witness_verifies(witness_key, record):
+        return Some("memory_record_witness_invalid")
+    match record_age_rejection(proposal, record, memory_class):
+        None => pass
+        Some(reason) => return Some(reason)
+    if not contains_all(memory_class.required_provenance, record.provenance_fields):
+        return Some("memory_record_provenance_incomplete")
+    if not key_is_allowed(memory_class, record.memory_key):
+        return Some("memory_record_key_not_allowed")
+    return record_lifecycle_rejection(proposal, record)
+
+
+def existing_record_rejection(
+    proposal: MemoryOperationProposal,
+    memory_class: GovernedMemoryClass,
+    witness_key: WitnessKey,
+) -> Option[str]:
+    """Require the supplied existing record and return its first eligibility failure, if any."""
+
+    return match proposal.existing_record:
+        None => Some("memory_record_required")
+        Some(record) => record_rejection(proposal, record, memory_class, witness_key)
+
+
+def new_content_rejection(proposal: MemoryOperationProposal, memory_class: GovernedMemoryClass) -> Option[str]:
+    """Apply the consent, key, and proposal-provenance checks shared by ``write`` and ``supersede``."""
+
+    if memory_class.explicit_consent_required and not proposal.consent_present:
+        return Some("explicit_consent_required")
+    if not key_is_allowed(memory_class, proposal.memory_key):
+        return Some("memory_key_not_allowed")
+    if not contains_all(memory_class.required_provenance, proposal.provenance_fields):
+        return Some("memory_provenance_incomplete")
+    return None
+
+
+def written_record_session(owner: MemoryOwner, proposal_session: Option[SessionId]) -> Option[SessionId]:
+    """Bind a new record by the owner rule: package records carry no session, every other owner the proposal's."""
+
+    return match owner:
+        MemoryOwner.Package => None
+        MemoryOwner.Session | MemoryOwner.Subject | MemoryOwner.Runtime => proposal_session
+
+
+def written_record_expiry(created_at_seconds: int, maximum_age_seconds: Option[int]) -> Option[int]:
+    """
+    Return the expiry of a record created at ``created_at_seconds`` under the class maximum age, if the class has one.
+
+    The sum clamps to the latest representable time rather than overflowing; the class age bound still applies to the
+    record on every later operation.
+    """
+
+    match maximum_age_seconds:
+        None => return None
+        Some(maximum_age) =>
+            if created_at_seconds > LATEST_EXPIRY_SECONDS - maximum_age:
+                return Some(LATEST_EXPIRY_SECONDS)
+            return Some(created_at_seconds + maximum_age)
+
+
+def written_record(proposal: MemoryOperationProposal, memory_class: GovernedMemoryClass) -> GovernedMemoryRecord:
+    """Build the unstamped record an admitted ``write`` creates from the proposal and its class policy."""
+
+    return GovernedMemoryRecord(
+        memory_id=proposal.target_memory_id,
+        memory_class_id=proposal.memory_class_id,
+        profile_id=proposal.profile_id,
+        package_id=proposal.package_id,
+        domain_id=proposal.domain_id,
+        package_revision=proposal.package_revision,
+        memory_policy_digest=proposal.memory_policy_digest,
+        session_id=written_record_session(memory_class.owner, proposal.session_id),
+        memory_key=proposal.memory_key,
+        created_at_seconds=proposal.current_time_seconds,
+        expires_at_seconds=written_record_expiry(proposal.current_time_seconds, memory_class.maximum_age_seconds),
+        revoked=false,
+        superseded_by=None,
+        provenance_fields=proposal.provenance_fields,
+        record_witness=unstamped_witness(),
+    )
+
+
+def evaluate_write(
+    proposal: MemoryOperationProposal,
+    memory_class: GovernedMemoryClass,
+    witness_key: WitnessKey,
+) -> MemoryOperationDecision:
+    """Admit creating a new record in a runtime-writable class when no record exists and new-content checks pass."""
+
+    if memory_record_present(proposal.existing_record.clone()):
+        return rejected(proposal, "memory_already_exists")
+    if not memory_class.runtime_writable:
+        return rejected(proposal, "memory_class_not_writable")
+    match new_content_rejection(proposal, memory_class):
+        Some(reason) => return rejected(proposal, reason)
+        None => pass
+    unstamped = written_record(proposal, memory_class)
+    return admitted_with_record(proposal, witness_key, "declared_memory_write", None, unstamped)
+
+
+def evaluate_inspect(
+    proposal: MemoryOperationProposal,
+    memory_class: GovernedMemoryClass,
+    witness_key: WitnessKey,
+) -> MemoryOperationDecision:
+    """Admit inspecting an eligible record."""
+
+    return match existing_record_rejection(proposal, memory_class, witness_key):
+        Some(reason) => rejected(proposal, reason)
+        None => admitted(proposal, "declared_memory_inspection")
+
+
+def evaluate_select_prompt(
+    proposal: MemoryOperationProposal,
+    memory_class: GovernedMemoryClass,
+    witness_key: WitnessKey,
+) -> MemoryOperationDecision:
+    """Admit selecting an eligible record for a prompt when its class is prompt-eligible."""
+
+    match existing_record_rejection(proposal, memory_class, witness_key):
+        Some(reason) => return rejected(proposal, reason)
+        None => pass
+    if not memory_class.prompt_eligible:
+        return rejected(proposal, "memory_not_prompt_eligible")
+    return admitted(proposal, "declared_memory_read")
+
+
+def evaluate_revoke(
+    proposal: MemoryOperationProposal,
+    memory_class: GovernedMemoryClass,
+    witness_key: WitnessKey,
+) -> MemoryOperationDecision:
+    """Admit revoking an eligible record when its class allows revocation, returning it restamped as revoked."""
+
+    match existing_record_rejection(proposal, memory_class, witness_key):
+        Some(reason) => return rejected(proposal, reason)
+        None => pass
+    if not memory_class.revoke_allowed:
+        return rejected(proposal, "memory_revoke_not_allowed")
+    match proposal.existing_record.clone():
+        None => return rejected(proposal, "memory_record_required")
+        Some(existing) =>
+            mut revoked = existing.clone()
+            revoked.revoked = true
+            return admitted_with_record(proposal, witness_key, "declared_memory_revoke", None, revoked)
+
+
+def evaluate_replacement(
+    proposal: MemoryOperationProposal,
+    memory_class: GovernedMemoryClass,
+    replacement_memory_id: MemoryId,
+    witness_key: WitnessKey,
+) -> MemoryOperationDecision:
+    """
+    Admit a supersession whose replacement differs from the target and passes the new-content checks.
+
+    The admission returns the existing record restamped with ``superseded_by`` linked to the replacement.
+    """
+
+    if replacement_memory_id == proposal.target_memory_id:
+        return rejected(proposal, "replacement_memory_must_differ")
+    match new_content_rejection(proposal, memory_class):
+        Some(reason) => return rejected(proposal, reason)
+        None => pass
+    match proposal.existing_record.clone():
+        None => return rejected(proposal, "memory_record_required")
+        Some(existing) =>
+            mut superseded = existing.clone()
+            superseded.superseded_by = Some(replacement_memory_id)
+            return admitted_with_record(
+                proposal,
+                witness_key,
+                "declared_memory_supersede",
+                Some(replacement_memory_id),
+                superseded,
+            )
+
+
+def evaluate_supersede(
+    proposal: MemoryOperationProposal,
+    memory_class: GovernedMemoryClass,
+    witness_key: WitnessKey,
+) -> MemoryOperationDecision:
+    """Admit superseding an eligible record when its class allows it and a valid replacement is named."""
+
+    match existing_record_rejection(proposal, memory_class, witness_key):
+        Some(reason) => return rejected(proposal, reason)
+        None => pass
+    if not memory_class.supersede_allowed:
+        return rejected(proposal, "memory_supersede_not_allowed")
+    return match proposal.replacement_memory_id:
+        None => rejected(proposal, "replacement_memory_required")
+        Some(replacement_memory_id) => evaluate_replacement(proposal, memory_class, replacement_memory_id, witness_key)
+
+
+def evaluate_with_class(
+    operation: GovernedMemoryOperation,
+    memory_class: GovernedMemoryClass,
+    proposal: MemoryOperationProposal,
+    witness_key: WitnessKey,
+) -> MemoryOperationDecision:
+    """Apply class authority and proposal-shape rules, then dispatch exhaustively on the operation kind."""
+
+    if not operation.allowed_class_ids.contains(proposal.memory_class_id):
+        return rejected(proposal, "memory_class_not_allowed_for_operation")
+    if proposal.operation_kind != MemoryOperationKind.Supersede and memory_id_present(proposal.replacement_memory_id):
+        return rejected(proposal, "replacement_memory_not_allowed")
+    if owner_is_session_scoped(memory_class.owner) and not session_present(proposal.session_id):
+        return rejected(proposal, "memory_session_required")
+    return match proposal.operation_kind:
+        MemoryOperationKind.Write => evaluate_write(proposal, memory_class, witness_key)
+        MemoryOperationKind.Inspect => evaluate_inspect(proposal, memory_class, witness_key)
+        MemoryOperationKind.SelectPrompt => evaluate_select_prompt(proposal, memory_class, witness_key)
+        MemoryOperationKind.Revoke => evaluate_revoke(proposal, memory_class, witness_key)
+        MemoryOperationKind.Supersede => evaluate_supersede(proposal, memory_class, witness_key)
+
+
+def evaluate_with_operation(
+    policy: GovernedMemoryPolicy,
+    operation: GovernedMemoryOperation,
+    proposal: MemoryOperationProposal,
+    witness_key: WitnessKey,
+) -> MemoryOperationDecision:
+    """Require the declared operation kind to match, then resolve the proposal's declared class."""
+
+    if operation.operation_kind != proposal.operation_kind:
+        return rejected(proposal, "memory_operation_kind_mismatch")
+    return match find_declared(policy.classes, proposal.memory_class_id):
+        None => rejected(proposal, "unknown_memory_class")
+        Some(memory_class) => evaluate_with_class(operation, memory_class, proposal, witness_key)
+
+
+pub def evaluate_memory_operation(
+    policy: GovernedMemoryPolicy,
+    proposal: MemoryOperationProposal,
+    witness_key: WitnessKey,
+) -> MemoryOperationDecision:
+    """
+    Admit or reject exactly one memory operation without performing storage mutation or answer delivery.
+
+    Pure and deterministic. Stages run in RFC 014's admission order and the first failure is the decision: the host's
+    witness key, policy validity, package identity, evaluation time, proposal shape, operation, operation kind, class,
+    class authority, replacement and session rules, then the operation-specific rules. ``witness_key`` verifies every
+    existing record and stamps every returned one; the host keeps it out of model, provider, and package inputs. The
+    decision carries a replacement identifier only for an admitted ``supersede``, and a resulting record only for an
+    admitted ``write``, ``revoke``, or ``supersede``.
+    """
+
+    if not witness_key_is_valid(witness_key):
+        return rejected(proposal, "invalid_witness_key")
+    policy_validation = validate_governed_memory_policy(policy)
+    if not policy_validation.valid:
+        return rejected(proposal, "invalid_memory_policy")
+    if not proposal_identity_matches(policy, proposal):
+        return rejected(proposal, "package_identity_mismatch")
+    if proposal.current_time_seconds < 0:
+        return rejected(proposal, "invalid_evaluation_time")
+    if not proposal_is_well_formed(proposal):
+        return rejected(proposal, "invalid_memory_proposal")
+    return match find_declared(policy.operations, proposal.operation_id):
+        None => rejected(proposal, "unknown_memory_operation")
+        Some(operation) => evaluate_with_operation(policy, operation, proposal, witness_key)

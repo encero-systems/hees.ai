@@ -1,0 +1,731 @@
+"""Fail-closed validation for generic governed packages, requests, and proposals."""
+
+from crate.governed_profile_identity import (
+    digest_governed_memory_provenance,
+    digest_governed_profile_package,
+    digest_governed_request_fields,
+)
+from crate.governed_profile_models import (
+    GOVERNED_PACKAGE_CONTRACT,
+    GOVERNED_PROFILE_ID,
+    GOVERNED_PROPOSAL_CONTRACT,
+    GovernedAction,
+    GovernedEvidence,
+    GovernedMemory,
+    GovernedOutcomeKind,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedRequest,
+    GovernedValidation,
+    GuidedMaterial,
+    GuidedTransition,
+)
+from crate.identifiers import (
+    ActionId,
+    EvidenceId,
+    GuidedStepId,
+    MemoryId,
+    artifact_revision_text_is_safe,
+    digest_id_text_is_safe,
+    find_declared,
+    has_duplicate_identifiers,
+    identifier_sets_equal,
+    identifier_text_is_safe,
+)
+
+# Collection bounds for package contract 0.1. Every bound is checked before any duplicate scan and before the
+# package digest is recomputed, so oversized input is rejected without quadratic or digest work.
+pub const MAX_GOVERNED_ACTIONS: int = 16
+pub const MAX_GOVERNED_EVIDENCE: int = 64
+pub const MAX_GOVERNED_MEMORY: int = 64
+pub const MAX_GOVERNED_GUIDED_MATERIAL: int = 16
+pub const MAX_MEMORY_EVIDENCE: int = 8
+pub const MAX_GUIDED_MEMORY: int = 8
+pub const MAX_GUIDED_EVIDENCE: int = 16
+pub const MAX_GUIDED_STEPS: int = 8
+# Eight steps admit at most 8 * 7 distinct non-self transitions; any longer list must repeat or self-loop.
+pub const MAX_GUIDED_TRANSITIONS: int = 56
+pub const MAX_COMMITTEE_ROLES: int = 16
+# Text bounds, measured with ``len``.
+pub const MAX_PACKAGE_TEXT_LENGTH: int = 512
+pub const MAX_PACKAGE_LABEL_LENGTH: int = 64
+pub const MAX_SOURCE_REF_LENGTH: int = 256
+pub const MIN_LANGUAGE_LENGTH: int = 2
+pub const MAX_LANGUAGE_LENGTH: int = 16
+pub const MAX_QUESTION_LENGTH: int = 1024
+pub const MAX_VISIBLE_OUTPUT_LENGTH: int = 4096
+const INVALID_PACKAGE: str = "invalid_package"
+const INVALID_REQUEST: str = "invalid_request"
+const APPROVED_REVIEW_STATE: str = "approved"
+const ALLOWED_RIGHTS_STATE: str = "allowed"
+const SOURCE_REF_CHARACTERS: str = "abcdefghijklmnopqrstuvwxyz0123456789_./:-"
+const LANGUAGE_CHARACTERS: str = "abcdefghijklmnopqrstuvwxyz0123456789-"
+
+
+pub def governed_validation_ok() -> GovernedValidation:
+    """Construct the shared successful validation result."""
+
+    return GovernedValidation(valid=true, reason="ok", errors=[])
+
+
+pub def governed_validation_error(reason: str, error: str) -> GovernedValidation:
+    """Construct one stable public reason with one bounded diagnostic."""
+
+    return GovernedValidation(valid=false, reason=reason, errors=[error])
+
+
+def package_error(error: str) -> GovernedValidation:
+    """Reject a package under the coarse ``invalid_package`` reason with one specific diagnostic."""
+
+    return governed_validation_error(INVALID_PACKAGE, error)
+
+
+def request_error(error: str) -> GovernedValidation:
+    """Reject a request under the coarse ``invalid_request`` reason with one specific diagnostic."""
+
+    return governed_validation_error(INVALID_REQUEST, error)
+
+
+def proposal_error(reason: str) -> GovernedValidation:
+    """Reject a proposal whose public reason and diagnostic are the same code."""
+
+    return governed_validation_error(reason, reason)
+
+
+def has_duplicate_strings(values: list[str]) -> bool:
+    """Return whether one bounded text projection repeats an earlier value."""
+
+    mut seen: list[str] = []
+    for value in values:
+        if seen.contains(value):
+            return true
+        seen.append(value)
+    return false
+
+
+def text_is_bounded(value: str, maximum: int) -> bool:
+    """Return whether text has visible content and does not exceed ``maximum``."""
+
+    return value.strip() != "" and len(value) <= maximum
+
+
+def review_admits(review_state: str, rights_state: str) -> bool:
+    """Return whether a package record is both review-approved and rights-allowed."""
+
+    return review_state == APPROVED_REVIEW_STATE and rights_state == ALLOWED_RIGHTS_STATE
+
+
+def source_ref_is_safe(value: str) -> bool:
+    """
+    Accept a bounded source-safe reference while rejecting traversal, local paths, and URI syntax.
+
+    Every reference accepted here is also accepted by the structural kernel's ``runtime.source_ref_is_safe``,
+    which rejects ``:/`` anywhere, so a package that validates is never rejected later for its source references.
+    """
+
+    if value == "" or len(value) > MAX_SOURCE_REF_LENGTH or value.strip() != value:
+        return false
+    if value.contains("\n") or value.contains("\r") or value.contains("\t"):
+        return false
+    if value.contains("..") or value.contains("\\") or value.contains(":/") or value.startswith("/"):
+        return false
+    for character in value:
+        if not SOURCE_REF_CHARACTERS.contains(character):
+            return false
+    return true
+
+
+def language_is_safe(value: str) -> bool:
+    """Accept one lowercase package language tag without implicit fallback."""
+
+    if len(value) < MIN_LANGUAGE_LENGTH or len(value) > MAX_LANGUAGE_LENGTH or "-_".contains(value[0:1]):
+        return false
+    for character in value:
+        if not LANGUAGE_CHARACTERS.contains(character):
+            return false
+    return true
+
+
+def guided_identity_is_safe(material: GuidedMaterial) -> bool:
+    """Return whether guided material identity, revision, digest, and audience are canonical text."""
+
+    if not identifier_text_is_safe(material.guided_material_id.text()):
+        return false
+    if not artifact_revision_text_is_safe(material.artifact_revision.text()):
+        return false
+    if not digest_id_text_is_safe(material.artifact_digest.text()):
+        return false
+    return identifier_text_is_safe(material.audience.text())
+
+
+def selected_evidence_for_memory(package: GovernedProfilePackage, memory_ids: list[MemoryId]) -> list[EvidenceId]:
+    """
+    Collect the duplicate-free evidence union of selected memory in package order.
+
+    Callers resolve every memory identifier first; an unresolved identifier yields an empty list, which never
+    equals a nonempty evidence set.
+    """
+
+    mut result: list[EvidenceId] = []
+    for memory_id in memory_ids:
+        match find_declared(package.memory, memory_id):
+            None => return []
+            Some(atom) =>
+                for evidence_id in atom.evidence_ids:
+                    if not result.contains(evidence_id):
+                        result.append(evidence_id)
+    return result
+
+
+def validate_package_header(package: GovernedProfilePackage) -> GovernedValidation:
+    """Check the package contract, profile, and the canonical text of its identity fields."""
+
+    if package.contract_version.text() != GOVERNED_PACKAGE_CONTRACT:
+        return package_error("unsupported_package_contract")
+    if package.profile_id.text() != GOVERNED_PROFILE_ID:
+        return package_error("unsupported_profile")
+    if not identifier_text_is_safe(package.package_id.text()):
+        return package_error("invalid_package_id")
+    if not identifier_text_is_safe(package.domain_id.text()):
+        return package_error("invalid_domain_id")
+    if not artifact_revision_text_is_safe(package.package_revision.text()):
+        return package_error("invalid_package_revision")
+    if not digest_id_text_is_safe(package.profile_package_digest.text()):
+        return package_error("invalid_profile_package_digest")
+    return governed_validation_ok()
+
+
+def count_is_within(count: int, minimum: int, maximum: int) -> bool:
+    """Return whether one collection count lies in the inclusive range."""
+
+    return count >= minimum and count <= maximum
+
+
+def validate_guided_bounds(material: GuidedMaterial) -> GovernedValidation:
+    """Check the collection bounds of one guided material declaration."""
+
+    if not count_is_within(len(material.memory_ids), 1, MAX_GUIDED_MEMORY):
+        return package_error("invalid_guided_memory_count")
+    if not count_is_within(len(material.evidence_ids), 1, MAX_GUIDED_EVIDENCE):
+        return package_error("invalid_guided_evidence_count")
+    if not count_is_within(len(material.steps), 1, MAX_GUIDED_STEPS):
+        return package_error("invalid_guided_steps")
+    if len(material.transitions) > MAX_GUIDED_TRANSITIONS:
+        return package_error("invalid_guided_transition_count")
+    return governed_validation_ok()
+
+
+def validate_package_bounds(package: GovernedProfilePackage) -> GovernedValidation:
+    """Check every collection bound and the mission text before any duplicate scan or digest recomputation."""
+
+    if not text_is_bounded(package.mission, MAX_PACKAGE_TEXT_LENGTH):
+        return package_error("invalid_mission")
+    if not count_is_within(len(package.actions), 1, MAX_GOVERNED_ACTIONS):
+        return package_error("invalid_action_count")
+    if not count_is_within(len(package.evidence), 1, MAX_GOVERNED_EVIDENCE):
+        return package_error("invalid_evidence_count")
+    if not count_is_within(len(package.memory), 1, MAX_GOVERNED_MEMORY):
+        return package_error("invalid_memory_count")
+    if len(package.guided_material) > MAX_GOVERNED_GUIDED_MATERIAL:
+        return package_error("invalid_guided_material_count")
+    if not count_is_within(len(package.policy.required_roles), 1, MAX_COMMITTEE_ROLES):
+        return package_error("invalid_committee_role_count")
+    for atom in package.memory:
+        if not count_is_within(len(atom.evidence_ids), 1, MAX_MEMORY_EVIDENCE):
+            return package_error("invalid_memory_evidence_count")
+    for material in package.guided_material:
+        validation = validate_guided_bounds(material)
+        if not validation.valid:
+            return validation
+    return governed_validation_ok()
+
+
+def validate_package_digest(package: GovernedProfilePackage) -> GovernedValidation:
+    """Recompute the package digest over every field except digests and compare it with the declared one."""
+
+    expected = digest_governed_profile_package(package.clone())
+    if package.profile_package_digest != expected:
+        return package_error("profile_package_digest_mismatch")
+    return governed_validation_ok()
+
+
+def validate_package_uniqueness(package: GovernedProfilePackage) -> GovernedValidation:
+    """Reject repeated action, evidence, memory, or guided-material identifiers."""
+
+    if has_duplicate_strings([value.action_id.text() for value in package.actions]):
+        return package_error("duplicate_action_id")
+    if has_duplicate_strings([value.evidence_id.text() for value in package.evidence]):
+        return package_error("duplicate_evidence_id")
+    if has_duplicate_strings([value.memory_id.text() for value in package.memory]):
+        return package_error("duplicate_memory_id")
+    if has_duplicate_strings([value.guided_material_id.text() for value in package.guided_material]):
+        return package_error("duplicate_guided_material_id")
+    return governed_validation_ok()
+
+
+pub def action_is_terminal_boundary(action: GovernedAction) -> bool:
+    """Return whether the action refuses or escalates rather than delivering package material."""
+
+    return action.outcome_kind in [GovernedOutcomeKind.Refusal, GovernedOutcomeKind.Escalation]
+
+
+def validate_boundary_action(action: GovernedAction) -> GovernedValidation:
+    """Check a refusal or escalation requires no support and declares bounded, non-blank text to deliver."""
+
+    if action.evidence_required or action.committee_required:
+        return package_error("terminal_boundary_action_requires_support")
+    match action.boundary_text:
+        None => return package_error("boundary_text_missing")
+        Some(text) =>
+            if not text_is_bounded(text, MAX_VISIBLE_OUTPUT_LENGTH):
+                return package_error("boundary_text_invalid")
+            return governed_validation_ok()
+
+
+def validate_action(action: GovernedAction) -> GovernedValidation:
+    """Check one action's identity and that its support requirements and boundary text fit its outcome kind."""
+
+    if not identifier_text_is_safe(action.action_id.text()):
+        return package_error("invalid_action_id")
+    if action_is_terminal_boundary(action):
+        return validate_boundary_action(action)
+    if let Some(_text) = action.boundary_text:
+        return package_error("boundary_text_not_allowed")
+    if not action.evidence_required:
+        return package_error("deliverable_action_missing_evidence_requirement")
+    return governed_validation_ok()
+
+
+def validate_evidence(record: GovernedEvidence) -> GovernedValidation:
+    """Check one evidence record's identity, bounded text, source, language, and admission state."""
+
+    if not identifier_text_is_safe(record.evidence_id.text()):
+        return package_error("invalid_evidence_id")
+    if not text_is_bounded(record.claim, MAX_PACKAGE_TEXT_LENGTH):
+        return package_error("invalid_evidence_claim")
+    if not text_is_bounded(record.guidance, MAX_PACKAGE_TEXT_LENGTH):
+        return package_error("invalid_evidence_guidance")
+    if not source_ref_is_safe(record.source_ref) or not text_is_bounded(record.source_kind, MAX_PACKAGE_LABEL_LENGTH):
+        return package_error("invalid_evidence_source")
+    if not digest_id_text_is_safe(record.source_fingerprint.text()):
+        return package_error("invalid_source_fingerprint")
+    if not language_is_safe(record.language):
+        return package_error("invalid_evidence_language")
+    if not review_admits(record.review_state, record.rights_state):
+        return package_error("evidence_not_admitted")
+    if not text_is_bounded(record.authority_class, MAX_PACKAGE_LABEL_LENGTH):
+        return package_error("invalid_evidence_authority")
+    if not text_is_bounded(record.evidence_kind, MAX_PACKAGE_LABEL_LENGTH):
+        return package_error("invalid_evidence_kind")
+    return governed_validation_ok()
+
+
+def validate_memory(package: GovernedProfilePackage, atom: GovernedMemory) -> GovernedValidation:
+    """Check one memory atom's identity, concept, evidence relationships, admission state, and provenance digest."""
+
+    if not identifier_text_is_safe(atom.memory_id.text()):
+        return package_error("invalid_memory_id")
+    if not text_is_bounded(atom.concept, MAX_PACKAGE_TEXT_LENGTH):
+        return package_error("invalid_memory_concept")
+    if has_duplicate_identifiers(atom.evidence_ids):
+        return package_error("duplicate_memory_evidence")
+    for evidence_id in atom.evidence_ids:
+        match find_declared(package.evidence, evidence_id):
+            None => return package_error("unknown_memory_evidence")
+            Some(_) => pass
+    if not review_admits(atom.review_state, atom.rights_state):
+        return package_error("memory_not_admitted")
+    if not digest_id_text_is_safe(atom.provenance_digest.text()):
+        return package_error("invalid_memory_provenance")
+    if atom.provenance_digest != digest_governed_memory_provenance(package, atom.clone()):
+        return package_error("memory_provenance_mismatch")
+    return governed_validation_ok()
+
+
+def transition_key(current: GuidedStepId, next: GuidedStepId) -> str:
+    """Render one transition edge as a comparable text key."""
+
+    return f"{current.text()}->{next.text()}"
+
+
+def transition_is_declared(material: GuidedMaterial, current: GuidedStepId, next: GuidedStepId) -> bool:
+    """Return whether the guided material declares the exact edge from ``current`` to ``next``."""
+
+    for transition in material.transitions:
+        if transition.current_step_id == current and transition.next_step_id == next:
+            return true
+    return false
+
+
+def validate_transition(material: GuidedMaterial, transition: GuidedTransition) -> GovernedValidation:
+    """Check that one transition joins two distinct declared steps."""
+
+    if not material.steps.contains(transition.current_step_id) or not material.steps.contains(transition.next_step_id):
+        return package_error("unknown_guided_transition_step")
+    if transition.current_step_id == transition.next_step_id:
+        return package_error("self_guided_transition")
+    return governed_validation_ok()
+
+
+def validate_guided_action(
+    package: GovernedProfilePackage,
+    action_id: ActionId,
+    expected_kind: GovernedOutcomeKind,
+    unknown_error: str,
+    kind_error: str,
+) -> GovernedValidation:
+    """Check that a guided material's presentation or navigation action exists with the expected outcome kind."""
+
+    match find_declared(package.actions, action_id):
+        None => return package_error(unknown_error)
+        Some(action) =>
+            if action.outcome_kind != expected_kind:
+                return package_error(kind_error)
+            return governed_validation_ok()
+
+
+def validate_guided_material(package: GovernedProfilePackage, material: GuidedMaterial) -> GovernedValidation:
+    """Check one guided material's identity, admission, memory and evidence relationships, actions, and steps."""
+
+    if not guided_identity_is_safe(material):
+        return package_error("invalid_guided_material_identity")
+    if not language_is_safe(material.language):
+        return package_error("invalid_guided_material_language")
+    if not review_admits(material.review_state, material.rights_state):
+        return package_error("guided_material_not_admitted")
+    if has_duplicate_identifiers(material.memory_ids):
+        return package_error("duplicate_guided_memory")
+    if has_duplicate_identifiers(material.evidence_ids):
+        return package_error("duplicate_guided_evidence")
+    for memory_id in material.memory_ids:
+        match find_declared(package.memory, memory_id):
+            None => return package_error("unknown_guided_memory")
+            Some(_) => pass
+    for evidence_id in material.evidence_ids:
+        match find_declared(package.evidence, evidence_id):
+            None => return package_error("unknown_guided_evidence")
+            Some(_) => pass
+    if not identifier_sets_equal(material.evidence_ids, selected_evidence_for_memory(package, material.memory_ids)):
+        return package_error("guided_memory_evidence_mismatch")
+    for validation in [validate_guided_action(
+        package,
+        material.presentation_action_id,
+        GovernedOutcomeKind.GuidedMaterial,
+        "unknown_guided_presentation_action",
+        "invalid_guided_presentation_action",
+    ), validate_guided_action(
+        package,
+        material.navigation_action_id,
+        GovernedOutcomeKind.GuidedNavigation,
+        "unknown_guided_navigation_action",
+        "invalid_guided_navigation_action",
+    )]:
+        if not validation.valid:
+            return validation
+    if has_duplicate_identifiers(material.steps):
+        return package_error("duplicate_guided_step")
+    mut transition_keys: list[str] = []
+    for transition in material.transitions:
+        validation = validate_transition(material, transition)
+        if not validation.valid:
+            return validation
+        key = transition_key(transition.current_step_id, transition.next_step_id)
+        if transition_keys.contains(key):
+            return package_error("duplicate_guided_transition")
+        transition_keys.append(key)
+    return governed_validation_ok()
+
+
+def validate_policy(package: GovernedProfilePackage) -> GovernedValidation:
+    """Check committee roles are unique and canonical and that contract 0.1's all-passed rule is declared."""
+
+    roles = package.policy.required_roles
+    if has_duplicate_identifiers(roles):
+        return package_error("duplicate_committee_role")
+    for role in roles:
+        if not identifier_text_is_safe(role.text()):
+            return package_error("invalid_committee_role")
+    if not package.policy.require_all_passed:
+        return package_error("unsupported_committee_policy")
+    return governed_validation_ok()
+
+
+pub def validate_governed_profile_package(package: GovernedProfilePackage) -> GovernedValidation:
+    """
+    Validate one generic package projection without authoring or activating it.
+
+    Stages run in order and stop at the first failure: header identity, collection and mission bounds, package
+    digest recomputation (``profile_package_digest_mismatch``), identifier uniqueness, then each action (including
+    its ``boundary_text``), evidence record,
+    memory atom (including ``memory_provenance_mismatch``), guided material, and the committee policy. Every failure
+    returns reason ``invalid_package`` with the specific code in ``errors[0]``.
+    """
+
+    for validation in [validate_package_header(package), validate_package_bounds(package)]:
+        if not validation.valid:
+            return validation
+    for validation in [validate_package_digest(package), validate_package_uniqueness(package)]:
+        if not validation.valid:
+            return validation
+    for action in package.actions:
+        validation = validate_action(action)
+        if not validation.valid:
+            return validation
+    for record in package.evidence:
+        validation = validate_evidence(record)
+        if not validation.valid:
+            return validation
+    for atom in package.memory:
+        validation = validate_memory(package, atom)
+        if not validation.valid:
+            return validation
+    for material in package.guided_material:
+        validation = validate_guided_material(package, material)
+        if not validation.valid:
+            return validation
+    return validate_policy(package)
+
+
+pub def validate_governed_request(request: GovernedRequest) -> GovernedValidation:
+    """
+    Validate exact question and trusted request context.
+
+    Returns ``invalid_request`` (with ``invalid_request_id``, ``invalid_question``, ``invalid_request_language`` or
+    ``invalid_request_audience`` in ``errors[0]``), or ``request_digest_mismatch`` when the request digest does not
+    bind the exact request fields.
+    """
+
+    if not identifier_text_is_safe(request.request_id.text()):
+        return request_error("invalid_request_id")
+    if not text_is_bounded(request.question, MAX_QUESTION_LENGTH):
+        return request_error("invalid_question")
+    if not language_is_safe(request.language):
+        return request_error("invalid_request_language")
+    if not identifier_text_is_safe(request.audience.text()):
+        return request_error("invalid_request_audience")
+    expected = digest_governed_request_fields(request.request_id, request.question, request.language, request.audience)
+    if expected != request.request_digest:
+        return governed_validation_error("request_digest_mismatch", "request_digest_mismatch")
+    return governed_validation_ok()
+
+
+pub def validate_governed_proposal_identity(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+) -> GovernedValidation:
+    """
+    Validate the proposal's binding to the exact package and request, its own identifier, and its size.
+
+    This is the receipt boundary: a rejection here returns no receipt, and every later rejection does. Reasons are
+    ``unsupported_proposal_contract``, ``profile_id_mismatch``, ``package_id_mismatch``, ``domain_id_mismatch``,
+    ``package_revision_mismatch``, ``profile_package_digest_mismatch``, ``request_id_mismatch``,
+    ``request_digest_mismatch``, ``invalid_proposal``, ``missing_visible_output`` (visible output longer than the
+    bound), and ``proposal_reference_limit_exceeded``. Whether the visible output may be empty depends on the action,
+    so ``validate_governed_proposal`` checks that after resolving it.
+    """
+
+    if proposal.contract_version.text() != GOVERNED_PROPOSAL_CONTRACT:
+        return proposal_error("unsupported_proposal_contract")
+    if proposal.profile_id.text() != GOVERNED_PROFILE_ID or proposal.profile_id != package.profile_id:
+        return proposal_error("profile_id_mismatch")
+    if proposal.package_id != package.package_id:
+        return proposal_error("package_id_mismatch")
+    if proposal.domain_id != package.domain_id:
+        return proposal_error("domain_id_mismatch")
+    if proposal.package_revision != package.package_revision:
+        return proposal_error("package_revision_mismatch")
+    if proposal.profile_package_digest != package.profile_package_digest:
+        return proposal_error("profile_package_digest_mismatch")
+    if proposal.request_id != request.request_id:
+        return proposal_error("request_id_mismatch")
+    if proposal.request_digest != request.request_digest:
+        return proposal_error("request_digest_mismatch")
+    if not identifier_text_is_safe(proposal.proposal_id.text()):
+        return governed_validation_error("invalid_proposal", "invalid_proposal_id")
+    if len(proposal.visible_output) > MAX_VISIBLE_OUTPUT_LENGTH:
+        return governed_validation_error("missing_visible_output", "invalid_visible_output")
+    if len(proposal.evidence_ids) > MAX_GOVERNED_EVIDENCE or len(proposal.memory_ids) > MAX_GOVERNED_MEMORY:
+        return proposal_error("proposal_reference_limit_exceeded")
+    return governed_validation_ok()
+
+
+def action_is_guided(action: GovernedAction) -> bool:
+    """Return whether the action presents or navigates package-owned guided material."""
+
+    return action.outcome_kind in [GovernedOutcomeKind.GuidedMaterial, GovernedOutcomeKind.GuidedNavigation]
+
+
+def guided_steps_absent(proposal: GovernedProposal) -> bool:
+    """Return whether the proposal names neither a current nor a next guided step."""
+
+    if let Some(_current) = proposal.current_step_id:
+        return false
+    if let Some(_next) = proposal.next_step_id:
+        return false
+    return true
+
+
+def guided_nomination_absent(proposal: GovernedProposal) -> bool:
+    """Return whether the proposal names no guided material and no guided step."""
+
+    if let Some(_identifier) = proposal.guided_material_id:
+        return false
+    return guided_steps_absent(proposal)
+
+
+def validate_proposal_references(
+    package: GovernedProfilePackage,
+    proposal: GovernedProposal,
+    action: GovernedAction,
+) -> GovernedValidation:
+    """Check the proposal's evidence and memory nominations against the package and the action's requirements."""
+
+    if has_duplicate_identifiers(proposal.evidence_ids):
+        return proposal_error("duplicate_evidence_reference")
+    if has_duplicate_identifiers(proposal.memory_ids):
+        return proposal_error("duplicate_memory_reference")
+    for evidence_id in proposal.evidence_ids:
+        match find_declared(package.evidence, evidence_id):
+            None => return proposal_error("unknown_evidence")
+            Some(_) => pass
+    for memory_id in proposal.memory_ids:
+        match find_declared(package.memory, memory_id):
+            None => return proposal_error("unknown_memory")
+            Some(_) => pass
+    if action.evidence_required and (len(proposal.evidence_ids) == 0 or len(proposal.memory_ids) == 0):
+        return governed_validation_error("evidence_required", "evidence_and_memory_required")
+    if not identifier_sets_equal(proposal.evidence_ids, selected_evidence_for_memory(package, proposal.memory_ids)):
+        return proposal_error("memory_evidence_mismatch")
+    if action_is_terminal_boundary(action):
+        if len(proposal.evidence_ids) > 0 or len(proposal.memory_ids) > 0:
+            return proposal_error("terminal_boundary_support_not_allowed")
+    return governed_validation_ok()
+
+
+def validate_proposal_output(proposal: GovernedProposal, action: GovernedAction) -> GovernedValidation:
+    """
+    Check the proposal's visible output fits the action.
+
+    A refusal or escalation delivers only the package's ``boundary_text``, so any proposal text, even whitespace, is
+    ``boundary_output_not_allowed``. Every other action needs non-blank output (``missing_visible_output``).
+    """
+
+    if action_is_terminal_boundary(action):
+        if proposal.visible_output != "":
+            return proposal_error("boundary_output_not_allowed")
+        return governed_validation_ok()
+    if not text_is_bounded(proposal.visible_output, MAX_VISIBLE_OUTPUT_LENGTH):
+        return governed_validation_error("missing_visible_output", "invalid_visible_output")
+    return governed_validation_ok()
+
+
+def guided_transition_error(error: str) -> GovernedValidation:
+    """Reject a guided step nomination under the shared ``invalid_guided_transition`` reason."""
+
+    return governed_validation_error("invalid_guided_transition", error)
+
+
+def validate_guided_presentation(
+    proposal: GovernedProposal,
+    action: GovernedAction,
+    material: GuidedMaterial,
+) -> GovernedValidation:
+    """Check a presentation proposal uses the material's presentation action and names no steps."""
+
+    if action.action_id != material.presentation_action_id:
+        return proposal_error("guided_material_action_mismatch")
+    if not guided_steps_absent(proposal):
+        return guided_transition_error("unexpected_guided_transition")
+    return governed_validation_ok()
+
+
+def validate_guided_navigation(
+    proposal: GovernedProposal,
+    action: GovernedAction,
+    material: GuidedMaterial,
+) -> GovernedValidation:
+    """Check a navigation proposal uses the material's navigation action and names one declared transition."""
+
+    if action.action_id != material.navigation_action_id:
+        return proposal_error("guided_material_action_mismatch")
+    match proposal.current_step_id:
+        None => return guided_transition_error("current_step_required")
+        Some(current) =>
+            match proposal.next_step_id:
+                None => return guided_transition_error("next_step_required")
+                Some(next) =>
+                    if not transition_is_declared(material, current, next):
+                        return guided_transition_error("transition_not_declared")
+                    return governed_validation_ok()
+
+
+def validate_guided_nomination(
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    action: GovernedAction,
+    material: GuidedMaterial,
+) -> GovernedValidation:
+    """Check an already-resolved guided material against the request context and the proposal's exact support."""
+
+    if material.language != request.language:
+        return proposal_error("guided_material_language_mismatch")
+    if material.audience != request.audience:
+        return proposal_error("guided_material_audience_mismatch")
+    if not identifier_sets_equal(proposal.memory_ids, material.memory_ids):
+        return proposal_error("guided_material_memory_mismatch")
+    if not identifier_sets_equal(proposal.evidence_ids, material.evidence_ids):
+        return proposal_error("guided_material_evidence_mismatch")
+    if action.outcome_kind == GovernedOutcomeKind.GuidedMaterial:
+        return validate_guided_presentation(proposal, action, material)
+    return validate_guided_navigation(proposal, action, material)
+
+
+def validate_proposal_for_action(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    action: GovernedAction,
+) -> GovernedValidation:
+    """
+    Check visible output against the action first, then guided nomination presence, then evidence and memory
+    references, then guided relationships.
+    """
+
+    output = validate_proposal_output(proposal, action)
+    if not output.valid:
+        return output
+    if not action_is_guided(action):
+        if not guided_nomination_absent(proposal):
+            return proposal_error("guided_material_not_allowed")
+        return validate_proposal_references(package, proposal, action)
+    if let Some(identifier) = proposal.guided_material_id:
+        match find_declared(package.guided_material, identifier):
+            None => return proposal_error("unknown_guided_material")
+            Some(material) =>
+                references = validate_proposal_references(package, proposal, action)
+                if not references.valid:
+                    return references
+                return validate_guided_nomination(request, proposal, action, material)
+    return proposal_error("guided_material_required")
+
+
+pub def validate_governed_proposal(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+) -> GovernedValidation:
+    """
+    Validate one untrusted proposal before committee findings or Spectrum.
+
+    Runs ``validate_governed_proposal_identity`` first, then resolves the action (``unknown_action``), then checks
+    visible output (``boundary_output_not_allowed``, ``missing_visible_output``), guided nomination presence,
+    evidence and memory references, and guided relationships for that action.
+    """
+
+    identity = validate_governed_proposal_identity(package, request, proposal)
+    if not identity.valid:
+        return identity
+    match find_declared(package.actions, proposal.action_id):
+        None => return proposal_error("unknown_action")
+        Some(action) => return validate_proposal_for_action(package, request, proposal, action)

@@ -28,16 +28,19 @@ RFC documents use three-digit numbers and the filename form `NNN-short-title.md`
 
 ## Current documents
 
-- [RFC 000: Foundational Governance Authority](000-foundational-governance-authority.md) — Draft
-- [RFC 001: Spectrum Terminal Adjudication](001-spectrum-terminal-adjudication.md) — Draft
-- [RFC 002: Content DNA Answer-Time Provenance](002-content-dna-answer-time-provenance.md) — Draft
-- [RFC 003: Governed Memory and Retrieval Results](003-governed-memory-and-retrieval-results.md) — Planned
-- [RFC 004: Composable Governance Constraints](004-composable-governance-constraints.md) — Planned
-- [RFC 005: Canonical Package Artifact Admission](005-canonical-package-artifact-admission.md) — Planned
-- [RFC 006: Export-Safe Governance Receipts](006-export-safe-governance-receipts.md) — Draft
-- [RFC 007: Evidence-Grounded Claim Verification Findings](007-evidence-grounded-claim-verification-findings.md) — Planned
-- [RFC 008: Governed Behavior Envelopes](008-governed-behavior-envelopes.md) — Planned
-- [RFC 009: Governed Visible Response Lifecycle](009-governed-visible-response-lifecycle.md) — Planned
-- [RFC 010: hees.ai console](010-hees-console.md) — Draft
-- [RFC 011: Canonical Structural Identity for Incan Models](011-canonical-structural-identity.md) — Planned
-- [RFC 012: Governed Effect Capabilities and Execution Receipts](012-governed-effect-capabilities-and-execution-receipts.md) — Draft
+- [RFC 000: Foundational Governance Authority](000-foundational-governance-authority.md) — Draft — proposal [#1](https://github.com/encero-systems/hees.ai/issues/1)
+- [RFC 001: Spectrum Terminal Adjudication](001-spectrum-terminal-adjudication.md) — Draft — proposal [#2](https://github.com/encero-systems/hees.ai/issues/2)
+- [RFC 002: Content DNA Answer-Time Provenance](002-content-dna-answer-time-provenance.md) — Draft — proposal [#3](https://github.com/encero-systems/hees.ai/issues/3)
+- [RFC 003: Governed Memory and Retrieval Results](003-governed-memory-and-retrieval-results.md) — Planned — proposal [#4](https://github.com/encero-systems/hees.ai/issues/4)
+- [RFC 004: Composable Governance Constraints](004-composable-governance-constraints.md) — Planned — proposal [#5](https://github.com/encero-systems/hees.ai/issues/5)
+- [RFC 005: Canonical Package Artifact Admission](005-canonical-package-artifact-admission.md) — Planned — proposal [#6](https://github.com/encero-systems/hees.ai/issues/6)
+- [RFC 006: Export-Safe Governance Receipts](006-export-safe-governance-receipts.md) — Draft — proposal [#7](https://github.com/encero-systems/hees.ai/issues/7)
+- [RFC 007: Evidence-Grounded Claim Verification Findings](007-evidence-grounded-claim-verification-findings.md) — Planned — proposal [#8](https://github.com/encero-systems/hees.ai/issues/8)
+- [RFC 008: Governed Behavior Envelopes](008-governed-behavior-envelopes.md) — Planned — proposal [#9](https://github.com/encero-systems/hees.ai/issues/9)
+- [RFC 009: Governed Visible Response Lifecycle](009-governed-visible-response-lifecycle.md) — Planned — proposal [#11](https://github.com/encero-systems/hees.ai/issues/11)
+- [RFC 010: hees.ai console](010-hees-console.md) — Draft — proposal [#14](https://github.com/encero-systems/hees.ai/issues/14)
+- [RFC 011: Canonical Structural Identity for Incan Models](011-canonical-structural-identity.md) — Planned — proposal [#18](https://github.com/encero-systems/hees.ai/issues/18)
+- [RFC 012: Governed Effect Capabilities and Execution Receipts](012-governed-effect-capabilities-and-execution-receipts.md) — Draft — proposal [#27](https://github.com/encero-systems/hees.ai/issues/27)
+- [RFC 013: Governed Continuity — Goal, Schedule, and Session Admission](013-governed-continuity-goal-schedule-session-admission.md) — Draft — proposal [#35](https://github.com/encero-systems/hees.ai/issues/35)
+- [RFC 014: Governed Memory Lifecycle Operations](014-governed-memory-lifecycle-operations.md) — Draft — proposal [#36](https://github.com/encero-systems/hees.ai/issues/36)
+- [RFC 015: Generic Governed Profile Evaluation](015-generic-governed-profile-evaluation.md) — Draft — proposal [#37](https://github.com/encero-systems/hees.ai/issues/37)

@@ -4,9 +4,9 @@ set -eu
 
 PRODUCT_NAME=hees-console
 PRODUCT_VERSION=0.1.0
-INCAN_VERSION=0.5.1
+INCAN_VERSION=0.6.0-dev.6
 INCAN_SOURCE_REPOSITORY=https://github.com/encero-systems/incan.git
-INCAN_SOURCE_COMMIT=864ee9243eac9454e3dad5c34b032851038b8c93
+INCAN_SOURCE_COMMIT=614df3645bfd213d9f1b867acac066ed051b5542
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 REPOSITORY_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/../../.." && pwd)
 THIRD_PARTY_LICENSES_SOURCE=${THIRD_PARTY_LICENSES_SOURCE:-}
@@ -196,7 +196,7 @@ assert_incan_lock_provenance() {
         assert_test_path_scope "$incan_lock"
         return
     fi
-    [ "$(canonical_file_path "$incan_lock")" = "$REPOSITORY_ROOT/incan.lock" ] || fail "incan_lock_provenance_mismatch"
+    [ "$(canonical_file_path "$incan_lock")" = "$REPOSITORY_ROOT/oven.lock" ] || fail "incan_lock_provenance_mismatch"
 }
 
 source_tree_state() {
@@ -403,7 +403,7 @@ write_manifest() {
     third_party_licenses_sha256=${10}
     running_sha256=${11}
     cat >"$destination" <<EOF
-{"schema_version":1,"product":{"name":"$PRODUCT_NAME","version":"$PRODUCT_VERSION"},"build":{"language":"Incan","profile":"release"},"platform":"$platform","source":{"commit":"$source_commit","date_epoch":$source_date_epoch,"tree_state":"$tree_state"},"toolchain":{"compiler":"incan","compiler_version":"$INCAN_VERSION","source_repository":"$INCAN_SOURCE_REPOSITORY","source_commit":"$INCAN_SOURCE_COMMIT"},"dependencies":{"incan_lock_file":"incan.lock","incan_lock_sha256":"$incan_lock_sha256"},"guidance":{"running_file":"RUNNING.txt","running_sha256":"$running_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$third_party_licenses_sha256"},"artifact":{"name":"hees-console","sha256":"$binary_sha256","size_bytes":$binary_size}}
+{"schema_version":1,"product":{"name":"$PRODUCT_NAME","version":"$PRODUCT_VERSION"},"build":{"language":"Incan","profile":"release"},"platform":"$platform","source":{"commit":"$source_commit","date_epoch":$source_date_epoch,"tree_state":"$tree_state"},"toolchain":{"compiler":"incan","compiler_version":"$INCAN_VERSION","source_repository":"$INCAN_SOURCE_REPOSITORY","source_commit":"$INCAN_SOURCE_COMMIT"},"dependencies":{"incan_lock_file":"oven.lock","incan_lock_sha256":"$incan_lock_sha256"},"guidance":{"running_file":"RUNNING.txt","running_sha256":"$running_sha256"},"notices":{"notice_file":"NOTICE","notice_source":"repository_root","notice_sha256":"$notice_sha256","third_party_licenses_file":"THIRD-PARTY-LICENSES.md","third_party_licenses_sha256":"$third_party_licenses_sha256"},"artifact":{"name":"hees-console","sha256":"$binary_sha256","size_bytes":$binary_size}}
 EOF
 }
 

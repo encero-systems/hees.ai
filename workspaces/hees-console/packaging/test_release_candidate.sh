@@ -90,7 +90,7 @@ make_fake_incan() {
     mkdir -p "$destination/bin"
     {
         printf '%s\n' '#!/bin/sh'
-        printf '%s\n' 'printf "%s\\n" "incan 0.5.1"'
+        printf '%s\n' 'printf "%s\\n" "incan 0.6.0-dev.6"'
     } >"$destination/bin/incan"
     chmod 755 "$destination/bin/incan"
 }
@@ -110,8 +110,8 @@ expect_failure \
 pass "current platform is accepted"
 
 fake_console="$TEST_ROOT/hees-console"
-fake_incan="$TEST_ROOT/incan-0.5.1"
-fake_incan_lock="$TEST_ROOT/incan.lock"
+fake_incan="$TEST_ROOT/incan-0.6.0-dev.6"
+fake_incan_lock="$TEST_ROOT/oven.lock"
 output="$TEST_ROOT/output"
 source_commit=$(git -C "$REPOSITORY_ROOT" rev-parse HEAD)
 source_date_epoch=$(git -C "$REPOSITORY_ROOT" show -s --format=%ct HEAD)
@@ -157,7 +157,7 @@ expect_failure \
     --source-commit "$source_commit" \
     --source-date-epoch "$source_date_epoch" \
     --incan-root "$fake_incan" \
-    --incan-lock "$TEST_ROOT/missing.incan.lock"
+    --incan-lock "$TEST_ROOT/missing.oven.lock"
 
 expect_failure \
     "missing platform license report is rejected" \
@@ -191,9 +191,9 @@ manifest="$output/hees-console-0.1.0-$platform.manifest.json"
 [ -f "$checksum" ] || fail "checksum was not produced"
 [ -f "$manifest" ] || fail "manifest sidecar was not produced"
 grep -F '"language":"Incan"' "$manifest" >/dev/null || fail "manifest does not identify Incan"
-grep -F '"compiler_version":"0.5.1"' "$manifest" >/dev/null || fail "manifest does not pin Incan 0.5.1"
-grep -F '"source_commit":"864ee9243eac9454e3dad5c34b032851038b8c93"' "$manifest" >/dev/null || fail "manifest does not pin the Incan source commit"
-grep -F '"incan_lock_file":"incan.lock"' "$manifest" >/dev/null || fail "manifest does not identify the canonical workspace lock"
+grep -F '"compiler_version":"0.6.0-dev.6"' "$manifest" >/dev/null || fail "manifest does not pin Incan 0.6.0-dev.6"
+grep -F '"source_commit":"614df3645bfd213d9f1b867acac066ed051b5542"' "$manifest" >/dev/null || fail "manifest does not pin the Incan source commit"
+grep -F '"incan_lock_file":"oven.lock"' "$manifest" >/dev/null || fail "manifest does not identify the canonical workspace lock"
 grep -F "\"incan_lock_sha256\":\"$fake_incan_lock_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind the Console dependency lock"
 grep -F "\"notice_source\":\"repository_root\",\"notice_sha256\":\"$repository_notice_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind repository NOTICE provenance"
 grep -F "\"third_party_licenses_sha256\":\"$third_party_licenses_sha256\"" "$manifest" >/dev/null || fail "manifest does not bind third-party license provenance"

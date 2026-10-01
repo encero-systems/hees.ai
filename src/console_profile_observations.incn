@@ -19,18 +19,7 @@ from crate.console_profile_validation import (
     validation_error,
     validation_ok,
 )
-from crate.identifiers import (
-    DigestIdType,
-    FindingId,
-    ObservationId,
-    contract_id,
-    contract_id_text,
-    finding_id,
-    observation_id_text,
-    profile_id,
-    profile_id_text,
-    target_id_text,
-)
+from crate.identifiers import DigestIdType, FindingId, ObservationId, contract_id, finding_id, profile_id
 
 const CONSOLE_PROFILE_ID: str = "console_profile_0_1"
 const RELATION_OBSERVATION_CONTRACT: str = "console_relation_observation_0_1"
@@ -72,7 +61,7 @@ def relation_identity_matches(
     """Bind a relation observation to its exact package, request, proposal, and target."""
 
     return (
-        profile_id_text(observation.profile_id) == CONSOLE_PROFILE_ID
+        observation.profile_id.text() == CONSOLE_PROFILE_ID
         and observation.package_id == package.package_id
         and observation.domain_id == package.domain_id
         and observation.package_revision == package.package_revision
@@ -97,7 +86,7 @@ def synthesis_identity_matches(
     """Bind a synthesis observation to its exact package, request, proposal, and target."""
 
     return (
-        profile_id_text(observation.profile_id) == CONSOLE_PROFILE_ID
+        observation.profile_id.text() == CONSOLE_PROFILE_ID
         and observation.package_id == package.package_id
         and observation.domain_id == package.domain_id
         and observation.package_revision == package.package_revision
@@ -126,14 +115,16 @@ pub def validate_observation_coverage(
     if len(manifest) != relation_count + synthesis_count:
         return validation_error("manifest_construction_failed", "manifest_target_count_invalid")
     for observation in relations:
-        if (contract_id_text(observation.contract_version) != RELATION_OBSERVATION_CONTRACT or profile_id_text(
-            observation.profile_id,
-        ) != CONSOLE_PROFILE_ID):
+        if (
+            observation.contract_version.text() != RELATION_OBSERVATION_CONTRACT
+            or observation.profile_id.text() != CONSOLE_PROFILE_ID
+        ):
             return validation_error("unsupported_observation_contract", "unsupported_relation_observation_contract")
     for observation in syntheses:
-        if (contract_id_text(observation.contract_version) != SYNTHESIS_OBSERVATION_CONTRACT or profile_id_text(
-            observation.profile_id,
-        ) != CONSOLE_PROFILE_ID):
+        if (
+            observation.contract_version.text() != SYNTHESIS_OBSERVATION_CONTRACT
+            or observation.profile_id.text() != CONSOLE_PROFILE_ID
+        ):
             return validation_error("unsupported_observation_contract", "unsupported_synthesis_observation_contract")
     candidate_digest = digest_proposal(proposal)
     for relation_index in range(len(relations)):
@@ -153,9 +144,9 @@ pub def validate_observation_coverage(
     observations_unavailable = len(relations) == 0 and len(syntheses) == 0
     if not observations_unavailable and (len(relations) != relation_count or len(syntheses) != synthesis_count):
         return validation_error("observation_coverage_invalid", "observation_count_invalid")
-    if has_duplicate_strings([observation_id_text(value.observation_id) for value in relations]):
+    if has_duplicate_strings([value.observation_id.text() for value in relations]):
         return validation_error("observation_coverage_invalid", "duplicate_relation_observation")
-    if has_duplicate_strings([observation_id_text(value.observation_id) for value in syntheses]):
+    if has_duplicate_strings([value.observation_id.text() for value in syntheses]):
         return validation_error("observation_coverage_invalid", "duplicate_synthesis_observation")
     for relation_observation in relations:
         if not ["evidence_relation", "contradiction_cross_check"].contains(f"{relation_observation.evaluator_role}"):
@@ -181,7 +172,7 @@ pub def validate_observation_coverage(
 def derive_finding_id(observation_id: ObservationId) -> FindingId:
     """Derive the closed finding identifier for one observation."""
 
-    value = observation_id_text(observation_id)
+    value = observation_id.text()
     if value.startswith("observation_"):
         return finding_id(f"finding_{value[len("observation_"):]}")
     return finding_id(f"finding_{value}")
