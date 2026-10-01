@@ -30,13 +30,19 @@ from crate.console_profile_models import (
 )
 from crate.console_profile_validation import (
     admitted_atoms,
-    find_atom_by_memory,
-    find_unit,
     validate_console_package,
     validate_console_proposal,
     validate_request_binding,
 )
-from crate.identifiers import DigestIdType, TargetId, contract_id, profile_id, request_id_from_text, target_id
+from crate.identifiers import (
+    DigestIdType,
+    TargetId,
+    contract_id,
+    find_declared,
+    profile_id,
+    request_id_from_text,
+    target_id,
+)
 
 const CONSOLE_PROFILE_ID: str = "console_profile_0_1"
 const MANIFEST_PLAN_CONTRACT: str = "console_manifest_plan_0_1"
@@ -132,10 +138,10 @@ pub def build_verifier_manifest(
             ),
         )
     for mapping in proposal.support_mappings:
-        match find_unit(proposal.visible_units, mapping.unit_id):
+        match find_declared(proposal.visible_units, mapping.unit_id):
             None => return []
             Some(unit) =>
-                match find_atom_by_memory(package.atoms, mapping.memory_id):
+                match find_declared(package.atoms, mapping.memory_id):
                     None => return []
                     Some(atom) =>
                         subject = SupportClaimSubject(

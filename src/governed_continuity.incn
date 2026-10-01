@@ -19,9 +19,13 @@ from crate.identifiers import (
     ScheduleId,
     SessionEventId,
     SessionId,
+    Identified,
     artifact_revision_text_is_safe,
+    declared_position,
     digest_id_text_is_safe,
+    find_declared,
     identifier_text_is_safe,
+    is_declared,
 )
 from crate.witness import (
     KeyedWitness,
@@ -72,7 +76,7 @@ pub enum ContinuityTerminal(str):
 
 
 @derive(Clone, json)
-pub model GovernedGoal:
+pub model GovernedGoal with Identified[GoalId]:
     """
     Package-declared goal and its bounded action authority.
 
@@ -86,9 +90,14 @@ pub model GovernedGoal:
     pub allowed_action_ids: list[ActionId]
     pub expiry_allowed: bool
 
+    def identity(self) -> GoalId:
+        """Return the identity this goal is declared under."""
+
+        return self.goal_id
+
 
 @derive(Clone, json)
-pub model GovernedPhase:
+pub model GovernedPhase with Identified[PhaseId]:
     """One phase and its package-declared time and transition bounds."""
 
     pub phase_id: PhaseId
@@ -98,9 +107,14 @@ pub model GovernedPhase:
     pub allowed_action_ids: list[ActionId]
     pub next_phase_ids: list[PhaseId]
 
+    def identity(self) -> PhaseId:
+        """Return the identity this phase is declared under."""
+
+        return self.phase_id
+
 
 @derive(Clone, json)
-pub model GovernedSchedule:
+pub model GovernedSchedule with Identified[ScheduleId]:
     """Package-declared phase graph evaluated against caller-supplied monotonic time."""
 
     pub schedule_id: ScheduleId
@@ -108,6 +122,11 @@ pub model GovernedSchedule:
     pub total_target_seconds: int
     pub allowed_clock_sources: list[str]
     pub phases: list[GovernedPhase]
+
+    def identity(self) -> ScheduleId:
+        """Return the identity this schedule is declared under."""
+
+        return self.schedule_id
 
 
 @derive(Clone, json)
@@ -266,58 +285,6 @@ def integer_in_range(value: int) -> bool:
     return value >= 0 and value <= MAX_CONTINUITY_INTEGER
 
 
-def find_goal(goals: list[GovernedGoal], identifier: GoalId) -> Option[GovernedGoal]:
-    """Resolve one declared goal by identity."""
-
-    for goal in goals:
-        if goal.goal_id == identifier:
-            return Some(goal)
-    return None
-
-
-def find_schedule(schedules: list[GovernedSchedule], identifier: ScheduleId) -> Option[GovernedSchedule]:
-    """Resolve one declared schedule by identity."""
-
-    for schedule in schedules:
-        if schedule.schedule_id == identifier:
-            return Some(schedule)
-    return None
-
-
-def find_phase(phases: list[GovernedPhase], identifier: PhaseId) -> Option[GovernedPhase]:
-    """Resolve one declared phase of a schedule by identity."""
-
-    for phase in phases:
-        if phase.phase_id == identifier:
-            return Some(phase)
-    return None
-
-
-def phase_position(phases: list[GovernedPhase], identifier: PhaseId) -> Option[int]:
-    """Return the declaration index of one phase, or None when the schedule does not declare it."""
-
-    for index, phase in enumerate(phases):
-        if phase.phase_id == identifier:
-            return Some(index)
-    return None
-
-
-def phase_exists(phases: list[GovernedPhase], identifier: PhaseId) -> bool:
-    """Return whether the schedule declares the phase."""
-
-    return match phase_position(phases, identifier):
-        None => false
-        Some(_) => true
-
-
-def goal_exists(goals: list[GovernedGoal], identifier: GoalId) -> bool:
-    """Return whether the package declares the goal."""
-
-    return match find_goal(goals, identifier):
-        None => false
-        Some(_) => true
-
-
 def goal_within_bounds(goal: GovernedGoal) -> bool:
     """Return whether one goal's lists respect the declared collection bounds."""
 
@@ -452,7 +419,7 @@ def longest_completion_path_seconds(goal: GovernedGoal, schedule: GovernedSchedu
     for index, phase in enumerate(schedule.phases):
         if reach[index] >= 0:
             for next_phase_id in phase.next_phase_ids:
-                match phase_position(schedule.phases, next_phase_id):
+                match declared_position(schedule.phases, next_phase_id):
                     None => pass
                     Some(next_index) =>
                         candidate = reach[index] + schedule.phases[next_index].maximum_seconds
@@ -468,10 +435,10 @@ def longest_completion_path_seconds(goal: GovernedGoal, schedule: GovernedSchedu
 def validate_goal_schedule(goal: GovernedGoal, schedule: GovernedSchedule) -> ContinuityValidation:
     """Check that a goal's phases exist in one of its schedules and that the schedule's total target can be met."""
 
-    if not phase_exists(schedule.phases, goal.entry_phase_id):
+    if not is_declared(schedule.phases, goal.entry_phase_id):
         return invalid("goal_entry_phase_unknown")
     for completion_phase_id in goal.completion_phase_ids:
-        if not phase_exists(schedule.phases, completion_phase_id):
+        if not is_declared(schedule.phases, completion_phase_id):
             return invalid("goal_completion_phase_unknown")
     if longest_completion_path_seconds(goal, schedule) < schedule.total_target_seconds:
         return invalid("schedule_target_unreachable")
@@ -505,7 +472,7 @@ def validate_phase(phases: list[GovernedPhase], phase_index: int, phase: Governe
     if phase.next_phase_ids.contains(phase.phase_id):
         return invalid("phase_self_cycle")
     for next_phase_id in phase.next_phase_ids:
-        match phase_position(phases, next_phase_id):
+        match declared_position(phases, next_phase_id):
             None => return invalid("unknown_next_phase")
             Some(next_index) =>
                 if next_index <= phase_index:
@@ -560,7 +527,7 @@ pub def validate_continuity_package(package: ContinuityPackage) -> ContinuityVal
     if has_duplicate_text([schedule.schedule_id.text() for schedule in package.schedules]):
         return invalid("duplicate_schedule_id")
     for schedule in package.schedules:
-        if not goal_exists(package.goals, schedule.goal_id):
+        if not is_declared(package.goals, schedule.goal_id):
             return invalid("schedule_goal_unknown")
         schedule_validation = validate_schedule(schedule)
         if not schedule_validation.valid:
@@ -876,7 +843,7 @@ def evaluate_with_prior(
         return rejected(proposal, "prior_state_witness_invalid")
     if prior.clock_source != proposal.clock_source:
         return rejected(proposal, "clock_source_changed")
-    return match find_phase(schedule.phases, prior.phase_id):
+    return match find_declared(schedule.phases, prior.phase_id):
         None => rejected(proposal, "prior_phase_unknown")
         Some(prior_phase) => evaluate_in_prior_phase(key, goal, schedule, prior_phase, proposal, prior)
 
@@ -929,7 +896,7 @@ def evaluate_with_schedule(
         return rejected(proposal, "schedule_goal_mismatch")
     if not schedule.allowed_clock_sources.contains(proposal.clock_source):
         return rejected(proposal, "clock_source_not_allowed")
-    return match find_phase(schedule.phases, proposal.proposed_phase_id):
+    return match find_declared(schedule.phases, proposal.proposed_phase_id):
         None => rejected(proposal, "unknown_phase")
         Some(proposed_phase) => evaluate_with_phase(key, goal, schedule, proposed_phase, proposal)
 
@@ -942,7 +909,7 @@ def evaluate_with_goal(
 ) -> ContinuityDecision:
     """Resolve the proposal's schedule in the validated package once its goal is known."""
 
-    return match find_schedule(package.schedules, proposal.schedule_id):
+    return match find_declared(package.schedules, proposal.schedule_id):
         None => rejected(proposal, "unknown_schedule")
         Some(schedule) => evaluate_with_schedule(key, goal, schedule, proposal)
 
@@ -985,6 +952,6 @@ pub def evaluate_continuity(
         return rejected(proposal, "invalid_proposal_identifier")
     if not proposal_identity_matches(package, proposal):
         return rejected(proposal, "package_identity_mismatch")
-    return match find_goal(package.goals, proposal.goal_id):
+    return match find_declared(package.goals, proposal.goal_id):
         None => rejected(proposal, "unknown_goal")
         Some(goal) => evaluate_with_goal(witness_key, package, goal, proposal)

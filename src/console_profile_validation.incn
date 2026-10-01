@@ -9,7 +9,6 @@ from crate.console_profile_identity import (
     digest_text_bytes,
 )
 from crate.console_profile_models import (
-    ConsoleAction,
     ConsoleAtom,
     ConsolePackage,
     ConsolePolicy,
@@ -18,16 +17,13 @@ from crate.console_profile_models import (
     ConsoleRequirement,
     ConsoleSource,
     ProfileValidation,
-    VisibleUnit,
 )
 from crate.identifiers import (
-    ActionId,
     EvidenceId,
-    MemoryId,
-    SourceId,
-    UnitId,
     digest_id_type,
+    find_declared,
     has_duplicate_identifiers,
+    is_declared,
     revision,
 )
 
@@ -78,15 +74,6 @@ pub def has_duplicate_strings(values: list[str]) -> bool:
             return true
         seen.append(value)
     return false
-
-
-def find_source(sources: list[ConsoleSource], source_id: SourceId) -> Option[ConsoleSource]:
-    """Find one package source by exact identifier."""
-
-    for source in sources:
-        if source.source_id == source_id:
-            return Some(source)
-    return None
 
 
 pub def atom_is_admitted(atom: ConsoleAtom) -> bool:
@@ -207,7 +194,7 @@ def validate_atom(package: ConsolePackage, atom: ConsoleAtom) -> ProfileValidati
         return validation_error("invalid_package", "invalid_atom_evidence_kind")
     if atom.claim.strip() == "" or len(atom.claim) > 512 or atom.guidance.strip() == "" or len(atom.guidance) > 512:
         return validation_error("invalid_package", "invalid_atom_content")
-    match find_source(package.sources, atom.source_id):
+    match find_declared(package.sources, atom.source_id):
         None => return validation_error("invalid_package", "unknown_atom_source")
         Some(source) =>
             source_validation = validate_atom_source_span(source, atom)
@@ -301,39 +288,12 @@ pub def validate_request_binding(request: ConsoleRequestBinding) -> ProfileValid
     return validation_ok()
 
 
-pub def find_atom_by_memory(atoms: list[ConsoleAtom], memory_id: MemoryId) -> Option[ConsoleAtom]:
-    """Find one package atom by exact memory identifier."""
-
-    for atom in atoms:
-        if atom.memory_id == memory_id:
-            return Some(atom)
-    return None
-
-
 pub def find_atom_by_evidence(atoms: list[ConsoleAtom], evidence_id: EvidenceId) -> Option[ConsoleAtom]:
     """Find one package atom by exact evidence identifier."""
 
     for atom in atoms:
         if atom.evidence_id == evidence_id:
             return Some(atom)
-    return None
-
-
-pub def find_unit(units: list[VisibleUnit], unit_id: UnitId) -> Option[VisibleUnit]:
-    """Find one visible unit by exact identifier."""
-
-    for unit in units:
-        if unit.unit_id == unit_id:
-            return Some(unit)
-    return None
-
-
-def action_requirement(actions: list[ConsoleAction], action_id: ActionId) -> Option[bool]:
-    """Return the evidence requirement for one declared action."""
-
-    for action in actions:
-        if action.action_id == action_id:
-            return Some(action.evidence_required)
     return None
 
 
@@ -377,7 +337,7 @@ def validate_visible_answer(package: ConsolePackage, proposal: ConsoleProposal) 
         ):
             return validation_error("invalid_visible_unit", "invalid_unit_requirements")
         for requirement_id in unit.requirement_ids:
-            if not [requirement.requirement_id for requirement in package.requirements].contains(requirement_id):
+            if not is_declared(package.requirements, requirement_id):
                 return validation_error("invalid_visible_unit", "unknown_unit_requirement")
     return validation_ok()
 
@@ -385,9 +345,10 @@ def validate_visible_answer(package: ConsolePackage, proposal: ConsoleProposal) 
 def validate_declared_evidence(package: ConsolePackage, proposal: ConsoleProposal) -> ProfileValidation:
     """Validate the declared action and its complete evidence-reference set."""
 
-    match action_requirement(package.actions, proposal.action_id):
+    match find_declared(package.actions, proposal.action_id):
         None => return validation_error("unknown_action", "unknown_action")
-        Some(evidence_required) =>
+        Some(action) =>
+            evidence_required = action.evidence_required
             if has_duplicate_identifiers(proposal.evidence_ids):
                 return validation_error("duplicate_evidence_reference", "duplicate_evidence_reference")
             for mapping in proposal.support_mappings:
@@ -427,7 +388,7 @@ def validate_support_mappings(package: ConsolePackage, proposal: ConsoleProposal
                 for evidence_id in mapping_evidence_ids:
                     if not proposal.evidence_ids.contains(evidence_id):
                         return validation_error("support_mapping_invalid", "support_evidence_not_declared")
-        match find_atom_by_memory(package.atoms, mapping.memory_id):
+        match find_declared(package.atoms, mapping.memory_id):
             None => pass
             Some(atom) =>
                 match mapping.evidence_ids:
@@ -438,7 +399,7 @@ def validate_support_mappings(package: ConsolePackage, proposal: ConsoleProposal
                         if not mapping_evidence_ids.contains(atom.evidence_id):
                             return validation_error("support_mapping_invalid", "support_memory_evidence_mismatch")
     for mapping in proposal.support_mappings:
-        match find_atom_by_memory(package.atoms, mapping.memory_id):
+        match find_declared(package.atoms, mapping.memory_id):
             None => return validation_error("unknown_memory", "unknown_memory")
             Some(_) => pass
     return validation_ok()
@@ -454,7 +415,7 @@ def validate_admitted_references(package: ConsolePackage, proposal: ConsolePropo
                 if not atom_is_admitted(atom):
                     return validation_error("memory_not_admitted", "evidence_memory_not_admitted")
     for mapping in proposal.support_mappings:
-        match find_atom_by_memory(package.atoms, mapping.memory_id):
+        match find_declared(package.atoms, mapping.memory_id):
             None => pass
             Some(atom) =>
                 if not atom_is_admitted(atom):

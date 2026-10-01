@@ -21,8 +21,7 @@ from crate.governed_profile_models import (
     GovernedSpectrumResult,
     GovernedVisibleOutputSource,
 )
-from crate.governed_profile_validation import find_governed_evidence
-from crate.identifiers import ContentDnaId, DigestIdType, ReceiptId, contract_id
+from crate.identifiers import ContentDnaId, DigestIdType, ReceiptId, contract_id, find_declared
 from crate.witness import digest_tagged_json
 
 # Type tags hashed ahead of each sealed body's JSON; see ``governed_profile_identity`` for the input projections.
@@ -71,7 +70,7 @@ def content_dna_entries(
     mut result: list[GovernedContentDnaEntry] = []
     for atom in selected_memory:
         for evidence_id in atom.evidence_ids:
-            match find_governed_evidence(package.evidence, evidence_id):
+            match find_declared(package.evidence, evidence_id):
                 None => return []
                 Some(evidence) =>
                     result.append(

@@ -17,10 +17,13 @@ from crate.identifiers import (
     PackageId,
     ProfileId,
     SessionId,
+    Identified,
     artifact_revision_text_is_safe,
     digest_id_text_is_safe,
+    find_declared,
     has_duplicate_identifiers,
     identifier_text_is_safe,
+    is_declared,
 )
 from crate.witness import (
     KeyedWitness,
@@ -82,7 +85,7 @@ pub enum MemoryOwner(str):
 
 
 @derive(Clone, json)
-pub model GovernedMemoryClass:
+pub model GovernedMemoryClass with Identified[MemoryClassId]:
     """
     Package-owned runtime rules for one distinct memory class.
 
@@ -102,14 +105,24 @@ pub model GovernedMemoryClass:
     pub allowed_keys: list[str]
     pub required_provenance: list[str]
 
+    def identity(self) -> MemoryClassId:
+        """Return the identity this memory class is declared under."""
+
+        return self.memory_class_id
+
 
 @derive(Clone, json)
-pub model GovernedMemoryOperation:
+pub model GovernedMemoryOperation with Identified[MemoryOperationId]:
     """Package-declared class authority for one typed memory operation."""
 
     pub operation_id: MemoryOperationId
     pub operation_kind: MemoryOperationKind
     pub allowed_class_ids: list[MemoryClassId]
+
+    def identity(self) -> MemoryOperationId:
+        """Return the identity this operation is declared under."""
+
+        return self.operation_id
 
 
 @derive(Clone, json)
@@ -376,35 +389,6 @@ def admitted_with_record(
             )
 
 
-def find_memory_class(classes: list[GovernedMemoryClass], identifier: MemoryClassId) -> Option[GovernedMemoryClass]:
-    """Return the declared class named ``identifier``, if any."""
-
-    for memory_class in classes:
-        if memory_class.memory_class_id == identifier:
-            return Some(memory_class)
-    return None
-
-
-def find_memory_operation(
-    operations: list[GovernedMemoryOperation],
-    identifier: MemoryOperationId,
-) -> Option[GovernedMemoryOperation]:
-    """Return the declared operation named ``identifier``, if any."""
-
-    for operation in operations:
-        if operation.operation_id == identifier:
-            return Some(operation)
-    return None
-
-
-def memory_class_exists(classes: list[GovernedMemoryClass], identifier: MemoryClassId) -> bool:
-    """Return whether ``identifier`` names a declared class."""
-
-    return match find_memory_class(classes, identifier):
-        None => false
-        Some(_) => true
-
-
 def memory_record_present(record: Option[GovernedMemoryRecord]) -> bool:
     """Return whether a proposal supplied an existing record."""
 
@@ -602,7 +586,7 @@ def memory_operations_are_valid(policy: GovernedMemoryPolicy) -> MemoryPolicyVal
         if has_duplicate_identifiers(operation.allowed_class_ids):
             return invalid("duplicate_operation_memory_class")
         for memory_class_id in operation.allowed_class_ids:
-            if not memory_class_exists(policy.classes, memory_class_id):
+            if not is_declared(policy.classes, memory_class_id):
                 return invalid("operation_memory_class_unknown")
     return valid()
 
@@ -970,7 +954,7 @@ def evaluate_with_operation(
 
     if operation.operation_kind != proposal.operation_kind:
         return rejected(proposal, "memory_operation_kind_mismatch")
-    return match find_memory_class(policy.classes, proposal.memory_class_id):
+    return match find_declared(policy.classes, proposal.memory_class_id):
         None => rejected(proposal, "unknown_memory_class")
         Some(memory_class) => evaluate_with_class(operation, memory_class, proposal, witness_key)
 
@@ -1002,6 +986,6 @@ pub def evaluate_memory_operation(
         return rejected(proposal, "invalid_evaluation_time")
     if not proposal_is_well_formed(proposal):
         return rejected(proposal, "invalid_memory_proposal")
-    return match find_memory_operation(policy.operations, proposal.operation_id):
+    return match find_declared(policy.operations, proposal.operation_id):
         None => rejected(proposal, "unknown_memory_operation")
         Some(operation) => evaluate_with_operation(policy, operation, proposal, witness_key)

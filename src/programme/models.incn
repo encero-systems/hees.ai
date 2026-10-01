@@ -11,6 +11,7 @@ from crate.identifiers import (
     ChoiceId,
     EvidenceId,
     GuidedCardId,
+    Identified,
     MemoryId,
     PackageId,
     ProgrammeId,
@@ -55,16 +56,21 @@ pub enum ProgrammeMemoryOperation(str):
 
 
 @derive(Clone, json)
-pub model GuidedProgrammeChoice:
+pub model GuidedProgrammeChoice with Identified[ChoiceId]:
     """Package-declared session value with no inherent persistence authority."""
 
     pub choice_id: ChoiceId
     pub session_key: str
     pub session_value: str
 
+    def identity(self) -> ChoiceId:
+        """Return the identity this choice is declared under."""
+
+        return self.choice_id
+
 
 @derive(Clone, json)
-pub model GuidedProgrammeCard:
+pub model GuidedProgrammeCard with Identified[GuidedCardId]:
     """Reviewed card declaration and its single deterministic forward edge."""
 
     pub card_id: GuidedCardId
@@ -77,6 +83,11 @@ pub model GuidedProgrammeCard:
     pub completion: bool
     pub review_status: ReviewStatus
     pub rights_status: RightsStatus
+
+    def identity(self) -> GuidedCardId:
+        """Return the identity this card is declared under."""
+
+        return self.card_id
 
 
 @derive(Clone, json)

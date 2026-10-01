@@ -16,6 +16,7 @@ from crate.identifiers import (
     FindingId,
     GuidedMaterialId,
     GuidedStepId,
+    Identified,
     MemoryId,
     ObservationId,
     PackageId,
@@ -67,7 +68,7 @@ pub enum GovernedVisibleOutputSource(str):
 
 
 @derive(Clone, json)
-pub model GovernedAction:
+pub model GovernedAction with Identified[ActionId]:
     """
     Package-owned action and the authority inputs it requires.
 
@@ -81,9 +82,14 @@ pub model GovernedAction:
     pub committee_required: bool
     pub boundary_text: Option[str]
 
+    def identity(self) -> ActionId:
+        """Return the identity this action is declared under."""
+
+        return self.action_id
+
 
 @derive(Clone, json)
-pub model GovernedEvidence:
+pub model GovernedEvidence with Identified[EvidenceId]:
     """Reviewed source-safe evidence record admitted into one package."""
 
     pub evidence_id: EvidenceId
@@ -99,9 +105,14 @@ pub model GovernedEvidence:
     pub authority_class: str
     pub evidence_kind: str
 
+    def identity(self) -> EvidenceId:
+        """Return the identity this evidence record is declared under."""
+
+        return self.evidence_id
+
 
 @derive(Clone, json)
-pub model GovernedMemory:
+pub model GovernedMemory with Identified[MemoryId]:
     """Reviewed memory atom and its exact package evidence relationships."""
 
     pub memory_id: MemoryId
@@ -111,6 +122,11 @@ pub model GovernedMemory:
     pub review_revision: RevisionType
     pub rights_state: str
     pub provenance_digest: DigestIdType
+
+    def identity(self) -> MemoryId:
+        """Return the identity this memory atom is declared under."""
+
+        return self.memory_id
 
 
 @derive(Clone, json)
@@ -122,7 +138,7 @@ pub model GuidedTransition:
 
 
 @derive(Clone, json)
-pub model GuidedMaterial:
+pub model GuidedMaterial with Identified[GuidedMaterialId]:
     """Source-safe identity and authority relationships for one package-owned artifact."""
 
     pub guided_material_id: GuidedMaterialId
@@ -139,6 +155,11 @@ pub model GuidedMaterial:
     pub review_state: str
     pub review_revision: RevisionType
     pub rights_state: str
+
+    def identity(self) -> GuidedMaterialId:
+        """Return the identity this guided material is declared under."""
+
+        return self.guided_material_id
 
 
 @derive(Clone, json)

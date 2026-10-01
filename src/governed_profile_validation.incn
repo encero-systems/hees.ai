@@ -23,11 +23,11 @@ from crate.governed_profile_models import (
 from crate.identifiers import (
     ActionId,
     EvidenceId,
-    GuidedMaterialId,
     GuidedStepId,
     MemoryId,
     artifact_revision_text_is_safe,
     digest_id_text_is_safe,
+    find_declared,
     has_duplicate_identifiers,
     identifier_sets_equal,
     identifier_text_is_safe,
@@ -158,45 +158,6 @@ def guided_identity_is_safe(material: GuidedMaterial) -> bool:
     return identifier_text_is_safe(material.audience.text())
 
 
-pub def find_governed_action(actions: list[GovernedAction], action_id: ActionId) -> Option[GovernedAction]:
-    """Resolve one package-declared action by nominal identity."""
-
-    for action in actions:
-        if action.action_id == action_id:
-            return Some(action)
-    return None
-
-
-pub def find_governed_evidence(evidence: list[GovernedEvidence], evidence_id: EvidenceId) -> Option[GovernedEvidence]:
-    """Resolve one package evidence record by nominal identity."""
-
-    for record in evidence:
-        if record.evidence_id == evidence_id:
-            return Some(record)
-    return None
-
-
-pub def find_governed_memory(memory: list[GovernedMemory], memory_id: MemoryId) -> Option[GovernedMemory]:
-    """Resolve one governed memory atom by nominal identity."""
-
-    for atom in memory:
-        if atom.memory_id == memory_id:
-            return Some(atom)
-    return None
-
-
-pub def find_guided_material(
-    guided_material: list[GuidedMaterial],
-    guided_material_id: GuidedMaterialId,
-) -> Option[GuidedMaterial]:
-    """Resolve one package-owned guided artifact declaration."""
-
-    for material in guided_material:
-        if material.guided_material_id == guided_material_id:
-            return Some(material)
-    return None
-
-
 def selected_evidence_for_memory(package: GovernedProfilePackage, memory_ids: list[MemoryId]) -> list[EvidenceId]:
     """
     Collect the duplicate-free evidence union of selected memory in package order.
@@ -207,7 +168,7 @@ def selected_evidence_for_memory(package: GovernedProfilePackage, memory_ids: li
 
     mut result: list[EvidenceId] = []
     for memory_id in memory_ids:
-        match find_governed_memory(package.memory, memory_id):
+        match find_declared(package.memory, memory_id):
             None => return []
             Some(atom) =>
                 for evidence_id in atom.evidence_ids:
@@ -369,7 +330,7 @@ def validate_memory(package: GovernedProfilePackage, atom: GovernedMemory) -> Go
     if has_duplicate_identifiers(atom.evidence_ids):
         return package_error("duplicate_memory_evidence")
     for evidence_id in atom.evidence_ids:
-        match find_governed_evidence(package.evidence, evidence_id):
+        match find_declared(package.evidence, evidence_id):
             None => return package_error("unknown_memory_evidence")
             Some(_) => pass
     if not review_admits(atom.review_state, atom.rights_state):
@@ -415,7 +376,7 @@ def validate_guided_action(
 ) -> GovernedValidation:
     """Check that a guided material's presentation or navigation action exists with the expected outcome kind."""
 
-    match find_governed_action(package.actions, action_id):
+    match find_declared(package.actions, action_id):
         None => return package_error(unknown_error)
         Some(action) =>
             if action.outcome_kind != expected_kind:
@@ -437,11 +398,11 @@ def validate_guided_material(package: GovernedProfilePackage, material: GuidedMa
     if has_duplicate_identifiers(material.evidence_ids):
         return package_error("duplicate_guided_evidence")
     for memory_id in material.memory_ids:
-        match find_governed_memory(package.memory, memory_id):
+        match find_declared(package.memory, memory_id):
             None => return package_error("unknown_guided_memory")
             Some(_) => pass
     for evidence_id in material.evidence_ids:
-        match find_governed_evidence(package.evidence, evidence_id):
+        match find_declared(package.evidence, evidence_id):
             None => return package_error("unknown_guided_evidence")
             Some(_) => pass
     if not identifier_sets_equal(material.evidence_ids, selected_evidence_for_memory(package, material.memory_ids)):
@@ -625,11 +586,11 @@ def validate_proposal_references(
     if has_duplicate_identifiers(proposal.memory_ids):
         return proposal_error("duplicate_memory_reference")
     for evidence_id in proposal.evidence_ids:
-        match find_governed_evidence(package.evidence, evidence_id):
+        match find_declared(package.evidence, evidence_id):
             None => return proposal_error("unknown_evidence")
             Some(_) => pass
     for memory_id in proposal.memory_ids:
-        match find_governed_memory(package.memory, memory_id):
+        match find_declared(package.memory, memory_id):
             None => return proposal_error("unknown_memory")
             Some(_) => pass
     if action.evidence_required and (len(proposal.evidence_ids) == 0 or len(proposal.memory_ids) == 0):
@@ -739,7 +700,7 @@ def validate_proposal_for_action(
             return proposal_error("guided_material_not_allowed")
         return validate_proposal_references(package, proposal, action)
     if let Some(identifier) = proposal.guided_material_id:
-        match find_guided_material(package.guided_material, identifier):
+        match find_declared(package.guided_material, identifier):
             None => return proposal_error("unknown_guided_material")
             Some(material) =>
                 references = validate_proposal_references(package, proposal, action)
@@ -765,6 +726,6 @@ pub def validate_governed_proposal(
     identity = validate_governed_proposal_identity(package, request, proposal)
     if not identity.valid:
         return identity
-    match find_governed_action(package.actions, proposal.action_id):
+    match find_declared(package.actions, proposal.action_id):
         None => return proposal_error("unknown_action")
         Some(action) => return validate_proposal_for_action(package, request, proposal, action)

@@ -24,15 +24,21 @@ from crate.governed_profile_models import (
 )
 from crate.governed_profile_validation import (
     action_is_terminal_boundary,
-    find_governed_action,
-    find_governed_memory,
-    find_guided_material,
     validate_governed_profile_package,
     validate_governed_proposal,
     validate_governed_proposal_identity,
     validate_governed_request,
 )
-from crate.identifiers import ContentDnaId, DecisionId, EvidenceId, GuidedMaterialId, MemoryId, ProposalId, decision_id
+from crate.identifiers import (
+    ContentDnaId,
+    DecisionId,
+    EvidenceId,
+    GuidedMaterialId,
+    MemoryId,
+    ProposalId,
+    decision_id,
+    find_declared,
+)
 from crate.runtime import (
     action_contract,
     admission_evidence_ids,
@@ -234,7 +240,7 @@ def selected_memory(package: GovernedProfilePackage, memory_ids: list[MemoryId])
 
     mut result: list[GovernedMemory] = []
     for memory_id in memory_ids:
-        match find_governed_memory(package.memory, memory_id):
+        match find_declared(package.memory, memory_id):
             None => return []
             Some(atom) => result.append(atom)
     return result
@@ -248,7 +254,7 @@ def admitted_guided_material(
     """Project the exact package-owned identity of the nominated guided material, if one is nominated and declared."""
 
     if let Some(identifier) = proposal.guided_material_id:
-        match find_guided_material(package.guided_material, identifier):
+        match find_declared(package.guided_material, identifier):
             None => return None
             Some(material) =>
                 return Some(
@@ -489,7 +495,7 @@ pub def evaluate_governed_profile_with_artifacts(
     proposal_validation = validate_governed_proposal(package, request, proposal)
     if not proposal_validation.valid:
         return reject_after_identity(package, request, proposal, proposal_validation.reason, None, [])
-    match find_governed_action(package.actions, proposal.action_id):
+    match find_declared(package.actions, proposal.action_id):
         None => return reject_after_identity(package, request, proposal, "unknown_action", None, [])
         Some(action) => return evaluate_validated_action(package, request, proposal, observations, action)
 

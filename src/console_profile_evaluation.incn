@@ -17,13 +17,12 @@ from crate.console_profile_observations import derive_findings, finding_policy_r
 from crate.console_profile_planning import build_verifier_manifest
 from crate.console_profile_validation import (
     atom_is_admitted,
-    find_atom_by_memory,
     has_duplicate_strings,
     validate_console_package,
     validate_console_proposal,
     validate_request_binding,
 )
-from crate.identifiers import DecisionId, MemoryId, ProposalId, decision_id
+from crate.identifiers import DecisionId, MemoryId, ProposalId, decision_id, find_declared
 from crate.runtime import (
     action_contract,
     admission_evidence_ids,
@@ -111,7 +110,7 @@ def freeze_selected_memory(package: ConsolePackage, proposal: ConsoleProposal) -
     mut result: list[ConsoleAtom] = []
     for mapping in proposal.support_mappings:
         if not selected_ids.contains(mapping.memory_id.text()):
-            match find_atom_by_memory(package.atoms, mapping.memory_id):
+            match find_declared(package.atoms, mapping.memory_id):
                 None => return []
                 Some(atom) =>
                     if not atom_is_admitted(atom):

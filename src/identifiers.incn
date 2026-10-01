@@ -917,3 +917,36 @@ pub def identifier_sets_equal[T with SymbolicIdentifier](left: list[T], right: l
         if not right_text.contains(value.text()):
             return false
     return true
+
+
+pub trait Identified[I]:
+    """Declared item that carries one nominal identity; each type supplies only its ``identity`` accessor."""
+
+    def identity(self) -> I
+
+
+pub def find_declared[T with (Identified[I], Clone), I with Eq](items: list[T], identifier: I) -> Option[T]:
+    """Resolve the first declared item whose identity equals ``identifier``, or None when none is declared."""
+
+    for item in items:
+        if item.identity() == identifier:
+            return Some(item)
+    return None
+
+
+pub def is_declared[T with (Identified[I], Clone), I with Eq](items: list[T], identifier: I) -> bool:
+    """Return whether any declared item carries ``identifier`` as its identity."""
+
+    for item in items:
+        if item.identity() == identifier:
+            return true
+    return false
+
+
+pub def declared_position[T with (Identified[I], Clone), I with Eq](items: list[T], identifier: I) -> Option[int]:
+    """Return the declaration index of the first item whose identity equals ``identifier``, or None."""
+
+    for index, item in enumerate(items):
+        if item.identity() == identifier:
+            return Some(index)
+    return None

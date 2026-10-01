@@ -6,12 +6,10 @@ safe to serialize and inspect but is not reusable authority. Eligibility is not 
 authority. No state or persistence mutation occurs inside this module.
 """
 
-from crate.identifiers import GuidedCardId
+from crate.identifiers import GuidedCardId, find_declared
 from crate.programme.context import (
     action_origin_reason,
     card_nomination_reason,
-    find_programme_card,
-    find_programme_choice,
     progress_snapshot_reason,
     runtime_frame_reason,
 )
@@ -47,7 +45,7 @@ def evaluate_enter(
         )
     if action.target_card_id != programme.entry_card_id:
         return ProgrammeEvaluation.rejected(ProgrammeActionKind.Enter, "entry_card_mismatch", frame.current_card_id)
-    entry_card = find_programme_card(programme, programme.entry_card_id).unwrap()
+    entry_card = find_declared(programme.cards, programme.entry_card_id).unwrap()
     match card_nomination_reason(entry_card, frame):
         Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Enter, reason, frame.current_card_id)
         None =>
@@ -71,14 +69,14 @@ def evaluate_advance(
     match action_origin_reason(frame, action.from_card_id):
         Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Advance, reason, frame.current_card_id)
         None => pass
-    current_card = find_programme_card(programme, action.from_card_id).unwrap()
+    current_card = find_declared(programme.cards, action.from_card_id).unwrap()
     if Some(action.target_card_id) != current_card.next_card_id:
         return ProgrammeEvaluation.rejected(
             ProgrammeActionKind.Advance,
             "transition_not_declared",
             frame.current_card_id,
         )
-    target_card = find_programme_card(programme, action.target_card_id).unwrap()
+    target_card = find_declared(programme.cards, action.target_card_id).unwrap()
     match card_nomination_reason(target_card, frame):
         Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Advance, reason, frame.current_card_id)
         None =>
@@ -109,7 +107,7 @@ def evaluate_backtrack(
             "backtrack_not_in_history",
             frame.current_card_id,
         )
-    target_card = find_programme_card(programme, action.target_card_id).unwrap()
+    target_card = find_declared(programme.cards, action.target_card_id).unwrap()
     match card_nomination_reason(target_card, frame):
         Some(reason) =>
             return ProgrammeEvaluation.rejected(ProgrammeActionKind.Backtrack, reason, frame.current_card_id)
@@ -135,12 +133,12 @@ def evaluate_choice(
         Some(reason) =>
             return ProgrammeEvaluation.rejected(ProgrammeActionKind.SelectChoice, reason, frame.current_card_id)
         None => pass
-    current_card = find_programme_card(programme, action.from_card_id).unwrap()
+    current_card = find_declared(programme.cards, action.from_card_id).unwrap()
     match card_nomination_reason(current_card, frame):
         Some(reason) =>
             return ProgrammeEvaluation.rejected(ProgrammeActionKind.SelectChoice, reason, frame.current_card_id)
         None => pass
-    match find_programme_choice(current_card, action.choice_id):
+    match find_declared(current_card.choices, action.choice_id):
         Some(choice) =>
             return ProgrammeEvaluation.eligible(
                 ProgrammeActionKind.SelectChoice,
@@ -207,7 +205,7 @@ def evaluate_resume(
     match progress_snapshot_reason(programme, snapshot):
         Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Resume, reason, frame.current_card_id)
         None => pass
-    resumed_card = find_programme_card(programme, snapshot.current_card_id).unwrap()
+    resumed_card = find_declared(programme.cards, snapshot.current_card_id).unwrap()
     match card_nomination_reason(resumed_card, frame):
         Some(reason) => return ProgrammeEvaluation.rejected(ProgrammeActionKind.Resume, reason, frame.current_card_id)
         None =>
@@ -235,7 +233,7 @@ def evaluate_memory_operation(
         None => pass
     if programme.progress_policy != ProgrammeProgressPolicy.ExplicitSave:
         return ProgrammeEvaluation.rejected(action_kind, "durable_progress_not_allowed", frame.current_card_id)
-    current_card = find_programme_card(programme, action.from_card_id).unwrap()
+    current_card = find_declared(programme.cards, action.from_card_id).unwrap()
     match card_nomination_reason(current_card, frame):
         Some(reason) => return ProgrammeEvaluation.rejected(action_kind, reason, frame.current_card_id)
         None => pass
