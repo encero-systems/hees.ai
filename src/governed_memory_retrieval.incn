@@ -1,0 +1,512 @@
+"""
+Admission of retrieval provider results into governed memory context (RFC 003).
+
+A provider nominates package-owned memory identifiers. ``admit_memory_result`` validates the complete request and
+result envelope against an admitted package and materializes only that package's atoms. Validation is all or
+nothing: one malformed item rejects the whole result, and a rejected record exposes no atoms.
+
+Stages run in the RFC 003 order: normalization, package, request, provider, nominations, atoms, context, complete.
+Within a stage every check scans the whole input and the first applicable reason in the RFC 003 table is chosen, so
+the reason never depends on which malformed item comes first.
+"""
+
+from crate.governed_memory_retrieval_declaration import (
+    AdmittedMemoryPackage,
+    has_duplicate_text,
+    memory_version_text_is_safe,
+    provider_binding_is_well_formed,
+    utf8_length,
+)
+from crate.governed_memory_retrieval_models import (
+    MAX_MEMORY_CONTEXT_BYTES,
+    MAX_MEMORY_INPUT_NOMINATIONS,
+    MAX_MEMORY_INTEGER,
+    MAX_MEMORY_NOMINATIONS,
+    MAX_MEMORY_QUERY_BYTES,
+    MAX_RELEVANCE_BPS,
+    MEMORY_ADMISSION_REASON_NAMESPACE,
+    MEMORY_CONTRACT_VERSION,
+    AdmittedMemoryPackageIdentity,
+    GovernedMemoryAtom,
+    GovernedMemoryDeclaration,
+    MaterializedMemoryAtom,
+    MemoryAdmissionRecord,
+    MemoryAdmissionStage,
+    MemoryContext,
+    MemoryEnvelopeAdmission,
+    MemoryNomination,
+    MemoryProviderResult,
+    MemoryRecordVariant,
+    MemoryRequest,
+    MemoryResultReason,
+    MemoryResultState,
+    MemoryReviewStatus,
+    MemoryRuntimeRights,
+    MemoryValidityMode,
+    NormalizedMemoryAdmission,
+)
+from crate.identifiers import digest_id_text_is_safe, identifier_text_is_safe
+
+
+model ProviderOutcome:
+    """A known, compatible provider state and reason pair established by normalization."""
+
+    state: MemoryResultState
+    reason: MemoryResultReason
+
+
+model TrustedSubmission:
+    """
+    Everything a normalized record needs once normalization and the package stage have both succeeded.
+
+    ``identity`` and ``declaration`` come from the admitted package; ``request`` and ``result`` remain untrusted echoes.
+    """
+
+    identity: AdmittedMemoryPackageIdentity
+    declaration: GovernedMemoryDeclaration
+    request: MemoryRequest
+    result: MemoryProviderResult
+    outcome: ProviderOutcome
+
+
+def canonical_or_none(value: str) -> Option[str]:
+    """Return ``value`` only when it is independently a canonical bounded identifier."""
+
+    if identifier_text_is_safe(value):
+        return Some(value)
+    return None
+
+
+def empty_context() -> MemoryContext:
+    """Return the context every rejection and every unavailable result exposes: no atoms."""
+
+    return MemoryContext(atoms=[])
+
+
+def pre_normalization_rejected(
+    stage: MemoryAdmissionStage,
+    reason: str,
+    request: MemoryRequest,
+    result: MemoryProviderResult,
+) -> MemoryAdmissionRecord:
+    """
+    Construct the minimal rejection for a failure before a trusted identity exists.
+
+    It carries the stage, the reason, and each caller identifier that is independently canonical, and nothing else
+    from the input.
+    """
+
+    return MemoryAdmissionRecord(
+        variant=MemoryRecordVariant.PreNormalizationRejected,
+        envelope_admission=MemoryEnvelopeAdmission.Rejected,
+        stage=stage,
+        reason_namespace=MEMORY_ADMISSION_REASON_NAMESPACE,
+        reason=reason,
+        request_id=canonical_or_none(request.request_id),
+        result_id=canonical_or_none(result.result_id),
+        normalized=None,
+        context=empty_context(),
+    )
+
+
+def normalized_record(
+    submission: TrustedSubmission,
+    envelope_admission: MemoryEnvelopeAdmission,
+    stage: MemoryAdmissionStage,
+    reason: str,
+    atoms: list[MaterializedMemoryAtom],
+) -> MemoryAdmissionRecord:
+    """Construct a normalized record carrying the trusted evaluated identity, the untrusted echoes, and ``atoms``."""
+
+    return MemoryAdmissionRecord(
+        variant=MemoryRecordVariant.Normalized,
+        envelope_admission=envelope_admission,
+        stage=stage,
+        reason_namespace=MEMORY_ADMISSION_REASON_NAMESPACE,
+        reason=reason,
+        request_id=Some(submission.request.request_id),
+        result_id=Some(submission.result.result_id),
+        normalized=Some(
+            NormalizedMemoryAdmission(
+                evaluated_package=submission.identity,
+                request=submission.request,
+                result=submission.result,
+                evaluation_time_ms=submission.request.evaluation_time_ms,
+                provider_state=submission.outcome.state,
+                provider_reason=submission.outcome.reason,
+                materialized_memory_ids=[materialized.atom.id for materialized in atoms],
+            ),
+        ),
+        context=MemoryContext(atoms=atoms),
+    )
+
+
+def normalized_rejected(
+    submission: TrustedSubmission,
+    stage: MemoryAdmissionStage,
+    reason: str,
+) -> MemoryAdmissionRecord:
+    """Construct a normalized rejection, which exposes no atoms."""
+
+    return normalized_record(submission, MemoryEnvelopeAdmission.Rejected, stage, reason, [])
+
+
+def parse_provider_state(value: str) -> Option[MemoryResultState]:
+    """Return the provider state a result names, or None for an unknown value."""
+
+    if value == "complete":
+        return Some(MemoryResultState.Complete)
+    if value == "partial":
+        return Some(MemoryResultState.Partial)
+    if value == "unavailable":
+        return Some(MemoryResultState.Unavailable)
+    return None
+
+
+def parse_provider_reason(value: str) -> Option[MemoryResultReason]:
+    """Return the provider reason a result names, or None for an unknown value."""
+
+    if value == "completed":
+        return Some(MemoryResultReason.Completed)
+    if value == "capacity_limited":
+        return Some(MemoryResultReason.CapacityLimited)
+    if value == "deadline_reached":
+        return Some(MemoryResultReason.DeadlineReached)
+    if value == "provider_unavailable":
+        return Some(MemoryResultReason.ProviderUnavailable)
+    if value == "index_unavailable":
+        return Some(MemoryResultReason.IndexUnavailable)
+    return None
+
+
+def provider_reason_is_compatible(state: MemoryResultState, reason: MemoryResultReason) -> bool:
+    """Return whether the state table permits ``reason`` for ``state``."""
+
+    return match state:
+        MemoryResultState.Complete => reason == MemoryResultReason.Completed
+        MemoryResultState.Partial => reason in [MemoryResultReason.CapacityLimited, MemoryResultReason.DeadlineReached]
+        MemoryResultState.Unavailable => reason in [MemoryResultReason.ProviderUnavailable, MemoryResultReason.IndexUnavailable, MemoryResultReason.DeadlineReached]
+
+
+def integer_is_exact(value: int) -> bool:
+    """Return whether ``value`` is exactly representable in every JSON number implementation."""
+
+    return value >= -MAX_MEMORY_INTEGER and value <= MAX_MEMORY_INTEGER
+
+
+def package_claims_are_well_formed(request: MemoryRequest) -> bool:
+    """Return whether the request's package claims have canonical syntax; this compares them with nothing."""
+
+    return (identifier_text_is_safe(request.package_id) and identifier_text_is_safe(request.domain_id) and memory_version_text_is_safe(
+        request.package_revision,
+    ) and digest_id_text_is_safe(request.package_semantic_identity) and digest_id_text_is_safe(
+        request.package_admission_binding,
+    ))
+
+
+def input_shape_rejection(request: MemoryRequest, result: MemoryProviderResult) -> Option[str]:
+    """Return the first normalization reason about bounds, contract values, identifiers, claims, or the binding."""
+
+    if len(result.nominations) > MAX_MEMORY_INPUT_NOMINATIONS:
+        return Some("input_collection_bound_exceeded")
+    if utf8_length(request.query_text) > MAX_MEMORY_QUERY_BYTES:
+        return Some("input_text_bound_exceeded")
+    if not memory_version_text_is_safe(request.contract_version) or not memory_version_text_is_safe(
+        result.contract_version,
+    ):
+        return Some("invalid_contract_value")
+    if not identifier_text_is_safe(request.request_id) or not identifier_text_is_safe(result.request_id):
+        return Some("invalid_request_identifier")
+    if not identifier_text_is_safe(result.result_id):
+        return Some("invalid_result_identifier")
+    if not package_claims_are_well_formed(request):
+        return Some("invalid_package_claim")
+    if not provider_binding_is_well_formed(result.binding):
+        return Some("invalid_provider_binding")
+    return None
+
+
+def input_value_rejection(request: MemoryRequest, result: MemoryProviderResult) -> Option[str]:
+    """Return the first normalization reason about nomination identifiers, nomination numbers, or evaluation time."""
+
+    for nomination in result.nominations:
+        if not identifier_text_is_safe(nomination.memory_id):
+            return Some("invalid_nomination_identifier")
+    for nomination in result.nominations:
+        if not integer_is_exact(nomination.rank) or not integer_is_exact(nomination.relevance_bps):
+            return Some("invalid_nomination_number")
+    if request.evaluation_time_ms < 0 or request.evaluation_time_ms > MAX_MEMORY_INTEGER:
+        return Some("invalid_evaluation_time")
+    return None
+
+
+def normalize_provider_outcome(result: MemoryProviderResult) -> Result[ProviderOutcome, str]:
+    """Return the typed provider state and reason, or the normalization reason that rejects them."""
+
+    match parse_provider_state(result.state):
+        None => return Err("unsupported_provider_state")
+        Some(state) =>
+            match parse_provider_reason(result.reason):
+                None => return Err("unsupported_provider_reason")
+                Some(reason) =>
+                    if not provider_reason_is_compatible(state, reason):
+                        return Err("provider_state_reason_mismatch")
+                    return Ok(ProviderOutcome(state=state, reason=reason))
+
+
+def normalize(request: MemoryRequest, result: MemoryProviderResult) -> Result[ProviderOutcome, str]:
+    """Run the normalization stage in table order and return the provider outcome or the first reason."""
+
+    match input_shape_rejection(request, result):
+        Some(reason) => return Err(reason)
+        None => pass
+    match input_value_rejection(request, result):
+        Some(reason) => return Err(reason)
+        None => pass
+    return normalize_provider_outcome(result)
+
+
+def request_rejection(submission: TrustedSubmission) -> Option[str]:
+    """Return the first request-stage reason: contract, each package claim against the trusted identity, then the echo."""
+
+    request = submission.request
+    identity = submission.identity
+    if request.contract_version != MEMORY_CONTRACT_VERSION:
+        return Some("unsupported_memory_contract")
+    if request.package_id != identity.package_id:
+        return Some("request_package_id_mismatch")
+    if request.domain_id != identity.domain_id:
+        return Some("request_domain_id_mismatch")
+    if request.package_revision != identity.package_revision:
+        return Some("request_package_revision_mismatch")
+    if request.package_semantic_identity != identity.package_semantic_identity.text():
+        return Some("request_package_semantic_identity_mismatch")
+    if request.package_admission_binding != identity.package_admission_binding.text():
+        return Some("request_package_admission_binding_mismatch")
+    if submission.result.contract_version != request.contract_version:
+        return Some("result_contract_mismatch")
+    if submission.result.request_id != request.request_id:
+        return Some("result_request_id_mismatch")
+    return None
+
+
+def provider_rejection(submission: TrustedSubmission) -> Option[str]:
+    """Return the first provider-stage reason: an unapproved binding, then a nomination count the state forbids."""
+
+    if not submission.declaration.provider_bindings.contains(submission.result.binding):
+        return Some("provider_binding_not_admitted")
+    count = len(submission.result.nominations)
+    if submission.outcome.state == MemoryResultState.Partial and count == 0:
+        return Some("provider_state_nomination_mismatch")
+    if submission.outcome.state == MemoryResultState.Unavailable and count > 0:
+        return Some("provider_state_nomination_mismatch")
+    return None
+
+
+def nominations_rejection(nominations: list[MemoryNomination]) -> Option[str]:
+    """Return the first nominations-stage reason: count, duplicate identifiers, rank order, then relevance range."""
+
+    if len(nominations) > MAX_MEMORY_NOMINATIONS:
+        return Some("nomination_count_exceeds_profile")
+    if has_duplicate_text([nomination.memory_id for nomination in nominations]):
+        return Some("duplicate_nomination_id")
+    for index, nomination in enumerate(nominations):
+        if nomination.rank != index:
+            return Some("nomination_rank_mismatch")
+    for nomination in nominations:
+        if nomination.relevance_bps < 0 or nomination.relevance_bps > MAX_RELEVANCE_BPS:
+            return Some("nomination_relevance_out_of_range")
+    return None
+
+
+def find_atom(atoms: list[GovernedMemoryAtom], memory_id: str) -> Option[GovernedMemoryAtom]:
+    """Return the admitted atom named ``memory_id``, if the package declares one."""
+
+    for atom in atoms:
+        if atom.id == memory_id:
+            return Some(atom)
+    return None
+
+
+def resolve_atoms(
+    declaration: GovernedMemoryDeclaration,
+    nominations: list[MemoryNomination],
+) -> Option[list[MaterializedMemoryAtom]]:
+    """Resolve every nomination to its package-owned atom in rank order, or None when any identifier is unknown."""
+
+    mut resolved: list[MaterializedMemoryAtom] = []
+    for nomination in nominations:
+        match find_atom(declaration.atoms, nomination.memory_id):
+            None => return None
+            Some(atom) =>
+                resolved.append(
+                    MaterializedMemoryAtom(atom=atom, rank=nomination.rank, relevance_bps=nomination.relevance_bps),
+                )
+    return Some(resolved)
+
+
+def atom_is_not_yet_valid(atom: GovernedMemoryAtom, evaluation_time_ms: int) -> bool:
+    """Return whether evaluation precedes the atom's inclusive validity start."""
+
+    return evaluation_time_ms < atom.validity.valid_from_ms
+
+
+def atom_is_expired(atom: GovernedMemoryAtom, evaluation_time_ms: int) -> bool:
+    """Return whether evaluation is at or after a bounded atom's exclusive validity end."""
+
+    if atom.validity.mode != MemoryValidityMode.Bounded:
+        return false
+    return match atom.validity.valid_until_ms:
+        None => false
+        Some(valid_until_ms) => evaluation_time_ms >= valid_until_ms
+
+
+def eligibility_rejection(submission: TrustedSubmission, atoms: list[GovernedMemoryAtom]) -> Option[str]:
+    """Return the first atom-stage eligibility reason across all resolved atoms, in table order."""
+
+    corpus_fingerprint = submission.result.binding.corpus_fingerprint
+    evaluation_time_ms = submission.request.evaluation_time_ms
+    if len([atom for atom in atoms if atom.corpus_fingerprint != corpus_fingerprint]) > 0:
+        return Some("atom_corpus_mismatch")
+    if len([atom for atom in atoms if atom.review_status != MemoryReviewStatus.Approved]) > 0:
+        return Some("atom_review_not_approved")
+    if len([atom for atom in atoms if atom.runtime_rights != MemoryRuntimeRights.Allowed]) > 0:
+        return Some("atom_rights_not_allowed")
+    if len([atom for atom in atoms if atom_is_not_yet_valid(atom, evaluation_time_ms)]) > 0:
+        return Some("atom_not_yet_valid")
+    if len([atom for atom in atoms if atom_is_expired(atom, evaluation_time_ms)]) > 0:
+        return Some("atom_expired")
+    return None
+
+
+def atom_context_bytes(atom: GovernedMemoryAtom) -> int:
+    """Return the bytes one atom contributes to the context: its id, claim, guidance, applicability, source reference, and labels."""
+
+    mut total = utf8_length(atom.id) + utf8_length(atom.claim) + utf8_length(atom.guidance)
+    total = total + utf8_length(atom.applicability) + utf8_length(atom.source_ref)
+    for label in atom.labels:
+        total = total + utf8_length(label)
+    return total
+
+
+def context_bytes(atoms: list[GovernedMemoryAtom]) -> int:
+    """Return the exact aggregate context bytes of ``atoms`` under the RFC 003 accounting rule."""
+
+    mut total = 0
+    for atom in atoms:
+        total = total + atom_context_bytes(atom)
+    return total
+
+
+def accepted_reason(state: MemoryResultState) -> str:
+    """Return the completion reason for an accepted envelope, one per provider state."""
+
+    return match state:
+        MemoryResultState.Complete => "accepted_complete"
+        MemoryResultState.Partial => "accepted_partial"
+        MemoryResultState.Unavailable => "accepted_unavailable"
+
+
+def admit_atoms(submission: TrustedSubmission) -> MemoryAdmissionRecord:
+    """Run the atoms, context, and complete stages for a submission whose nominations are well formed."""
+
+    match resolve_atoms(submission.declaration, submission.result.nominations):
+        None => return normalized_rejected(submission, MemoryAdmissionStage.Atoms, "unknown_memory_id")
+        Some(resolved) =>
+            atoms = [materialized.atom for materialized in resolved]
+            match eligibility_rejection(submission, atoms):
+                Some(reason) => return normalized_rejected(submission, MemoryAdmissionStage.Atoms, reason)
+                None => pass
+            if context_bytes(atoms) > MAX_MEMORY_CONTEXT_BYTES:
+                return normalized_rejected(submission, MemoryAdmissionStage.Context, "context_bytes_exceeded")
+            return normalized_record(
+                submission,
+                MemoryEnvelopeAdmission.Accepted,
+                MemoryAdmissionStage.Complete,
+                accepted_reason(submission.outcome.state),
+                resolved,
+            )
+
+
+def admit_normalized(submission: TrustedSubmission) -> MemoryAdmissionRecord:
+    """Run the request, provider, and nominations stages, then hand a well-formed submission to atom admission."""
+
+    match request_rejection(submission):
+        Some(reason) => return normalized_rejected(submission, MemoryAdmissionStage.Request, reason)
+        None => pass
+    match provider_rejection(submission):
+        Some(reason) => return normalized_rejected(submission, MemoryAdmissionStage.Provider, reason)
+        None => pass
+    match nominations_rejection(submission.result.nominations):
+        Some(reason) => return normalized_rejected(submission, MemoryAdmissionStage.Nominations, reason)
+        None => pass
+    return admit_atoms(submission)
+
+
+def admit_against_package(
+    package: AdmittedMemoryPackage,
+    request: MemoryRequest,
+    result: MemoryProviderResult,
+    outcome: ProviderOutcome,
+) -> MemoryAdmissionRecord:
+    """Finish the package stage: a package that declares no governed memory admits no retrieval result."""
+
+    match package.declaration:
+        None =>
+            return pre_normalization_rejected(
+                MemoryAdmissionStage.Package,
+                "memory_registry_not_admitted",
+                request,
+                result,
+            )
+        Some(declaration) =>
+            return admit_normalized(
+                TrustedSubmission(
+                    identity=package.identity,
+                    declaration=declaration,
+                    request=request,
+                    result=result,
+                    outcome=outcome,
+                ),
+            )
+
+
+pub def admit_memory_result(
+    package: Option[AdmittedMemoryPackage],
+    request: MemoryRequest,
+    result: MemoryProviderResult,
+) -> MemoryAdmissionRecord:
+    """
+    Admit or reject one provider result against an admitted package and return its deterministic record.
+
+    Pure: it reads no clock and uses only ``request.evaluation_time_ms`` for every time-dependent check. A failure in
+    normalization or at the package stage returns a ``pre_normalization_rejected`` record that carries no package
+    identity and no input beyond independently canonical caller identifiers. Every later rejection returns a
+    ``normalized`` record with the trusted evaluated identity and no atoms. An accepted ``complete`` or ``partial``
+    result materializes the nominated package-owned atoms in rank order; an accepted ``unavailable`` result
+    materializes none.
+
+    Acceptance proves structural eligibility and provenance binding only. It does not prove that an atom supports a
+    claim, and relevance is never authority.
+
+    Args:
+        package: the admitted package, or None when no package admission exists.
+        request: the untrusted request, including the caller-supplied evaluation time.
+        result: the untrusted provider result: identifiers, ranks, and relevance only.
+
+    Returns:
+        One record whose ``stage`` and ``reason`` come from the closed RFC 003 table.
+    """
+
+    match normalize(request, result):
+        Err(reason) => return pre_normalization_rejected(MemoryAdmissionStage.Normalization, reason, request, result)
+        Ok(outcome) =>
+            match package:
+                None =>
+                    return pre_normalization_rejected(
+                        MemoryAdmissionStage.Package,
+                        "package_not_admitted",
+                        request,
+                        result,
+                    )
+                Some(admitted) => return admit_against_package(admitted, request, result, outcome)

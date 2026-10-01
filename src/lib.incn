@@ -2,10 +2,11 @@
 Checked public surface for Hees.ai.
 
 The root re-exports the nominal identifier vocabulary, the structural kernel (``runtime``), the governed continuity
-kernel (RFC 013), the governed memory-operation kernel (RFC 014), the host-held witness key types those two take, the
-generic governed-profile evaluator (RFC 015), guided programs (``programme``), the package loader, hyperquant
-retrieval, and the bounded Console profile (RFC 010). RFC 013 to 015 are Draft: their exports are checked here but
-their contracts may still change. Every export below is deliberate; internal stages, intermediate projections,
+kernel (RFC 013), the governed memory-operation kernel (RFC 014), the host-held witness key types those two take,
+retrieval-result admission into governed memory context (the runtime part of RFC 003), the generic governed-profile
+evaluator (RFC 015), guided programs (``programme``), the package loader, hyperquant retrieval, and the bounded
+Console profile (RFC 010). RFC 013 to 015 are Draft and RFC 003 is partly implemented: their exports are checked here
+but their contracts may still change. Every export below is deliberate; internal stages, intermediate projections,
 authority-bearing constructors, and the functions that stamp or verify a witness are not re-exported.
 """
 
@@ -136,6 +137,51 @@ pub from governed_memory_operations import (
     evaluate_memory_operation,
     validate_governed_memory_policy,
 )
+pub from governed_memory_retrieval_models import (
+    MAX_MEMORY_ATOMS,
+    MAX_MEMORY_ATOM_LABELS,
+    MAX_MEMORY_ATOM_TEXT_BYTES,
+    MAX_MEMORY_CONTEXT_BYTES,
+    MAX_MEMORY_IDENTIFIER_BYTES,
+    MAX_MEMORY_INPUT_NOMINATIONS,
+    MAX_MEMORY_INTEGER,
+    MAX_MEMORY_NOMINATIONS,
+    MAX_MEMORY_QUERY_BYTES,
+    MAX_MEMORY_REGISTRY_ENTRIES,
+    MAX_MEMORY_SOURCE_REF_BYTES,
+    MAX_MEMORY_VERSION_BYTES,
+    MAX_RELEVANCE_BPS,
+    MEMORY_ADMISSION_REASON_NAMESPACE,
+    MEMORY_CONTRACT_VERSION,
+    AdmittedMemoryPackageIdentity,
+    GovernedMemoryAtom,
+    GovernedMemoryDeclaration,
+    MaterializedMemoryAtom,
+    MemoryAdmissionRecord,
+    MemoryAdmissionStage,
+    MemoryContext,
+    MemoryDeclarationValidation,
+    MemoryEnvelopeAdmission,
+    MemoryNomination,
+    MemoryProviderBinding,
+    MemoryProviderResult,
+    MemoryRecordVariant,
+    MemoryRequest,
+    MemoryResultReason,
+    MemoryResultState,
+    MemoryReviewStatus,
+    MemoryRuntimeRights,
+    MemoryValidity,
+    MemoryValidityMode,
+    NormalizedMemoryAdmission,
+)
+pub from governed_memory_retrieval_declaration import (
+    AdmittedMemoryPackage,
+    admit_memory_declaration,
+    admit_package_without_memory,
+    validate_memory_declaration,
+)
+pub from governed_memory_retrieval import admit_memory_result
 pub from governed_profile import (
     AdmittedGuidedMaterial,
     CommitteeObservation,

@@ -1,0 +1,324 @@
+"""
+Models for governed memory retrieval admission (RFC 003).
+
+A package declares governed memory atoms and the provider bindings it approves. A retrieval provider nominates atom
+identifiers; it never supplies content. Every request and provider result is untrusted, so their fields are plain
+text and integers that admission validates before anything is retained.
+
+The serialized package members, their exact bytes, RFC 011 structural identities, and RFC 006 receipts are outside
+this module. ``AdmittedMemoryPackage`` in ``governed_memory_retrieval_declaration`` stands in for the RFC 005 admitted
+package until that admission exists.
+"""
+
+from std.serde import json
+from crate.identifiers import DigestIdType
+
+# Memory contract version this module implements.
+pub const MEMORY_CONTRACT_VERSION: str = "0.1"
+# Reason namespace of every admission reason this module returns.
+pub const MEMORY_ADMISSION_REASON_NAMESPACE: str = "memory_admission_0_1"
+# Interim profile resource envelope. RFC 005 owns these ceilings; until it is implemented they are fixed here.
+# Most bytes in one identifier.
+pub const MAX_MEMORY_IDENTIFIER_BYTES: int = 128
+# Most bytes in one version or package revision.
+pub const MAX_MEMORY_VERSION_BYTES: int = 32
+# Most bytes in a request's query text.
+pub const MAX_MEMORY_QUERY_BYTES: int = 4096
+# Most bytes in one atom claim, guidance, or applicability text.
+pub const MAX_MEMORY_ATOM_TEXT_BYTES: int = 2048
+# Most bytes in one atom source reference.
+pub const MAX_MEMORY_SOURCE_REF_BYTES: int = 256
+# Most labels on one atom.
+pub const MAX_MEMORY_ATOM_LABELS: int = 16
+# Most provider bindings, and most entries in each classification list, in one declaration.
+pub const MAX_MEMORY_REGISTRY_ENTRIES: int = 32
+# Most atoms in one declaration.
+pub const MAX_MEMORY_ATOMS: int = 1024
+# Most nominations a provider result may carry before any entry is retained.
+pub const MAX_MEMORY_INPUT_NOMINATIONS: int = 256
+# Most nominations the profile admits into one context.
+pub const MAX_MEMORY_NOMINATIONS: int = 64
+# Most aggregate bytes of materialized context.
+pub const MAX_MEMORY_CONTEXT_BYTES: int = 65536
+# Largest exactly representable integer (2^53 - 1) for evaluation time, validity times, ranks, and relevance.
+pub const MAX_MEMORY_INTEGER: int = 9007199254740991
+# Largest relevance value, in basis points.
+pub const MAX_RELEVANCE_BPS: int = 10000
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryReviewStatus(str):
+    """Package-declared review state of one atom; only ``approved`` is eligible at runtime."""
+
+    Approved = "approved"
+    Pending = "pending"
+    Rejected = "rejected"
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryRuntimeRights(str):
+    """Package-declared runtime rights of one atom; only ``allowed`` is eligible at runtime."""
+
+    Allowed = "allowed"
+    Restricted = "restricted"
+    Denied = "denied"
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryValidityMode(str):
+    """Closed temporal-validity shapes: an inclusive start with or without an exclusive end."""
+
+    Bounded = "bounded"
+    Indefinite = "indefinite"
+
+
+@derive(Clone, Eq, json)
+pub model MemoryValidity:
+    """
+    Temporal validity of one atom in Unix epoch milliseconds.
+
+    ``bounded`` requires ``valid_until_ms`` greater than ``valid_from_ms``; ``indefinite`` requires it absent.
+    """
+
+    pub mode: MemoryValidityMode
+    pub valid_from_ms: int
+    pub valid_until_ms: Option[int]
+
+
+@derive(Clone, Eq, json)
+pub model MemoryProviderBinding:
+    """
+    One retrieval execution and snapshot boundary: provider, adapter, configuration, index, and corpus.
+
+    A package declares the bindings it approves and a provider result names the one it ran under. Fingerprints are 64
+    lowercase hexadecimal characters with no prefix. A binding establishes identity, not integrity: Hees.ai compares
+    the values and does not hash any provider artifact.
+    """
+
+    pub provider_id: str
+    pub provider_contract_version: str
+    pub adapter_version: str
+    pub configuration_fingerprint: str
+    pub index_fingerprint: str
+    pub corpus_fingerprint: str
+
+
+@derive(Clone, json)
+pub model GovernedMemoryAtom:
+    """Package-owned memory atom: bounded reviewed content with its provenance, eligibility, and validity."""
+
+    pub id: str
+    pub corpus_version: str
+    pub corpus_fingerprint: str
+    pub claim: str
+    pub guidance: str
+    pub applicability: str
+    pub source_ref: str
+    pub source_fingerprint: str
+    pub review_status: MemoryReviewStatus
+    pub runtime_rights: MemoryRuntimeRights
+    pub authority_class_id: str
+    pub risk_class_id: str
+    pub sensitivity_class_id: str
+    pub validity: MemoryValidity
+    pub labels: list[str]
+
+
+@derive(Clone, json)
+pub model GovernedMemoryDeclaration:
+    """
+    Package-relative governed-memory declaration: the registry lists and the atoms, in declared order.
+
+    This is the in-memory form of the RFC 003 registry and atom member payloads together with the package they belong
+    to. Order is identity-bearing and is never changed by admission.
+    """
+
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub provider_bindings: list[MemoryProviderBinding]
+    pub authority_class_ids: list[str]
+    pub risk_class_ids: list[str]
+    pub sensitivity_class_ids: list[str]
+    pub atoms: list[GovernedMemoryAtom]
+
+
+@derive(Clone, Eq, json)
+pub model AdmittedMemoryPackageIdentity:
+    """
+    Trusted identity of one admitted package, taken only from admission and never from a request.
+
+    ``package_semantic_identity`` and ``package_admission_binding`` are interim type-tagged SHA-256 digests. They do
+    not conform to RFC 011 structural identity, and there is no ``artifact_digest`` because no package artifact is
+    admitted yet.
+    """
+
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub package_semantic_identity: DigestIdType
+    pub package_admission_binding: DigestIdType
+
+
+@derive(Clone, json)
+pub model MemoryRequest:
+    """
+    Untrusted retrieval request.
+
+    Its package fields are claims that admission compares with the admitted package; they never become trusted
+    identity. ``evaluation_time_ms`` is the only clock admission uses.
+    """
+
+    pub contract_version: str
+    pub request_id: str
+    pub package_id: str
+    pub domain_id: str
+    pub package_revision: str
+    pub package_semantic_identity: str
+    pub package_admission_binding: str
+    pub query_text: str
+    pub evaluation_time_ms: int
+
+
+@derive(Clone, json)
+pub model MemoryNomination:
+    """One provider nomination: a package-owned memory identifier, its zero-based rank, and a relevance in basis points."""
+
+    pub memory_id: str
+    pub rank: int
+    pub relevance_bps: int
+
+
+@derive(Clone, json)
+pub model MemoryProviderResult:
+    """
+    Untrusted provider result: identifiers, ranks, and relevance only, with no content.
+
+    ``state`` and ``reason`` are text so that an unknown value can be rejected instead of failing to decode.
+    """
+
+    pub contract_version: str
+    pub request_id: str
+    pub result_id: str
+    pub state: str
+    pub reason: str
+    pub binding: MemoryProviderBinding
+    pub nominations: list[MemoryNomination]
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryResultState(str):
+    """Provider execution state. It describes the provider, not whether Hees.ai admitted the envelope."""
+
+    Complete = "complete"
+    Partial = "partial"
+    Unavailable = "unavailable"
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryResultReason(str):
+    """Closed provider reason set for contract 0.1."""
+
+    Completed = "completed"
+    CapacityLimited = "capacity_limited"
+    DeadlineReached = "deadline_reached"
+    ProviderUnavailable = "provider_unavailable"
+    IndexUnavailable = "index_unavailable"
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryEnvelopeAdmission(str):
+    """Whether Hees.ai admitted the envelope, independent of the provider state."""
+
+    Accepted = "accepted"
+    Rejected = "rejected"
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryAdmissionStage(str):
+    """Closed admission stages in strict precedence order."""
+
+    Normalization = "normalization"
+    Package = "package"
+    Request = "request"
+    Provider = "provider"
+    Nominations = "nominations"
+    Atoms = "atoms"
+    Context = "context"
+    Complete = "complete"
+
+
+@derive(Clone, Eq, json)
+pub enum MemoryRecordVariant(str):
+    """Which admission-record shape a submission produced."""
+
+    Normalized = "normalized"
+    PreNormalizationRejected = "pre_normalization_rejected"
+
+
+@derive(Clone, json)
+pub model MaterializedMemoryAtom:
+    """
+    One package-owned atom resolved from an admitted nomination.
+
+    ``rank`` and ``relevance_bps`` are the provider's non-authoritative annotations; every other field comes from the
+    admitted package.
+    """
+
+    pub atom: GovernedMemoryAtom
+    pub rank: int
+    pub relevance_bps: int
+
+
+@derive(Clone, json)
+pub model MemoryContext:
+    """Accepted context: package-owned atoms in nomination rank order. Empty for a rejection or an unavailable provider."""
+
+    pub atoms: list[MaterializedMemoryAtom]
+
+
+@derive(Clone, json)
+pub model NormalizedMemoryAdmission:
+    """
+    The trusted and untrusted parts of a record formed after normalization and package admission both succeeded.
+
+    ``evaluated_package`` is the only trusted identity. ``request`` and ``result`` are bounded echoes of untrusted
+    input and never substitute for it.
+    """
+
+    pub evaluated_package: AdmittedMemoryPackageIdentity
+    pub request: MemoryRequest
+    pub result: MemoryProviderResult
+    pub evaluation_time_ms: int
+    pub provider_state: MemoryResultState
+    pub provider_reason: MemoryResultReason
+    pub materialized_memory_ids: list[str]
+
+
+@derive(Clone, json)
+pub model MemoryAdmissionRecord:
+    """
+    Deterministic result of one submission.
+
+    A ``normalized`` record carries ``normalized`` and, when accepted, a context. A ``pre_normalization_rejected``
+    record carries only the stage, the reason, and each caller identifier that is independently canonical; it holds
+    no package identity, claim, query, binding, provider state, nomination, or other input.
+    """
+
+    pub variant: MemoryRecordVariant
+    pub envelope_admission: MemoryEnvelopeAdmission
+    pub stage: MemoryAdmissionStage
+    pub reason_namespace: str
+    pub reason: str
+    pub request_id: Option[str]
+    pub result_id: Option[str]
+    pub normalized: Option[NormalizedMemoryAdmission]
+    pub context: MemoryContext
+
+
+@derive(Clone, json)
+pub model MemoryDeclarationValidation:
+    """Closed validation result for a governed-memory declaration."""
+
+    pub valid: bool
+    pub reason: str

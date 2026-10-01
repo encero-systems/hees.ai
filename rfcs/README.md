@@ -31,7 +31,7 @@ RFC documents use three-digit numbers and the filename form `NNN-short-title.md`
 - [RFC 000: Foundational Governance Authority](000-foundational-governance-authority.md) — Draft — proposal [#1](https://github.com/encero-systems/hees.ai/issues/1)
 - [RFC 001: Spectrum Terminal Adjudication](001-spectrum-terminal-adjudication.md) — Draft — proposal [#2](https://github.com/encero-systems/hees.ai/issues/2)
 - [RFC 002: Content DNA Answer-Time Provenance](002-content-dna-answer-time-provenance.md) — Draft — proposal [#3](https://github.com/encero-systems/hees.ai/issues/3)
-- [RFC 003: Governed Memory and Retrieval Results](003-governed-memory-and-retrieval-results.md) — Planned — proposal [#4](https://github.com/encero-systems/hees.ai/issues/4)
+- [RFC 003: Governed Memory and Retrieval Results](003-governed-memory-and-retrieval-results.md) — In Progress — proposal [#4](https://github.com/encero-systems/hees.ai/issues/4)
 - [RFC 004: Composable Governance Constraints](004-composable-governance-constraints.md) — Planned — proposal [#5](https://github.com/encero-systems/hees.ai/issues/5)
 - [RFC 005: Canonical Package Artifact Admission](005-canonical-package-artifact-admission.md) — Planned — proposal [#6](https://github.com/encero-systems/hees.ai/issues/6)
 - [RFC 006: Export-Safe Governance Receipts](006-export-safe-governance-receipts.md) — Draft — proposal [#7](https://github.com/encero-systems/hees.ai/issues/7)

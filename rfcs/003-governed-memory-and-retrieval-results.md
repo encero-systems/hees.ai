@@ -1,6 +1,6 @@
 # RFC 003: Governed Memory and Retrieval Results
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Created:** 2026-07-17
 - **Author(s):** Encero Systems
 - **Related:**
@@ -433,3 +433,24 @@ Logical identifier retrieval requires package builders to compile and version a 
 - Normalized request and result fields remain untrusted echoes. Only the separate admitted-package snapshot supplies trusted evaluated identity, and pre-normalization rejection carries none.
 - The public admission stage and reason vocabulary is closed, globally unique within its RFC 006 namespace, and selected by strict precedence independently of provider-state reasons.
 - RFC 006 exclusively owns receipt canonicalization, redaction, identifiers, envelopes, private projection, and public integrity verification.
+
+## Implementation progress
+
+Implemented in `governed_memory_retrieval.incn`, `governed_memory_retrieval_declaration.incn`, and `governed_memory_retrieval_models.incn`:
+
+- [x] Request, provider result, nomination, provider state and reason, and admission-record models.
+- [x] `admit_memory_result`: all eight stages and all 39 reasons, with strict stage and within-stage precedence.
+- [x] Both record variants: `Normalized` with the trusted evaluated identity and untrusted echoes, and the minimal `PreNormalizationRejected`.
+- [x] Materialization of package-owned atoms in rank order, with the aggregate context-byte rule.
+- [x] The registry and atom payload rules, validated in memory by `validate_memory_declaration`.
+- [x] Tests that reach every reason in isolation, with multi-failure precedence cases.
+
+Not implemented:
+
+- [ ] RFC 005 package artifact admission. `admit_memory_declaration` stands in for it: it validates an in-memory declaration and returns the opaque `AdmittedMemoryPackage` that `admit_memory_result` requires. Its validation reasons are interim.
+- [ ] The serialized `governed_memory_registry` and `governed_memory_atoms` members, their exact bytes, descriptors, and sharding.
+- [ ] RFC 011 structural identities. `package_semantic_identity` and `package_admission_binding` are interim type-tagged SHA-256 digests, and the trusted identity has no `artifact_digest`.
+- [ ] The RFC 005 profile resource envelope. The ceilings are fixed constants in `governed_memory_retrieval_models.incn`.
+- [ ] RFC 006 receipt projection.
+- [ ] The handoff into later proposal admission: nothing yet requires a proposal to cite only identifiers from an accepted context.
+- [ ] Cross-implementation fixtures and the two synthetic provider adapters the acceptance obligations require.
