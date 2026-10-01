@@ -198,6 +198,7 @@ pub from package_loader import (
     validate_package_loader_descriptor,
 )
 pub from hyperquant import (
+    MAX_HYPERQUANT_CANDIDATES,
     MAX_HYPERQUANT_DIMENSIONS,
     MAX_HYPERQUANT_ENTRIES,
     MAX_HYPERQUANT_TOP_K,
@@ -209,11 +210,16 @@ pub from hyperquant import (
     HyperquantExactResult,
     HyperquantNomination,
     HyperquantProfile,
+    TurboquantCandidate,
     TurboquantCode,
     TurboquantConfiguration,
+    TurboquantIndex,
+    TurboquantResult,
     exact_index,
     exact_query,
     hyperquant_entry,
+    turboquant_index,
+    turboquant_query,
 )
 pub from runtime import (
     ActionContract,

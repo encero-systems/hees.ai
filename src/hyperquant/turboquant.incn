@@ -740,6 +740,42 @@ pub class TurboquantConfiguration:
             return Err(failure(HyperquantErrorKind.NumericalFailure, "TurboQuant estimate is non-finite"))
         return Ok(estimate)
 
+    def rotated_query(self, normalized_query: list[float]) -> list[float]:
+        """Rotate one normalized query once so MSE codes can be scored without reconstruction."""
+
+        return self._rotation.multiply(normalized_query)
+
+    def projected_query(self, normalized_query: list[float]) -> list[float]:
+        """Project one normalized query through the QJL matrix; the MSE profile has no projection."""
+
+        if self._profile == HyperquantProfile.TurboquantMse01:
+            return []
+        return self._qjl_projection.multiply(normalized_query)
+
+    def estimate_transformed(
+        self,
+        rotated_query: list[float],
+        projected_query: list[float],
+        code: TurboquantCode,
+    ) -> float:
+        """
+        Estimate one inner product in transform space.
+
+        `dot(q, R^T c)` equals `dot(R q, c)` and `dot(q, S^T s)` equals `dot(S q, s)`, so a query transformed once
+        scores each bound code in linear time. The value agrees with `estimate` up to binary64 rounding.
+        """
+
+        mut mse_estimate = 0.0
+        for index in range(self._dimensions):
+            mse_estimate += rotated_query[index] * self._centroids[code.mse_index(index)]
+        if self._profile == HyperquantProfile.TurboquantMse01:
+            return mse_estimate
+        mut qjl_estimate = 0.0
+        for index in range(self._dimensions):
+            qjl_estimate += projected_query[index] * float(code.qjl_sign(index))
+        scale = math.sqrt(math.PI / 2.0) * code.residual_norm() / float(self._dimensions)
+        return mse_estimate + scale * qjl_estimate
+
     def nearest_centroid(self, value: float) -> int:
         """Choose the first nearest configured centroid without cloning the codebook."""
 

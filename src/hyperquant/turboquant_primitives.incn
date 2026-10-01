@@ -18,7 +18,7 @@ from crate.hyperquant.models import MAX_HYPERQUANT_DIMENSIONS, HyperquantError, 
 
 pub const TURBOQUANT_ROTATION_DOMAIN: str = "hees.hyperquant.turboquant.rotation.0_1"
 pub const TURBOQUANT_QJL_DOMAIN: str = "hees.hyperquant.turboquant.qjl.0_1"
-pub const MAX_DENSE_TURBOQUANT_DIMENSIONS: int = 256
+pub const MAX_DENSE_TURBOQUANT_DIMENSIONS: int = 1024
 
 
 @derive(Clone)

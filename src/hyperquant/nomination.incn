@@ -1,0 +1,249 @@
+"""
+Bounded approximate TurboQuant nomination with exact reranking.
+
+A `TurboquantIndex` binds each package-owned memory identifier to one compressed TurboQuant code and retains the
+normalized full-precision vector for reranking. A query is transformed once, scored against every code in linear
+time, reduced to a bounded approximate candidate set, and reranked by exact cosine similarity. The result is a list of
+non-authoritative `MemoryId` nominations; RFC 003 admission still decides whether any of them may become selected
+memory.
+"""
+
+from std.encoding.hex import hexlify
+from std.hash import sha256
+from rust::std::string import String as RustString
+from crate.hyperquant.exact import HyperquantEntry
+from crate.hyperquant.models import (
+    MAX_HYPERQUANT_ENTRIES,
+    MAX_HYPERQUANT_TOP_K,
+    HyperquantError,
+    HyperquantErrorKind,
+    HyperquantNomination,
+    HyperquantProfile,
+)
+from crate.hyperquant.turboquant import TurboquantCode, TurboquantConfiguration
+from crate.hyperquant.vector import normalize_vector, relevance_basis_points
+from crate.identifiers import MemoryId, memory_id_text
+
+pub const MAX_HYPERQUANT_CANDIDATES: int = 256
+
+
+@derive(Clone)
+pub model TurboquantCandidate:
+    """One approximate candidate with its compressed estimate and its exact reranked score."""
+
+    pub memory_id: MemoryId
+    pub estimated_similarity: float
+    pub cosine_similarity: float
+    pub relevance_bps: int
+
+
+@derive(Clone)
+pub model TurboquantResult:
+    """Reranked nominations plus the bounded approximate candidate trace that produced them."""
+
+    pub profile: HyperquantProfile
+    pub dimensions: int
+    pub index_fingerprint: str
+    pub nominations: list[HyperquantNomination]
+    pub candidates: list[TurboquantCandidate]
+
+
+@derive(Clone)
+model ScoredPosition:
+    """Index position and compressed estimate retained while scanning."""
+
+    position: int
+    estimated_similarity: float
+
+
+@derive(Clone)
+pub class TurboquantIndex:
+    """In-memory compressed index over uniquely identified entries of one configured dimension."""
+
+    _configuration: TurboquantConfiguration
+    _entries: list[HyperquantEntry]
+    _codes: list[TurboquantCode]
+    _fingerprint: str
+
+    def profile(self) -> HyperquantProfile:
+        """Return the configured TurboQuant profile."""
+
+        return self._configuration.profile()
+
+    def dimensions(self) -> int:
+        """Return the configured vector dimension."""
+
+        return self._configuration.dimensions()
+
+    def entry_count(self) -> int:
+        """Return the number of indexed entries."""
+
+        return len(self._entries)
+
+    def index_fingerprint(self) -> str:
+        """Return the identity of the configuration, entry order, memory identifiers and codes."""
+
+        return self._fingerprint
+
+    def approximate_candidates(self, normalized_query: list[float], candidate_count: int) -> list[ScoredPosition]:
+        """Score every code in transform space and retain the bounded best estimates."""
+
+        rotated = self._configuration.rotated_query(normalized_query)
+        projected = self._configuration.projected_query(normalized_query)
+        mut retained: list[ScoredPosition] = []
+        for position in range(len(self._codes)):
+            estimate = self._configuration.estimate_transformed(rotated, projected, self._codes[position])
+            retained.append(ScoredPosition(position=position, estimated_similarity=estimate))
+            mut slot = len(retained) - 1
+            while slot > 0 and self.estimate_precedes(retained[slot], retained[slot - 1]):
+                retained.swap(slot, slot - 1)
+                slot -= 1
+            if len(retained) > candidate_count:
+                retained.pop()
+        return retained
+
+    def estimate_precedes(self, left: ScoredPosition, right: ScoredPosition) -> bool:
+        """Order higher estimates first and break exact ties by canonical memory identifier."""
+
+        if left.estimated_similarity != right.estimated_similarity:
+            return left.estimated_similarity > right.estimated_similarity
+        return memory_id_text(self._entries[left.position].memory_id) < memory_id_text(
+            self._entries[right.position].memory_id,
+        )
+
+    def reranked(self, normalized_query: list[float], approximate: list[ScoredPosition]) -> list[TurboquantCandidate]:
+        """Rerank the approximate candidates by exact cosine similarity over retained vectors."""
+
+        mut candidates: list[TurboquantCandidate] = []
+        for scored in approximate:
+            entry = self._entries[scored.position]
+            mut cosine_similarity = 0.0
+            for dimension in range(len(normalized_query)):
+                cosine_similarity += entry.coordinate(dimension) * normalized_query[dimension]
+            candidates.append(
+                TurboquantCandidate(
+                    memory_id=entry.memory_id,
+                    estimated_similarity=scored.estimated_similarity,
+                    cosine_similarity=cosine_similarity,
+                    relevance_bps=relevance_basis_points(cosine_similarity),
+                ),
+            )
+            mut slot = len(candidates) - 1
+            while slot > 0 and candidate_precedes(candidates[slot], candidates[slot - 1]):
+                candidates.swap(slot, slot - 1)
+                slot -= 1
+        return candidates
+
+
+def candidate_precedes(left: TurboquantCandidate, right: TurboquantCandidate) -> bool:
+    """Order higher exact scores first and break exact ties by canonical memory identifier."""
+
+    if left.cosine_similarity != right.cosine_similarity:
+        return left.cosine_similarity > right.cosine_similarity
+    return memory_id_text(left.memory_id) < memory_id_text(right.memory_id)
+
+
+def failure(kind: HyperquantErrorKind, detail: str) -> HyperquantError:
+    return HyperquantError.from_kind(kind, detail)
+
+
+pub def turboquant_index(
+    configuration: TurboquantConfiguration,
+    entries: list[HyperquantEntry],
+) -> Result[TurboquantIndex, HyperquantError]:
+    """Encode validated entries into a bounded compressed index bound to one configuration."""
+
+    if len(entries) == 0:
+        return Err(failure(HyperquantErrorKind.EmptyIndex, "TurboQuant index must contain at least one entry"))
+    if len(entries) > MAX_HYPERQUANT_ENTRIES:
+        return Err(
+            failure(
+                HyperquantErrorKind.IndexTooLarge,
+                f"TurboQuant index exceeds the {MAX_HYPERQUANT_ENTRIES}-entry contract bound",
+            ),
+        )
+
+    mut canonical_ids: dict[str, bool] = {}
+    mut codes: list[TurboquantCode] = []
+    mut identity_lines: list[str] = [configuration.configuration_fingerprint()]
+    for entry in entries:
+        canonical_id = memory_id_text(entry.memory_id)
+        if canonical_id in canonical_ids:
+            return Err(
+                failure(HyperquantErrorKind.DuplicateMemoryId, "TurboQuant index memory identifiers must be unique"),
+            )
+        canonical_ids.insert(canonical_id, true)
+        if entry.dimensions != configuration.dimensions():
+            return Err(
+                failure(
+                    HyperquantErrorKind.DimensionMismatch,
+                    "entry dimension does not match the TurboQuant configuration",
+                ),
+            )
+        code = configuration.encode([entry.coordinate(dimension) for dimension in range(entry.dimensions)])?
+        identity_lines.append(f"{canonical_id} {code.content_fingerprint()}")
+        codes.append(code)
+
+    identity = RustString.from("\n".join(identity_lines)).into_bytes()
+    return Ok(
+        TurboquantIndex(
+            _configuration=configuration,
+            _entries=entries,
+            _codes=codes,
+            _fingerprint=f"sha256:{hexlify(sha256.digest(identity))}",
+        ),
+    )
+
+
+pub def turboquant_query(
+    index: TurboquantIndex,
+    query_values: list[float],
+    top_k: int,
+    candidate_count: int,
+) -> Result[TurboquantResult, HyperquantError]:
+    """
+    Return deterministic reranked nominations without assigning authority to them.
+
+    `candidate_count` bounds the approximate stage; `top_k` bounds the nominations returned after exact reranking.
+    """
+
+    if top_k <= 0 or top_k > MAX_HYPERQUANT_TOP_K or top_k > index.entry_count():
+        return Err(
+            failure(
+                HyperquantErrorKind.InvalidTopK,
+                "top_k must be positive and no greater than both the index size and contract bound",
+            ),
+        )
+    if candidate_count < top_k or candidate_count > MAX_HYPERQUANT_CANDIDATES or candidate_count > index.entry_count():
+        return Err(
+            failure(
+                HyperquantErrorKind.InvalidTopK,
+                "candidate_count must be at least top_k and no greater than both the index size and contract bound",
+            ),
+        )
+
+    normalized_query = normalize_vector(query_values)?
+    if len(normalized_query) != index.dimensions():
+        return Err(
+            failure(HyperquantErrorKind.DimensionMismatch, "query vector dimension does not match the TurboQuant index"),
+        )
+
+    candidates = index.reranked(normalized_query, index.approximate_candidates(normalized_query, candidate_count))
+    mut nominations: list[HyperquantNomination] = []
+    mut rank = 0
+    for candidate in candidates:
+        if rank >= top_k:
+            break
+        nominations.append(
+            HyperquantNomination(memory_id=candidate.memory_id, rank=rank, relevance_bps=candidate.relevance_bps),
+        )
+        rank += 1
+    return Ok(
+        TurboquantResult(
+            profile=index.profile(),
+            dimensions=index.dimensions(),
+            index_fingerprint=index.index_fingerprint(),
+            nominations=nominations,
+            candidates=candidates,
+        ),
+    )
