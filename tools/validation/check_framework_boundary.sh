@@ -99,6 +99,15 @@ required_files=(
     src/console_profile_planning.incn
     src/console_profile_validation.incn
     src/content_dna.incn
+    src/governed_continuity.incn
+    src/governed_memory_operations.incn
+    src/governed_profile.incn
+    src/governed_profile_artifacts.incn
+    src/governed_profile_committee.incn
+    src/governed_profile_evaluation.incn
+    src/governed_profile_identity.incn
+    src/governed_profile_models.incn
+    src/governed_profile_validation.incn
     src/identifiers.incn
     src/package_loader.incn
     src/programme/mod.incn
@@ -108,12 +117,17 @@ required_files=(
     src/programme/evaluation.incn
     src/programme/validation.incn
     src/runtime.incn
+    src/witness.incn
     tests/test_console_profile_contract.incn
     tests/test_content_dna_contract.incn
+    tests/test_governed_continuity_contract.incn
+    tests/test_governed_memory_operations.incn
+    tests/test_governed_profile_contract.incn
     tests/test_identifier_contract.incn
     tests/test_package_loader_contract.incn
     tests/test_programme_eligibility_contract.incn
     tests/test_runtime_contract.incn
+    tests/test_witness_contract.incn
     tools/validation/test_framework_boundary.sh
     tools/licenses/about.toml
     tools/licenses/deny.toml
@@ -140,11 +154,42 @@ while IFS= read -r path; do
     esac
 done < <(find . -type f -name '*oven.lock' -print | sort)
 
+allowed_source_modules=(
+    src/console_profile.incn
+    src/console_profile_artifacts.incn
+    src/console_profile_evaluation.incn
+    src/console_profile_identity.incn
+    src/console_profile_models.incn
+    src/console_profile_observations.incn
+    src/console_profile_planning.incn
+    src/console_profile_validation.incn
+    src/content_dna.incn
+    src/governed_continuity.incn
+    src/governed_memory_operations.incn
+    src/governed_profile.incn
+    src/governed_profile_artifacts.incn
+    src/governed_profile_committee.incn
+    src/governed_profile_evaluation.incn
+    src/governed_profile_identity.incn
+    src/governed_profile_models.incn
+    src/governed_profile_validation.incn
+    src/identifiers.incn
+    src/lib.incn
+    src/package_loader.incn
+    src/runtime.incn
+    src/witness.incn
+)
+
 for path in src/*.incn; do
-    case "$path" in
-        src/console_profile.incn | src/console_profile_artifacts.incn | src/console_profile_evaluation.incn | src/console_profile_identity.incn | src/console_profile_models.incn | src/console_profile_observations.incn | src/console_profile_planning.incn | src/console_profile_validation.incn | src/content_dna.incn | src/identifiers.incn | src/lib.incn | src/package_loader.incn | src/runtime.incn) ;;
-        *) fail "source module is outside the public allowlist: $path" ;;
-    esac
+    allowed=false
+    for expected in "${allowed_source_modules[@]}"; do
+        if [[ "$path" == "$expected" ]]; then
+            allowed=true
+        fi
+    done
+    if [[ "$allowed" != true ]]; then
+        fail "source module is outside the public allowlist: $path"
+    fi
 done
 
 for path in src/programme/*.incn; do
@@ -255,14 +300,92 @@ if grep -RInE --exclude-dir=target '(hees\.runner\.v1|runner-request-v1|runner-r
     fail "console transport contains a forbidden runner contract alias"
 fi
 
-for public_facade in src/lib.incn; do
-    if grep -Eq 'ContentDna([,[:space:]]|$)|ProfileReceipt|CompleteProfileEvaluation|DerivedFinding|ManifestTarget|PremiseIdentity|ProfileEvaluation|ProfileValidation|SpectrumResult|construct_(content_dna|admitted_receipt|rejected_receipt)|content_dna_(identity|answer_digest)|profile_receipt_identity|build_verifier_manifest|classify_(relation|synthesis)|derive_findings|finding_policy_reason|evaluate_console_profile_with_artifacts' "$public_facade"; then
-        fail "authority-bearing profile types or intermediate operations are re-exported by $public_facade"
-    fi
-done
+# Authority-bearing profile symbols stay behind the root facade: the bodies Hees.ai seals into Content DNA and receipts,
+# pre-artifact intermediate results, and the validation, classification, derivation, and sealing steps between a
+# caller's input and a terminal decision. Callers reach them only through the end-to-end entry points, so they cannot
+# run a step out of order or assemble a sealed artifact themselves. The governed list names the generic governed
+# profile's counterparts of the Console list. Types that the exported governed entry points take or return belong to
+# that typed surface and are not listed.
+console_authority_symbols=(
+    AdmittedReceiptBody
+    CompleteProfileEvaluation
+    ContentDna
+    ContentDnaBody
+    DerivedFinding
+    ManifestTarget
+    ManifestTargetBody
+    PremiseIdentity
+    ProfileEvaluation
+    ProfileReceipt
+    ProfileValidation
+    RejectedReceiptBody
+    SpectrumResult
+    admitted_atoms
+    atom_is_admitted
+    build_verifier_manifest
+    classify_relation
+    classify_synthesis
+    construct_admitted_receipt
+    construct_content_dna
+    construct_rejected_receipt
+    content_dna_answer_digest
+    content_dna_identity
+    derive_findings
+    digest_atom_provenance
+    digest_package_artifact
+    digest_proposal
+    digest_request_binding
+    evaluate_console_profile
+    evaluate_console_profile_with_artifacts
+    finding_policy_reason
+    profile_receipt_identity
+    validate_console_package
+    validate_console_proposal
+    validate_observation_coverage
+    validate_request_binding
+)
 
-if [[ -f target/lib/hees_ai.incnlib ]] && sed -n '/^  "exports": {/,/^  "vocab":/p' target/lib/hees_ai.incnlib | grep -Eq '"name"[[:space:]]*:[[:space:]]*"(AdmittedReceiptBody|CompleteProfileEvaluation|ContentDna|ContentDnaBody|DerivedFinding|ManifestTarget|ManifestTargetBody|PremiseIdentity|ProfileEvaluation|ProfileReceipt|ProfileValidation|RejectedReceiptBody|SpectrumResult|admitted_atoms|atom_is_admitted|build_verifier_manifest|classify_relation|classify_synthesis|construct_admitted_receipt|construct_content_dna|construct_rejected_receipt|content_dna_answer_digest|content_dna_identity|derive_findings|digest_atom_provenance|digest_package_artifact|digest_proposal|digest_request_binding|evaluate_console_profile|evaluate_console_profile_with_artifacts|finding_policy_reason|profile_receipt_identity|validate_console_package|validate_console_proposal|validate_observation_coverage|validate_request_binding)"'; then
-    fail "generated root manifest exports authority-bearing profile symbols or intermediate operations"
+governed_authority_symbols=(
+    CommitteeAssessment
+    GovernedContentDnaBody
+    GovernedContentDnaEntry
+    GovernedPackageIdentity
+    GovernedReceiptBody
+    GovernedStructuralAdmission
+    GovernedTerminalClass
+    assess_committee
+    construct_governed_content_dna
+    construct_governed_receipt
+    digest_governed_answer
+    digest_governed_request_fields
+    validate_governed_proposal
+    validate_governed_proposal_identity
+    validate_governed_request
+    keyed_witness_verifies
+    stamp_keyed_witness
+    unstamped_witness
+)
+
+public_facade="${HEES_BOUNDARY_PUBLIC_FACADE:-src/lib.incn}"
+root_manifest="${HEES_BOUNDARY_ROOT_MANIFEST:-target/lib/hees_ai.incnlib}"
+
+if [[ ! -f "$public_facade" ]]; then
+    fail "public facade is missing: $public_facade"
+else
+    for symbol in "${console_authority_symbols[@]}" "${governed_authority_symbols[@]}"; do
+        if LC_ALL=C grep -Eq "(^|[^[:alnum:]_])${symbol}([^[:alnum:]_]|\$)" "$public_facade"; then
+            fail "authority-bearing profile symbol is re-exported by $public_facade: $symbol"
+        fi
+    done
+fi
+
+if [[ -f "$root_manifest" ]]; then
+    manifest_exports="$(sed -n '/^  "exports": {/,/^  "vocab":/p' "$root_manifest")"
+    for symbol in "${console_authority_symbols[@]}" "${governed_authority_symbols[@]}"; do
+        if LC_ALL=C grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${symbol}\"" <<<"$manifest_exports"; then
+            fail "generated root manifest exports authority-bearing profile symbol: $symbol"
+        fi
+    done
 fi
 
 if [[ "$errors" -ne 0 ]]; then

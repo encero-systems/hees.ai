@@ -1,0 +1,437 @@
+"""
+External-consumer coverage for the three governed kernels (RFC 013 to 015).
+
+Every fixture is built from the root exports of the published ``hees_ai`` package only, so a missing root export
+fails this workspace's build. All identifiers and text are fictional.
+"""
+
+from rust::std::string import String as RustString
+from std.testing import assert_eq, assert_is_none, assert_is_some
+from pub::hees_ai import (
+    MIN_WITNESS_KEY_BYTES,
+    CommitteeObservation,
+    CommitteeVerdict,
+    ContinuityDecision,
+    ContinuityOperationKind,
+    ContinuityPackage,
+    ContinuityProposal,
+    ContinuityTerminal,
+    GovernedAction,
+    GovernedEvidence,
+    GovernedGoal,
+    GovernedMemory,
+    GovernedMemoryClass,
+    GovernedMemoryOperation,
+    GovernedMemoryPolicy,
+    GovernedMemoryRecord,
+    GovernedOutcomeKind,
+    GovernedPhase,
+    GovernedPolicy,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedRequest,
+    GovernedSchedule,
+    GuidedMaterialId,
+    GuidedStepId,
+    MemoryOperationDecision,
+    MemoryOperationKind,
+    MemoryOperationProposal,
+    MemoryOperationTerminal,
+    MemoryOwner,
+    SessionContinuityState,
+    WitnessKey,
+    action_id,
+    artifact_revision,
+    audience_id,
+    bind_governed_request,
+    committee_observation,
+    committee_role_id,
+    constraint_plan_id,
+    contract_id,
+    digest_continuity_package,
+    digest_governed_memory_policy,
+    digest_governed_memory_provenance,
+    digest_governed_profile_package,
+    digest_id_type,
+    domain_id,
+    evaluate_continuity,
+    evaluate_governed_profile_with_artifacts,
+    evaluate_memory_operation,
+    evidence_id,
+    goal_id,
+    governed_proposal,
+    memory_class_id,
+    memory_id,
+    memory_id_text,
+    memory_operation_id,
+    observation_id,
+    package_id,
+    phase_id,
+    profile_id,
+    proposal_id,
+    request_id,
+    revision,
+    schedule_id,
+    session_event_id,
+    session_id,
+    validate_continuity_package,
+    validate_governed_memory_policy,
+    validate_governed_profile_package,
+)
+
+const PLACEHOLDER_DIGEST: str = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+const FINGERPRINT_DIGEST: str = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+const HOST_KEY_ID: str = "consumer-key-1"
+const HOST_CLOCK: str = "host_monotonic"
+const SESSION_START: int = 1000
+const SUBJECT_CLASS: str = "subject_preference_memory"
+const REFUSAL_TEXT: str = "The reviewed Ember Grove package does not cover that request."
+const COMMITTEE_ROLE: str = "evidence_support"
+
+
+def host_key() -> WitnessKey:
+    """Return the consumer host's witness key, with a secret of the minimum accepted length."""
+# Continuity (RFC 013)
+
+    mut secret = ""
+    for _index in range(MIN_WITNESS_KEY_BYTES):
+        secret = secret + "k"
+    return WitnessKey(key_id=HOST_KEY_ID, secret=RustString.from(secret).into_bytes())
+
+
+def continuity_package() -> ContinuityPackage:
+    """Return a one-goal, one-phase continuity package stamped with its declaration digest."""
+
+    unstamped = ContinuityPackage(
+        profile_id=profile_id("consumer_profile"),
+        package_id=package_id("ember_grove"),
+        domain_id=domain_id("fictional_garden_walks"),
+        package_revision=artifact_revision("1.0.0"),
+        continuity_declaration_digest=digest_id_type(PLACEHOLDER_DIGEST),
+        goals=[GovernedGoal(
+            goal_id=goal_id("walk_goal"),
+            entry_phase_id=phase_id("walk_phase"),
+            completion_phase_ids=[phase_id("walk_phase")],
+            allowed_action_ids=[action_id("answer")],
+            expiry_allowed=false,
+        )],
+        schedules=[GovernedSchedule(
+            schedule_id=schedule_id("walk_schedule"),
+            goal_id=goal_id("walk_goal"),
+            total_target_seconds=600,
+            allowed_clock_sources=[HOST_CLOCK],
+            phases=[GovernedPhase(
+                phase_id=phase_id("walk_phase"),
+                minimum_seconds=0,
+                target_seconds=300,
+                maximum_seconds=600,
+                allowed_action_ids=[action_id("answer")],
+                next_phase_ids=[],
+            )],
+        )],
+    )
+    mut package = unstamped.clone()
+    package.continuity_declaration_digest = digest_continuity_package(unstamped)
+    return package
+
+
+def continuity_proposal(
+    package: ContinuityPackage,
+    operation: ContinuityOperationKind,
+    prior: Option[SessionContinuityState],
+    clock: int,
+    event_index: int,
+) -> ContinuityProposal:
+    """Return a walk_goal proposal on the host clock, bound to ``package``'s identity."""
+
+    return ContinuityProposal(
+        operation=operation,
+        session_id=session_id("consumer_session"),
+        event_id=session_event_id(f"event_{event_index}"),
+        event_index=event_index,
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        continuity_declaration_digest=package.continuity_declaration_digest,
+        goal_id=goal_id("walk_goal"),
+        schedule_id=schedule_id("walk_schedule"),
+        proposed_phase_id=phase_id("walk_phase"),
+        proposed_action_id=action_id("answer"),
+        clock_source=HOST_CLOCK,
+        current_clock_seconds=clock,
+        prior_state=prior,
+    )
+
+
+def admitted_state(decision: ContinuityDecision) -> SessionContinuityState:
+    """Assert an admission and return the host-stamped resulting state."""
+
+    assert_eq(decision.terminal, ContinuityTerminal.Admitted)
+    return assert_is_some(decision.resulting_state)
+
+
+def test_external_dependency_can_chain_governed_continuity_states() -> None:
+    package = continuity_package()
+    assert_eq(validate_continuity_package(package).reason, "valid")
+    key = host_key()
+# Memory operations (RFC 014)
+
+    start = continuity_proposal(package, ContinuityOperationKind.Start, None, SESSION_START, 0)
+    started = admitted_state(evaluate_continuity(package, start, key.clone()))
+    assert_eq(started.state_witness.key_id, HOST_KEY_ID)
+
+    next_clock = SESSION_START + 30
+    resume = continuity_proposal(package, ContinuityOperationKind.Continue, Some(started.clone()), next_clock, 1)
+    continued = admitted_state(evaluate_continuity(package, resume, key.clone()))
+    assert_eq(continued.last_event_index, 1)
+    assert_eq(continued.last_clock_seconds, next_clock)
+
+    mut edited = started.clone()
+    edited.last_clock_seconds = SESSION_START + 1
+    forged = continuity_proposal(package, ContinuityOperationKind.Continue, Some(edited), next_clock, 1)
+    rejected = evaluate_continuity(package, forged, key)
+    assert_eq(rejected.terminal, ContinuityTerminal.Rejected)
+    assert_eq(rejected.reason, "prior_state_witness_invalid")
+    assert_is_none(rejected.resulting_state)
+
+
+def memory_policy() -> GovernedMemoryPolicy:
+    """Return a one-class policy declaring prompt selection and writes, stamped with its digest."""
+
+    unstamped = GovernedMemoryPolicy(
+        profile_id=profile_id("consumer_profile"),
+        package_id=package_id("ember_grove"),
+        domain_id=domain_id("fictional_garden_walks"),
+        package_revision=artifact_revision("1.0.0"),
+        memory_policy_digest=digest_id_type(PLACEHOLDER_DIGEST),
+        classes=[GovernedMemoryClass(
+            memory_class_id=memory_class_id(SUBJECT_CLASS),
+            owner=MemoryOwner.Subject,
+            prompt_eligible=true,
+            hyperquant_eligible=false,
+            runtime_writable=true,
+            maximum_age_seconds=Some(86400),
+            explicit_consent_required=true,
+            revoke_allowed=true,
+            supersede_allowed=true,
+            allowed_keys=["preferred_language"],
+            required_provenance=["consent_receipt_id"],
+        )],
+        operations=[GovernedMemoryOperation(
+            operation_id=memory_operation_id("select_prompt_memory"),
+            operation_kind=MemoryOperationKind.SelectPrompt,
+            allowed_class_ids=[memory_class_id(SUBJECT_CLASS)],
+        ), GovernedMemoryOperation(
+            operation_id=memory_operation_id("write_memory"),
+            operation_kind=MemoryOperationKind.Write,
+            allowed_class_ids=[memory_class_id(SUBJECT_CLASS)],
+        )],
+    )
+    mut policy = unstamped.clone()
+    policy.memory_policy_digest = digest_governed_memory_policy(unstamped)
+    return policy
+
+
+def memory_proposal(
+    policy: GovernedMemoryPolicy,
+    operation_name: str,
+    kind: MemoryOperationKind,
+    existing: Option[GovernedMemoryRecord],
+) -> MemoryOperationProposal:
+    """Return a consented proposal on ``memory_one`` bound to ``policy``'s identity."""
+
+    return MemoryOperationProposal(
+        operation_id=memory_operation_id(operation_name),
+        operation_kind=kind,
+        profile_id=policy.profile_id,
+        package_id=policy.package_id,
+        domain_id=policy.domain_id,
+        package_revision=policy.package_revision,
+        memory_policy_digest=policy.memory_policy_digest,
+        session_id=Some(session_id("consumer_session")),
+        memory_class_id=memory_class_id(SUBJECT_CLASS),
+        target_memory_id=memory_id("memory_one"),
+        replacement_memory_id=None,
+        memory_key=Some("preferred_language"),
+        current_time_seconds=SESSION_START,
+        consent_present=true,
+        provenance_fields=["consent_receipt_id"],
+        existing_record=existing,
+    )
+
+
+def assert_memory_admitted(decision: MemoryOperationDecision, reason: str) -> None:
+    """Assert a memory admission with ``reason``."""
+
+    assert_eq(decision.terminal, MemoryOperationTerminal.Admitted)
+    assert_eq(decision.reason, reason)
+
+
+def test_external_dependency_can_write_then_select_governed_memory() -> None:
+    policy = memory_policy()
+    assert_eq(validate_governed_memory_policy(policy).reason, "valid")
+    key = host_key()
+# Governed profile (RFC 015)
+
+    write = memory_proposal(policy, "write_memory", MemoryOperationKind.Write, None)
+    written = evaluate_memory_operation(policy, write, key.clone())
+    assert_memory_admitted(written, "declared_memory_write")
+    record = assert_is_some(written.resulting_record)
+    assert_eq(record.record_witness.key_id, HOST_KEY_ID)
+
+    select = memory_proposal(policy, "select_prompt_memory", MemoryOperationKind.SelectPrompt, Some(record))
+    selected = evaluate_memory_operation(policy, select, key)
+    assert_memory_admitted(selected, "declared_memory_read")
+    assert_is_none(selected.resulting_record)
+
+
+def profile_action(id: str, kind: GovernedOutcomeKind, supported: bool, boundary_text: Option[str]) -> GovernedAction:
+    """Build one package action."""
+
+    return GovernedAction(
+        action_id=action_id(id),
+        outcome_kind=kind,
+        evidence_required=supported,
+        committee_required=supported,
+        boundary_text=boundary_text,
+    )
+
+
+def profile_package() -> GovernedProfilePackage:
+    """Return a one-evidence, one-atom package with its package and memory provenance digests stamped."""
+
+    unstamped = GovernedProfilePackage(
+        contract_version=contract_id("governed_profile_package_0_1"),
+        profile_id=profile_id("governed_profile_0_1"),
+        package_id=package_id("ember_grove"),
+        domain_id=domain_id("fictional_garden_walks"),
+        package_revision=artifact_revision("1.0.0"),
+        profile_package_digest=digest_id_type(PLACEHOLDER_DIGEST),
+        mission="Answer questions about the fictional Ember Grove walk from reviewed package material.",
+        actions=[profile_action("answer_from_package", GovernedOutcomeKind.Answer, true, None), profile_action(
+            "refuse_unsupported",
+            GovernedOutcomeKind.Refusal,
+            false,
+            Some(REFUSAL_TEXT),
+        )],
+        evidence=[GovernedEvidence(
+            evidence_id=evidence_id("ember_evidence_route"),
+            claim="The fictional Ember Grove walk starts at the north gate.",
+            guidance="Start the fictional walk at the north gate.",
+            source_ref="fictional_ember_handbook:1",
+            source_kind="fictional_handbook",
+            source_fingerprint=digest_id_type(FINGERPRINT_DIGEST),
+            language="en",
+            review_state="approved",
+            review_revision=revision("1.0.0"),
+            rights_state="allowed",
+            authority_class="reviewed_package",
+            evidence_kind="bounded_paraphrase",
+        )],
+        memory=[GovernedMemory(
+            memory_id=memory_id("ember_atom_route"),
+            concept="Where the fictional Ember Grove walk starts.",
+            evidence_ids=[evidence_id("ember_evidence_route")],
+            review_state="approved",
+            review_revision=revision("1.0.0"),
+            rights_state="allowed",
+            provenance_digest=digest_id_type(PLACEHOLDER_DIGEST),
+        )],
+        guided_material=[],
+        policy=GovernedPolicy(
+            constraint_plan_id=constraint_plan_id("ember_committee_policy"),
+            constraint_plan_revision=revision("1.0.0"),
+            required_roles=[committee_role_id(COMMITTEE_ROLE)],
+            require_all_passed=true,
+        ),
+    )
+    mut package = unstamped.clone()
+    package.profile_package_digest = digest_governed_profile_package(unstamped)
+    mut atoms: list[GovernedMemory] = []
+    for atom in package.memory:
+        mut stamped = atom.clone()
+        stamped.provenance_digest = digest_governed_memory_provenance(package, atom)
+        atoms.append(stamped)
+    package.memory = atoms
+    return package
+
+
+def profile_request(question: str) -> GovernedRequest:
+    """Bind one English request for a general audience."""
+
+    return bind_governed_request(request_id("consumer_request"), question, "en", audience_id("general_audience"))
+
+
+def profile_proposal(
+    package: GovernedProfilePackage,
+    bound: GovernedRequest,
+    action_name: str,
+    visible_output: str,
+    supported: bool,
+) -> GovernedProposal:
+    """Build a proposal for ``action_name``, citing the package's only evidence and atom when ``supported``."""
+
+    mut evidence_ids = [evidence_id("ember_evidence_route")]
+    mut memory_ids = [memory_id("ember_atom_route")]
+    if not supported:
+        evidence_ids = []
+        memory_ids = []
+    no_material: Option[GuidedMaterialId] = None
+    no_step: Option[GuidedStepId] = None
+    return governed_proposal(
+        package,
+        bound,
+        proposal_id(f"proposal_{action_name}"),
+        action_id(action_name),
+        visible_output,
+        evidence_ids,
+        memory_ids,
+        no_material,
+        no_step.clone(),
+        no_step,
+    )
+
+
+def test_external_dependency_can_admit_a_governed_profile_delivery() -> None:
+    package = profile_package()
+    assert_eq(validate_governed_profile_package(package).reason, "ok")
+    bound = profile_request("Where does the Ember Grove walk start?")
+    answer = "Start the walk at the north gate, as the reviewed handbook says."
+    proposal = profile_proposal(package, bound, "answer_from_package", answer, true)
+    committee: list[CommitteeObservation] = [committee_observation(
+        package,
+        bound,
+        proposal,
+        observation_id("observation_evidence_support"),
+        committee_role_id(COMMITTEE_ROLE),
+        CommitteeVerdict.Pass,
+        digest_id_type(FINGERPRINT_DIGEST),
+    )]
+
+    result = evaluate_governed_profile_with_artifacts(package, bound, proposal, committee)
+    assert_eq(result.spectrum.admitted, true)
+    assert_eq(result.spectrum.decision, "deliver")
+    assert_eq(result.spectrum.reason, "supported_by_package")
+    assert_eq(result.admitted_visible_output, Some(answer))
+    assert_eq(len(result.selected_memory), 1)
+    assert_eq(memory_id_text(result.selected_memory[0].memory_id), "ember_atom_route")
+    assert_eq(assert_is_some(result.content_dna_json).contains("ember_atom_route"), true)
+    receipt_json = assert_is_some(result.receipt_json)
+    assert_eq(receipt_json.contains("\"deliver\""), true)
+    assert_eq(receipt_json.contains("admitted_proposal"), true)
+
+
+def test_external_dependency_delivers_package_boundary_text_on_refusal() -> None:
+    package = profile_package()
+    bound = profile_request("Give me a soup recipe.")
+    refusal = profile_proposal(package, bound, "refuse_unsupported", "", false)
+
+    result = evaluate_governed_profile_with_artifacts(package, bound, refusal, [])
+    assert_eq(result.spectrum.admitted, true)
+    assert_eq(result.spectrum.decision, "refuse")
+    assert_eq(result.spectrum.reason, "unsupported_by_package")
+    assert_eq(result.admitted_visible_output, Some(REFUSAL_TEXT))
+    assert_eq(len(result.selected_memory), 0)
+    assert_is_none(result.content_dna_json)
+    assert_eq(assert_is_some(result.receipt_json).contains("package_boundary_text"), true)

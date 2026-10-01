@@ -1,0 +1,120 @@
+"""
+Type-tagged digests and keyed witnesses shared by the governed kernels.
+
+A digest identifies a value and anyone can recompute it. A witness proves that a value left a governed kernel: it is
+an HMAC-SHA256 tag under a key that the host supplies and keeps, so a caller who only reads this source cannot stamp
+a value it assembled itself. Both hash a type tag ahead of the canonical JSON, so one kind of projection can never be
+replayed as another.
+
+The canonical bytes are still the current serializer's JSON rendering. They are an interim encoding and do not conform
+to RFC 011 structural identity.
+"""
+
+from rust::std::string import String as RustString
+from std.encoding.hex import hexlify, unhexlify
+from std.hash import hmac_sha256, sha256
+from std.json import JsonValue
+from std.serde import json
+from crate.identifiers import DigestIdType, digest_id_type, identifier_text_is_safe
+
+# Fewest secret bytes a witness key may carry; HMAC-SHA256 gains nothing from a key shorter than its output.
+pub const MIN_WITNESS_KEY_BYTES: int = 32
+# Most secret bytes a witness key may carry.
+pub const MAX_WITNESS_KEY_BYTES: int = 1024
+# Length of a lowercase hexadecimal HMAC-SHA256 tag.
+const WITNESS_TAG_LENGTH: int = 64
+
+
+@derive(Clone)
+pub model WitnessKey:
+    """
+    Host-held key that authenticates values a governed kernel returns.
+
+    The host creates the secret, keeps it out of every model, provider, and package input, and passes it to each
+    evaluation. ``key_id`` names the key in every witness so a host can rotate keys; it is not secret. This model
+    derives no serializer, so a key cannot be written into a decision, a receipt, or a log by accident.
+    """
+
+    pub key_id: str
+    pub secret: bytes
+
+
+@derive(Clone, Eq, json)
+pub model KeyedWitness:
+    """HMAC-SHA256 tag over one type-tagged projection, with the identifier of the key that produced it."""
+
+    pub key_id: str
+    pub tag: str
+
+
+pub def witness_key_is_valid(key: WitnessKey) -> bool:
+    """Return whether ``key`` has a canonical identifier and a secret within the accepted length bounds."""
+
+    if not identifier_text_is_safe(key.key_id):
+        return false
+    return len(key.secret) >= MIN_WITNESS_KEY_BYTES and len(key.secret) <= MAX_WITNESS_KEY_BYTES
+
+
+pub def keyed_witness_text_is_safe(witness: KeyedWitness) -> bool:
+    """Return whether ``witness`` has a canonical key identifier and a well-formed lowercase hexadecimal tag."""
+
+    if not identifier_text_is_safe(witness.key_id) or len(witness.tag) != WITNESS_TAG_LENGTH:
+        return false
+    for character in witness.tag:
+        if not "0123456789abcdef".contains(character):
+            return false
+    return true
+
+
+pub def unstamped_witness() -> KeyedWitness:
+    """Return the placeholder a kernel puts in a projection before it stamps the real witness."""
+
+    return KeyedWitness(key_id="unstamped", tag="")
+
+
+def serialize_json_value(value: JsonValue) -> Result[str, str]:
+    """Serialize one parsed value while preserving failure as data."""
+
+    return value.to_json().map_err((_error) => f"json_serialization_failed")
+
+
+def tagged_bytes(type_tag: str, source: str) -> Result[bytes, str]:
+    """Normalize ``source`` with the current serializer and prefix the type tag and a line feed."""
+
+    return JsonValue
+        .parse(source)
+        .map_err((_error) => f"invalid_json")
+        .and_then(serialize_json_value)
+        .map((canonical) => RustString.from(f"{type_tag}\n{canonical}").into_bytes())
+
+
+pub def digest_tagged_json(type_tag: str, source: str) -> Result[DigestIdType, str]:
+    """Return the SHA-256 identity of ``source`` hashed after ``type_tag``, so no other projection type can match it."""
+
+    return tagged_bytes(type_tag, source).map((data) => digest_id_type(f"sha256:{hexlify(sha256.digest(data))}"))
+
+
+pub def stamp_keyed_witness(key: WitnessKey, type_tag: str, source: str) -> Result[KeyedWitness, str]:
+    """Return the witness for ``source`` under ``key``; the caller has already checked ``witness_key_is_valid``."""
+
+    return tagged_bytes(type_tag, source).map(
+        (data) => KeyedWitness(key_id=key.key_id, tag=hexlify(hmac_sha256.digest(key.secret, data))),
+    )
+
+
+pub def keyed_witness_verifies(key: WitnessKey, type_tag: str, source: str, witness: KeyedWitness) -> bool:
+    """
+    Return whether ``witness`` authenticates ``source`` under ``key``.
+
+    A witness stamped under another key identifier, a malformed tag, and unparseable ``source`` all fail. The tag
+    comparison runs in constant time.
+    """
+
+    if witness.key_id != key.key_id or not keyed_witness_text_is_safe(witness):
+        return false
+    match unhexlify(witness.tag):
+        Err(_) => return false
+        Ok(tag) =>
+            match tagged_bytes(type_tag, source):
+                Err(_) => return false
+                Ok(data) => return hmac_sha256.verify(key.secret, data, tag)

@@ -1,0 +1,1001 @@
+"""
+Generic goal, schedule, and session-continuity admission.
+
+The caller supplies time and proposes each operation. Hees.ai validates declared authority and returns one terminal
+decision; it does not read a clock, choose a goal, or persist session state. Every state it admits carries a witness
+stamped under the host's key, and a prior state is trusted only when that witness verifies.
+"""
+
+from std.serde import json
+from crate.identifiers import (
+    ActionId,
+    ArtifactRevisionType,
+    DigestIdType,
+    DomainId,
+    GoalId,
+    PackageId,
+    PhaseId,
+    ProfileId,
+    ScheduleId,
+    SessionEventId,
+    SessionId,
+    action_id_text,
+    artifact_revision_text,
+    artifact_revision_text_is_safe,
+    digest_id_text_is_safe,
+    digest_id_type_text,
+    domain_id_text,
+    goal_id_text,
+    identifier_text_is_safe,
+    package_id_text,
+    phase_id_text,
+    profile_id_text,
+    schedule_id_text,
+    session_event_id_text,
+    session_id_text,
+)
+from crate.witness import (
+    KeyedWitness,
+    WitnessKey,
+    digest_tagged_json,
+    keyed_witness_verifies,
+    stamp_keyed_witness,
+    unstamped_witness,
+    witness_key_is_valid,
+)
+
+# Type tag hashed ahead of a package's continuity declarations, so no other projection type can share its digest.
+const CONTINUITY_DECLARATION_TYPE_TAG: str = "hees.ai/continuity-declaration/v0"
+# Type tag hashed ahead of a session state in its keyed witness, so no other projection's witness can stand in for it.
+const CONTINUITY_STATE_TYPE_TAG: str = "hees.ai/continuity-state/v0"
+# Most goals one package may declare.
+pub const MAX_CONTINUITY_GOALS: int = 16
+# Most schedules one package may declare.
+pub const MAX_CONTINUITY_SCHEDULES: int = 16
+# Most phases one schedule may declare; also bounds each goal's completion list and each phase's next-phase list.
+pub const MAX_SCHEDULE_PHASES: int = 32
+# Most clock sources one schedule may allow.
+pub const MAX_SCHEDULE_CLOCK_SOURCES: int = 8
+# Most action identifiers one goal or one phase may allow.
+pub const MAX_DECLARED_ACTIONS: int = 16
+# Largest accepted clock value, duration, or event index (2^53 - 1, exact in every JSON number implementation). Every
+# time and index the kernel compares stays within 0..=this bound first, so its arithmetic cannot overflow.
+pub const MAX_CONTINUITY_INTEGER: int = 9007199254740991
+
+
+@derive(Clone, Eq, json)
+pub enum ContinuityOperationKind(str):
+    """Closed operation set for a proposed continuity event."""
+
+    Start = "start"
+    Continue = "continue"
+    Transition = "transition"
+    Close = "close"
+    Expire = "expire"
+
+
+@derive(Clone, Eq, json)
+pub enum ContinuityTerminal(str):
+    """Independent terminal result for a continuity proposal."""
+
+    Admitted = "admitted"
+    Rejected = "rejected"
+
+
+@derive(Clone, json)
+pub model GovernedGoal:
+    """
+    Package-declared goal and its bounded action authority.
+
+    ``expiry_allowed`` declares whether the host may end a session whose current phase has run past its maximum with
+    an ``Expire`` operation; without it such a session has no admissible next operation.
+    """
+
+    pub goal_id: GoalId
+    pub entry_phase_id: PhaseId
+    pub completion_phase_ids: list[PhaseId]
+    pub allowed_action_ids: list[ActionId]
+    pub expiry_allowed: bool
+
+
+@derive(Clone, json)
+pub model GovernedPhase:
+    """One phase and its package-declared time and transition bounds."""
+
+    pub phase_id: PhaseId
+    pub minimum_seconds: int
+    pub target_seconds: int
+    pub maximum_seconds: int
+    pub allowed_action_ids: list[ActionId]
+    pub next_phase_ids: list[PhaseId]
+
+
+@derive(Clone, json)
+pub model GovernedSchedule:
+    """Package-declared phase graph evaluated against caller-supplied monotonic time."""
+
+    pub schedule_id: ScheduleId
+    pub goal_id: GoalId
+    pub total_target_seconds: int
+    pub allowed_clock_sources: list[str]
+    pub phases: list[GovernedPhase]
+
+
+@derive(Clone, json)
+pub model ContinuityPackage:
+    """Package projection whose ``continuity_declaration_digest`` validate_continuity_package recomputes and checks."""
+
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub continuity_declaration_digest: DigestIdType
+    pub goals: list[GovernedGoal]
+    pub schedules: list[GovernedSchedule]
+
+
+@derive(Clone, json)
+model ContinuityDeclarationProjection:
+    """Every ``ContinuityPackage`` field except ``continuity_declaration_digest`` itself, used to recompute and verify it."""
+
+    profile_id: ProfileId
+    package_id: PackageId
+    domain_id: DomainId
+    package_revision: ArtifactRevisionType
+    goals: list[GovernedGoal]
+    schedules: list[GovernedSchedule]
+
+
+@derive(Clone, json)
+pub model SessionContinuityState:
+    """
+    Caller-supplied session position, expected to be the ``resulting_state`` of the previously admitted decision.
+
+    ``state_witness`` is an HMAC-SHA256 tag under the host's ``WitnessKey`` over every other field, so it
+    authenticates that ``evaluate_continuity`` returned this state under that key. Before trusting a supplied state the
+    kernel checks its identity against the proposal, verifies that witness, checks its ``clock_source`` against the
+    proposal's, and checks its numeric invariants against the package-declared schedule. ``expired`` is true only for
+    a state closed by ``Expire``; it is false for every other operation.
+    """
+
+    pub session_id: SessionId
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub continuity_declaration_digest: DigestIdType
+    pub goal_id: GoalId
+    pub schedule_id: ScheduleId
+    pub phase_id: PhaseId
+    pub started_at_seconds: int
+    pub phase_started_at_seconds: int
+    pub last_clock_seconds: int
+    pub last_event_index: int
+    pub clock_source: str
+    pub closed: bool
+    pub expired: bool
+    pub state_witness: KeyedWitness
+
+
+@derive(Clone, json)
+pub model ContinuityProposal:
+    """Untrusted proposal for one state transition."""
+
+    pub operation: ContinuityOperationKind
+    pub session_id: SessionId
+    pub event_id: SessionEventId
+    pub event_index: int
+    pub profile_id: ProfileId
+    pub package_id: PackageId
+    pub domain_id: DomainId
+    pub package_revision: ArtifactRevisionType
+    pub continuity_declaration_digest: DigestIdType
+    pub goal_id: GoalId
+    pub schedule_id: ScheduleId
+    pub proposed_phase_id: PhaseId
+    pub proposed_action_id: ActionId
+    pub clock_source: str
+    pub current_clock_seconds: int
+    pub prior_state: Option[SessionContinuityState]
+
+
+@derive(Clone, json)
+pub model ContinuityDecision:
+    """Hees.ai terminal result, independent of answer delivery and persistence."""
+
+    pub terminal: ContinuityTerminal
+    pub reason: str
+    pub event_id: SessionEventId
+    pub resulting_state: Option[SessionContinuityState]
+
+
+@derive(Clone, json)
+pub model ContinuityValidation:
+    """Closed structural validation result for package continuity declarations."""
+
+    pub valid: bool
+    pub reason: str
+
+
+def valid() -> ContinuityValidation:
+    """Construct the successful package validation result."""
+
+    return ContinuityValidation(valid=true, reason="valid")
+
+
+def invalid(reason: str) -> ContinuityValidation:
+    """Construct one failed package validation result carrying its specific reason."""
+
+    return ContinuityValidation(valid=false, reason=reason)
+
+
+def rejected(proposal: ContinuityProposal, reason: str) -> ContinuityDecision:
+    """Construct a rejection for ``proposal``; a rejection never carries a resulting state."""
+
+    return ContinuityDecision(
+        terminal=ContinuityTerminal.Rejected,
+        reason=reason,
+        event_id=proposal.event_id,
+        resulting_state=None,
+    )
+
+
+def admitted(proposal: ContinuityProposal, reason: str, state: SessionContinuityState) -> ContinuityDecision:
+    """Construct an admission for ``proposal`` carrying the witnessed state the caller persists."""
+
+    return ContinuityDecision(
+        terminal=ContinuityTerminal.Admitted,
+        reason=reason,
+        event_id=proposal.event_id,
+        resulting_state=Some(state),
+    )
+
+
+def has_duplicate_text(values: list[str]) -> bool:
+    """Return whether any entry repeats an earlier one; callers bound ``values`` before this quadratic scan."""
+
+    mut seen: list[str] = []
+    for value in values:
+        if seen.contains(value):
+            return true
+        seen.append(value)
+    return false
+
+
+def all_identifier_text_safe(values: list[str]) -> bool:
+    """Return whether every entry is canonical, bounded symbolic identifier text."""
+
+    for value in values:
+        if not identifier_text_is_safe(value):
+            return false
+    return true
+
+
+def integer_in_range(value: int) -> bool:
+    """Return whether ``value`` lies in ``0..=MAX_CONTINUITY_INTEGER``."""
+
+    return value >= 0 and value <= MAX_CONTINUITY_INTEGER
+
+
+def find_goal(goals: list[GovernedGoal], identifier: GoalId) -> Option[GovernedGoal]:
+    """Resolve one declared goal by identity."""
+
+    for goal in goals:
+        if goal.goal_id == identifier:
+            return Some(goal)
+    return None
+
+
+def find_schedule(schedules: list[GovernedSchedule], identifier: ScheduleId) -> Option[GovernedSchedule]:
+    """Resolve one declared schedule by identity."""
+
+    for schedule in schedules:
+        if schedule.schedule_id == identifier:
+            return Some(schedule)
+    return None
+
+
+def find_phase(phases: list[GovernedPhase], identifier: PhaseId) -> Option[GovernedPhase]:
+    """Resolve one declared phase of a schedule by identity."""
+
+    for phase in phases:
+        if phase.phase_id == identifier:
+            return Some(phase)
+    return None
+
+
+def phase_position(phases: list[GovernedPhase], identifier: PhaseId) -> Option[int]:
+    """Return the declaration index of one phase, or None when the schedule does not declare it."""
+
+    for index, phase in enumerate(phases):
+        if phase.phase_id == identifier:
+            return Some(index)
+    return None
+
+
+def phase_exists(phases: list[GovernedPhase], identifier: PhaseId) -> bool:
+    """Return whether the schedule declares the phase."""
+
+    return match phase_position(phases, identifier):
+        None => false
+        Some(_) => true
+
+
+def goal_exists(goals: list[GovernedGoal], identifier: GoalId) -> bool:
+    """Return whether the package declares the goal."""
+
+    return match find_goal(goals, identifier):
+        None => false
+        Some(_) => true
+
+
+def goal_within_bounds(goal: GovernedGoal) -> bool:
+    """Return whether one goal's lists respect the declared collection bounds."""
+
+    return len(goal.completion_phase_ids) <= MAX_SCHEDULE_PHASES and len(goal.allowed_action_ids) <= MAX_DECLARED_ACTIONS
+
+
+def phase_within_bounds(phase: GovernedPhase) -> bool:
+    """Return whether one phase's lists and durations respect the declared bounds."""
+
+    return (
+        len(phase.allowed_action_ids) <= MAX_DECLARED_ACTIONS
+        and len(phase.next_phase_ids) <= MAX_SCHEDULE_PHASES
+        and phase.minimum_seconds <= MAX_CONTINUITY_INTEGER
+        and phase.target_seconds <= MAX_CONTINUITY_INTEGER
+        and phase.maximum_seconds <= MAX_CONTINUITY_INTEGER
+    )
+
+
+def schedule_within_bounds(schedule: GovernedSchedule) -> bool:
+    """Return whether one schedule, including every phase, respects the declared bounds."""
+
+    if (
+        len(schedule.allowed_clock_sources) > MAX_SCHEDULE_CLOCK_SOURCES
+        or len(schedule.phases) > MAX_SCHEDULE_PHASES
+        or schedule.total_target_seconds > MAX_CONTINUITY_INTEGER
+    ):
+        return false
+    for phase in schedule.phases:
+        if not phase_within_bounds(phase):
+            return false
+    return true
+
+
+def package_within_bounds(package: ContinuityPackage) -> bool:
+    """Return whether every package collection and duration respects the declared bounds."""
+
+    if len(package.goals) > MAX_CONTINUITY_GOALS or len(package.schedules) > MAX_CONTINUITY_SCHEDULES:
+        return false
+    for goal in package.goals:
+        if not goal_within_bounds(goal):
+            return false
+    for schedule in package.schedules:
+        if not schedule_within_bounds(schedule):
+            return false
+    return true
+
+
+def goal_identifiers_are_canonical(goal: GovernedGoal) -> bool:
+    """Return whether every identifier a goal declares is canonical text."""
+
+    if not all_identifier_text_safe([goal_id_text(goal.goal_id), phase_id_text(goal.entry_phase_id)]):
+        return false
+    if not all_identifier_text_safe([phase_id_text(value) for value in goal.completion_phase_ids]):
+        return false
+    return all_identifier_text_safe([action_id_text(value) for value in goal.allowed_action_ids])
+
+
+def phase_identifiers_are_canonical(phase: GovernedPhase) -> bool:
+    """Return whether every identifier a phase declares is canonical text."""
+
+    if not identifier_text_is_safe(phase_id_text(phase.phase_id)):
+        return false
+    if not all_identifier_text_safe([action_id_text(value) for value in phase.allowed_action_ids]):
+        return false
+    return all_identifier_text_safe([phase_id_text(value) for value in phase.next_phase_ids])
+
+
+def schedule_identifiers_are_canonical(schedule: GovernedSchedule) -> bool:
+    """Return whether a schedule's identifiers, clock-source names, and phase identifiers are canonical text."""
+
+    if not identifier_text_is_safe(schedule_id_text(schedule.schedule_id)):
+        return false
+    if not identifier_text_is_safe(goal_id_text(schedule.goal_id)):
+        return false
+    if not all_identifier_text_safe(schedule.allowed_clock_sources):
+        return false
+    for phase in schedule.phases:
+        if not phase_identifiers_are_canonical(phase):
+            return false
+    return true
+
+
+def package_header_is_canonical(package: ContinuityPackage) -> bool:
+    """Return whether the package identity fields are canonical identifier, revision, and digest text."""
+
+    if not identifier_text_is_safe(profile_id_text(package.profile_id)):
+        return false
+    if not identifier_text_is_safe(package_id_text(package.package_id)):
+        return false
+    if not identifier_text_is_safe(domain_id_text(package.domain_id)):
+        return false
+    if not artifact_revision_text_is_safe(artifact_revision_text(package.package_revision)):
+        return false
+    return digest_id_text_is_safe(digest_id_type_text(package.continuity_declaration_digest))
+
+
+def package_identifiers_are_canonical(package: ContinuityPackage) -> bool:
+    """
+    Return whether every identifier in the package is canonical text.
+
+    Constructing an identifier newtype directly skips its ``from_underlying`` validation, so the kernel re-checks the
+    text rather than trusting the type.
+    """
+
+    if not package_header_is_canonical(package):
+        return false
+    for goal in package.goals:
+        if not goal_identifiers_are_canonical(goal):
+            return false
+    for schedule in package.schedules:
+        if not schedule_identifiers_are_canonical(schedule):
+            return false
+    return true
+
+
+def longest_completion_path_seconds(goal: GovernedGoal, schedule: GovernedSchedule) -> int:
+    """
+    Return the most time a session can spend between Start and Close without exceeding any phase maximum.
+
+    That is the largest sum of ``maximum_seconds`` along any declared path from the goal's entry phase to one of its
+    completion phases, or -1 when no completion phase is reachable. The schedule has already passed
+    ``validate_schedule``, so every edge points forward and one pass in declaration order is enough. Bounded phase
+    counts and durations keep every sum far below the integer limit.
+    """
+
+    mut reach: list[int] = []
+    for phase in schedule.phases:
+        if phase.phase_id == goal.entry_phase_id:
+            reach.append(phase.maximum_seconds)
+        else:
+            reach.append(-1)
+    for index, phase in enumerate(schedule.phases):
+        if reach[index] >= 0:
+            for next_phase_id in phase.next_phase_ids:
+                match phase_position(schedule.phases, next_phase_id):
+                    None => pass
+                    Some(next_index) =>
+                        candidate = reach[index] + schedule.phases[next_index].maximum_seconds
+                        if candidate > reach[next_index]:
+                            reach[next_index] = candidate
+    mut longest = -1
+    for index, phase in enumerate(schedule.phases):
+        if goal.completion_phase_ids.contains(phase.phase_id) and reach[index] > longest:
+            longest = reach[index]
+    return longest
+
+
+def validate_goal_schedule(goal: GovernedGoal, schedule: GovernedSchedule) -> ContinuityValidation:
+    """Check that a goal's phases exist in one of its schedules and that the schedule's total target can be met."""
+
+    if not phase_exists(schedule.phases, goal.entry_phase_id):
+        return invalid("goal_entry_phase_unknown")
+    for completion_phase_id in goal.completion_phase_ids:
+        if not phase_exists(schedule.phases, completion_phase_id):
+            return invalid("goal_completion_phase_unknown")
+    if longest_completion_path_seconds(goal, schedule) < schedule.total_target_seconds:
+        return invalid("schedule_target_unreachable")
+    return valid()
+
+
+def validate_goal(goal: GovernedGoal, schedules: list[GovernedSchedule]) -> ContinuityValidation:
+    """Check one goal's own declarations and its relationship to every schedule declared for it."""
+
+    if len(goal.completion_phase_ids) == 0 or len(goal.allowed_action_ids) == 0:
+        return invalid("goal_declaration_empty")
+    mut matching_schedule = false
+    for schedule in schedules:
+        if schedule.goal_id == goal.goal_id:
+            matching_schedule = true
+            schedule_validation = validate_goal_schedule(goal, schedule)
+            if not schedule_validation.valid:
+                return schedule_validation
+    if not matching_schedule:
+        return invalid("goal_schedule_missing")
+    return valid()
+
+
+def validate_phase(phases: list[GovernedPhase], phase_index: int, phase: GovernedPhase) -> ContinuityValidation:
+    """Check one phase's duration budget, actions, and forward-only next-phase edges."""
+
+    if phase.minimum_seconds < 0 or phase.target_seconds < phase.minimum_seconds or phase.maximum_seconds < phase.target_seconds:
+        return invalid("invalid_phase_budget")
+    if len(phase.allowed_action_ids) == 0:
+        return invalid("phase_actions_empty")
+    if phase.next_phase_ids.contains(phase.phase_id):
+        return invalid("phase_self_cycle")
+    for next_phase_id in phase.next_phase_ids:
+        match phase_position(phases, next_phase_id):
+            None => return invalid("unknown_next_phase")
+            Some(next_index) =>
+                if next_index <= phase_index:
+                    return invalid("phase_graph_not_topological")
+    return valid()
+
+
+def validate_schedule(schedule: GovernedSchedule) -> ContinuityValidation:
+    """Check one bounded, canonical schedule's declarations and phase graph; goal-relative checks run later."""
+
+    if schedule.total_target_seconds <= 0 or len(schedule.allowed_clock_sources) == 0 or len(schedule.phases) == 0:
+        return invalid("schedule_declaration_empty")
+    if has_duplicate_text(schedule.allowed_clock_sources):
+        return invalid("duplicate_clock_source")
+    if has_duplicate_text([phase_id_text(phase.phase_id) for phase in schedule.phases]):
+        return invalid("duplicate_phase_id")
+    for phase_index, phase in enumerate(schedule.phases):
+        phase_validation = validate_phase(schedule.phases, phase_index, phase)
+        if not phase_validation.valid:
+            return phase_validation
+    return valid()
+
+
+pub def validate_continuity_package(package: ContinuityPackage) -> ContinuityValidation:
+    """
+    Validate the package-owned continuity declarations without selecting runtime behavior.
+
+    Checks run in a fixed order and stop at the first failure: non-empty goal and schedule lists, collection and
+    duration bounds, canonical identifier text, the recomputed ``continuity_declaration_digest``, unique goal and schedule
+    identifiers, each schedule (its goal exists, non-empty declarations, unique clock sources and phases, consistent
+    budgets, forward-only edges), then each goal (non-empty declarations, a matching schedule that declares its entry
+    and completion phases, and a total target reachable within the phase maximums).
+
+    Args:
+        package: the untrusted package projection.
+
+    Returns:
+        ``valid=true`` with reason ``valid``, or ``valid=false`` with the specific reason listed in RFC 013's package
+        validation section.
+    """
+
+    if len(package.goals) == 0 or len(package.schedules) == 0:
+        return invalid("continuity_declarations_empty")
+    if not package_within_bounds(package):
+        return invalid("continuity_bounds_exceeded")
+    if not package_identifiers_are_canonical(package):
+        return invalid("invalid_continuity_identifier")
+    if package.continuity_declaration_digest != digest_continuity_package(package):
+        return invalid("continuity_declaration_digest_mismatch")
+    if has_duplicate_text([goal_id_text(goal.goal_id) for goal in package.goals]):
+        return invalid("duplicate_goal_id")
+    if has_duplicate_text([schedule_id_text(schedule.schedule_id) for schedule in package.schedules]):
+        return invalid("duplicate_schedule_id")
+    for schedule in package.schedules:
+        if not goal_exists(package.goals, schedule.goal_id):
+            return invalid("schedule_goal_unknown")
+        schedule_validation = validate_schedule(schedule)
+        if not schedule_validation.valid:
+            return schedule_validation
+    for goal in package.goals:
+        goal_validation = validate_goal(goal, package.schedules)
+        if not goal_validation.valid:
+            return goal_validation
+    return valid()
+
+
+def proposal_identifiers_are_canonical(proposal: ContinuityProposal) -> bool:
+    """
+    Return whether every identifier and the clock-source name in a proposal is canonical text.
+
+    A supplied prior state's identifiers need no separate check: each must equal the proposal's own, or name a phase
+    the validated package declares, before the state is trusted.
+    """
+
+    mut symbolic_ids: list[str] = []
+    symbolic_ids.append(session_id_text(proposal.session_id))
+    symbolic_ids.append(session_event_id_text(proposal.event_id))
+    symbolic_ids.append(profile_id_text(proposal.profile_id))
+    symbolic_ids.append(package_id_text(proposal.package_id))
+    symbolic_ids.append(domain_id_text(proposal.domain_id))
+    symbolic_ids.append(goal_id_text(proposal.goal_id))
+    symbolic_ids.append(schedule_id_text(proposal.schedule_id))
+    symbolic_ids.append(phase_id_text(proposal.proposed_phase_id))
+    symbolic_ids.append(action_id_text(proposal.proposed_action_id))
+    symbolic_ids.append(proposal.clock_source)
+    if not all_identifier_text_safe(symbolic_ids):
+        return false
+    if not artifact_revision_text_is_safe(artifact_revision_text(proposal.package_revision)):
+        return false
+    return digest_id_text_is_safe(digest_id_type_text(proposal.continuity_declaration_digest))
+
+
+def proposal_identity_matches(package: ContinuityPackage, proposal: ContinuityProposal) -> bool:
+    """Return whether the proposal names exactly the package identity Hees.ai was given."""
+
+    return (
+        proposal.profile_id == package.profile_id
+        and proposal.package_id == package.package_id
+        and proposal.domain_id == package.domain_id
+        and proposal.package_revision == package.package_revision
+        and proposal.continuity_declaration_digest == package.continuity_declaration_digest
+    )
+
+
+def prior_identity_matches(proposal: ContinuityProposal, prior: SessionContinuityState) -> bool:
+    """Return whether the prior state belongs to the proposal's session, package, goal, and schedule."""
+
+    return (
+        prior.session_id == proposal.session_id
+        and prior.profile_id == proposal.profile_id
+        and prior.package_id == proposal.package_id
+        and prior.domain_id == proposal.domain_id
+        and prior.package_revision == proposal.package_revision
+        and prior.continuity_declaration_digest == proposal.continuity_declaration_digest
+        and prior.goal_id == proposal.goal_id
+        and prior.schedule_id == proposal.schedule_id
+    )
+
+
+def prior_state_is_consistent(
+    goal: GovernedGoal,
+    schedule: GovernedSchedule,
+    prior_phase: GovernedPhase,
+    prior: SessionContinuityState,
+) -> bool:
+    """
+    Return whether a prior state satisfies every invariant an admitted state holds.
+
+    The witness proves the state left ``evaluate_continuity`` under the host's key, and these checks still run
+    before any prior value enters arithmetic, so a state that holds a valid witness but breaks an invariant fails
+    closed: ``0 <= started_at_seconds <= phase_started_at_seconds <= last_clock_seconds <= MAX_CONTINUITY_INTEGER``,
+    ``last_event_index`` within ``0..=MAX_CONTINUITY_INTEGER``, an ``expired`` flag only on a closed state, time in the
+    prior phase beyond its maximum exactly when the state is expired, an entry-phase state whose phase began with the
+    session, an event index of zero only for the untouched Start state, and a closed state that is not expired only in
+    a completion phase once the total target has elapsed.
+    """
+
+    if prior.started_at_seconds < 0 or prior.phase_started_at_seconds < prior.started_at_seconds:
+        return false
+    if prior.last_clock_seconds < prior.phase_started_at_seconds or prior.last_clock_seconds > MAX_CONTINUITY_INTEGER:
+        return false
+    if not integer_in_range(prior.last_event_index):
+        return false
+    if prior.expired and not prior.closed:
+        return false
+    if prior.expired != (prior.last_clock_seconds - prior.phase_started_at_seconds > prior_phase.maximum_seconds):
+        return false
+    in_entry_phase = prior.phase_id == goal.entry_phase_id
+    if in_entry_phase and prior.phase_started_at_seconds != prior.started_at_seconds:
+        return false
+    if prior.last_event_index == 0 and (not in_entry_phase or prior.last_clock_seconds != prior.started_at_seconds):
+        return false
+    if prior.closed and not prior.expired:
+        return (
+            goal.completion_phase_ids.contains(prior.phase_id)
+            and prior.last_clock_seconds - prior.started_at_seconds >= schedule.total_target_seconds
+        )
+    return true
+
+
+pub def digest_continuity_package(package: ContinuityPackage) -> DigestIdType:
+    """
+    Recompute the package digest over every field except ``continuity_declaration_digest`` itself.
+
+    The digest is SHA-256 over the ``hees.ai/continuity-declaration/v0`` type tag followed by the current serializer's
+    JSON rendering of that projection. It is an interim encoding and does not conform to RFC 011 structural identity.
+    Serializing a derived ``json`` model always yields valid JSON, so the ``unwrap`` cannot fail on any input.
+    """
+
+    projection = ContinuityDeclarationProjection(
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        goals=package.goals,
+        schedules=package.schedules,
+    )
+    return digest_tagged_json(CONTINUITY_DECLARATION_TYPE_TAG, projection.to_json()).unwrap()
+
+
+def state_witness_source(state: SessionContinuityState) -> str:
+    """Return the JSON a state witness covers: every field of ``state``, with ``state_witness`` set to the placeholder."""
+
+    mut unstamped = state.clone()
+    unstamped.state_witness = unstamped_witness()
+    return unstamped.to_json()
+
+
+def state_witness_verifies(key: WitnessKey, state: SessionContinuityState) -> bool:
+    """Return whether ``state``'s witness was stamped under ``key`` over exactly its current fields."""
+
+    return keyed_witness_verifies(key, CONTINUITY_STATE_TYPE_TAG, state_witness_source(state), state.state_witness)
+
+
+def resulting_state(
+    key: WitnessKey,
+    proposal: ContinuityProposal,
+    started_at_seconds: int,
+    phase_started_at_seconds: int,
+    closed: bool,
+    expired: bool,
+) -> SessionContinuityState:
+    """
+    Build the state an admitted proposal produces, binding the proposal's clock source, and stamp it under ``key``.
+
+    ``evaluate_continuity`` has already checked ``witness_key_is_valid``, and serializing a derived ``json`` model
+    always yields valid JSON, so the ``unwrap`` cannot fail on any input.
+    """
+
+    unwitnessed = SessionContinuityState(
+        session_id=proposal.session_id,
+        profile_id=proposal.profile_id,
+        package_id=proposal.package_id,
+        domain_id=proposal.domain_id,
+        package_revision=proposal.package_revision,
+        continuity_declaration_digest=proposal.continuity_declaration_digest,
+        goal_id=proposal.goal_id,
+        schedule_id=proposal.schedule_id,
+        phase_id=proposal.proposed_phase_id,
+        started_at_seconds=started_at_seconds,
+        phase_started_at_seconds=phase_started_at_seconds,
+        last_clock_seconds=proposal.current_clock_seconds,
+        last_event_index=proposal.event_index,
+        clock_source=proposal.clock_source,
+        closed=closed,
+        expired=expired,
+        state_witness=unstamped_witness(),
+    )
+    mut witnessed = unwitnessed.clone()
+    witnessed.state_witness = stamp_keyed_witness(key, CONTINUITY_STATE_TYPE_TAG, state_witness_source(unwitnessed)).unwrap()
+    return witnessed
+
+
+def evaluate_continue(
+    key: WitnessKey,
+    proposal: ContinuityProposal,
+    prior: SessionContinuityState,
+) -> ContinuityDecision:
+    """Admit Continue when it stays in the prior phase; both start times carry forward."""
+
+    if proposal.proposed_phase_id != prior.phase_id:
+        return rejected(proposal, "continue_phase_mismatch")
+    return admitted(
+        proposal,
+        "continue_current_phase",
+        resulting_state(key, proposal, prior.started_at_seconds, prior.phase_started_at_seconds, false, false),
+    )
+
+
+def evaluate_transition(
+    key: WitnessKey,
+    prior_phase: GovernedPhase,
+    proposal: ContinuityProposal,
+    prior: SessionContinuityState,
+) -> ContinuityDecision:
+    """Admit Transition along a declared edge once the prior phase's minimum has elapsed; the new phase starts now."""
+
+    if not prior_phase.next_phase_ids.contains(proposal.proposed_phase_id):
+        return rejected(proposal, "phase_transition_not_declared")
+    if proposal.current_clock_seconds - prior.phase_started_at_seconds < prior_phase.minimum_seconds:
+        return rejected(proposal, "phase_minimum_not_met")
+    return admitted(
+        proposal,
+        "declared_phase_transition",
+        resulting_state(key, proposal, prior.started_at_seconds, proposal.current_clock_seconds, false, false),
+    )
+
+
+def evaluate_close(
+    key: WitnessKey,
+    goal: GovernedGoal,
+    schedule: GovernedSchedule,
+    proposal: ContinuityProposal,
+    prior: SessionContinuityState,
+) -> ContinuityDecision:
+    """Admit Close in a declared completion phase once the schedule's total target has elapsed."""
+
+    if proposal.proposed_phase_id != prior.phase_id or not goal.completion_phase_ids.contains(prior.phase_id):
+        return rejected(proposal, "goal_close_not_declared")
+    if proposal.current_clock_seconds - prior.started_at_seconds < schedule.total_target_seconds:
+        return rejected(proposal, "goal_budget_not_reached")
+    return admitted(
+        proposal,
+        "declared_goal_closed",
+        resulting_state(key, proposal, prior.started_at_seconds, prior.phase_started_at_seconds, true, false),
+    )
+
+
+def evaluate_expire(
+    key: WitnessKey,
+    goal: GovernedGoal,
+    prior_phase: GovernedPhase,
+    proposal: ContinuityProposal,
+    prior: SessionContinuityState,
+) -> ContinuityDecision:
+    """
+    Admit Expire for a goal that declares it, in the prior phase, once that phase has run past its maximum.
+
+    The resulting state is closed and expired, and both start times carry forward. Expire never shortens a session:
+    at or before the phase maximum it is rejected.
+    """
+
+    if not goal.expiry_allowed:
+        return rejected(proposal, "expiry_not_declared")
+    if proposal.proposed_phase_id != prior.phase_id:
+        return rejected(proposal, "expire_phase_mismatch")
+    if proposal.current_clock_seconds - prior.phase_started_at_seconds <= prior_phase.maximum_seconds:
+        return rejected(proposal, "phase_maximum_not_exceeded")
+    return admitted(
+        proposal,
+        "phase_maximum_expired",
+        resulting_state(key, proposal, prior.started_at_seconds, prior.phase_started_at_seconds, true, true),
+    )
+
+
+def evaluate_in_prior_phase(
+    key: WitnessKey,
+    goal: GovernedGoal,
+    schedule: GovernedSchedule,
+    prior_phase: GovernedPhase,
+    proposal: ContinuityProposal,
+    prior: SessionContinuityState,
+) -> ContinuityDecision:
+    """
+    Apply prior-state invariants, event order, elapsed-time limits, and the operation-specific rule.
+
+    The caller has established that the prior state's identity, witness, and clock source match and that its phase
+    is declared. Every time value is within ``0..=MAX_CONTINUITY_INTEGER`` once the invariant check passes, so the
+    subtractions here cannot overflow. Expire is dispatched before the phase-maximum check because it is admitted only
+    once that maximum has passed; every other operation is rejected past it.
+    """
+
+    if not prior_state_is_consistent(goal, schedule, prior_phase, prior):
+        return rejected(proposal, "prior_state_inconsistent")
+    if prior.closed:
+        return rejected(proposal, "session_already_closed")
+    if proposal.event_index != prior.last_event_index + 1:
+        return rejected(proposal, "event_index_not_monotonic")
+    if proposal.current_clock_seconds < prior.last_clock_seconds:
+        return rejected(proposal, "clock_regression")
+    if proposal.operation == ContinuityOperationKind.Expire:
+        return evaluate_expire(key, goal, prior_phase, proposal, prior)
+    if proposal.current_clock_seconds - prior.phase_started_at_seconds > prior_phase.maximum_seconds:
+        return rejected(proposal, "phase_maximum_exceeded")
+    if proposal.operation == ContinuityOperationKind.Continue:
+        return evaluate_continue(key, proposal, prior)
+    if proposal.operation == ContinuityOperationKind.Transition:
+        return evaluate_transition(key, prior_phase, proposal, prior)
+    if proposal.operation == ContinuityOperationKind.Close:
+        return evaluate_close(key, goal, schedule, proposal, prior)
+    return rejected(proposal, "unknown_continuity_operation")
+
+
+def evaluate_with_prior(
+    key: WitnessKey,
+    goal: GovernedGoal,
+    schedule: GovernedSchedule,
+    proposal: ContinuityProposal,
+    prior: SessionContinuityState,
+) -> ContinuityDecision:
+    """Check that a supplied prior state belongs to this session and clock before trusting any of its values."""
+
+    if proposal.operation == ContinuityOperationKind.Start:
+        return rejected(proposal, "start_requires_empty_state")
+    if not prior_identity_matches(proposal, prior):
+        return rejected(proposal, "prior_state_identity_mismatch")
+    if not state_witness_verifies(key, prior):
+        return rejected(proposal, "prior_state_witness_invalid")
+    if prior.clock_source != proposal.clock_source:
+        return rejected(proposal, "clock_source_changed")
+    return match find_phase(schedule.phases, prior.phase_id):
+        None => rejected(proposal, "prior_phase_unknown")
+        Some(prior_phase) => evaluate_in_prior_phase(key, goal, schedule, prior_phase, proposal, prior)
+
+
+def evaluate_without_prior(key: WitnessKey, goal: GovernedGoal, proposal: ContinuityProposal) -> ContinuityDecision:
+    """Admit Start at event index zero in the goal's entry phase; every other operation needs a prior state."""
+
+    if proposal.operation != ContinuityOperationKind.Start:
+        return rejected(proposal, "prior_state_required")
+    if proposal.event_index != 0:
+        return rejected(proposal, "start_event_index_invalid")
+    if proposal.proposed_phase_id != goal.entry_phase_id:
+        return rejected(proposal, "start_phase_not_declared")
+    return admitted(
+        proposal,
+        "declared_goal_started",
+        resulting_state(key, proposal, proposal.current_clock_seconds, proposal.current_clock_seconds, false, false),
+    )
+
+
+def evaluate_with_phase(
+    key: WitnessKey,
+    goal: GovernedGoal,
+    schedule: GovernedSchedule,
+    proposed_phase: GovernedPhase,
+    proposal: ContinuityProposal,
+) -> ContinuityDecision:
+    """Check the proposed action and event coordinates, then dispatch on whether a prior state was supplied."""
+
+    if not goal.allowed_action_ids.contains(proposal.proposed_action_id):
+        return rejected(proposal, "action_not_allowed_for_goal")
+    if not proposed_phase.allowed_action_ids.contains(proposal.proposed_action_id):
+        return rejected(proposal, "action_not_allowed_for_phase")
+    if not integer_in_range(proposal.current_clock_seconds) or not integer_in_range(proposal.event_index):
+        return rejected(proposal, "invalid_event_coordinates")
+    return match proposal.prior_state:
+        None => evaluate_without_prior(key, goal, proposal)
+        Some(prior) => evaluate_with_prior(key, goal, schedule, proposal, prior)
+
+
+def evaluate_with_schedule(
+    key: WitnessKey,
+    goal: GovernedGoal,
+    schedule: GovernedSchedule,
+    proposal: ContinuityProposal,
+) -> ContinuityDecision:
+    """Check that the schedule serves the goal, accepts the proposal's clock, and declares the proposed phase."""
+
+    if schedule.goal_id != goal.goal_id:
+        return rejected(proposal, "schedule_goal_mismatch")
+    if not schedule.allowed_clock_sources.contains(proposal.clock_source):
+        return rejected(proposal, "clock_source_not_allowed")
+    return match find_phase(schedule.phases, proposal.proposed_phase_id):
+        None => rejected(proposal, "unknown_phase")
+        Some(proposed_phase) => evaluate_with_phase(key, goal, schedule, proposed_phase, proposal)
+
+
+def evaluate_with_goal(
+    key: WitnessKey,
+    package: ContinuityPackage,
+    goal: GovernedGoal,
+    proposal: ContinuityProposal,
+) -> ContinuityDecision:
+    """Resolve the proposal's schedule in the validated package once its goal is known."""
+
+    return match find_schedule(package.schedules, proposal.schedule_id):
+        None => rejected(proposal, "unknown_schedule")
+        Some(schedule) => evaluate_with_schedule(key, goal, schedule, proposal)
+
+
+pub def evaluate_continuity(
+    package: ContinuityPackage,
+    proposal: ContinuityProposal,
+    witness_key: WitnessKey,
+) -> ContinuityDecision:
+    """
+    Admit or reject one caller-proposed continuity event against package-declared authority.
+
+    The function is pure: it re-validates the package on every call, reads no clock, and persists nothing. Checks run
+    in the order RFC 013 lists under Admission order and stop at the first failure. Any package validation failure is
+    reported as ``invalid_continuity_package``; call ``validate_continuity_package`` for the specific reason.
+
+    Every admitted ``resulting_state`` carries a ``state_witness`` stamped under ``witness_key``, and a supplied
+    ``prior_state`` is trusted only when its witness verifies under that key. The witness therefore authenticates that
+    a state was returned by this function under the host's key. The host must keep the key out of every model,
+    provider, and package input: anyone who holds it can stamp states, so it is the host's trust anchor.
+
+    Args:
+        package: the package whose declared goals and schedules hold authority.
+        proposal: the untrusted proposal, carrying the ``resulting_state`` of the previous admitted decision as
+            ``prior_state`` for every operation except Start.
+        witness_key: the host-held key that stamps admitted states and verifies the prior state.
+
+    Returns:
+        An admitted decision whose ``resulting_state`` the caller must persist unchanged and supply as the next
+        ``prior_state``, or a rejected decision with no resulting state. ``reason`` is one of the RFC 013 public
+        admission reasons; an invalid ``witness_key`` is rejected as ``invalid_witness_key`` before any other check.
+    """
+
+    if not witness_key_is_valid(witness_key):
+        return rejected(proposal, "invalid_witness_key")
+    package_validation = validate_continuity_package(package)
+    if not package_validation.valid:
+        return rejected(proposal, "invalid_continuity_package")
+    if not proposal_identifiers_are_canonical(proposal):
+        return rejected(proposal, "invalid_proposal_identifier")
+    if not proposal_identity_matches(package, proposal):
+        return rejected(proposal, "package_identity_mismatch")
+    return match find_goal(package.goals, proposal.goal_id):
+        None => rejected(proposal, "unknown_goal")
+        Some(goal) => evaluate_with_goal(witness_key, package, goal, proposal)

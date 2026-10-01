@@ -1,0 +1,1967 @@
+"""
+Contract tests for generic governed-profile admission and guided material.
+
+The fixture is an invented lesson-support package for the fictional Lantern Path cards. Every source reference,
+identifier, and text value is fictional.
+"""
+
+from std.serde.json import Deserialize, Serialize
+from std.testing import assert_eq, assert_is_none, assert_is_ok, assert_is_some
+from crate.governed_profile import (
+    CommitteeObservation,
+    CommitteeVerdict,
+    CompleteGovernedEvaluation,
+    GovernedAction,
+    GovernedContentDna,
+    GovernedEvidence,
+    GovernedMemory,
+    GovernedOutcomeKind,
+    GovernedPolicy,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedReceipt,
+    GovernedRequest,
+    GovernedVisibleOutputSource,
+    GuidedMaterial,
+    GuidedTransition,
+    bind_governed_request,
+    committee_observation,
+    digest_governed_memory_provenance,
+    digest_governed_profile_package,
+    digest_governed_proposal,
+    evaluate_governed_profile_with_artifacts,
+    governed_proposal,
+    validate_governed_profile_package,
+)
+from crate.content_dna import digest_canonical_json
+from crate.governed_profile_artifacts import GOVERNED_CONTENT_DNA_TYPE_TAG, GOVERNED_RECEIPT_TYPE_TAG
+from crate.governed_profile_identity import (
+    GOVERNED_ANSWER_TYPE_TAG,
+    GOVERNED_MEMORY_PROVENANCE_TYPE_TAG,
+    GOVERNED_PACKAGE_TYPE_TAG,
+    GOVERNED_PROPOSAL_TYPE_TAG,
+    GOVERNED_REQUEST_TYPE_TAG,
+    digest_governed_answer,
+)
+from crate.governed_profile_models import GovernedAnswerProjection, GovernedRequestDigestProjection
+from crate.witness import digest_tagged_json
+from crate.governed_profile_validation import (
+    MAX_COMMITTEE_ROLES,
+    MAX_GOVERNED_ACTIONS,
+    MAX_GOVERNED_EVIDENCE,
+    MAX_GOVERNED_GUIDED_MATERIAL,
+    MAX_GOVERNED_MEMORY,
+    MAX_GUIDED_EVIDENCE,
+    MAX_GUIDED_MEMORY,
+    MAX_GUIDED_STEPS,
+    MAX_GUIDED_TRANSITIONS,
+    MAX_LANGUAGE_LENGTH,
+    MAX_MEMORY_EVIDENCE,
+    MAX_PACKAGE_LABEL_LENGTH,
+    MAX_PACKAGE_TEXT_LENGTH,
+    MAX_QUESTION_LENGTH,
+    MAX_SOURCE_REF_LENGTH,
+    MAX_VISIBLE_OUTPUT_LENGTH,
+    validate_governed_proposal,
+    validate_governed_proposal_identity,
+    validate_governed_request,
+)
+from crate.identifiers import (
+    ActionId,
+    ArtifactRevisionType,
+    AudienceId,
+    CommitteeRoleId,
+    ContentDnaId,
+    DigestIdType,
+    DomainId,
+    EvidenceId,
+    GuidedMaterialId,
+    GuidedStepId,
+    IdType,
+    MemoryId,
+    ObservationId,
+    PackageId,
+    ProposalId,
+    ReceiptId,
+    RequestId,
+    SymbolicIdType,
+    action_id,
+    artifact_revision,
+    audience_id,
+    committee_role_id,
+    constraint_plan_id,
+    contract_id,
+    decision_id_text,
+    digest_id_type,
+    domain_id,
+    evidence_id,
+    finding_id_text,
+    guided_material_id,
+    guided_material_id_text,
+    guided_step_id,
+    memory_id,
+    memory_id_text,
+    observation_id,
+    package_id,
+    profile_id,
+    proposal_id,
+    request_id,
+    revision,
+)
+
+const PACKAGE_DIGEST: str = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+const SOURCE_DIGEST: str = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+const PROVENANCE_DIGEST: str = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+const CARD_DIGEST: str = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+const EVALUATOR_DIGEST: str = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+const OTHER_DIGEST: str = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+const GUIDE_ID: str = "lantern_guide_practice_0_1"
+const AUDIENCE: str = "general_audience"
+const HASHED_DECISION_ID_LENGTH: int = 73
+const REFUSAL_TEXT: str = "The reviewed Lantern Path package does not cover that request."
+const ESCALATION_TEXT: str = "That request needs a person; the Lantern Path package cannot answer it."
+
+
+def repeated(text: str, count: int) -> str:
+    """Return ``text`` repeated ``count`` times."""
+
+    mut result = ""
+    for _index in range(count):
+        result = result + text
+    return result
+
+
+def no_guided_material() -> Option[GuidedMaterialId]:
+    """Return a typed absent guided material nomination."""
+
+    return None
+
+
+def no_guided_step() -> Option[GuidedStepId]:
+    """Return a typed absent guided step nomination."""
+
+    return None
+
+
+def no_boundary_text() -> Option[str]:
+    """Return a typed absent boundary text."""
+
+    return None
+
+
+def boundary_text_for(kind: GovernedOutcomeKind) -> Option[str]:
+    """Return the fixture's package-declared text for a refusal or escalation kind, and none for any other kind."""
+
+    if kind == GovernedOutcomeKind.Refusal:
+        return Some(REFUSAL_TEXT)
+    if kind == GovernedOutcomeKind.Escalation:
+        return Some(ESCALATION_TEXT)
+    return no_boundary_text()
+
+
+def action(id: str, kind: GovernedOutcomeKind, evidence_required: bool, committee_required: bool) -> GovernedAction:
+    """Build one package action, declaring the fixture boundary text exactly when ``kind`` refuses or escalates."""
+
+    return GovernedAction(
+        action_id=action_id(id),
+        outcome_kind=kind,
+        evidence_required=evidence_required,
+        committee_required=committee_required,
+        boundary_text=boundary_text_for(kind),
+    )
+
+
+def evidence(id: str, source_ref: str) -> GovernedEvidence:
+    """Build one approved, rights-allowed fictional evidence record."""
+
+    return GovernedEvidence(
+        evidence_id=evidence_id(id),
+        claim=f"Reviewed fictional claim for {id}.",
+        guidance=f"Reviewed fictional guidance for {id}.",
+        source_ref=source_ref,
+        source_kind="fictional_handbook",
+        source_fingerprint=digest_id_type(SOURCE_DIGEST),
+        language="en",
+        review_state="approved",
+        review_revision=revision("1.0.0"),
+        rights_state="allowed",
+        authority_class="reviewed_package",
+        evidence_kind="bounded_paraphrase",
+    )
+
+
+def memory_atom(id: str, evidence_values: list[str]) -> GovernedMemory:
+    """Build one approved memory atom with a placeholder provenance digest that ``rewitnessed`` replaces."""
+
+    return GovernedMemory(
+        memory_id=memory_id(id),
+        concept=f"Reviewed fictional concept for {id}.",
+        evidence_ids=[evidence_id(value) for value in evidence_values],
+        review_state="approved",
+        review_revision=revision("1.0.0"),
+        rights_state="allowed",
+        provenance_digest=digest_id_type(PROVENANCE_DIGEST),
+    )
+
+
+def full_evidence_ids() -> list[EvidenceId]:
+    """Return every base evidence identifier in package order."""
+
+    return [evidence_id("lantern_evidence_card_order"), evidence_id("lantern_evidence_pacing"), evidence_id(
+        "lantern_evidence_reflection",
+    )]
+
+
+def full_memory_ids() -> list[MemoryId]:
+    """Return every base memory identifier in package order."""
+
+    return [memory_id("lantern_atom_card_order"), memory_id("lantern_atom_pacing"), memory_id("lantern_atom_reflection")]
+
+
+def guide() -> GuidedMaterial:
+    """Build the fictional practice guide over all three base memory atoms."""
+
+    return GuidedMaterial(
+        guided_material_id=guided_material_id(GUIDE_ID),
+        artifact_revision=artifact_revision("0.1.0"),
+        artifact_digest=digest_id_type(CARD_DIGEST),
+        language="en",
+        audience=audience_id(AUDIENCE),
+        evidence_ids=full_evidence_ids(),
+        memory_ids=full_memory_ids(),
+        presentation_action_id=action_id("present_guided_card"),
+        navigation_action_id=action_id("navigate_guided_card"),
+        steps=[guided_step_id("choose_starting_card"), guided_step_id("choose_pacing"), guided_step_id(
+            "choose_reflection",
+        )],
+        transitions=[GuidedTransition(
+            current_step_id=guided_step_id("choose_starting_card"),
+            next_step_id=guided_step_id("choose_pacing"),
+        ), GuidedTransition(
+            current_step_id=guided_step_id("choose_pacing"),
+            next_step_id=guided_step_id("choose_reflection"),
+        )],
+        review_state="approved",
+        review_revision=revision("1.0.0"),
+        rights_state="allowed",
+    )
+
+
+def required_role_names() -> list[str]:
+    """Return the fixture's six package-wide committee roles."""
+
+    return ["evidence_support", "scope", "safety_boundary", "question_fit", "language_clarity", "contextual_tone"]
+
+
+def unwitnessed_package() -> GovernedProfilePackage:
+    """Build the fictional package with placeholder package and provenance digests."""
+
+    return GovernedProfilePackage(
+        contract_version=contract_id("governed_profile_package_0_1"),
+        profile_id=profile_id("governed_profile_0_1"),
+        package_id=package_id("lantern_path_lessons"),
+        domain_id=domain_id("fictional_lesson_support"),
+        package_revision=artifact_revision("0.1.0-candidate.1"),
+        profile_package_digest=digest_id_type(PACKAGE_DIGEST),
+        mission="Provide bounded lesson support for the fictional Lantern Path cards from reviewed package material.",
+        actions=[action("answer_from_package", GovernedOutcomeKind.Answer, true, true), action(
+            "present_guided_card",
+            GovernedOutcomeKind.GuidedMaterial,
+            true,
+            true,
+        ), action("navigate_guided_card", GovernedOutcomeKind.GuidedNavigation, true, true), action(
+            "refuse_unsupported",
+            GovernedOutcomeKind.Refusal,
+            false,
+            false,
+        ), action("escalate_out_of_scope", GovernedOutcomeKind.Escalation, false, false)],
+        evidence=[evidence("lantern_evidence_card_order", "fictional_lantern_handbook:1-2"), evidence(
+            "lantern_evidence_pacing",
+            "fictional_lantern_handbook:3-4",
+        ), evidence("lantern_evidence_reflection", "fictional_lantern_workbook:5-6")],
+        memory=[memory_atom("lantern_atom_card_order", ["lantern_evidence_card_order"]), memory_atom(
+            "lantern_atom_pacing",
+            ["lantern_evidence_pacing"],
+        ), memory_atom("lantern_atom_reflection", ["lantern_evidence_reflection"])],
+        guided_material=[guide()],
+        policy=GovernedPolicy(
+            constraint_plan_id=constraint_plan_id("lantern_committee_policy"),
+            constraint_plan_revision=revision("1.0.0"),
+            required_roles=[committee_role_id(role) for role in required_role_names()],
+            require_all_passed=true,
+        ),
+    )
+
+
+def with_package_digest(unwitnessed: GovernedProfilePackage) -> GovernedProfilePackage:
+    """Restamp only the package digest, leaving each memory atom's provenance digest as given."""
+
+    mut package = unwitnessed.clone()
+    package.profile_package_digest = digest_governed_profile_package(unwitnessed)
+    return package
+
+
+def rewitnessed(unwitnessed: GovernedProfilePackage) -> GovernedProfilePackage:
+    """
+    Restamp the package digest, then every memory provenance digest against the restamped package.
+
+    Negative tests mutate a valid package and call this so the mutation reaches its target check instead of being
+    rejected earlier as ``profile_package_digest_mismatch`` or ``memory_provenance_mismatch``.
+    """
+
+    mut package = with_package_digest(unwitnessed)
+    mut witnessed_atoms: list[GovernedMemory] = []
+    for atom in package.memory:
+        mut witnessed_atom = atom.clone()
+        witnessed_atom.provenance_digest = digest_governed_memory_provenance(package, atom)
+        witnessed_atoms.append(witnessed_atom)
+    package.memory = witnessed_atoms
+    return package
+
+
+def lantern_package() -> GovernedProfilePackage:
+    """Return the valid, fully witnessed fictional package."""
+
+    return rewitnessed(unwitnessed_package())
+
+
+def rejection(package: GovernedProfilePackage) -> str:
+    """Rewitness a mutated package, assert it is rejected as ``invalid_package``, and return its diagnostic."""
+
+    result = validate_governed_profile_package(rewitnessed(package))
+    assert_eq(result.reason, "invalid_package")
+    return result.errors[0]
+
+
+def acceptance(package: GovernedProfilePackage) -> str:
+    """Rewitness a mutated package and return its validation reason, ``ok`` when valid."""
+
+    return validate_governed_profile_package(rewitnessed(package)).reason
+
+
+def extra_evidence(prefix: str, count: int) -> list[GovernedEvidence]:
+    """Build ``count`` additional fictional evidence records."""
+
+    return [evidence(f"{prefix}_{index}", f"fictional_lantern_appendix:{index}") for index in range(count)]
+
+
+def extra_atoms(prefix: str, count: int) -> list[GovernedMemory]:
+    """Build ``count`` additional memory atoms that each cite the first base evidence record."""
+
+    return [memory_atom(f"{prefix}_{index}", ["lantern_evidence_card_order"]) for index in range(count)]
+
+
+def first_evidence() -> GovernedEvidence:
+    """Return a copy of the first base evidence record for mutation."""
+
+    return unwitnessed_package().evidence[0]
+
+
+def with_first_evidence(record: GovernedEvidence) -> GovernedProfilePackage:
+    """Return the base package with its first evidence record replaced."""
+
+    mut package = unwitnessed_package()
+    package.evidence[0] = record
+    return package
+
+
+def first_atom() -> GovernedMemory:
+    """Return a copy of the first base memory atom for mutation."""
+
+    return unwitnessed_package().memory[0]
+
+
+def with_first_atom(atom: GovernedMemory) -> GovernedProfilePackage:
+    """Return the base package with its first memory atom replaced."""
+
+    mut package = unwitnessed_package()
+    package.memory[0] = atom
+    return package
+
+
+def with_guide(material: GuidedMaterial) -> GovernedProfilePackage:
+    """Return the base package with its only guided material replaced."""
+
+    mut package = unwitnessed_package()
+    package.guided_material = [material]
+    return package
+
+
+def with_policy(policy: GovernedPolicy) -> GovernedProfilePackage:
+    """Return the base package with its committee policy replaced."""
+
+    mut package = unwitnessed_package()
+    package.policy = policy
+    return package
+
+
+def request(question: str) -> GovernedRequest:
+    """Bind one fictional request in English for the fixture audience."""
+
+    return bind_governed_request(request_id("request_lantern"), question, "en", audience_id(AUDIENCE))
+
+
+def proposal_for(
+    package: GovernedProfilePackage,
+    bound: GovernedRequest,
+    action_name: str,
+    evidence_ids: list[EvidenceId],
+    memory_ids: list[MemoryId],
+    guided: Option[GuidedMaterialId],
+    current: Option[GuidedStepId],
+    next: Option[GuidedStepId],
+) -> GovernedProposal:
+    """Build one proposal with a fixed identifier and visible output for the named action."""
+
+    return governed_proposal(
+        package,
+        bound,
+        proposal_id(f"proposal_{action_name}"),
+        action_id(action_name),
+        "A bounded fictional answer drawn from the reviewed package.",
+        evidence_ids,
+        memory_ids,
+        guided,
+        current,
+        next,
+    )
+
+
+def answer_proposal(package: GovernedProfilePackage, bound: GovernedRequest) -> GovernedProposal:
+    """Build the supported two-atom answer proposal."""
+
+    return governed_proposal(
+        package,
+        bound,
+        proposal_id("proposal_lantern_answer"),
+        action_id("answer_from_package"),
+        "Start with the first Lantern Path card and keep a steady pace, as the reviewed handbook suggests.",
+        [evidence_id("lantern_evidence_card_order"), evidence_id("lantern_evidence_pacing")],
+        [memory_id("lantern_atom_card_order"), memory_id("lantern_atom_pacing")],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+
+
+def guide_proposal(
+    package: GovernedProfilePackage,
+    bound: GovernedRequest,
+    action_name: str,
+    current: Option[GuidedStepId],
+    next: Option[GuidedStepId],
+) -> GovernedProposal:
+    """Build a guided proposal over the full guide support for the named action."""
+
+    return proposal_for(
+        package,
+        bound,
+        action_name,
+        full_evidence_ids(),
+        full_memory_ids(),
+        Some(guided_material_id(GUIDE_ID)),
+        current,
+        next,
+    )
+
+
+def terminal_proposal(package: GovernedProfilePackage, bound: GovernedRequest, action_name: str) -> GovernedProposal:
+    """Build an unsupported refusal or escalation proposal with no visible output of its own."""
+
+    return governed_proposal(
+        package,
+        bound,
+        proposal_id(f"proposal_{action_name}"),
+        action_id(action_name),
+        "",
+        [],
+        [],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+
+
+def observation(
+    package: GovernedProfilePackage,
+    bound: GovernedRequest,
+    proposal: GovernedProposal,
+    role: str,
+    verdict: CommitteeVerdict,
+) -> CommitteeObservation:
+    """Build one observation for ``role`` bound to the exact candidate."""
+
+    return committee_observation(
+        package,
+        bound,
+        proposal,
+        observation_id(f"observation_{role}"),
+        committee_role_id(role),
+        verdict,
+        digest_id_type(EVALUATOR_DIGEST),
+    )
+
+
+def passed_committee(
+    package: GovernedProfilePackage,
+    bound: GovernedRequest,
+    proposal: GovernedProposal,
+) -> list[CommitteeObservation]:
+    """Build one passing observation for every required role."""
+
+    return [observation(package, bound, proposal, role, CommitteeVerdict.Pass) for role in required_role_names()]
+
+
+def evaluate_with_committee(
+    package: GovernedProfilePackage,
+    bound: GovernedRequest,
+    proposal: GovernedProposal,
+) -> CompleteGovernedEvaluation:
+    """Evaluate a proposal with a full passing committee."""
+
+    return evaluate_governed_profile_with_artifacts(package, bound, proposal, passed_committee(package, bound, proposal))
+
+
+def proposal_error(package: GovernedProfilePackage, bound: GovernedRequest, proposal: GovernedProposal) -> str:
+    """Return the specific diagnostic ``validate_governed_proposal`` reports."""
+
+    return validate_governed_proposal(package, bound, proposal).errors[0]
+
+
+def assert_rejected_without_receipt(result: CompleteGovernedEvaluation, reason: str) -> None:
+    """Assert a rejection that happened before proposal identity was established."""
+
+    assert_eq(result.spectrum.admitted, false)
+    assert_eq(result.spectrum.decision, "reject")
+    assert_eq(result.spectrum.reason, reason)
+    assert_is_none(result.admitted_visible_output)
+    assert_is_none(result.content_dna_json)
+    assert_is_none(result.receipt_json)
+
+
+def assert_rejected_with_receipt(result: CompleteGovernedEvaluation, reason: str) -> None:
+    """Assert a rejection recorded in a receipt with no deliverable projection."""
+
+    assert_eq(result.spectrum.admitted, false)
+    assert_eq(result.spectrum.decision, "reject")
+    assert_eq(result.spectrum.reason, reason)
+    assert_is_none(result.admitted_visible_output)
+    assert_is_none(result.admitted_guided_material)
+    assert_eq(len(result.selected_memory), 0)
+    assert_is_none(result.content_dna_json)
+    assert_is_some(result.receipt_json)
+
+
+def test_supported_answer_binds_committee_memory_content_dna_and_receipt() -> None:
+    package = lantern_package()
+    bound = request("Which Lantern Path card should I start with, and how fast should I go?")
+    proposal = answer_proposal(package, bound)
+    result = evaluate_with_committee(package, bound, proposal)
+    assert_eq(result.spectrum.admitted, true)
+    assert_eq(result.spectrum.decision, "deliver")
+    assert_eq(result.spectrum.reason, "supported_by_package")
+    assert_eq(result.spectrum.reason_namespace, "governed_profile_admission_0_1")
+    assert_eq(decision_id_text(result.spectrum.decision_id), "decision_lantern_answer")
+    assert_eq(len(result.findings), 6)
+    assert_eq(result.findings[0].classification, CommitteeVerdict.Pass)
+    assert_eq(len(result.selected_memory), 2)
+    assert_eq(result.admitted_visible_output, Some(proposal.visible_output))
+    assert_is_none(result.admitted_guided_material)
+    content_dna = assert_is_ok(GovernedContentDna.from_json(assert_is_some(result.content_dna_json)))
+    receipt = assert_is_ok(GovernedReceipt.from_json(assert_is_some(result.receipt_json)))
+    assert_eq(content_dna.body.state, "admitted_delivery")
+    assert_eq(len(content_dna.body.entries), 2)
+    assert_eq(memory_id_text(content_dna.body.entries[0].memory_id), "lantern_atom_card_order")
+    assert_eq(memory_id_text(content_dna.body.entries[1].memory_id), "lantern_atom_pacing")
+    assert_eq(receipt.body.content_dna_id, Some(content_dna.content_dna_id))
+    assert_eq(receipt.body.decision, "deliver")
+
+
+def test_guided_material_is_admitted_only_as_an_exact_package_owned_identity() -> None:
+    package = lantern_package()
+    bound = request("Help me practice the Lantern Path cards.")
+    proposal = guide_proposal(package, bound, "present_guided_card", no_guided_step(), no_guided_step())
+    result = evaluate_with_committee(package, bound, proposal)
+    admitted = assert_is_some(result.admitted_guided_material)
+    assert_eq(result.spectrum.decision, "deliver")
+    assert_eq(result.spectrum.reason, "supported_by_package")
+    assert_eq(guided_material_id_text(admitted.guided_material_id), GUIDE_ID)
+    assert_eq(admitted.artifact_revision, artifact_revision("0.1.0"))
+    assert_eq(admitted.artifact_digest, digest_id_type(CARD_DIGEST))
+    assert_eq(assert_is_some(result.content_dna_json).contains(GUIDE_ID), true)
+    assert_eq(assert_is_some(result.receipt_json).contains(GUIDE_ID), true)
+
+
+def test_declared_guided_navigation_is_admitted() -> None:
+    package = lantern_package()
+    bound = request("Take me to the next practice step.")
+    proposal = guide_proposal(
+        package,
+        bound,
+        "navigate_guided_card",
+        Some(guided_step_id("choose_starting_card")),
+        Some(guided_step_id("choose_pacing")),
+    )
+    result = evaluate_with_committee(package, bound, proposal)
+    assert_eq(result.spectrum.admitted, true)
+    assert_eq(result.spectrum.decision, "deliver")
+    assert_eq(result.spectrum.reason, "supported_by_package")
+    admitted = assert_is_some(result.admitted_guided_material)
+    assert_eq(guided_material_id_text(admitted.guided_material_id), GUIDE_ID)
+    assert_is_some(result.content_dna_json)
+    assert_is_some(result.receipt_json)
+
+
+def test_package_declared_refusal_and_escalation_are_safe_terminal_outcomes() -> None:
+    package = lantern_package()
+    bound = request("Give me an apple pie recipe.")
+    refused = evaluate_governed_profile_with_artifacts(
+        package,
+        bound,
+        terminal_proposal(package, bound, "refuse_unsupported"),
+        [],
+    )
+    assert_eq(refused.spectrum.admitted, true)
+    assert_eq(refused.spectrum.decision, "refuse")
+    assert_eq(refused.spectrum.reason, "unsupported_by_package")
+    assert_eq(refused.admitted_visible_output, Some(REFUSAL_TEXT))
+    assert_eq(len(refused.selected_memory), 0)
+    assert_is_none(refused.content_dna_json)
+    assert_is_some(refused.receipt_json)
+
+    escalated = evaluate_governed_profile_with_artifacts(
+        package,
+        bound,
+        terminal_proposal(package, bound, "escalate_out_of_scope"),
+        [],
+    )
+    assert_eq(escalated.spectrum.admitted, true)
+    assert_eq(escalated.spectrum.decision, "escalate")
+    assert_eq(escalated.spectrum.reason, "escalation_declared_by_package")
+    assert_eq(escalated.admitted_visible_output, Some(ESCALATION_TEXT))
+    assert_eq(len(escalated.selected_memory), 0)
+    assert_is_none(escalated.content_dna_json)
+    assert_is_some(escalated.receipt_json)
+
+
+def assert_boundary_receipt(action_name: str, text: str) -> None:
+    """Assert an admitted boundary outcome delivers ``text`` and its receipt names the package as the source."""
+
+    package = lantern_package()
+    bound = request("Give me an apple pie recipe.")
+    result = evaluate_governed_profile_with_artifacts(package, bound, terminal_proposal(package, bound, action_name), [])
+    assert_eq(result.admitted_visible_output, Some(text))
+    receipt_json = assert_is_some(result.receipt_json)
+    receipt = assert_is_ok(GovernedReceipt.from_json(receipt_json))
+    assert_eq(receipt.body.visible_output_source, Some(GovernedVisibleOutputSource.PackageBoundaryText))
+    assert_eq(receipt.body.visible_output_digest, Some(digest_governed_answer(text)))
+    assert_eq(receipt_json.contains("package_boundary_text"), true)
+
+
+def test_boundary_receipt_records_the_package_text_it_delivered() -> None:
+    assert_boundary_receipt("refuse_unsupported", REFUSAL_TEXT)
+    assert_boundary_receipt("escalate_out_of_scope", ESCALATION_TEXT)
+
+
+def test_deliver_receipt_records_the_admitted_proposal_text() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    result = evaluate_with_committee(package, bound, proposal)
+    receipt = assert_is_ok(GovernedReceipt.from_json(assert_is_some(result.receipt_json)))
+    content_dna = assert_is_ok(GovernedContentDna.from_json(assert_is_some(result.content_dna_json)))
+    assert_eq(receipt.body.visible_output_source, Some(GovernedVisibleOutputSource.AdmittedProposal))
+    assert_eq(receipt.body.visible_output_digest, Some(digest_governed_answer(proposal.visible_output)))
+    assert_eq(content_dna.body.answer_digest, digest_governed_answer(proposal.visible_output))
+
+
+def test_rejected_receipt_records_no_visible_output() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    result = evaluate_governed_profile_with_artifacts(package, bound, answer_proposal(package, bound), [])
+    assert_eq(result.spectrum.admitted, false)
+    receipt = assert_is_ok(GovernedReceipt.from_json(assert_is_some(result.receipt_json)))
+    assert_is_none(receipt.body.visible_output_source)
+    assert_is_none(receipt.body.visible_output_digest)
+
+
+def test_boundary_proposal_with_model_prose_is_rejected_with_receipt() -> None:
+    package = lantern_package()
+    bound = request("Give me an apple pie recipe.")
+    for action_name in ["refuse_unsupported", "escalate_out_of_scope"]:
+        mut prose = terminal_proposal(package, bound, action_name)
+        prose.visible_output = f"Here is an apple pie recipe the package never reviewed."
+        result = evaluate_governed_profile_with_artifacts(package, bound, prose, [])
+        assert_rejected_with_receipt(result, "boundary_output_not_allowed")
+        assert_eq(assert_is_some(result.receipt_json).contains("apple pie"), false)
+        mut blank = terminal_proposal(package, bound, action_name)
+        blank.visible_output = f"   "
+        assert_rejected_with_receipt(
+            evaluate_governed_profile_with_artifacts(package, bound, blank, []),
+            "boundary_output_not_allowed",
+        )
+
+
+def test_boundary_text_is_required_exactly_for_refusal_and_escalation() -> None:
+    for index in [3, 4]:
+        mut missing = unwitnessed_package()
+        mut boundary = missing.actions[index]
+        boundary.boundary_text = no_boundary_text()
+        missing.actions[index] = boundary
+        assert_eq(rejection(missing), "boundary_text_missing")
+        mut blank = unwitnessed_package()
+        mut blank_action = blank.actions[index]
+        blank_action.boundary_text = Some(f"   ")
+        blank.actions[index] = blank_action
+        assert_eq(rejection(blank), "boundary_text_invalid")
+        mut at_limit = unwitnessed_package()
+        mut limit_action = at_limit.actions[index]
+        limit_action.boundary_text = Some(repeated("b", MAX_VISIBLE_OUTPUT_LENGTH))
+        at_limit.actions[index] = limit_action
+        assert_eq(acceptance(at_limit), "ok")
+        mut over = unwitnessed_package()
+        mut over_action = over.actions[index]
+        over_action.boundary_text = Some(repeated("b", MAX_VISIBLE_OUTPUT_LENGTH + 1))
+        over.actions[index] = over_action
+        assert_eq(rejection(over), "boundary_text_invalid")
+    for index in [0, 1, 2]:
+        mut deliverable = unwitnessed_package()
+        mut deliverable_action = deliverable.actions[index]
+        deliverable_action.boundary_text = Some(REFUSAL_TEXT)
+        deliverable.actions[index] = deliverable_action
+        assert_eq(rejection(deliverable), "boundary_text_not_allowed")
+
+
+def test_boundary_text_is_covered_by_the_package_digest() -> None:
+    mut mutated = lantern_package()
+    mut refusal = mutated.actions[3]
+    refusal.boundary_text = Some(f"A different refusal the package never reviewed.")
+    mutated.actions[3] = refusal
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "profile_package_digest_mismatch")
+
+
+def test_identity_digests_hash_a_distinct_type_tag() -> None:
+    tags = [GOVERNED_PACKAGE_TYPE_TAG, GOVERNED_MEMORY_PROVENANCE_TYPE_TAG, GOVERNED_REQUEST_TYPE_TAG, GOVERNED_PROPOSAL_TYPE_TAG, GOVERNED_ANSWER_TYPE_TAG, GOVERNED_CONTENT_DNA_TYPE_TAG, GOVERNED_RECEIPT_TYPE_TAG]
+    shared_json = GovernedAnswerProjection(visible_output="Identical projection text.").to_json()
+    mut seen: list[DigestIdType] = []
+    for tag in tags:
+        assert_eq(tag.startswith("hees.ai/"), true)
+        assert_eq(tag.endswith("/v0"), true)
+        digest = assert_is_ok(digest_tagged_json(tag, shared_json))
+        assert_eq(seen.contains(digest), false)
+        seen.append(digest)
+    assert_eq(seen.contains(assert_is_ok(digest_canonical_json(shared_json))), false)
+    assert_eq(digest_governed_answer("Identical projection text."), seen[4])
+
+
+def test_request_proposal_and_artifact_identities_use_their_own_type_tags() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    request_json = GovernedRequestDigestProjection(
+        request_id=bound.request_id,
+        question=bound.question,
+        language=bound.language,
+        audience=bound.audience,
+    ).to_json()
+    assert_eq(bound.request_digest, assert_is_ok(digest_tagged_json(GOVERNED_REQUEST_TYPE_TAG, request_json)))
+    assert_eq(
+        digest_governed_proposal(proposal),
+        assert_is_ok(digest_tagged_json(GOVERNED_PROPOSAL_TYPE_TAG, proposal.to_json())),
+    )
+    result = evaluate_with_committee(package, bound, proposal)
+    content_dna = assert_is_ok(GovernedContentDna.from_json(assert_is_some(result.content_dna_json)))
+    receipt = assert_is_ok(GovernedReceipt.from_json(assert_is_some(result.receipt_json)))
+    assert_eq(
+        content_dna.content_dna_id,
+        ContentDnaId(assert_is_ok(digest_tagged_json(GOVERNED_CONTENT_DNA_TYPE_TAG, content_dna.body.to_json()))),
+    )
+    assert_eq(
+        receipt.receipt_id,
+        ReceiptId(assert_is_ok(digest_tagged_json(GOVERNED_RECEIPT_TYPE_TAG, receipt.body.to_json()))),
+    )
+
+
+def test_genuine_package_digest_is_valid() -> None:
+    assert_eq(validate_governed_profile_package(lantern_package()).reason, "ok")
+
+
+def test_long_unprefixed_proposal_id_derives_a_bounded_decision_id() -> None:
+    package = lantern_package()
+    bound = request("Give me an apple pie recipe.")
+    refusal = governed_proposal(
+        package,
+        bound,
+        proposal_id(repeated("x", 125)),
+        action_id("refuse_unsupported"),
+        "",
+        [],
+        [],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    result = evaluate_governed_profile_with_artifacts(package, bound, refusal, [])
+    assert_eq(result.spectrum.decision, "refuse")
+    decision_text = decision_id_text(result.spectrum.decision_id)
+    assert_eq(decision_text.startswith("decision_"), true)
+    assert_eq(len(decision_text), HASHED_DECISION_ID_LENGTH)
+
+
+def test_maximum_length_proposal_id_on_an_invalid_package_rejects_without_panic() -> None:
+    mut package = lantern_package()
+    package.mission = f""
+    bound = request("Which card first?")
+    mut proposal = answer_proposal(lantern_package(), bound)
+    proposal.proposal_id = proposal_id(repeated("y", 128))
+    result = evaluate_governed_profile_with_artifacts(package, bound, proposal, [])
+    assert_rejected_without_receipt(result, "invalid_package")
+    assert_eq(len(decision_id_text(result.spectrum.decision_id)), HASHED_DECISION_ID_LENGTH)
+
+
+def test_non_canonical_proposal_id_is_rejected_without_panic() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    mut proposal = answer_proposal(package, bound)
+    proposal.proposal_id = ProposalId(SymbolicIdType(IdType(f"Not A Canonical Id")))
+    result = evaluate_governed_profile_with_artifacts(package, bound, proposal, [])
+    assert_rejected_without_receipt(result, "invalid_proposal")
+    assert_eq(len(decision_id_text(result.spectrum.decision_id)), HASHED_DECISION_ID_LENGTH)
+
+
+def test_long_observation_ids_derive_bounded_finding_ids() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    mut observations: list[CommitteeObservation] = []
+    for role in required_role_names():
+        padding = repeated("z", 128 - len(role))
+        observations.append(
+            committee_observation(
+                package,
+                bound,
+                proposal,
+                observation_id(f"{role}{padding}"),
+                committee_role_id(role),
+                CommitteeVerdict.Pass,
+                digest_id_type(EVALUATOR_DIGEST),
+            ),
+        )
+    result = evaluate_governed_profile_with_artifacts(package, bound, proposal, observations)
+    assert_eq(result.spectrum.decision, "deliver")
+    for finding in result.findings:
+        finding_text = finding_id_text(finding.finding_id)
+        assert_eq(finding_text.startswith("finding_"), true)
+        assert_eq(len(finding_text) <= 128, true)
+
+
+def test_non_canonical_observation_fields_are_rejected() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    mut bad_id = passed_committee(package, bound, proposal)
+    mut first = bad_id[0]
+    first.observation_id = ObservationId(SymbolicIdType(IdType(f"Observation With Spaces")))
+    bad_id[0] = first
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, bad_id),
+        "invalid_committee_observation",
+    )
+
+    mut bad_fingerprint = passed_committee(package, bound, proposal)
+    mut second = bad_fingerprint[1]
+    second.evaluator_fingerprint = DigestIdType(IdType(f"not-a-digest"))
+    bad_fingerprint[1] = second
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, bad_fingerprint),
+        "invalid_committee_observation",
+    )
+
+
+def test_request_question_changed_after_binding_is_rejected_without_receipt() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    mut forged = bound.clone()
+    forged.question = f"A different question."
+    result = evaluate_governed_profile_with_artifacts(
+        package,
+        forged,
+        proposal,
+        passed_committee(package, bound, proposal),
+    )
+    assert_rejected_without_receipt(result, "request_digest_mismatch")
+
+
+def test_request_fields_are_validated_with_specific_diagnostics() -> None:
+    assert_eq(validate_governed_request(request("Which card first?")).reason, "ok")
+    assert_eq(validate_governed_request(request(repeated("q", MAX_QUESTION_LENGTH))).reason, "ok")
+    over = validate_governed_request(request(repeated("q", MAX_QUESTION_LENGTH + 1)))
+    assert_eq(over.reason, "invalid_request")
+    assert_eq(over.errors[0], "invalid_question")
+    assert_eq(validate_governed_request(request("   ")).errors[0], "invalid_question")
+    bad_language = bind_governed_request(request_id("request_lantern"), "Which card first?", "E", audience_id(AUDIENCE))
+    assert_eq(validate_governed_request(bad_language).errors[0], "invalid_request_language")
+    bad_id = bind_governed_request(
+        RequestId(SymbolicIdType(IdType(f"Request With Spaces"))),
+        "Which card first?",
+        "en",
+        audience_id(AUDIENCE),
+    )
+    assert_eq(validate_governed_request(bad_id).errors[0], "invalid_request_id")
+    bad_audience = bind_governed_request(
+        request_id("request_lantern"),
+        "Which card first?",
+        "en",
+        AudienceId(SymbolicIdType(IdType(f"Audience With Spaces"))),
+    )
+    assert_eq(validate_governed_request(bad_audience).errors[0], "invalid_request_audience")
+    mut stale = request("Which card first?")
+    stale.request_digest = digest_id_type(OTHER_DIGEST)
+    stale_result = validate_governed_request(stale)
+    assert_eq(stale_result.reason, "request_digest_mismatch")
+    assert_eq(stale_result.errors[0], "request_digest_mismatch")
+
+
+def identity_rejection(proposal: GovernedProposal) -> CompleteGovernedEvaluation:
+    """Evaluate a mutated answer proposal against the fixture package and request."""
+
+    package = lantern_package()
+    bound = request("Which card first?")
+    return evaluate_governed_profile_with_artifacts(package, bound, proposal, [])
+
+
+def base_answer() -> GovernedProposal:
+    """Return the supported answer proposal for the fixture package and request."""
+
+    return answer_proposal(lantern_package(), request("Which card first?"))
+
+
+def test_proposal_identity_mismatches_are_rejected_without_receipt() -> None:
+    mut contract = base_answer()
+    contract.contract_version = contract_id("other_proposal_contract_0_1")
+    assert_rejected_without_receipt(identity_rejection(contract), "unsupported_proposal_contract")
+
+    mut profile = base_answer()
+    profile.profile_id = profile_id("other_profile_0_1")
+    assert_rejected_without_receipt(identity_rejection(profile), "profile_id_mismatch")
+
+    mut foreign_package = base_answer()
+    foreign_package.package_id = package_id("other_package")
+    assert_rejected_without_receipt(identity_rejection(foreign_package), "package_id_mismatch")
+
+    mut foreign_domain = base_answer()
+    foreign_domain.domain_id = domain_id("other_domain")
+    assert_rejected_without_receipt(identity_rejection(foreign_domain), "domain_id_mismatch")
+
+    mut stale_revision = base_answer()
+    stale_revision.package_revision = artifact_revision("9.9.9")
+    assert_rejected_without_receipt(identity_rejection(stale_revision), "package_revision_mismatch")
+
+    mut stale_digest = base_answer()
+    stale_digest.profile_package_digest = digest_id_type(OTHER_DIGEST)
+    assert_rejected_without_receipt(identity_rejection(stale_digest), "profile_package_digest_mismatch")
+
+    mut foreign_request = base_answer()
+    foreign_request.request_id = request_id("request_other")
+    assert_rejected_without_receipt(identity_rejection(foreign_request), "request_id_mismatch")
+
+    mut stale_request = base_answer()
+    stale_request.request_digest = digest_id_type(OTHER_DIGEST)
+    assert_rejected_without_receipt(identity_rejection(stale_request), "request_digest_mismatch")
+
+
+def test_visible_output_length_boundary() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    mut at_limit = answer_proposal(package, bound)
+    at_limit.visible_output = repeated("v", MAX_VISIBLE_OUTPUT_LENGTH)
+    assert_eq(validate_governed_proposal_identity(package, bound, at_limit).reason, "ok")
+    mut over = answer_proposal(package, bound)
+    over.visible_output = repeated("v", MAX_VISIBLE_OUTPUT_LENGTH + 1)
+    assert_rejected_without_receipt(identity_rejection(over), "missing_visible_output")
+    mut blank = answer_proposal(package, bound)
+    blank.visible_output = f"   "
+    assert_eq(validate_governed_proposal_identity(package, bound, blank).reason, "ok")
+    assert_rejected_with_receipt(identity_rejection(blank), "missing_visible_output")
+    mut empty = answer_proposal(package, bound)
+    empty.visible_output = f""
+    assert_rejected_with_receipt(identity_rejection(empty), "missing_visible_output")
+    mut boundary_over = terminal_proposal(package, bound, "refuse_unsupported")
+    boundary_over.visible_output = repeated("v", MAX_VISIBLE_OUTPUT_LENGTH + 1)
+    assert_rejected_without_receipt(identity_rejection(boundary_over), "missing_visible_output")
+
+
+def test_proposal_reference_counts_are_bounded_before_duplicate_scans() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    mut at_limit = answer_proposal(package, bound)
+    at_limit.evidence_ids = [evidence_id(f"lantern_unknown_{index}") for index in range(MAX_GOVERNED_EVIDENCE)]
+    assert_rejected_with_receipt(identity_rejection(at_limit), "unknown_evidence")
+    mut over_evidence = answer_proposal(package, bound)
+    over_evidence.evidence_ids = [evidence_id("lantern_evidence_card_order") for _index in range(
+        MAX_GOVERNED_EVIDENCE + 1,
+    )]
+    assert_rejected_without_receipt(identity_rejection(over_evidence), "proposal_reference_limit_exceeded")
+    mut over_memory = answer_proposal(package, bound)
+    over_memory.memory_ids = [memory_id("lantern_atom_card_order") for _index in range(MAX_GOVERNED_MEMORY + 1)]
+    assert_rejected_without_receipt(identity_rejection(over_memory), "proposal_reference_limit_exceeded")
+
+
+def test_post_identity_rejection_still_produces_a_receipt() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    result = evaluate_governed_profile_with_artifacts(package, bound, answer_proposal(package, bound), [])
+    assert_rejected_with_receipt(result, "committee_coverage_invalid")
+    receipt = assert_is_ok(GovernedReceipt.from_json(assert_is_some(result.receipt_json)))
+    assert_eq(receipt.body.decision, "reject")
+    assert_eq(receipt.body.reason, "committee_coverage_invalid")
+    assert_is_none(receipt.body.content_dna_id)
+
+
+def test_unknown_evidence_and_memory_relationship_mismatch_are_rejected() -> None:
+    package = lantern_package()
+    bound = request("What could I change?")
+    unknown_evidence = proposal_for(
+        package,
+        bound,
+        "answer_from_package",
+        [evidence_id("lantern_evidence_unknown")],
+        [memory_id("lantern_atom_card_order")],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    mismatch = proposal_for(
+        package,
+        bound,
+        "answer_from_package",
+        [evidence_id("lantern_evidence_pacing")],
+        [memory_id("lantern_atom_card_order")],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, unknown_evidence, []),
+        "unknown_evidence",
+    )
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, mismatch, []),
+        "memory_evidence_mismatch",
+    )
+
+
+def test_duplicate_and_unknown_references_are_rejected() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    duplicate_evidence = proposal_for(
+        package,
+        bound,
+        "answer_from_package",
+        [evidence_id("lantern_evidence_card_order"), evidence_id("lantern_evidence_card_order")],
+        [memory_id("lantern_atom_card_order")],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_eq(proposal_error(package, bound, duplicate_evidence), "duplicate_evidence_reference")
+    duplicate_memory = proposal_for(
+        package,
+        bound,
+        "answer_from_package",
+        [evidence_id("lantern_evidence_card_order")],
+        [memory_id("lantern_atom_card_order"), memory_id("lantern_atom_card_order")],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_eq(proposal_error(package, bound, duplicate_memory), "duplicate_memory_reference")
+    unknown_memory = proposal_for(
+        package,
+        bound,
+        "answer_from_package",
+        [evidence_id("lantern_evidence_card_order")],
+        [memory_id("lantern_atom_unknown")],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, unknown_memory, []),
+        "unknown_memory",
+    )
+
+
+def test_unknown_guided_material_and_undeclared_action_fail_closed() -> None:
+    package = lantern_package()
+    bound = request("Show a guide.")
+    unknown_card = proposal_for(
+        package,
+        bound,
+        "present_guided_card",
+        [],
+        [],
+        Some(guided_material_id("lantern_guide_unknown")),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, unknown_card, []),
+        "unknown_guided_material",
+    )
+    undeclared = terminal_proposal(package, bound, "issue_a_certificate")
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, undeclared, []),
+        "unknown_action",
+    )
+
+
+def test_support_requirements_follow_the_declared_outcome_kind() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    unsupported_answer = proposal_for(
+        package,
+        bound,
+        "answer_from_package",
+        [],
+        [],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    result = evaluate_governed_profile_with_artifacts(package, bound, unsupported_answer, [])
+    assert_rejected_with_receipt(result, "evidence_required")
+    assert_eq(proposal_error(package, bound, unsupported_answer), "evidence_and_memory_required")
+    mut supported_refusal = proposal_for(
+        package,
+        bound,
+        "refuse_unsupported",
+        [evidence_id("lantern_evidence_card_order")],
+        [memory_id("lantern_atom_card_order")],
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    supported_refusal.visible_output = f""
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, supported_refusal, []),
+        "terminal_boundary_support_not_allowed",
+    )
+
+
+def test_guided_nominations_require_a_guided_action() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    mut answer_with_guide = answer_proposal(package, bound)
+    answer_with_guide.guided_material_id = Some(guided_material_id(GUIDE_ID))
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, answer_with_guide, []),
+        "guided_material_not_allowed",
+    )
+    mut answer_with_step = answer_proposal(package, bound)
+    answer_with_step.next_step_id = Some(guided_step_id("choose_pacing"))
+    assert_eq(proposal_error(package, bound, answer_with_step), "guided_material_not_allowed")
+    present_without_guide = proposal_for(
+        package,
+        bound,
+        "present_guided_card",
+        full_evidence_ids(),
+        full_memory_ids(),
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, present_without_guide, []),
+        "guided_material_required",
+    )
+
+
+def test_guided_language_and_audience_are_governed() -> None:
+    package = lantern_package()
+    wrong_language = bind_governed_request(
+        request_id("request_wrong_language"),
+        "Help me practice.",
+        "af",
+        audience_id(AUDIENCE),
+    )
+    language_guide = guide_proposal(package, wrong_language, "present_guided_card", no_guided_step(), no_guided_step())
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, wrong_language, language_guide, []),
+        "guided_material_language_mismatch",
+    )
+    wrong_audience = bind_governed_request(
+        request_id("request_wrong_audience"),
+        "Help me practice.",
+        "en",
+        audience_id("specialist_audience"),
+    )
+    audience_guide = guide_proposal(package, wrong_audience, "present_guided_card", no_guided_step(), no_guided_step())
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, wrong_audience, audience_guide, []),
+        "guided_material_audience_mismatch",
+    )
+
+
+def test_guided_support_and_action_must_match_the_declared_material() -> None:
+    package = lantern_package()
+    bound = request("Help me practice.")
+    partial_support = proposal_for(
+        package,
+        bound,
+        "present_guided_card",
+        [evidence_id("lantern_evidence_card_order")],
+        [memory_id("lantern_atom_card_order")],
+        Some(guided_material_id(GUIDE_ID)),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, partial_support, []),
+        "guided_material_memory_mismatch",
+    )
+
+    mut alternate = unwitnessed_package()
+    mut actions = alternate.actions.clone()
+    actions.append(action("present_alternate_card", GovernedOutcomeKind.GuidedMaterial, true, true))
+    actions.append(action("navigate_alternate_card", GovernedOutcomeKind.GuidedNavigation, true, true))
+    alternate.actions = actions
+    witnessed = rewitnessed(alternate)
+    present_alternate = guide_proposal(witnessed, bound, "present_alternate_card", no_guided_step(), no_guided_step())
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(witnessed, bound, present_alternate, []),
+        "guided_material_action_mismatch",
+    )
+    navigate_alternate = guide_proposal(
+        witnessed,
+        bound,
+        "navigate_alternate_card",
+        Some(guided_step_id("choose_starting_card")),
+        Some(guided_step_id("choose_pacing")),
+    )
+    assert_eq(proposal_error(witnessed, bound, navigate_alternate), "guided_material_action_mismatch")
+
+
+def test_guided_step_nominations_name_the_exact_failed_check() -> None:
+    package = lantern_package()
+    bound = request("Show me the next step.")
+    presenting_with_step = guide_proposal(
+        package,
+        bound,
+        "present_guided_card",
+        Some(guided_step_id("choose_starting_card")),
+        no_guided_step(),
+    )
+    assert_eq(proposal_error(package, bound, presenting_with_step), "unexpected_guided_transition")
+    without_current = guide_proposal(
+        package,
+        bound,
+        "navigate_guided_card",
+        no_guided_step(),
+        Some(guided_step_id("choose_pacing")),
+    )
+    assert_eq(proposal_error(package, bound, without_current), "current_step_required")
+    without_next = guide_proposal(
+        package,
+        bound,
+        "navigate_guided_card",
+        Some(guided_step_id("choose_starting_card")),
+        no_guided_step(),
+    )
+    assert_eq(proposal_error(package, bound, without_next), "next_step_required")
+    undeclared = guide_proposal(
+        package,
+        bound,
+        "navigate_guided_card",
+        Some(guided_step_id("choose_starting_card")),
+        Some(guided_step_id("choose_reflection")),
+    )
+    assert_eq(proposal_error(package, bound, undeclared), "transition_not_declared")
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, undeclared, []),
+        "invalid_guided_transition",
+    )
+
+
+def test_failed_committee_observation_rejects_all_deliverable_projection() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    mut observations = passed_committee(package, bound, proposal)
+    observations[0] = observation(package, bound, proposal, "evidence_support", CommitteeVerdict.Fail)
+    result = evaluate_governed_profile_with_artifacts(package, bound, proposal, observations)
+    assert_rejected_with_receipt(result, "committee_rejected")
+    assert_eq(len(result.findings), 6)
+    assert_eq(result.findings[0].classification, CommitteeVerdict.Fail)
+
+
+def test_uncertain_committee_rejects_delivery() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    mut observations = passed_committee(package, bound, proposal)
+    observations[2] = observation(package, bound, proposal, "safety_boundary", CommitteeVerdict.Uncertain)
+    result = evaluate_governed_profile_with_artifacts(package, bound, proposal, observations)
+    assert_rejected_with_receipt(result, "committee_uncertain")
+    assert_eq(len(result.findings), 6)
+
+
+def test_fail_takes_precedence_over_uncertain() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    mut observations = passed_committee(package, bound, proposal)
+    observations[0] = observation(package, bound, proposal, "evidence_support", CommitteeVerdict.Uncertain)
+    observations[5] = observation(package, bound, proposal, "contextual_tone", CommitteeVerdict.Fail)
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, observations),
+        "committee_rejected",
+    )
+
+
+def test_committee_on_refusal_is_rejected() -> None:
+    package = lantern_package()
+    bound = request("Give me an apple pie recipe.")
+    refusal = terminal_proposal(package, bound, "refuse_unsupported")
+    result = evaluate_governed_profile_with_artifacts(package, bound, refusal, passed_committee(package, bound, refusal))
+    assert_rejected_with_receipt(result, "committee_not_allowed")
+
+
+def test_committee_coverage_must_be_exact() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    mut missing: list[CommitteeObservation] = []
+    for role in required_role_names():
+        if role != "contextual_tone":
+            missing.append(observation(package, bound, proposal, role, CommitteeVerdict.Pass))
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, missing),
+        "committee_coverage_invalid",
+    )
+    mut extra = passed_committee(package, bound, proposal)
+    extra.append(observation(package, bound, proposal, "unrequired_role", CommitteeVerdict.Pass))
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, extra),
+        "committee_coverage_invalid",
+    )
+    mut duplicate_role = passed_committee(package, bound, proposal)
+    duplicate_role[5] = observation(package, bound, proposal, "evidence_support", CommitteeVerdict.Pass)
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, duplicate_role),
+        "committee_coverage_invalid",
+    )
+    mut duplicate_observation = passed_committee(package, bound, proposal)
+    mut last = duplicate_observation[5]
+    last.observation_id = observation_id("observation_evidence_support")
+    duplicate_observation[5] = last
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, duplicate_observation),
+        "committee_coverage_invalid",
+    )
+
+
+def test_unsupported_observation_contract_is_rejected() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    mut observations = passed_committee(package, bound, proposal)
+    mut first = observations[0]
+    first.contract_version = contract_id("other_observation_contract_0_1")
+    observations[0] = first
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, observations),
+        "unsupported_committee_contract",
+    )
+
+
+def test_observations_bound_to_another_identity_are_rejected() -> None:
+    package = lantern_package()
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    mut other_candidate = proposal.clone()
+    other_candidate.visible_output = f"A different candidate answer."
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(
+            package,
+            bound,
+            proposal,
+            passed_committee(package, bound, other_candidate),
+        ),
+        "committee_identity_mismatch",
+    )
+    other_request = request("A different question.")
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(
+            package,
+            bound,
+            proposal,
+            passed_committee(package, other_request, proposal),
+        ),
+        "committee_identity_mismatch",
+    )
+    mut foreign_package = passed_committee(package, bound, proposal)
+    mut first = foreign_package[0]
+    first.package_id = package_id("other_package")
+    foreign_package[0] = first
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, foreign_package),
+        "committee_identity_mismatch",
+    )
+    mut stale_digest = passed_committee(package, bound, proposal)
+    mut second = stale_digest[1]
+    second.profile_package_digest = digest_id_type(OTHER_DIGEST)
+    stale_digest[1] = second
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, stale_digest),
+        "committee_identity_mismatch",
+    )
+    mut other_profile = passed_committee(package, bound, proposal)
+    mut third = other_profile[2]
+    third.profile_id = profile_id("other_profile_0_1")
+    other_profile[2] = third
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, other_profile),
+        "committee_identity_mismatch",
+    )
+
+
+def test_stale_digest_after_action_change_is_rejected() -> None:
+    mut mutated = lantern_package()
+    mut first_action = mutated.actions[0]
+    first_action.committee_required = not first_action.committee_required
+    mutated.actions[0] = first_action
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "profile_package_digest_mismatch")
+
+
+def test_stale_digest_after_evidence_change_is_rejected() -> None:
+    mut mutated = lantern_package()
+    mut first = mutated.evidence[0]
+    first.claim = f"A different, unreviewed claim."
+    mutated.evidence[0] = first
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "profile_package_digest_mismatch")
+
+
+def test_stale_digest_after_memory_change_is_rejected() -> None:
+    mut mutated = lantern_package()
+    mut first = mutated.memory[0]
+    first.concept = f"A different, unreviewed concept."
+    mutated.memory[0] = first
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "profile_package_digest_mismatch")
+
+
+def test_stale_digest_after_policy_change_is_rejected() -> None:
+    mut mutated = lantern_package()
+    mut policy = mutated.policy
+    policy.require_all_passed = false
+    mutated.policy = policy
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "profile_package_digest_mismatch")
+
+
+def test_stale_digest_after_guided_material_change_is_rejected() -> None:
+    mut mutated = lantern_package()
+    mut first = mutated.guided_material[0]
+    first.language = f"af"
+    mutated.guided_material[0] = first
+    result = validate_governed_profile_package(mutated)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "profile_package_digest_mismatch")
+
+
+def test_stale_memory_provenance_digest_is_rejected_independent_of_package_digest() -> None:
+    mut tampered = lantern_package()
+    mut first = tampered.memory[0]
+    first.concept = f"A retargeted concept, package digest recomputed but provenance left stale."
+    tampered.memory[0] = first
+    result = validate_governed_profile_package(with_package_digest(tampered))
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "memory_provenance_mismatch")
+
+
+def test_invalid_package_is_rejected_without_receipt_at_evaluation() -> None:
+    mut package = lantern_package()
+    package.profile_package_digest = digest_id_type(OTHER_DIGEST)
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    assert_rejected_without_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, passed_committee(package, bound, proposal)),
+        "invalid_package",
+    )
+
+
+def step_ids(count: int) -> list[GuidedStepId]:
+    """Build ``count`` distinct guided step identifiers."""
+
+    return [guided_step_id(f"step_{index}") for index in range(count)]
+
+
+def every_transition(steps: list[GuidedStepId]) -> list[GuidedTransition]:
+    """Build every distinct non-self transition between the given steps."""
+
+    mut result: list[GuidedTransition] = []
+    for current in steps:
+        for next in steps:
+            if current != next:
+                result.append(GuidedTransition(current_step_id=current, next_step_id=next))
+    return result
+
+
+def refusal_actions(count: int) -> list[GovernedAction]:
+    """Build ``count`` additional refusal actions."""
+
+    return [action(f"refuse_extra_{index}", GovernedOutcomeKind.Refusal, false, false) for index in range(count)]
+
+
+def test_package_header_is_validated() -> None:
+    mut contract = unwitnessed_package()
+    contract.contract_version = contract_id("other_package_contract_0_1")
+    assert_eq(rejection(contract), "unsupported_package_contract")
+    mut profile = unwitnessed_package()
+    profile.profile_id = profile_id("other_profile_0_1")
+    assert_eq(rejection(profile), "unsupported_profile")
+    mut bad_package_id = unwitnessed_package()
+    bad_package_id.package_id = PackageId(SymbolicIdType(IdType(f"Package With Spaces")))
+    assert_eq(rejection(bad_package_id), "invalid_package_id")
+    mut bad_domain_id = unwitnessed_package()
+    bad_domain_id.domain_id = DomainId(SymbolicIdType(IdType(f"Domain With Spaces")))
+    assert_eq(rejection(bad_domain_id), "invalid_domain_id")
+    mut bad_revision = unwitnessed_package()
+    bad_revision.package_revision = ArtifactRevisionType(IdType(f"v1"))
+    assert_eq(rejection(bad_revision), "invalid_package_revision")
+    mut bad_digest = lantern_package()
+    bad_digest.profile_package_digest = DigestIdType(IdType(f"not-a-digest"))
+    result = validate_governed_profile_package(bad_digest)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "invalid_profile_package_digest")
+
+
+def test_mission_length_boundary() -> None:
+    mut at_limit = unwitnessed_package()
+    at_limit.mission = repeated("m", MAX_PACKAGE_TEXT_LENGTH)
+    assert_eq(acceptance(at_limit), "ok")
+    mut over = unwitnessed_package()
+    over.mission = repeated("m", MAX_PACKAGE_TEXT_LENGTH + 1)
+    assert_eq(rejection(over), "invalid_mission")
+    mut blank = unwitnessed_package()
+    blank.mission = f"   "
+    assert_eq(rejection(blank), "invalid_mission")
+
+
+def test_action_count_boundary() -> None:
+    base_count = len(unwitnessed_package().actions)
+    mut at_limit = unwitnessed_package()
+    mut actions = at_limit.actions.clone()
+    for extra in refusal_actions(MAX_GOVERNED_ACTIONS - base_count):
+        actions.append(extra)
+    at_limit.actions = actions.clone()
+    assert_eq(acceptance(at_limit), "ok")
+    actions.append(action("refuse_one_too_many", GovernedOutcomeKind.Refusal, false, false))
+    mut over = unwitnessed_package()
+    over.actions = actions
+    assert_eq(rejection(over), "invalid_action_count")
+    mut empty = unwitnessed_package()
+    empty.actions = []
+    assert_eq(rejection(empty), "invalid_action_count")
+
+
+def test_evidence_count_boundary() -> None:
+    base_count = len(unwitnessed_package().evidence)
+    mut at_limit = unwitnessed_package()
+    mut records = at_limit.evidence.clone()
+    for extra in extra_evidence("lantern_extra_evidence", MAX_GOVERNED_EVIDENCE - base_count):
+        records.append(extra)
+    at_limit.evidence = records.clone()
+    assert_eq(acceptance(at_limit), "ok")
+    records.append(evidence("lantern_one_too_many", "fictional_lantern_appendix:99"))
+    mut over = unwitnessed_package()
+    over.evidence = records
+    assert_eq(rejection(over), "invalid_evidence_count")
+    mut empty = unwitnessed_package()
+    empty.evidence = []
+    assert_eq(rejection(empty), "invalid_evidence_count")
+
+
+def test_memory_count_boundary() -> None:
+    base_count = len(unwitnessed_package().memory)
+    mut at_limit = unwitnessed_package()
+    mut atoms = at_limit.memory.clone()
+    for extra in extra_atoms("lantern_extra_atom", MAX_GOVERNED_MEMORY - base_count):
+        atoms.append(extra)
+    at_limit.memory = atoms.clone()
+    assert_eq(acceptance(at_limit), "ok")
+    atoms.append(memory_atom("lantern_one_too_many", ["lantern_evidence_card_order"]))
+    mut over = unwitnessed_package()
+    over.memory = atoms
+    assert_eq(rejection(over), "invalid_memory_count")
+    mut empty = unwitnessed_package()
+    empty.memory = []
+    assert_eq(rejection(empty), "invalid_memory_count")
+
+
+def test_guided_material_count_boundary() -> None:
+    mut materials: list[GuidedMaterial] = [guide()]
+    for index in range(MAX_GOVERNED_GUIDED_MATERIAL - 1):
+        mut copy = guide()
+        copy.guided_material_id = guided_material_id(f"lantern_guide_copy_{index}")
+        materials.append(copy)
+    mut at_limit = unwitnessed_package()
+    at_limit.guided_material = materials.clone()
+    assert_eq(acceptance(at_limit), "ok")
+    mut extra = guide()
+    extra.guided_material_id = guided_material_id("lantern_guide_one_too_many")
+    materials.append(extra)
+    mut over = unwitnessed_package()
+    over.guided_material = materials
+    assert_eq(rejection(over), "invalid_guided_material_count")
+
+
+def test_committee_role_count_boundary() -> None:
+    mut policy = unwitnessed_package().policy
+    policy.required_roles = [committee_role_id(f"role_{index}") for index in range(MAX_COMMITTEE_ROLES)]
+    assert_eq(acceptance(with_policy(policy.clone())), "ok")
+    policy.required_roles = [committee_role_id(f"role_{index}") for index in range(MAX_COMMITTEE_ROLES + 1)]
+    assert_eq(rejection(with_policy(policy.clone())), "invalid_committee_role_count")
+    policy.required_roles = []
+    assert_eq(rejection(with_policy(policy)), "invalid_committee_role_count")
+
+
+def test_memory_evidence_count_boundary() -> None:
+    mut package = unwitnessed_package()
+    mut records = package.evidence.clone()
+    for extra in extra_evidence("lantern_atom_source", MAX_MEMORY_EVIDENCE + 1):
+        records.append(extra)
+    package.evidence = records
+    mut at_limit = package.clone()
+    mut atoms = at_limit.memory.clone()
+    atoms.append(
+        memory_atom("lantern_wide_atom", [f"lantern_atom_source_{index}" for index in range(MAX_MEMORY_EVIDENCE)]),
+    )
+    at_limit.memory = atoms
+    assert_eq(acceptance(at_limit), "ok")
+    mut over = package.clone()
+    mut over_atoms = over.memory.clone()
+    over_atoms.append(
+        memory_atom("lantern_wide_atom", [f"lantern_atom_source_{index}" for index in range(MAX_MEMORY_EVIDENCE + 1)]),
+    )
+    over.memory = over_atoms
+    assert_eq(rejection(over), "invalid_memory_evidence_count")
+    mut empty = unwitnessed_package()
+    mut empty_atom = first_atom()
+    empty_atom.evidence_ids = []
+    empty.memory[0] = empty_atom
+    assert_eq(rejection(empty), "invalid_memory_evidence_count")
+
+
+def test_guided_memory_count_boundary() -> None:
+    extra_count = MAX_GUIDED_MEMORY - len(full_memory_ids())
+    mut package = unwitnessed_package()
+    mut records = package.evidence.clone()
+    for extra in extra_evidence("lantern_guided_source", extra_count):
+        records.append(extra)
+    package.evidence = records
+    mut atoms = package.memory.clone()
+    mut material = guide()
+    mut guide_memory = full_memory_ids()
+    mut guide_evidence = full_evidence_ids()
+    for index in range(extra_count):
+        atoms.append(memory_atom(f"lantern_guided_atom_{index}", [f"lantern_guided_source_{index}"]))
+        guide_memory.append(memory_id(f"lantern_guided_atom_{index}"))
+        guide_evidence.append(evidence_id(f"lantern_guided_source_{index}"))
+    package.memory = atoms
+    material.memory_ids = guide_memory.clone()
+    material.evidence_ids = guide_evidence
+    package.guided_material = [material.clone()]
+    assert_eq(acceptance(package.clone()), "ok")
+    guide_memory.append(memory_id("lantern_atom_card_order"))
+    material.memory_ids = guide_memory
+    assert_eq(rejection(with_guide(material)), "invalid_guided_memory_count")
+    mut empty = guide()
+    empty.memory_ids = []
+    assert_eq(rejection(with_guide(empty)), "invalid_guided_memory_count")
+
+
+def test_guided_evidence_count_boundary() -> None:
+    atom_count = MAX_GUIDED_MEMORY
+    assert_eq(2 * atom_count, MAX_GUIDED_EVIDENCE)
+    mut package = unwitnessed_package()
+    mut records = package.evidence.clone()
+    for extra in extra_evidence("lantern_pair_source", MAX_GUIDED_EVIDENCE):
+        records.append(extra)
+    package.evidence = records
+    mut atoms = package.memory.clone()
+    mut guide_memory: list[MemoryId] = []
+    mut guide_evidence: list[EvidenceId] = []
+    for index in range(atom_count):
+        first_source = f"lantern_pair_source_{2 * index}"
+        second_source = f"lantern_pair_source_{2 * index + 1}"
+        atoms.append(memory_atom(f"lantern_pair_atom_{index}", [first_source, second_source]))
+        guide_memory.append(memory_id(f"lantern_pair_atom_{index}"))
+        guide_evidence.append(evidence_id(first_source))
+        guide_evidence.append(evidence_id(second_source))
+    package.memory = atoms
+    mut material = guide()
+    material.memory_ids = guide_memory
+    material.evidence_ids = guide_evidence.clone()
+    package.guided_material = [material.clone()]
+    assert_eq(acceptance(package), "ok")
+    guide_evidence.append(evidence_id("lantern_evidence_card_order"))
+    mut over = guide()
+    over.evidence_ids = guide_evidence
+    assert_eq(rejection(with_guide(over)), "invalid_guided_evidence_count")
+    mut empty = guide()
+    empty.evidence_ids = []
+    assert_eq(rejection(with_guide(empty)), "invalid_guided_evidence_count")
+
+
+def test_guided_step_and_transition_boundaries() -> None:
+    mut at_limit = guide()
+    at_limit.steps = step_ids(MAX_GUIDED_STEPS)
+    at_limit.transitions = every_transition(step_ids(MAX_GUIDED_STEPS))
+    assert_eq(len(at_limit.transitions), MAX_GUIDED_TRANSITIONS)
+    assert_eq(acceptance(with_guide(at_limit.clone())), "ok")
+    mut too_many_steps = guide()
+    too_many_steps.steps = step_ids(MAX_GUIDED_STEPS + 1)
+    too_many_steps.transitions = []
+    assert_eq(rejection(with_guide(too_many_steps)), "invalid_guided_steps")
+    mut no_steps = guide()
+    no_steps.steps = []
+    no_steps.transitions = []
+    assert_eq(rejection(with_guide(no_steps)), "invalid_guided_steps")
+    mut too_many_transitions = at_limit.clone()
+    mut transitions = at_limit.transitions.clone()
+    transitions.append(at_limit.transitions[0].clone())
+    too_many_transitions.transitions = transitions
+    assert_eq(rejection(with_guide(too_many_transitions)), "invalid_guided_transition_count")
+
+
+def test_collection_bounds_are_checked_before_the_package_digest() -> None:
+    mut stale = lantern_package()
+    mut actions = stale.actions.clone()
+    for extra in refusal_actions(MAX_GOVERNED_ACTIONS):
+        actions.append(extra)
+    stale.actions = actions
+    result = validate_governed_profile_package(stale)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "invalid_action_count")
+
+
+def test_package_identifiers_must_be_unique() -> None:
+    mut actions = unwitnessed_package()
+    mut action_list = actions.actions.clone()
+    action_list.append(action("refuse_unsupported", GovernedOutcomeKind.Refusal, false, false))
+    actions.actions = action_list
+    assert_eq(rejection(actions), "duplicate_action_id")
+    mut records = unwitnessed_package()
+    mut record_list = records.evidence.clone()
+    record_list.append(first_evidence())
+    records.evidence = record_list
+    assert_eq(rejection(records), "duplicate_evidence_id")
+    mut atoms = unwitnessed_package()
+    mut atom_list = atoms.memory.clone()
+    atom_list.append(first_atom())
+    atoms.memory = atom_list
+    assert_eq(rejection(atoms), "duplicate_memory_id")
+    mut guides = unwitnessed_package()
+    guides.guided_material = [guide(), guide()]
+    assert_eq(rejection(guides), "duplicate_guided_material_id")
+
+
+def test_action_support_requirements_match_outcome_kind() -> None:
+    mut bad_id = unwitnessed_package()
+    mut refusal = bad_id.actions[3]
+    refusal.action_id = ActionId(SymbolicIdType(IdType(f"Action With Spaces")))
+    bad_id.actions[3] = refusal
+    assert_eq(rejection(bad_id), "invalid_action_id")
+    mut supported_refusal = unwitnessed_package()
+    supported_refusal.actions[3] = action("refuse_unsupported", GovernedOutcomeKind.Refusal, true, false)
+    assert_eq(rejection(supported_refusal), "terminal_boundary_action_requires_support")
+    mut reviewed_escalation = unwitnessed_package()
+    reviewed_escalation.actions[4] = action("escalate_out_of_scope", GovernedOutcomeKind.Escalation, false, true)
+    assert_eq(rejection(reviewed_escalation), "terminal_boundary_action_requires_support")
+    mut unsupported_answer = unwitnessed_package()
+    unsupported_answer.actions[0] = action("answer_from_package", GovernedOutcomeKind.Answer, false, true)
+    assert_eq(rejection(unsupported_answer), "deliverable_action_missing_evidence_requirement")
+
+
+def test_evidence_text_bounds() -> None:
+    mut claim = first_evidence()
+    claim.claim = repeated("c", MAX_PACKAGE_TEXT_LENGTH)
+    assert_eq(acceptance(with_first_evidence(claim.clone())), "ok")
+    claim.claim = repeated("c", MAX_PACKAGE_TEXT_LENGTH + 1)
+    assert_eq(rejection(with_first_evidence(claim)), "invalid_evidence_claim")
+    mut guidance = first_evidence()
+    guidance.guidance = repeated("g", MAX_PACKAGE_TEXT_LENGTH)
+    assert_eq(acceptance(with_first_evidence(guidance.clone())), "ok")
+    guidance.guidance = repeated("g", MAX_PACKAGE_TEXT_LENGTH + 1)
+    assert_eq(rejection(with_first_evidence(guidance)), "invalid_evidence_guidance")
+    mut source = first_evidence()
+    source.source_ref = repeated("s", MAX_SOURCE_REF_LENGTH)
+    assert_eq(acceptance(with_first_evidence(source.clone())), "ok")
+    source.source_ref = repeated("s", MAX_SOURCE_REF_LENGTH + 1)
+    assert_eq(rejection(with_first_evidence(source)), "invalid_evidence_source")
+    mut kind = first_evidence()
+    kind.source_kind = repeated("k", MAX_PACKAGE_LABEL_LENGTH)
+    assert_eq(acceptance(with_first_evidence(kind.clone())), "ok")
+    kind.source_kind = repeated("k", MAX_PACKAGE_LABEL_LENGTH + 1)
+    assert_eq(rejection(with_first_evidence(kind)), "invalid_evidence_source")
+    mut authority = first_evidence()
+    authority.authority_class = repeated("a", MAX_PACKAGE_LABEL_LENGTH)
+    assert_eq(acceptance(with_first_evidence(authority.clone())), "ok")
+    authority.authority_class = repeated("a", MAX_PACKAGE_LABEL_LENGTH + 1)
+    assert_eq(rejection(with_first_evidence(authority)), "invalid_evidence_authority")
+    mut evidence_kind = first_evidence()
+    evidence_kind.evidence_kind = repeated("e", MAX_PACKAGE_LABEL_LENGTH)
+    assert_eq(acceptance(with_first_evidence(evidence_kind.clone())), "ok")
+    evidence_kind.evidence_kind = repeated("e", MAX_PACKAGE_LABEL_LENGTH + 1)
+    assert_eq(rejection(with_first_evidence(evidence_kind)), "invalid_evidence_kind")
+    mut language = first_evidence()
+    language.language = repeated("l", MAX_LANGUAGE_LENGTH)
+    assert_eq(acceptance(with_first_evidence(language.clone())), "ok")
+    language.language = repeated("l", MAX_LANGUAGE_LENGTH + 1)
+    assert_eq(rejection(with_first_evidence(language.clone())), "invalid_evidence_language")
+    language.language = f"l"
+    assert_eq(rejection(with_first_evidence(language)), "invalid_evidence_language")
+
+
+def test_source_references_agree_with_the_structural_kernel() -> None:
+    for unsafe_ref in ["https://example.org/lantern", "fictional:/lantern", "../lantern", "/lantern", "a\\b", "file://lantern"]:
+        mut record = first_evidence()
+        record.source_ref = unsafe_ref
+        assert_eq(rejection(with_first_evidence(record)), "invalid_evidence_source")
+    mut safe_record = first_evidence()
+    safe_record.source_ref = f"fictional_lantern_handbook:pages/1-2"
+    package = rewitnessed(with_first_evidence(safe_record))
+    assert_eq(validate_governed_profile_package(package).reason, "ok")
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    result = evaluate_with_committee(package, bound, proposal)
+    assert_eq(result.spectrum.decision, "deliver")
+    assert_eq(result.spectrum.structural_reason, Some("admitted"))
+
+
+def test_evidence_identity_and_admission_are_validated() -> None:
+    mut bad_id = first_evidence()
+    bad_id.evidence_id = EvidenceId(SymbolicIdType(IdType(f"Evidence With Spaces")))
+    assert_eq(rejection(with_first_evidence(bad_id)), "invalid_evidence_id")
+    mut fingerprint = first_evidence()
+    fingerprint.source_fingerprint = DigestIdType(IdType(f"not-a-digest"))
+    assert_eq(rejection(with_first_evidence(fingerprint)), "invalid_source_fingerprint")
+    mut pending = first_evidence()
+    pending.review_state = f"pending"
+    assert_eq(rejection(with_first_evidence(pending)), "evidence_not_admitted")
+    mut blocked = first_evidence()
+    blocked.rights_state = f"blocked"
+    assert_eq(rejection(with_first_evidence(blocked)), "evidence_not_admitted")
+
+
+def test_memory_atoms_are_validated() -> None:
+    mut bad_id = first_atom()
+    bad_id.memory_id = MemoryId(SymbolicIdType(IdType(f"Memory With Spaces")))
+    assert_eq(rejection(with_first_atom(bad_id)), "invalid_memory_id")
+    mut concept = first_atom()
+    concept.concept = repeated("c", MAX_PACKAGE_TEXT_LENGTH)
+    assert_eq(acceptance(with_first_atom(concept.clone())), "ok")
+    concept.concept = repeated("c", MAX_PACKAGE_TEXT_LENGTH + 1)
+    assert_eq(rejection(with_first_atom(concept)), "invalid_memory_concept")
+    mut duplicate = first_atom()
+    duplicate.evidence_ids = [evidence_id("lantern_evidence_card_order"), evidence_id("lantern_evidence_card_order")]
+    assert_eq(rejection(with_first_atom(duplicate)), "duplicate_memory_evidence")
+    mut unknown = first_atom()
+    unknown.evidence_ids = [evidence_id("lantern_evidence_unknown")]
+    assert_eq(rejection(with_first_atom(unknown)), "unknown_memory_evidence")
+    mut pending = first_atom()
+    pending.review_state = f"pending"
+    assert_eq(rejection(with_first_atom(pending)), "memory_not_admitted")
+    mut provenance = lantern_package()
+    mut atom = provenance.memory[0]
+    atom.provenance_digest = DigestIdType(IdType(f"not-a-digest"))
+    provenance.memory[0] = atom
+    result = validate_governed_profile_package(provenance)
+    assert_eq(result.reason, "invalid_package")
+    assert_eq(result.errors[0], "invalid_memory_provenance")
+
+
+def test_guided_material_identity_and_relationships_are_validated() -> None:
+    mut bad_id = guide()
+    bad_id.guided_material_id = GuidedMaterialId(SymbolicIdType(IdType(f"Guide With Spaces")))
+    assert_eq(rejection(with_guide(bad_id)), "invalid_guided_material_identity")
+    mut language = guide()
+    language.language = f"E"
+    assert_eq(rejection(with_guide(language)), "invalid_guided_material_language")
+    mut pending = guide()
+    pending.review_state = f"pending"
+    assert_eq(rejection(with_guide(pending)), "guided_material_not_admitted")
+    mut duplicate_memory = guide()
+    duplicate_memory.memory_ids = [memory_id("lantern_atom_card_order"), memory_id("lantern_atom_card_order")]
+    assert_eq(rejection(with_guide(duplicate_memory)), "duplicate_guided_memory")
+    mut duplicate_evidence = guide()
+    duplicate_evidence.evidence_ids = [evidence_id("lantern_evidence_card_order"), evidence_id(
+        "lantern_evidence_card_order",
+    )]
+    assert_eq(rejection(with_guide(duplicate_evidence)), "duplicate_guided_evidence")
+    mut unknown_memory = guide()
+    unknown_memory.memory_ids = [memory_id("lantern_atom_unknown")]
+    assert_eq(rejection(with_guide(unknown_memory)), "unknown_guided_memory")
+    mut unknown_evidence = guide()
+    unknown_evidence.evidence_ids = [evidence_id("lantern_evidence_unknown")]
+    assert_eq(rejection(with_guide(unknown_evidence)), "unknown_guided_evidence")
+    mut mismatch = guide()
+    mismatch.evidence_ids = [evidence_id("lantern_evidence_card_order")]
+    assert_eq(rejection(with_guide(mismatch)), "guided_memory_evidence_mismatch")
+
+
+def test_guided_material_actions_and_steps_are_validated() -> None:
+    mut unknown_presentation = guide()
+    unknown_presentation.presentation_action_id = action_id("present_unknown")
+    assert_eq(rejection(with_guide(unknown_presentation)), "unknown_guided_presentation_action")
+    mut wrong_presentation = guide()
+    wrong_presentation.presentation_action_id = action_id("answer_from_package")
+    assert_eq(rejection(with_guide(wrong_presentation)), "invalid_guided_presentation_action")
+    mut unknown_navigation = guide()
+    unknown_navigation.navigation_action_id = action_id("navigate_unknown")
+    assert_eq(rejection(with_guide(unknown_navigation)), "unknown_guided_navigation_action")
+    mut wrong_navigation = guide()
+    wrong_navigation.navigation_action_id = action_id("present_guided_card")
+    assert_eq(rejection(with_guide(wrong_navigation)), "invalid_guided_navigation_action")
+    mut duplicate_step = guide()
+    duplicate_step.steps = [guided_step_id("choose_starting_card"), guided_step_id("choose_starting_card")]
+    duplicate_step.transitions = []
+    assert_eq(rejection(with_guide(duplicate_step)), "duplicate_guided_step")
+    mut unknown_step = guide()
+    unknown_step.transitions = [GuidedTransition(
+        current_step_id=guided_step_id("choose_starting_card"),
+        next_step_id=guided_step_id("choose_unknown"),
+    )]
+    assert_eq(rejection(with_guide(unknown_step)), "unknown_guided_transition_step")
+    mut self_loop = guide()
+    self_loop.transitions = [GuidedTransition(
+        current_step_id=guided_step_id("choose_pacing"),
+        next_step_id=guided_step_id("choose_pacing"),
+    )]
+    assert_eq(rejection(with_guide(self_loop)), "self_guided_transition")
+    mut repeated_edge = guide()
+    repeated_edge.transitions = [guide().transitions[0], guide().transitions[0]]
+    assert_eq(rejection(with_guide(repeated_edge)), "duplicate_guided_transition")
+
+
+def test_committee_policy_is_validated() -> None:
+    mut duplicate = unwitnessed_package().policy
+    duplicate.required_roles = [committee_role_id("scope"), committee_role_id("scope")]
+    assert_eq(rejection(with_policy(duplicate)), "duplicate_committee_role")
+    mut invalid = unwitnessed_package().policy
+    invalid.required_roles = [CommitteeRoleId(SymbolicIdType(IdType(f"Role With Spaces")))]
+    assert_eq(rejection(with_policy(invalid)), "invalid_committee_role")
+    mut lenient = unwitnessed_package().policy
+    lenient.require_all_passed = false
+    assert_eq(rejection(with_policy(lenient)), "unsupported_committee_policy")

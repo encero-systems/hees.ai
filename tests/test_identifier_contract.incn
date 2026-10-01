@@ -2,14 +2,32 @@
 
 from std.testing import assert_eq, assert_is_err, assert_is_ok
 from crate.identifiers import (
+    ArtifactRevisionType,
     DigestIdType,
     IdType,
+    MAX_ARTIFACT_REVISION_LENGTH,
     MAX_IDENTIFIER_LENGTH,
     RevisionType,
     action_id,
+    artifact_revision_text,
+    artifact_revision_text_is_safe,
     action_id_text,
     evidence_id,
     evidence_id_text,
+    goal_id,
+    goal_id_text,
+    memory_class_id,
+    memory_class_id_text,
+    memory_operation_id,
+    memory_operation_id_text,
+    phase_id,
+    phase_id_text,
+    schedule_id,
+    schedule_id_text,
+    session_event_id,
+    session_event_id_text,
+    session_id,
+    session_id_text,
 )
 
 
@@ -48,3 +66,48 @@ def test_revision_type_owns_revision_validation() -> None:
     revision = assert_is_ok(RevisionType.from_underlying("1.0.0"))
     assert_eq(revision.0, "1.0.0")
     assert_is_err(RevisionType.from_underlying("one.zero.zero"))
+
+
+def artifact_revision_from_text(value: str) -> Result[ArtifactRevisionType, ValidationError]:
+    """Run the artifact-revision grammar over text that already fits shared identifier storage."""
+
+    return ArtifactRevisionType.from_underlying(assert_is_ok(IdType.from_underlying(value)))
+
+
+def test_artifact_revision_type_accepts_semantic_version_like_revisions() -> None:
+    for value in ["0.0.0", "0.1.0", "1.0.0", "10.20.30", "0.1.0-candidate.1", "1.0.0-rc-1", "1.0.0-0", "1.0.0-alpha.0.beta2"]:
+        revision = assert_is_ok(artifact_revision_from_text(value))
+        assert_eq(artifact_revision_text(revision), value)
+
+
+def test_artifact_revision_type_rejects_malformed_revisions() -> None:
+    malformed = ["007", "1", "1.0", "1.0.0.0", "01.0.0", "1.00.0", "1.0.07", "v1.0.0", "1..0", "1.-0", "1-.0", "1.0.0-", "1.0.0--rc", "1.0.0-rc-", "1.0.0-rc--1", "1.0.0-.rc", "1.0.0-rc.", "1.0.0-rc..1", "1.0.0-rc.01", "1.0.0-RC", "1.0.0+build", "1.0.0-rc_1"]
+    for value in malformed:
+        assert_eq(artifact_revision_text_is_safe(value), false)
+        assert_is_err(artifact_revision_from_text(value))
+    assert_eq(artifact_revision_text_is_safe(""), false)
+    assert_is_err(IdType.from_underlying(""))
+
+
+def test_artifact_revision_type_accepts_the_exact_maximum_length() -> None:
+    value = "1.0.0-" + repeated_a(MAX_ARTIFACT_REVISION_LENGTH - 6)
+    assert_eq(len(value), MAX_ARTIFACT_REVISION_LENGTH)
+    revision = assert_is_ok(artifact_revision_from_text(value))
+    assert_eq(len(artifact_revision_text(revision)), MAX_ARTIFACT_REVISION_LENGTH)
+
+
+def test_artifact_revision_type_rejects_one_character_over_the_maximum_length() -> None:
+    value = "1.0.0-" + repeated_a(MAX_ARTIFACT_REVISION_LENGTH - 5)
+    assert_eq(len(value), MAX_ARTIFACT_REVISION_LENGTH + 1)
+    assert_eq(artifact_revision_text_is_safe(value), false)
+    assert_is_err(artifact_revision_from_text(value))
+
+
+def test_continuity_and_memory_namespaces_are_nominal_and_bounded() -> None:
+    assert_eq(goal_id_text(goal_id("goal_one")), "goal_one")
+    assert_eq(phase_id_text(phase_id("phase_one")), "phase_one")
+    assert_eq(schedule_id_text(schedule_id("schedule_one")), "schedule_one")
+    assert_eq(session_id_text(session_id("session_one")), "session_one")
+    assert_eq(session_event_id_text(session_event_id("event_one")), "event_one")
+    assert_eq(memory_class_id_text(memory_class_id("learner_memory")), "learner_memory")
+    assert_eq(memory_operation_id_text(memory_operation_id("write_memory")), "write_memory")

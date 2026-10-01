@@ -159,13 +159,13 @@ def serialize_json_value(value: JsonValue) -> Result[str, str]:
     return value.to_json().map_err((_error) => f"json_serialization_failed")
 
 
-def digest_text_bytes(value: str) -> DigestIdType:
+pub def digest_text_bytes(value: str) -> DigestIdType:
     """Return the lowercase SHA-256 identity of exact UTF-8 text."""
 
     return digest_id_type(f"sha256:{hexlify(sha256.digest(RustString.from(value).into_bytes()))}")
 
 
-def digest_canonical_json(source: str) -> Result[DigestIdType, str]:
+pub def digest_canonical_json(source: str) -> Result[DigestIdType, str]:
     """Normalize arbitrary JSON with the current Incan serializer and hash the rendered bytes."""
 
     return JsonValue

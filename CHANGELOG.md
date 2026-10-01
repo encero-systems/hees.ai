@@ -8,6 +8,7 @@ All notable changes will be recorded here.
 
 - A curated Incan-first pre-v0.1 public kernel.
 - Bounded nominal identifier contracts over a shared `IdType` base.
+- Governed goal, schedule, and session-continuity admission (Draft RFC 013), governed memory-operation admission (Draft RFC 014), and package-neutral governed profile evaluation with committee findings, Content DNA, and receipts (Draft RFC 015), each with the digest helpers callers use to stamp package identity. Session state and memory records are authenticated with an HMAC-SHA256 witness under a host-held key, sessions that overrun a phase maximum can be closed with a governed `expire` operation, and refusal and escalation text is package-declared. The entry also adds their nominal identifiers and the `ArtifactRevisionType` package revision grammar. These kernels are exported while their RFCs remain in review, so their public surface may change.
 - Checked external package-descriptor and structural proposal-admission contracts.
 - External-consumer, adversarial, boundary, and documentation verification.
 - A native Incan full-screen hees.ai console with responsive Profiles, Evidence, Memory, Committee, Interactions, Decisions, and Help workspaces.

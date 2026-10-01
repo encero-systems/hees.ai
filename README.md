@@ -213,6 +213,9 @@ Implemented now:
 - fail-closed proposal admission against package-owned actions and reviewed, rights-allowed evidence records;
 - exact and faithful compressed Hyperquant profiles that nominate bounded package-owned memory identifiers without granting authority;
 - guided-programme declaration validation and operation eligibility with closed action payloads, deterministic topology, bounded progress and non-authoritative support nominations;
+- goal, schedule, and session-continuity admission over package-declared phase graphs, with caller-supplied time, a governed ending for overrun sessions, and caller-held session state authenticated under a host-held key (Draft [RFC 013](rfcs/013-governed-continuity-goal-schedule-session-admission.md));
+- memory-operation admission for prompt selection, inspection, write, revoke, and supersede against package-declared memory classes, returning key-authenticated records without storage mutation (Draft [RFC 014](rfcs/014-governed-memory-lifecycle-operations.md));
+- package-neutral governed profile evaluation that validates package, request, proposal, and committee-observation identity, delegates structural admission to the kernel, and returns one `deliver`, `refuse`, `escalate`, or rejected result with selected memory, Content DNA, and receipts where the outcome allows them (Draft [RFC 015](rfcs/015-generic-governed-profile-evaluation.md)); the exported surface of these three Draft RFCs may change with their review;
 - the closed, fixture-bounded `console_profile_0_1` package, request, proposal, manifest, observation, finding, and reason contracts;
 - deterministic relation and synthesis classification, checked structural-kernel delegation, and exact selected-memory freezing;
 - admitted-answer Content DNA, admitted receipts, and identity-safe rejection receipts with frozen canonical SHA-256 goldens;

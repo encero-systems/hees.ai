@@ -1,0 +1,64 @@
+"""Contract tests for type-tagged digests and keyed witnesses."""
+
+from rust::std::string import String as RustString
+from std.testing import assert_eq, assert_is_err, assert_is_ok
+from crate.witness import (
+    MIN_WITNESS_KEY_BYTES,
+    KeyedWitness,
+    WitnessKey,
+    digest_tagged_json,
+    keyed_witness_text_is_safe,
+    keyed_witness_verifies,
+    stamp_keyed_witness,
+    unstamped_witness,
+    witness_key_is_valid,
+)
+
+const TAG_A: str = "hees.ai/test-projection-a/v0"
+const TAG_B: str = "hees.ai/test-projection-b/v0"
+const SOURCE: str = "{\"value\":1}"
+
+
+def secret_of(fill: str, count: int) -> bytes:
+    mut secret = ""
+    for _index in range(count):
+        secret = secret + fill
+    return RustString.from(secret).into_bytes()
+
+
+def key_named(key_id: str, fill: str) -> WitnessKey:
+    return WitnessKey(key_id=key_id, secret=secret_of(fill, MIN_WITNESS_KEY_BYTES))
+
+
+def test_witness_key_bounds_and_identifier_are_checked() -> None:
+    assert_eq(witness_key_is_valid(key_named("host-key-1", "a")), true)
+    assert_eq(witness_key_is_valid(key_named("Host Key", "a")), false)
+    short = WitnessKey(key_id="host-key-1", secret=secret_of("a", MIN_WITNESS_KEY_BYTES - 1))
+    assert_eq(witness_key_is_valid(short), false)
+
+
+def test_tagged_digest_separates_projection_types() -> None:
+    first = assert_is_ok(digest_tagged_json(TAG_A, SOURCE))
+    second = assert_is_ok(digest_tagged_json(TAG_B, SOURCE))
+    assert_eq(first == second, false)
+    assert_eq(first == assert_is_ok(digest_tagged_json(TAG_A, "{ \"value\": 1 }")), true)
+    assert_is_err(digest_tagged_json(TAG_A, "{"))
+
+
+def test_stamped_witness_verifies_only_for_its_key_tag_and_source() -> None:
+    key = key_named("host-key-1", "a")
+    witness = assert_is_ok(stamp_keyed_witness(key, TAG_A, SOURCE))
+    assert_eq(keyed_witness_text_is_safe(witness), true)
+    assert_eq(keyed_witness_verifies(key, TAG_A, SOURCE, witness), true)
+    assert_eq(keyed_witness_verifies(key, TAG_B, SOURCE, witness), false)
+    assert_eq(keyed_witness_verifies(key, TAG_A, "{\"value\":2}", witness), false)
+    assert_eq(keyed_witness_verifies(key_named("host-key-1", "b"), TAG_A, SOURCE, witness), false)
+    assert_eq(keyed_witness_verifies(key_named("host-key-2", "a"), TAG_A, SOURCE, witness), false)
+
+
+def test_malformed_and_placeholder_witnesses_never_verify() -> None:
+    key = key_named("host-key-1", "a")
+    assert_eq(keyed_witness_verifies(key, TAG_A, SOURCE, unstamped_witness()), false)
+    uppercase = KeyedWitness(key_id="host-key-1", tag="ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789")
+    assert_eq(keyed_witness_text_is_safe(uppercase), false)
+    assert_eq(keyed_witness_verifies(key, TAG_A, SOURCE, uppercase), false)
