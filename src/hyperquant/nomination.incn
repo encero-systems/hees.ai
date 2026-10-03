@@ -14,7 +14,6 @@ from std.io import BytesIO
 from rust::std::string import FromUtf8Error, String as RustString
 from crate.hyperquant.exact import HyperquantEntry, stored_hyperquant_entry
 from crate.hyperquant.models import (
-    MAX_HYPERQUANT_ENTRIES,
     MAX_HYPERQUANT_TOP_K,
     HyperquantError,
     HyperquantErrorKind,
@@ -483,17 +482,14 @@ pub def turboquant_index(
     configuration: TurboquantConfiguration,
     entries: list[HyperquantEntry],
 ) -> Result[TurboquantIndex, HyperquantError]:
-    """Encode validated entries into a bounded compressed index bound to one configuration."""
+    """
+    Encode validated entries into a compressed index bound to one configuration.
+
+    The index may hold any number of entries. What a query costs is bounded by its candidate count and ``top_k``.
+    """
 
     if len(entries) == 0:
         return Err(failure(HyperquantErrorKind.EmptyIndex, "TurboQuant index must contain at least one entry"))
-    if len(entries) > MAX_HYPERQUANT_ENTRIES:
-        return Err(
-            failure(
-                HyperquantErrorKind.IndexTooLarge,
-                f"TurboQuant index exceeds the {MAX_HYPERQUANT_ENTRIES}-entry contract bound",
-            ),
-        )
 
     mut canonical_ids: dict[str, bool] = {}
     mut codes: list[TurboquantCode] = []

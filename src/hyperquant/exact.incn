@@ -1,7 +1,6 @@
 """Deterministic full-precision Hyperquant oracle and small-corpus fallback."""
 
 from crate.hyperquant.models import (
-    MAX_HYPERQUANT_ENTRIES,
     MAX_HYPERQUANT_TOP_K,
     HyperquantError,
     HyperquantErrorKind,
@@ -143,18 +142,11 @@ pub def stored_hyperquant_entry(memory_id: MemoryId, values: list[float]) -> Res
 
 
 pub def exact_index(entries: list[HyperquantEntry]) -> Result[HyperquantExactIndex, HyperquantError]:
-    """Build a bounded exact index from validated entries."""
+    """Build an exact index from validated entries. The index may hold any number of entries; a query is bounded."""
 
     if len(entries) == 0:
         return Err(
             HyperquantError.from_kind(HyperquantErrorKind.EmptyIndex, "exact index must contain at least one entry"),
-        )
-    if len(entries) > MAX_HYPERQUANT_ENTRIES:
-        return Err(
-            HyperquantError.from_kind(
-                HyperquantErrorKind.IndexTooLarge,
-                f"exact index exceeds the {MAX_HYPERQUANT_ENTRIES}-entry contract bound",
-            ),
         )
 
     mut index = HyperquantExactIndex(_dimensions=0, _entries=entries)

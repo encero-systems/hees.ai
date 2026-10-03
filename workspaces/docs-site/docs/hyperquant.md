@@ -34,7 +34,7 @@ Spectrum + final Hees.ai decision
 
 The profile:
 
-- accepts between 1 and 65,536 uniquely identified entries;
+- accepts any number of uniquely identified entries, at least one;
 - accepts vectors containing between 1 and 8,192 finite values;
 - rejects zero-norm vectors;
 - normalizes index and query vectors without mutating caller-owned lists;

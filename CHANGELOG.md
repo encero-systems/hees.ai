@@ -26,6 +26,7 @@ All notable changes will be recorded here.
 
 ### Changed
 
+- A Hyperquant index, exact or TurboQuant, may hold any number of entries; the 65,536-entry ceiling (`MAX_HYPERQUANT_ENTRIES`) and its `index_too_large` error kind are removed. A query stays bounded by `top_k` and its candidate count.
 - The repository builds with commit-pinned Incan `0.6.0-dev.6`. Manifests are named `loaf.toml` and the canonical lock is `oven.lock`. CI builds the pinned compiler from source.
 - Identifier and revision types expose their canonical text through one `.text()` method, supplied by the new `SymbolicIdentifier` and `DigestIdentifier` traits for nominal identifiers; the per-type `*_id_text`, `id_type_text`, `symbolic_id_type_text`, `digest_id_type_text`, `revision_text`, and `artifact_revision_text` functions and their root exports are removed.
 

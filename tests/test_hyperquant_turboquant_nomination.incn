@@ -204,3 +204,13 @@ def test_dense_reference_accepts_dimensions_above_the_first_slice_bound() -> Non
     result = assert_is_ok(turboquant_query(compressed, query, 3, 5))
     exact = assert_is_ok(exact_query(oracle, query, 3))
     assert_eq(nomination_ids(result.nominations), nomination_ids(exact.nominations))
+
+
+def test_a_compressed_index_holds_more_entries_than_any_fixed_number() -> None:
+    entries = synthetic_entries(DIMENSIONS, 70000)
+    compressed = assert_is_ok(turboquant_index(mse_configuration(DIMENSIONS), entries))
+    result = assert_is_ok(turboquant_query(compressed, synthetic_vector(DIMENSIONS, 7), 4, 64))
+    assert_eq(compressed.entry_count(), 70000)
+    assert_eq(len(result.nominations), 4)
+    assert_eq(result.nominations[0].rank, 0)
+    assert_eq(result.nominations[0].relevance_bps >= result.nominations[3].relevance_bps, true)
