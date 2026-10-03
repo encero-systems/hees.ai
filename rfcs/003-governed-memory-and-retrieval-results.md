@@ -452,5 +452,5 @@ Not implemented:
 - [ ] RFC 011 structural identities. `package_semantic_identity` and `package_admission_binding` are interim type-tagged SHA-256 digests, and the trusted identity has no `artifact_digest`.
 - [ ] The RFC 005 profile resource envelope. The ceilings are fixed constants in `governed_memory_retrieval_models.incn`.
 - [ ] RFC 006 receipt projection.
-- [ ] The handoff into later proposal admission: nothing yet requires a proposal to cite only identifiers from an accepted context.
+- [x] The handoff into proposal admission: `evaluate_governed_profile_in_memory_context` (RFC 015) rejects a proposal that nominates memory outside an accepted context for the same package and domain. The record is bound by package and domain identifier only; the two contracts use different revision grammars and different atom models, which is not yet reconciled.
 - [ ] Cross-implementation fixtures and the two synthetic provider adapters the acceptance obligations require.

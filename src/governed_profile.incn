@@ -12,6 +12,7 @@ Hees.ai never accepts them as input.
 """
 
 pub from crate.governed_profile_evaluation import (
+    evaluate_governed_profile_in_memory_context,
     evaluate_governed_profile_json,
     evaluate_governed_profile_with_artifacts,
 )
