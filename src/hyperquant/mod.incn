@@ -7,6 +7,7 @@ pub from crate.hyperquant.exact import (
     exact_index,
     exact_query,
     hyperquant_entry,
+    stored_hyperquant_entry,
 )
 pub from crate.hyperquant.models import (
     MAX_HYPERQUANT_DIMENSIONS,
@@ -20,10 +21,16 @@ pub from crate.hyperquant.models import (
 )
 pub from crate.hyperquant.nomination import (
     MAX_HYPERQUANT_CANDIDATES,
+    STORED_COORDINATE_BYTES,
+    STORED_VECTORS_HEADER_BYTES,
+    TurboquantApproximate,
+    TurboquantCodeIndex,
     TurboquantCandidate,
     TurboquantIndex,
     TurboquantResult,
     turboquant_index,
+    turboquant_code_index_from_bytes,
+    stored_vector_from_bytes,
     turboquant_query,
 )
 pub from crate.hyperquant.turboquant import TurboquantCode, TurboquantConfiguration

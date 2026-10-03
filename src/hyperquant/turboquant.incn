@@ -141,7 +141,7 @@ def validate_codebook(
     return Ok(None)
 
 
-def write_bytes(writer: _BytesIO, value: bytes, detail: str) -> Result[None, HyperquantError]:
+pub def write_bytes(writer: _BytesIO, value: bytes, detail: str) -> Result[None, HyperquantError]:
     """Write one raw section and translate stream failure into a codec error."""
 
     written: Result[int, IoError] = writer.write(value)
@@ -149,7 +149,11 @@ def write_bytes(writer: _BytesIO, value: bytes, detail: str) -> Result[None, Hyp
     return Ok(None)
 
 
-def write_numeric(writer: _BytesIO, value: Union[u8, u16, u32, u64, f64], detail: str) -> Result[None, HyperquantError]:
+pub def write_numeric(
+    writer: _BytesIO,
+    value: Union[u8, u16, u32, u64, f64],
+    detail: str,
+) -> Result[None, HyperquantError]:
     """
     Write one exact-width numeric value in canonical big-endian order.
 
@@ -180,7 +184,7 @@ def write_numeric(writer: _BytesIO, value: Union[u8, u16, u32, u64, f64], detail
                 .map_err((_error) => failure(HyperquantErrorKind.NumericalFailure, detail))
 
 
-def read_exact(reader: _BytesIO, count: int, detail: str) -> Result[bytes, HyperquantError]:
+pub def read_exact(reader: _BytesIO, count: int, detail: str) -> Result[bytes, HyperquantError]:
     """Read an exact bounded raw section or return a truncated-payload error."""
 
     read_value: Result[bytes, IoError] = reader.read_exact(count)
@@ -198,7 +202,7 @@ def read_raw_u8(reader: _BytesIO) -> Result[u8, IoError]:
     return Ok(value)
 
 
-def read_u8(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
+pub def read_u8(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
     """Read one unsigned byte, translate IO failure, and widen it for codec arithmetic."""
 
     value = read_raw_u8(reader).map_err((_error) => io_failure(detail))?
@@ -216,7 +220,7 @@ def read_raw_u16(reader: _BytesIO) -> Result[u16, IoError]:
     return Ok(value)
 
 
-def read_u16(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
+pub def read_u16(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
     """Read one big-endian unsigned 16-bit value, translate IO failure, and widen it."""
 
     value = read_raw_u16(reader).map_err((_error) => io_failure(detail))?
@@ -235,7 +239,7 @@ def read_raw_u32(reader: _BytesIO) -> Result[u32, IoError]:
     return Ok(value)
 
 
-def read_u32(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
+pub def read_u32(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
     """Read one big-endian unsigned 32-bit value, translate IO failure, and widen it."""
 
     value = read_raw_u32(reader).map_err((_error) => io_failure(detail))?
@@ -271,7 +275,7 @@ def read_raw_f64(reader: _BytesIO) -> Result[f64, IoError]:
     return Ok(value)
 
 
-def read_f64(reader: _BytesIO, detail: str) -> Result[float, HyperquantError]:
+pub def read_f64(reader: _BytesIO, detail: str) -> Result[float, HyperquantError]:
     """Read one big-endian IEEE-754 binary64 value and translate IO failure."""
 
     return read_raw_f64(reader).map_err((_error) => io_failure(detail))
