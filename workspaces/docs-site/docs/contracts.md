@@ -80,6 +80,38 @@ A `GovernedMemoryPolicy` declares memory classes and operations. Each class name
 
 The decision reports the terminal result, one reason, the operation and memory identifiers, and, for an admitted `write`, `revoke`, or `supersede`, the resulting record. Hees.ai builds and stamps that record: a new record for `write`, and the existing record marked revoked or superseded for the other two. Hees.ai performs no storage mutation; the host stores the returned record unchanged. The record witness is an HMAC-SHA256 tag under the host's `WitnessKey`, with the same properties as the continuity state witness. It proves that Hees.ai returned the record, not that the record is the latest version; the host's store decides which version is current. Before proposing a `write`, the host supplies any record it already holds for that identifier, revoked and superseded versions included, so that Hees.ai rejects the write.
 
+## Governed memory retrieval admission
+
+The retrieval-admission API exports:
+
+- declaration models `GovernedMemoryDeclaration`, `GovernedMemoryAtom`, `MemoryProviderBinding`, `MemoryValidity`, `MemoryValidityMode`, `MemoryReviewStatus`, and `MemoryRuntimeRights`
+- package admission `validate_memory_declaration`, `admit_memory_declaration`, `admit_package_without_memory`, `AdmittedMemoryPackage`, `AdmittedMemoryPackageIdentity`, and `MemoryDeclarationValidation`
+- envelope models `MemoryRequest`, `MemoryProviderResult`, and `MemoryNomination`
+- `admit_memory_result`
+- record models `MemoryAdmissionRecord`, `NormalizedMemoryAdmission`, `MemoryContext`, `MaterializedMemoryAtom`, `MemoryRecordVariant`, `MemoryEnvelopeAdmission`, `MemoryAdmissionStage`, `MemoryResultState`, and `MemoryResultReason`
+- the contract version, the reason namespace, and the `MAX_MEMORY_*` and `MAX_RELEVANCE_BPS` bounds
+
+This is the runtime part of [RFC 003](https://github.com/encero-systems/hees.ai/blob/main/rfcs/003-governed-memory-and-retrieval-results.md), which is in progress; this exported surface may change with it.
+
+A `GovernedMemoryDeclaration` holds a package's memory atoms, its approved provider bindings, and its authority, risk, and sensitivity classification lists. Each atom carries bounded claim, guidance, and applicability text, a source reference and fingerprint, a review status, runtime rights, classification references, a validity interval, and labels. `admit_memory_declaration` validates the declaration and returns an `AdmittedMemoryPackage` with a trusted identity. A caller cannot construct that value directly.
+
+`admit_memory_result` takes the admitted package, a `MemoryRequest`, and a `MemoryProviderResult`, and returns one `MemoryAdmissionRecord`. A provider result contains memory identifiers, ranks, and relevance values only. Admission runs eight stages in order and stops at the first failure:
+
+1. `normalization`: bounds and the syntax of every field.
+2. `package`: an admitted package that declares governed memory.
+3. `request`: the contract version, each package claim against the trusted identity, and the result's echo of the request.
+4. `provider`: a binding that exactly equals an approved one, and a nomination count the provider state permits.
+5. `nominations`: count, unique identifiers, dense zero-based ranks, and relevance in `0..10000`.
+6. `atoms`: every identifier resolves, under the binding's corpus, to an approved, rights-allowed atom valid at the request's evaluation time.
+7. `context`: the aggregate bytes of the selected atoms.
+8. `complete`: `accepted_complete`, `accepted_partial`, or `accepted_unavailable`.
+
+One invalid item rejects the whole result. An accepted `complete` or `partial` result returns the package's atoms in rank order; an accepted `unavailable` result and every rejection return none. A rejection in the first two stages returns a record with no package identity and no input other than caller identifiers that are themselves canonical. Every later rejection returns the trusted evaluated identity and the bounded request and result as untrusted echoes.
+
+Acceptance establishes structural eligibility and provenance binding. It does not establish that an atom supports a claim, and relevance carries no authority. Hees.ai reads no clock: every time-dependent check uses the request's `evaluation_time_ms`.
+
+Package artifact admission is not implemented. `admit_memory_declaration` validates an in-memory declaration in its place, the identity digests are type-tagged SHA-256 digests that do not conform to RFC 011, and the bounds are fixed constants.
+
 ## Generic governed profile evaluation
 
 The generic governed profile API exports:

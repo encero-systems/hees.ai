@@ -1,0 +1,141 @@
+"""
+External-consumer coverage for retrieval-result admission (the runtime part of RFC 003).
+
+Every fixture is built from the root exports of the published ``hees_ai`` package only, so a missing root export
+fails this workspace's build. All identifiers and text are fictional.
+"""
+
+from std.testing import assert_eq, assert_is_none, assert_is_ok, assert_is_some
+from pub::hees_ai import (
+    AdmittedMemoryPackage,
+    GovernedMemoryAtom,
+    GovernedMemoryDeclaration,
+    MemoryAdmissionStage,
+    MemoryEnvelopeAdmission,
+    MemoryNomination,
+    MemoryProviderBinding,
+    MemoryProviderResult,
+    MemoryRecordVariant,
+    MemoryRequest,
+    MemoryReviewStatus,
+    MemoryRuntimeRights,
+    MemoryValidity,
+    MemoryValidityMode,
+    admit_memory_declaration,
+    admit_memory_result,
+)
+
+const CORPUS_FINGERPRINT: str = "1111111111111111111111111111111111111111111111111111111111111111"
+const INDEX_FINGERPRINT: str = "2222222222222222222222222222222222222222222222222222222222222222"
+const CONFIGURATION_FINGERPRINT: str = "3333333333333333333333333333333333333333333333333333333333333333"
+const SOURCE_FINGERPRINT: str = "4444444444444444444444444444444444444444444444444444444444444444"
+
+
+def binding() -> MemoryProviderBinding:
+    """Return the provider binding the fictional package approves."""
+
+    return MemoryProviderBinding(
+        provider_id="ember_retriever",
+        provider_contract_version="0.1",
+        adapter_version="1.0.0",
+        configuration_fingerprint=f"{CONFIGURATION_FINGERPRINT}",
+        index_fingerprint=f"{INDEX_FINGERPRINT}",
+        corpus_fingerprint=f"{CORPUS_FINGERPRINT}",
+    )
+
+
+def atom(identifier: str, review_status: MemoryReviewStatus) -> GovernedMemoryAtom:
+    """Return a fictional, rights-allowed, currently valid atom with the given review status."""
+
+    return GovernedMemoryAtom(
+        id=identifier,
+        corpus_version="1.0",
+        corpus_fingerprint=f"{CORPUS_FINGERPRINT}",
+        claim="Ember Grove opens at the first bell.",
+        guidance="Tell visitors to arrive at the first bell.",
+        applicability="Applies to questions about opening time.",
+        source_ref="ember-grove/notices/opening",
+        source_fingerprint=f"{SOURCE_FINGERPRINT}",
+        review_status=review_status,
+        runtime_rights=MemoryRuntimeRights.Allowed,
+        authority_class_id="reviewed_notice",
+        risk_class_id="low",
+        sensitivity_class_id="public",
+        validity=MemoryValidity(mode=MemoryValidityMode.Indefinite, valid_from_ms=0, valid_until_ms=None),
+        labels=["opening"],
+    )
+
+
+def admitted_package() -> AdmittedMemoryPackage:
+    """Admit the fictional Ember Grove declaration."""
+
+    declaration = GovernedMemoryDeclaration(
+        package_id="ember_grove_notices",
+        domain_id="fictional_visitor_support",
+        package_revision="1.0",
+        provider_bindings=[binding()],
+        authority_class_ids=["reviewed_notice"],
+        risk_class_ids=["low"],
+        sensitivity_class_ids=["public"],
+        atoms=[atom("ember_opening", MemoryReviewStatus.Approved), atom("ember_draft", MemoryReviewStatus.Pending)],
+    )
+    return assert_is_ok(admit_memory_declaration(declaration))
+
+
+def request(package: AdmittedMemoryPackage) -> MemoryRequest:
+    """Return a request bound to the admitted package's trusted identity."""
+
+    identity = package.identity
+    return MemoryRequest(
+        contract_version="0.1",
+        request_id="turn_one",
+        package_id=identity.package_id,
+        domain_id=identity.domain_id,
+        package_revision=identity.package_revision,
+        package_semantic_identity=identity.package_semantic_identity.text(),
+        package_admission_binding=identity.package_admission_binding.text(),
+        query_text="When does Ember Grove open?",
+        evaluation_time_ms=1000,
+    )
+
+
+def nominating(memory_id: str) -> MemoryProviderResult:
+    """Return a complete provider result that nominates one identifier."""
+
+    return MemoryProviderResult(
+        contract_version="0.1",
+        request_id="turn_one",
+        result_id="result_one",
+        state="complete",
+        reason="completed",
+        binding=binding(),
+        nominations=[MemoryNomination(memory_id=memory_id, rank=0, relevance_bps=8700)],
+    )
+
+
+def test_external_dependency_can_admit_a_retrieval_result() -> None:
+    package = admitted_package()
+    record = admit_memory_result(Some(package), request(package), nominating("ember_opening"))
+    assert_eq(record.variant, MemoryRecordVariant.Normalized)
+    assert_eq(record.envelope_admission, MemoryEnvelopeAdmission.Accepted)
+    assert_eq(record.reason, "accepted_complete")
+    assert_eq(len(record.context.atoms), 1)
+    assert_eq(record.context.atoms[0].atom.guidance, "Tell visitors to arrive at the first bell.")
+    assert_eq(assert_is_some(record.normalized).materialized_memory_ids, ["ember_opening"])
+
+
+def test_external_dependency_sees_an_unreviewed_atom_rejected() -> None:
+    package = admitted_package()
+    record = admit_memory_result(Some(package), request(package), nominating("ember_draft"))
+    assert_eq(record.envelope_admission, MemoryEnvelopeAdmission.Rejected)
+    assert_eq(record.stage, MemoryAdmissionStage.Atoms)
+    assert_eq(record.reason, "atom_review_not_approved")
+    assert_eq(len(record.context.atoms), 0)
+
+
+def test_external_dependency_gets_no_trusted_identity_without_an_admitted_package() -> None:
+    package = admitted_package()
+    record = admit_memory_result(None, request(package), nominating("ember_opening"))
+    assert_eq(record.variant, MemoryRecordVariant.PreNormalizationRejected)
+    assert_eq(record.reason, "package_not_admitted")
+    assert_is_none(record.normalized)

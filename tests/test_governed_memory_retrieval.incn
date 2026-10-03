@@ -1,0 +1,740 @@
+"""Contract tests for admission of retrieval provider results into governed memory context (RFC 003)."""
+
+from std.testing import assert_eq, assert_is_none, assert_is_ok, assert_is_some
+from crate.governed_memory_retrieval import admit_memory_result
+from crate.governed_memory_retrieval_declaration import (
+    AdmittedMemoryPackage,
+    admit_memory_declaration,
+    admit_package_without_memory,
+)
+from crate.governed_memory_retrieval_models import (
+    MAX_MEMORY_ATOM_TEXT_BYTES,
+    MAX_MEMORY_INPUT_NOMINATIONS,
+    MAX_MEMORY_INTEGER,
+    MAX_MEMORY_NOMINATIONS,
+    MAX_MEMORY_QUERY_BYTES,
+    MAX_RELEVANCE_BPS,
+    GovernedMemoryAtom,
+    GovernedMemoryDeclaration,
+    MemoryAdmissionRecord,
+    MemoryAdmissionStage,
+    MemoryEnvelopeAdmission,
+    MemoryNomination,
+    MemoryProviderBinding,
+    MemoryProviderResult,
+    MemoryRecordVariant,
+    MemoryRequest,
+    MemoryResultReason,
+    MemoryResultState,
+    MemoryReviewStatus,
+    MemoryRuntimeRights,
+    MemoryValidity,
+    MemoryValidityMode,
+)
+
+const CORPUS_FINGERPRINT: str = "1111111111111111111111111111111111111111111111111111111111111111"
+const INDEX_FINGERPRINT: str = "2222222222222222222222222222222222222222222222222222222222222222"
+const CONFIGURATION_FINGERPRINT: str = "3333333333333333333333333333333333333333333333333333333333333333"
+const SOURCE_FINGERPRINT: str = "4444444444444444444444444444444444444444444444444444444444444444"
+const OTHER_CORPUS_FINGERPRINT: str = "5555555555555555555555555555555555555555555555555555555555555555"
+const EVALUATION_TIME_MS: int = 2000
+const FUTURE_START_MS: int = 5000
+const EXPIRY_MS: int = 1000
+
+
+def binding_for(corpus_fingerprint: str) -> MemoryProviderBinding:
+    """Return an approved binding over the corpus named by ``corpus_fingerprint``."""
+
+    return MemoryProviderBinding(
+        provider_id="lantern_retriever",
+        provider_contract_version="0.1",
+        adapter_version="1.2.0",
+        configuration_fingerprint=f"{CONFIGURATION_FINGERPRINT}",
+        index_fingerprint=f"{INDEX_FINGERPRINT}",
+        corpus_fingerprint=corpus_fingerprint,
+    )
+
+
+def binding() -> MemoryProviderBinding:
+    """Return the binding the fixture provider runs under."""
+
+    return binding_for(f"{CORPUS_FINGERPRINT}")
+
+
+def indefinite_from(valid_from_ms: int) -> MemoryValidity:
+    """Return an indefinite validity starting at ``valid_from_ms``."""
+
+    return MemoryValidity(mode=MemoryValidityMode.Indefinite, valid_from_ms=valid_from_ms, valid_until_ms=None)
+
+
+def atom(identifier: str) -> GovernedMemoryAtom:
+    """Return an approved, allowed, currently valid fictional atom named ``identifier``."""
+
+    return GovernedMemoryAtom(
+        id=identifier,
+        corpus_version="1.0",
+        corpus_fingerprint=f"{CORPUS_FINGERPRINT}",
+        claim="The first Lantern Path card introduces the lantern.",
+        guidance="Start with the first card.",
+        applicability="Applies when a reader asks where to begin.",
+        source_ref="lantern-path/cards/first",
+        source_fingerprint=f"{SOURCE_FINGERPRINT}",
+        review_status=MemoryReviewStatus.Approved,
+        runtime_rights=MemoryRuntimeRights.Allowed,
+        authority_class_id="reviewed_lesson",
+        risk_class_id="low",
+        sensitivity_class_id="public",
+        validity=indefinite_from(0),
+        labels=["card_order"],
+    )
+
+
+def ineligible_atoms() -> list[GovernedMemoryAtom]:
+    """Return one atom per runtime ineligibility: review, rights, not yet valid, expired, and another corpus."""
+
+    mut pending = atom("lantern_card_pending")
+    pending.review_status = MemoryReviewStatus.Pending
+    mut restricted = atom("lantern_card_restricted")
+    restricted.runtime_rights = MemoryRuntimeRights.Restricted
+    mut future = atom("lantern_card_future")
+    future.validity = indefinite_from(FUTURE_START_MS)
+    mut expired = atom("lantern_card_expired")
+    expired.validity = MemoryValidity(mode=MemoryValidityMode.Bounded, valid_from_ms=0, valid_until_ms=Some(EXPIRY_MS))
+    mut other_corpus = atom("lantern_card_other_corpus")
+    other_corpus.corpus_fingerprint = f"{OTHER_CORPUS_FINGERPRINT}"
+    return [pending, restricted, future, expired, other_corpus]
+
+
+def declaration() -> GovernedMemoryDeclaration:
+    """Return the fictional declaration: two eligible atoms, five ineligible ones, and two approved bindings."""
+
+    return GovernedMemoryDeclaration(
+        package_id="lantern_path_lessons",
+        domain_id="fictional_lesson_support",
+        package_revision="1.0",
+        provider_bindings=[binding(), binding_for(f"{OTHER_CORPUS_FINGERPRINT}")],
+        authority_class_ids=["reviewed_lesson"],
+        risk_class_ids=["low"],
+        sensitivity_class_ids=["public"],
+        atoms=[atom("lantern_card_order"), atom("lantern_card_review")] + ineligible_atoms(),
+    )
+
+
+def admitted_package() -> AdmittedMemoryPackage:
+    """Return the fixture package after admission."""
+
+    return assert_is_ok(admit_memory_declaration(declaration()))
+
+
+def request() -> MemoryRequest:
+    """Return a request whose package claims match the admitted fixture package."""
+
+    identity = admitted_package().identity
+    return MemoryRequest(
+        contract_version="0.1",
+        request_id="turn_104",
+        package_id="lantern_path_lessons",
+        domain_id="fictional_lesson_support",
+        package_revision="1.0",
+        package_semantic_identity=identity.package_semantic_identity.text(),
+        package_admission_binding=identity.package_admission_binding.text(),
+        query_text="Which card should I start with?",
+        evaluation_time_ms=EVALUATION_TIME_MS,
+    )
+
+
+def nominations_of(memory_ids: list[str]) -> list[MemoryNomination]:
+    """Return dense, zero-based nominations for ``memory_ids`` with descending relevance."""
+
+    mut nominations: list[MemoryNomination] = []
+    for index, memory_id in enumerate(memory_ids):
+        nominations.append(MemoryNomination(memory_id=memory_id, rank=index, relevance_bps=9000 - index))
+    return nominations
+
+
+def provider_result(state: str, reason: str, memory_ids: list[str]) -> MemoryProviderResult:
+    """Return a provider result in ``state`` nominating ``memory_ids`` under the fixture binding."""
+
+    return MemoryProviderResult(
+        contract_version="0.1",
+        request_id="turn_104",
+        result_id="result_104",
+        state=state,
+        reason=reason,
+        binding=binding(),
+        nominations=nominations_of(memory_ids),
+    )
+
+
+def complete_result(memory_ids: list[str]) -> MemoryProviderResult:
+    """Return a complete provider result nominating ``memory_ids``."""
+
+    return provider_result("complete", "completed", memory_ids)
+
+
+def eligible_result() -> MemoryProviderResult:
+    """Return a complete result nominating the two eligible atoms."""
+
+    return complete_result(["lantern_card_order", "lantern_card_review"])
+
+
+def admit(candidate_request: MemoryRequest, candidate_result: MemoryProviderResult) -> MemoryAdmissionRecord:
+    """Admit against the fixture package."""
+
+    return admit_memory_result(Some(admitted_package()), candidate_request, candidate_result)
+
+
+def assert_pre_normalization(record: MemoryAdmissionRecord, stage: MemoryAdmissionStage, reason: str) -> None:
+    """Assert a minimal rejection that carries no trusted identity, no echo, and no atoms."""
+
+    assert_eq(record.variant, MemoryRecordVariant.PreNormalizationRejected)
+    assert_eq(record.envelope_admission, MemoryEnvelopeAdmission.Rejected)
+    assert_eq(record.stage, stage)
+    assert_eq(record.reason_namespace, "memory_admission_0_1")
+    assert_eq(record.reason, reason)
+    assert_is_none(record.normalized)
+    assert_eq(len(record.context.atoms), 0)
+
+
+def assert_normalized_rejection(record: MemoryAdmissionRecord, stage: MemoryAdmissionStage, reason: str) -> None:
+    """Assert a normalized rejection: trusted identity present, no atoms, no materialized identifiers."""
+
+    assert_eq(record.variant, MemoryRecordVariant.Normalized)
+    assert_eq(record.envelope_admission, MemoryEnvelopeAdmission.Rejected)
+    assert_eq(record.stage, stage)
+    assert_eq(record.reason, reason)
+    normalized = assert_is_some(record.normalized)
+    assert_eq(normalized.evaluated_package == admitted_package().identity, true)
+    assert_eq(len(normalized.materialized_memory_ids), 0)
+    assert_eq(len(record.context.atoms), 0)
+
+
+def assert_normalization(candidate_request: MemoryRequest, candidate_result: MemoryProviderResult, reason: str) -> None:
+    """Assert a normalization-stage rejection with ``reason``."""
+
+    assert_pre_normalization(admit(candidate_request, candidate_result), MemoryAdmissionStage.Normalization, reason)
+
+
+def repeated_text(value: str, count: int) -> str:
+    """Return ``value`` repeated ``count`` times."""
+# Accepted envelopes
+
+    mut text = ""
+    for _index in range(count):
+        text = text + value
+    return text
+
+
+def test_complete_result_materializes_package_atoms_in_rank_order() -> None:
+    record = admit(request(), complete_result(["lantern_card_review", "lantern_card_order"]))
+    assert_eq(record.variant, MemoryRecordVariant.Normalized)
+    assert_eq(record.envelope_admission, MemoryEnvelopeAdmission.Accepted)
+    assert_eq(record.stage, MemoryAdmissionStage.Complete)
+    assert_eq(record.reason, "accepted_complete")
+    assert_eq(record.request_id, Some("turn_104"))
+    assert_eq(record.result_id, Some("result_104"))
+
+    normalized = assert_is_some(record.normalized)
+    assert_eq(normalized.evaluated_package == admitted_package().identity, true)
+    assert_eq(normalized.provider_state, MemoryResultState.Complete)
+    assert_eq(normalized.provider_reason, MemoryResultReason.Completed)
+    assert_eq(normalized.evaluation_time_ms, EVALUATION_TIME_MS)
+    assert_eq(normalized.materialized_memory_ids, ["lantern_card_review", "lantern_card_order"])
+
+    assert_eq(len(record.context.atoms), 2)
+    first = record.context.atoms[0]
+    assert_eq(first.atom.id, "lantern_card_review")
+    assert_eq(first.atom.guidance, "Start with the first card.")
+    assert_eq(first.rank, 0)
+    assert_eq(first.relevance_bps, 9000)
+    assert_eq(record.context.atoms[1].atom.id, "lantern_card_order")
+
+
+def test_empty_complete_result_is_accepted_with_no_atoms() -> None:
+    record = admit(request(), complete_result([]))
+    assert_eq(record.envelope_admission, MemoryEnvelopeAdmission.Accepted)
+    assert_eq(record.reason, "accepted_complete")
+    assert_eq(len(record.context.atoms), 0)
+
+
+def test_partial_result_is_accepted_and_keeps_its_provider_state() -> None:
+    for reason in ["capacity_limited", "deadline_reached"]:
+        record = admit(request(), provider_result("partial", reason, ["lantern_card_order"]))
+        assert_eq(record.envelope_admission, MemoryEnvelopeAdmission.Accepted)
+        assert_eq(record.reason, "accepted_partial")
+        assert_eq(assert_is_some(record.normalized).provider_state, MemoryResultState.Partial)
+        assert_eq(len(record.context.atoms), 1)
+
+
+def test_unavailable_result_is_accepted_with_no_atoms() -> None:
+    for reason in ["provider_unavailable", "index_unavailable", "deadline_reached"]:
+        record = admit(request(), provider_result("unavailable", reason, []))
+        assert_eq(record.envelope_admission, MemoryEnvelopeAdmission.Accepted)
+        assert_eq(record.reason, "accepted_unavailable")
+        assert_eq(assert_is_some(record.normalized).provider_state, MemoryResultState.Unavailable)
+        assert_eq(len(record.context.atoms), 0)
+
+
+def test_admission_is_deterministic() -> None:
+    first = admit(request(), eligible_result())
+    second = admit(request(), eligible_result())
+    assert_eq(first.to_json(), second.to_json())
+
+
+def test_provider_text_never_reaches_the_context() -> None:
+    record = admit(request(), eligible_result())
+    assert_eq(record.to_json().contains("Which card should I start with?"), true)
+    for materialized in record.context.atoms:
+        assert_eq(materialized.atom.claim, "The first Lantern Path card introduces the lantern.")
+# Normalization stage
+
+
+def test_oversized_inputs_are_rejected_before_anything_is_retained() -> None:
+    mut many: list[str] = []
+    for index in range(MAX_MEMORY_INPUT_NOMINATIONS + 1):
+        many.append(f"atom_{index}")
+    assert_normalization(request(), complete_result(many), "input_collection_bound_exceeded")
+
+    mut long_query = request()
+    long_query.query_text = repeated_text("q", MAX_MEMORY_QUERY_BYTES + 1)
+    assert_normalization(long_query, eligible_result(), "input_text_bound_exceeded")
+    mut longest_query = request()
+    longest_query.query_text = repeated_text("q", MAX_MEMORY_QUERY_BYTES)
+    assert_eq(admit(longest_query, eligible_result()).reason, "accepted_complete")
+
+
+def test_malformed_contract_and_caller_identifiers_are_rejected() -> None:
+    mut versionless = request()
+    versionless.contract_version = "latest"
+    assert_normalization(versionless, eligible_result(), "invalid_contract_value")
+    mut result_versionless = eligible_result()
+    result_versionless.contract_version = "v0.1"
+    assert_normalization(request(), result_versionless, "invalid_contract_value")
+
+    mut unnamed = request()
+    unnamed.request_id = "Turn 104"
+    assert_normalization(unnamed, eligible_result(), "invalid_request_identifier")
+    mut bad_echo = eligible_result()
+    bad_echo.request_id = "Turn 104"
+    assert_normalization(request(), bad_echo, "invalid_request_identifier")
+    mut unnamed_result = eligible_result()
+    unnamed_result.result_id = ""
+    assert_normalization(request(), unnamed_result, "invalid_result_identifier")
+
+
+def test_malformed_package_claims_and_binding_are_rejected() -> None:
+    mut misnamed = request()
+    misnamed.package_id = "Lantern Path"
+    assert_normalization(misnamed, eligible_result(), "invalid_package_claim")
+    mut unversioned = request()
+    unversioned.package_revision = "1"
+    assert_normalization(unversioned, eligible_result(), "invalid_package_claim")
+    mut unidentified = request()
+    unidentified.package_semantic_identity = "not-a-digest"
+    assert_normalization(unidentified, eligible_result(), "invalid_package_claim")
+
+    mut malformed = eligible_result()
+    malformed.binding.index_fingerprint = "abc"
+    assert_normalization(request(), malformed, "invalid_provider_binding")
+
+
+def test_malformed_nominations_and_time_are_rejected() -> None:
+    assert_normalization(request(), complete_result(["Lantern Card"]), "invalid_nomination_identifier")
+
+    mut inexact_rank = eligible_result()
+    inexact_rank.nominations[0].rank = MAX_MEMORY_INTEGER + 1
+    assert_normalization(request(), inexact_rank, "invalid_nomination_number")
+    mut inexact_relevance = eligible_result()
+    inexact_relevance.nominations[1].relevance_bps = -MAX_MEMORY_INTEGER - 1
+    assert_normalization(request(), inexact_relevance, "invalid_nomination_number")
+
+    mut negative_time = request()
+    negative_time.evaluation_time_ms = -1
+    assert_normalization(negative_time, eligible_result(), "invalid_evaluation_time")
+    mut inexact_time = request()
+    inexact_time.evaluation_time_ms = MAX_MEMORY_INTEGER + 1
+    assert_normalization(inexact_time, eligible_result(), "invalid_evaluation_time")
+
+
+def test_unknown_and_incompatible_provider_states_are_rejected() -> None:
+    assert_normalization(request(), provider_result("degraded", "completed", []), "unsupported_provider_state")
+    assert_normalization(request(), provider_result("complete", "out_of_memory", []), "unsupported_provider_reason")
+    assert_normalization(
+        request(),
+        provider_result("complete", "deadline_reached", []),
+        "provider_state_reason_mismatch",
+    )
+    assert_normalization(
+        request(),
+        provider_result("partial", "provider_unavailable", ["lantern_card_order"]),
+        "provider_state_reason_mismatch",
+    )
+    assert_normalization(
+        request(),
+        provider_result("unavailable", "capacity_limited", []),
+        "provider_state_reason_mismatch",
+    )
+
+
+def test_pre_normalization_record_keeps_only_canonical_caller_identifiers() -> None:
+    mut malformed = eligible_result()
+    malformed.binding.index_fingerprint = "abc"
+    record = admit(request(), malformed)
+    assert_eq(record.request_id, Some("turn_104"))
+    assert_eq(record.result_id, Some("result_104"))
+
+    mut unnamed = request()
+    unnamed.request_id = "Turn 104 with a secret"
+    unnamed.query_text = "a private question"
+    rejected = admit(unnamed, eligible_result())
+    assert_eq(rejected.result_id, Some("result_104"))
+    assert_eq(rejected.to_json().contains("secret"), false)
+    assert_eq(rejected.to_json().contains("private question"), false)
+    assert_eq(rejected.to_json().contains("lantern_path_lessons"), false)
+    assert_is_none(rejected.request_id)
+
+
+def test_normalization_precedence_follows_the_table_not_input_order() -> None:
+    mut everything_wrong = request()
+    everything_wrong.contract_version = "latest"
+    everything_wrong.request_id = "Turn 104"
+    everything_wrong.package_id = "Lantern Path"
+    everything_wrong.evaluation_time_ms = -1
+    mut bad_result = provider_result("degraded", "out_of_memory", ["Lantern Card"])
+    bad_result.result_id = ""
+    assert_normalization(everything_wrong, bad_result, "invalid_contract_value")
+# Package stage
+
+    mut two_wrong = request()
+    two_wrong.evaluation_time_ms = -1
+    assert_normalization(two_wrong, complete_result(["Lantern Card"]), "invalid_nomination_identifier")
+
+    mut number_last = complete_result(["lantern_card_order", "Lantern Card"])
+    number_last.nominations[0].rank = MAX_MEMORY_INTEGER + 1
+    assert_normalization(request(), number_last, "invalid_nomination_identifier")
+
+
+def test_absent_package_admission_is_rejected_without_trusted_identity() -> None:
+    record = admit_memory_result(None, request(), eligible_result())
+    assert_pre_normalization(record, MemoryAdmissionStage.Package, "package_not_admitted")
+    assert_eq(record.request_id, Some("turn_104"))
+
+
+def test_package_without_governed_memory_admits_no_retrieval_result() -> None:
+    without_memory = assert_is_ok(
+        admit_package_without_memory("lantern_path_lessons", "fictional_lesson_support", "1.0"),
+    )
+    record = admit_memory_result(Some(without_memory), request(), eligible_result())
+    assert_pre_normalization(record, MemoryAdmissionStage.Package, "memory_registry_not_admitted")
+
+
+def test_normalization_failure_precedes_the_package_stage() -> None:
+    mut negative_time = request()
+    negative_time.evaluation_time_ms = -1
+    record = admit_memory_result(None, negative_time, eligible_result())
+    assert_pre_normalization(record, MemoryAdmissionStage.Normalization, "invalid_evaluation_time")
+# Request stage
+
+
+def test_unsupported_contract_version_is_rejected() -> None:
+    mut newer = request()
+    newer.contract_version = "0.2"
+    mut newer_result = eligible_result()
+    newer_result.contract_version = "0.2"
+    assert_normalized_rejection(admit(newer, newer_result), MemoryAdmissionStage.Request, "unsupported_memory_contract")
+
+
+def test_each_request_package_claim_is_compared_with_the_trusted_identity() -> None:
+    mut other_package = request()
+    other_package.package_id = "other_lessons"
+    assert_normalized_rejection(
+        admit(other_package, eligible_result()),
+        MemoryAdmissionStage.Request,
+        "request_package_id_mismatch",
+    )
+    mut other_domain = request()
+    other_domain.domain_id = "other_domain"
+    assert_normalized_rejection(
+        admit(other_domain, eligible_result()),
+        MemoryAdmissionStage.Request,
+        "request_domain_id_mismatch",
+    )
+    mut other_revision = request()
+    other_revision.package_revision = "1.1"
+    assert_normalized_rejection(
+        admit(other_revision, eligible_result()),
+        MemoryAdmissionStage.Request,
+        "request_package_revision_mismatch",
+    )
+    mut other_semantic = request()
+    other_semantic.package_semantic_identity = f"sha256:{SOURCE_FINGERPRINT}"
+    assert_normalized_rejection(
+        admit(other_semantic, eligible_result()),
+        MemoryAdmissionStage.Request,
+        "request_package_semantic_identity_mismatch",
+    )
+    mut other_binding = request()
+    other_binding.package_admission_binding = f"sha256:{SOURCE_FINGERPRINT}"
+    assert_normalized_rejection(
+        admit(other_binding, eligible_result()),
+        MemoryAdmissionStage.Request,
+        "request_package_admission_binding_mismatch",
+    )
+
+
+def test_canonical_request_claims_never_become_trusted_identity() -> None:
+    mut other_package = request()
+    other_package.package_id = "other_lessons"
+    record = admit(other_package, eligible_result())
+    normalized = assert_is_some(record.normalized)
+    assert_eq(normalized.evaluated_package.package_id, "lantern_path_lessons")
+    assert_eq(normalized.request.package_id, "other_lessons")
+
+
+def test_result_must_echo_the_request_contract_and_identifier() -> None:
+    mut other_contract = eligible_result()
+    other_contract.contract_version = "0.2"
+    assert_normalized_rejection(
+        admit(request(), other_contract),
+        MemoryAdmissionStage.Request,
+        "result_contract_mismatch",
+    )
+    mut other_turn = eligible_result()
+    other_turn.request_id = "turn_105"
+    assert_normalized_rejection(admit(request(), other_turn), MemoryAdmissionStage.Request, "result_request_id_mismatch")
+# Provider stage
+
+
+def test_binding_must_exactly_equal_an_admitted_binding() -> None:
+    mut newer_index = eligible_result()
+    newer_index.binding.index_fingerprint = f"{SOURCE_FINGERPRINT}"
+    assert_normalized_rejection(
+        admit(request(), newer_index),
+        MemoryAdmissionStage.Provider,
+        "provider_binding_not_admitted",
+    )
+    mut newer_adapter = eligible_result()
+    newer_adapter.binding.adapter_version = "1.2.1"
+    assert_normalized_rejection(
+        admit(request(), newer_adapter),
+        MemoryAdmissionStage.Provider,
+        "provider_binding_not_admitted",
+    )
+
+
+def test_nomination_count_must_fit_the_provider_state() -> None:
+    assert_normalized_rejection(
+        admit(request(), provider_result("partial", "deadline_reached", [])),
+        MemoryAdmissionStage.Provider,
+        "provider_state_nomination_mismatch",
+    )
+    assert_normalized_rejection(
+        admit(request(), provider_result("unavailable", "index_unavailable", ["lantern_card_order"])),
+        MemoryAdmissionStage.Provider,
+        "provider_state_nomination_mismatch",
+    )
+# Nominations stage
+
+
+def test_nomination_count_above_the_profile_is_rejected() -> None:
+    mut many: list[str] = []
+    for index in range(MAX_MEMORY_NOMINATIONS + 1):
+        many.append(f"atom_{index}")
+    assert_normalized_rejection(
+        admit(request(), complete_result(many)),
+        MemoryAdmissionStage.Nominations,
+        "nomination_count_exceeds_profile",
+    )
+
+
+def test_duplicate_gapped_and_out_of_range_nominations_are_rejected() -> None:
+    assert_normalized_rejection(
+        admit(request(), complete_result(["lantern_card_order", "lantern_card_order"])),
+        MemoryAdmissionStage.Nominations,
+        "duplicate_nomination_id",
+    )
+
+    mut gapped = eligible_result()
+    gapped.nominations[1].rank = 2
+    assert_normalized_rejection(admit(request(), gapped), MemoryAdmissionStage.Nominations, "nomination_rank_mismatch")
+    mut tied = eligible_result()
+    tied.nominations[1].rank = 0
+    assert_normalized_rejection(admit(request(), tied), MemoryAdmissionStage.Nominations, "nomination_rank_mismatch")
+    mut negative = eligible_result()
+    negative.nominations[0].rank = -1
+    assert_normalized_rejection(admit(request(), negative), MemoryAdmissionStage.Nominations, "nomination_rank_mismatch")
+
+    mut too_relevant = eligible_result()
+    too_relevant.nominations[0].relevance_bps = MAX_RELEVANCE_BPS + 1
+    assert_normalized_rejection(
+        admit(request(), too_relevant),
+        MemoryAdmissionStage.Nominations,
+        "nomination_relevance_out_of_range",
+    )
+    mut irrelevant = eligible_result()
+    irrelevant.nominations[0].relevance_bps = -1
+    assert_normalized_rejection(
+        admit(request(), irrelevant),
+        MemoryAdmissionStage.Nominations,
+        "nomination_relevance_out_of_range",
+    )
+
+
+def test_relevance_boundaries_are_inclusive() -> None:
+    mut bounds = eligible_result()
+    bounds.nominations[0].relevance_bps = MAX_RELEVANCE_BPS
+    bounds.nominations[1].relevance_bps = 0
+    assert_eq(admit(request(), bounds).reason, "accepted_complete")
+# Atoms stage
+
+
+def test_unknown_memory_identifier_rejects_the_whole_result() -> None:
+    record = admit(request(), complete_result(["lantern_card_order", "lantern_card_missing"]))
+    assert_normalized_rejection(record, MemoryAdmissionStage.Atoms, "unknown_memory_id")
+
+
+def test_each_ineligible_atom_reaches_its_own_reason() -> None:
+    assert_normalized_rejection(
+        admit(request(), complete_result(["lantern_card_other_corpus"])),
+        MemoryAdmissionStage.Atoms,
+        "atom_corpus_mismatch",
+    )
+    assert_normalized_rejection(
+        admit(request(), complete_result(["lantern_card_pending"])),
+        MemoryAdmissionStage.Atoms,
+        "atom_review_not_approved",
+    )
+    assert_normalized_rejection(
+        admit(request(), complete_result(["lantern_card_restricted"])),
+        MemoryAdmissionStage.Atoms,
+        "atom_rights_not_allowed",
+    )
+    assert_normalized_rejection(
+        admit(request(), complete_result(["lantern_card_future"])),
+        MemoryAdmissionStage.Atoms,
+        "atom_not_yet_valid",
+    )
+    assert_normalized_rejection(
+        admit(request(), complete_result(["lantern_card_expired"])),
+        MemoryAdmissionStage.Atoms,
+        "atom_expired",
+    )
+
+
+def test_validity_uses_an_inclusive_start_and_an_exclusive_end() -> None:
+    mut at_start = request()
+    at_start.evaluation_time_ms = FUTURE_START_MS
+    assert_eq(admit(at_start, complete_result(["lantern_card_future"])).reason, "accepted_complete")
+    mut before_start = request()
+    before_start.evaluation_time_ms = FUTURE_START_MS - 1
+    assert_eq(admit(before_start, complete_result(["lantern_card_future"])).reason, "atom_not_yet_valid")
+
+    mut before_end = request()
+    before_end.evaluation_time_ms = EXPIRY_MS - 1
+    assert_eq(admit(before_end, complete_result(["lantern_card_expired"])).reason, "accepted_complete")
+    mut at_end = request()
+    at_end.evaluation_time_ms = EXPIRY_MS
+    assert_eq(admit(at_end, complete_result(["lantern_card_expired"])).reason, "atom_expired")
+
+
+def test_atom_precedence_follows_the_table_not_nomination_order() -> None:
+    record = admit(request(), complete_result(["lantern_card_expired", "lantern_card_pending", "lantern_card_missing"]))
+    assert_normalized_rejection(record, MemoryAdmissionStage.Atoms, "unknown_memory_id")
+
+    ordered = admit(
+        request(),
+        complete_result(["lantern_card_expired", "lantern_card_restricted", "lantern_card_pending"]),
+    )
+    assert_normalized_rejection(ordered, MemoryAdmissionStage.Atoms, "atom_review_not_approved")
+
+
+def test_partial_state_does_not_salvage_a_result_with_one_ineligible_atom() -> None:
+    record = admit(
+        request(),
+        provider_result("partial", "deadline_reached", ["lantern_card_order", "lantern_card_pending"]),
+    )
+    assert_normalized_rejection(record, MemoryAdmissionStage.Atoms, "atom_review_not_approved")
+
+
+def test_atom_under_another_approved_binding_is_admitted_only_under_that_binding() -> None:
+    mut other = complete_result(["lantern_card_other_corpus"])
+    other.binding = binding_for(f"{OTHER_CORPUS_FINGERPRINT}")
+    assert_eq(admit(request(), other).reason, "accepted_complete")
+# Context stage
+
+    mut mixed = complete_result(["lantern_card_order"])
+    mixed.binding = binding_for(f"{OTHER_CORPUS_FINGERPRINT}")
+    assert_normalized_rejection(admit(request(), mixed), MemoryAdmissionStage.Atoms, "atom_corpus_mismatch")
+
+
+def large_declaration() -> GovernedMemoryDeclaration:
+    """Return a declaration whose atoms each carry the largest permitted claim text."""
+
+    mut atoms: list[GovernedMemoryAtom] = []
+    for index in range(40):
+        mut large = atom(f"large_atom_{index}")
+        large.claim = repeated_text("c", MAX_MEMORY_ATOM_TEXT_BYTES)
+        atoms.append(large)
+    mut candidate = declaration()
+    candidate.atoms = atoms
+    return candidate
+
+
+def large_request(package: AdmittedMemoryPackage) -> MemoryRequest:
+    """Return a request bound to ``package``."""
+
+    mut bound = request()
+    bound.package_semantic_identity = package.identity.package_semantic_identity.text()
+    bound.package_admission_binding = package.identity.package_admission_binding.text()
+    return bound
+
+
+def test_aggregate_context_bytes_above_the_profile_are_rejected() -> None:
+    package = assert_is_ok(admit_memory_declaration(large_declaration()))
+    mut many: list[str] = []
+    for index in range(40):
+        many.append(f"large_atom_{index}")
+    record = admit_memory_result(Some(package), large_request(package), complete_result(many))
+    assert_eq(record.variant, MemoryRecordVariant.Normalized)
+    assert_eq(record.envelope_admission, MemoryEnvelopeAdmission.Rejected)
+    assert_eq(record.stage, MemoryAdmissionStage.Context)
+    assert_eq(record.reason, "context_bytes_exceeded")
+    assert_eq(len(record.context.atoms), 0)
+
+    few = admit_memory_result(Some(package), large_request(package), complete_result(["large_atom_0", "large_atom_1"]))
+    assert_eq(few.reason, "accepted_complete")
+
+
+def many_atoms_declaration(count: int) -> GovernedMemoryDeclaration:
+    """Return the fixture declaration with ``count`` eligible atoms."""
+
+    mut atoms: list[GovernedMemoryAtom] = []
+    for index in range(count):
+        atoms.append(atom(f"library_atom_{index}"))
+    mut candidate = declaration()
+    candidate.atoms = atoms
+    return candidate
+
+
+def test_a_package_may_hold_any_number_of_atoms_while_each_request_stays_bounded() -> None:
+    package = assert_is_ok(admit_memory_declaration(many_atoms_declaration(5000)))
+
+    last = admit_memory_result(
+        Some(package),
+        large_request(package),
+        complete_result(["library_atom_4999", "library_atom_0"]),
+    )
+    assert_eq(last.reason, "accepted_complete")
+    assert_eq(len(last.context.atoms), 2)
+    assert_eq(last.context.atoms[0].atom.id, "library_atom_4999")
+
+    mut too_many_nominations: list[str] = []
+    for index in range(MAX_MEMORY_INPUT_NOMINATIONS + 1):
+        too_many_nominations.append(f"library_atom_{index}")
+    rejected = admit_memory_result(Some(package), large_request(package), complete_result(too_many_nominations))
+    assert_eq(rejected.envelope_admission, MemoryEnvelopeAdmission.Rejected)
+    assert_eq(rejected.reason, "input_collection_bound_exceeded")
+    assert_eq(len(rejected.context.atoms), 0)
+
+    unknown = admit_memory_result(Some(package), large_request(package), complete_result(["library_atom_5000"]))
+    assert_eq(unknown.envelope_admission, MemoryEnvelopeAdmission.Rejected)

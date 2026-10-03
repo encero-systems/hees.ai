@@ -101,6 +101,9 @@ required_files=(
     src/content_dna.incn
     src/governed_continuity.incn
     src/governed_memory_operations.incn
+    src/governed_memory_retrieval.incn
+    src/governed_memory_retrieval_declaration.incn
+    src/governed_memory_retrieval_models.incn
     src/governed_profile.incn
     src/governed_profile_artifacts.incn
     src/governed_profile_committee.incn
@@ -122,6 +125,8 @@ required_files=(
     tests/test_content_dna_contract.incn
     tests/test_governed_continuity_contract.incn
     tests/test_governed_memory_operations.incn
+    tests/test_governed_memory_retrieval.incn
+    tests/test_governed_memory_retrieval_declaration.incn
     tests/test_governed_profile_contract.incn
     tests/test_identifier_contract.incn
     tests/test_package_loader_contract.incn
@@ -166,6 +171,9 @@ allowed_source_modules=(
     src/content_dna.incn
     src/governed_continuity.incn
     src/governed_memory_operations.incn
+    src/governed_memory_retrieval.incn
+    src/governed_memory_retrieval_declaration.incn
+    src/governed_memory_retrieval_models.incn
     src/governed_profile.incn
     src/governed_profile_artifacts.incn
     src/governed_profile_committee.incn
