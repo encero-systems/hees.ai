@@ -6,7 +6,7 @@ progression topology. It produces diagnostics only and does not grant runtime or
 """
 
 from crate.identifiers import GuidedCardId, has_duplicate_identifiers
-from crate.programme.models import MAX_GUIDED_PROGRAMME_CARDS, GuidedProgramme, GuidedProgrammeCard, ProgrammeValidation
+from crate.programme.models import GuidedProgramme, GuidedProgrammeCard, ProgrammeValidation
 from crate.runtime import ReviewStatus, RightsStatus
 
 
@@ -162,7 +162,7 @@ pub def validate_guided_programme(programme: GuidedProgramme) -> ProgrammeValida
     """Validate a complete declaration without granting runtime or persistence authority."""
 
     mut errors: list[str] = []
-    if len(programme.cards) == 0 or len(programme.cards) > MAX_GUIDED_PROGRAMME_CARDS:
+    if len(programme.cards) == 0:
         errors.append("invalid_card_count")
     errors.extend(catalogue_errors(programme))
     errors.extend(card_errors(programme))

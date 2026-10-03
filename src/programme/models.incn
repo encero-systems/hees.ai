@@ -20,9 +20,6 @@ from crate.identifiers import (
 )
 from crate.runtime import ReviewStatus, RightsStatus
 
-pub const MAX_GUIDED_PROGRAMME_CARDS: int = 128
-pub const MAX_GUIDED_PROGRAMME_HISTORY: int = 256
-
 
 @derive(Clone, Eq, json)
 pub enum ProgrammeActionKind(str):

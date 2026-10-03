@@ -101,12 +101,7 @@ pub from identifiers import (
 )
 # Governed session continuity (RFC 013, Draft).
 pub from governed_continuity import (
-    MAX_CONTINUITY_GOALS,
     MAX_CONTINUITY_INTEGER,
-    MAX_CONTINUITY_SCHEDULES,
-    MAX_DECLARED_ACTIONS,
-    MAX_SCHEDULE_CLOCK_SOURCES,
-    MAX_SCHEDULE_PHASES,
     ContinuityDecision,
     ContinuityOperationKind,
     ContinuityPackage,
@@ -217,8 +212,6 @@ pub from governed_profile import (
     validate_governed_profile_package,
 )
 pub from programme import (
-    MAX_GUIDED_PROGRAMME_CARDS,
-    MAX_GUIDED_PROGRAMME_HISTORY,
     GuidedProgramme,
     GuidedProgrammeCard,
     GuidedProgrammeChoice,

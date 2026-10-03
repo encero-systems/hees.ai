@@ -35,9 +35,9 @@ from crate.witness import (
     witness_key_is_valid,
 )
 
-const MAX_MEMORY_CLASSES: int = 32
+# One rule per operation kind; there are five kinds.
 const MAX_MEMORY_OPERATIONS: int = 5
-const MAX_MEMORY_CLASS_KEYS: int = 32
+# Most provenance fields one request may carry, and therefore most a class may require.
 const MAX_MEMORY_PROVENANCE_FIELDS: int = 16
 # Type tag hashed ahead of the policy projection, so no other projection type can share a policy digest.
 const MEMORY_POLICY_TYPE_TAG: str = "hees.ai/memory-policy/v0"
@@ -414,13 +414,13 @@ def session_present(identifier: Option[SessionId]) -> bool:
 
 
 def has_duplicate_strings(values: list[str]) -> bool:
-    """Return whether one bounded text projection repeats an earlier value."""
+    """Return whether one text projection repeats an earlier value, in time linear in its length."""
 
-    mut seen: list[str] = []
+    mut seen: Dict[str, bool] = {}
     for value in values:
-        if seen.contains(value):
+        if seen.contains_key(value):
             return true
-        seen.append(value)
+        seen[value] = true
     return false
 
 
@@ -510,17 +510,18 @@ def memory_text_fields_are_canonical(memory_key: Option[str], provenance_fields:
 
 
 def policy_is_bounded(policy: GovernedMemoryPolicy) -> bool:
-    """Return whether every policy collection is within its RFC 014 count bound."""
+    """
+    Return whether the policy is within the two bounds that are not about how much it declares.
 
-    if len(policy.classes) > MAX_MEMORY_CLASSES or len(policy.operations) > MAX_MEMORY_OPERATIONS:
+    A policy may declare any number of memory classes and any number of allowed keys per class. It declares at most
+    one rule per operation kind, and a class may require at most as many provenance fields as one request may
+    carry, or no request could satisfy it.
+    """
+
+    if len(policy.operations) > MAX_MEMORY_OPERATIONS:
         return false
     for memory_class in policy.classes:
-        if len(memory_class.allowed_keys) > MAX_MEMORY_CLASS_KEYS:
-            return false
         if len(memory_class.required_provenance) > MAX_MEMORY_PROVENANCE_FIELDS:
-            return false
-    for operation in policy.operations:
-        if len(operation.allowed_class_ids) > MAX_MEMORY_CLASSES:
             return false
     return true
 

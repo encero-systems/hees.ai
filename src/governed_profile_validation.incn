@@ -43,7 +43,6 @@ from crate.identifiers import (
 pub const MAX_GOVERNED_ACTIONS: int = 16
 pub const MAX_PROPOSAL_EVIDENCE: int = 64
 pub const MAX_PROPOSAL_MEMORY: int = 64
-pub const MAX_GOVERNED_GUIDED_MATERIAL: int = 16
 pub const MAX_MEMORY_EVIDENCE: int = 8
 pub const MAX_GUIDED_MEMORY: int = 8
 pub const MAX_GUIDED_EVIDENCE: int = 16
@@ -231,8 +230,6 @@ def validate_package_bounds(package: GovernedProfilePackage) -> GovernedValidati
         return package_error("invalid_evidence_count")
     if len(package.memory) == 0:
         return package_error("invalid_memory_count")
-    if len(package.guided_material) > MAX_GOVERNED_GUIDED_MATERIAL:
-        return package_error("invalid_guided_material_count")
     if not count_is_within(len(package.policy.required_roles), 1, MAX_COMMITTEE_ROLES):
         return package_error("invalid_committee_role_count")
     for atom in package.memory:
@@ -381,7 +378,7 @@ def validate_transition(material: GuidedMaterial, transition: GuidedTransition) 
 
 
 def validate_guided_action(
-    package: GovernedProfilePackage,
+    actions: list[GovernedAction],
     action_id: ActionId,
     expected_kind: GovernedOutcomeKind,
     unknown_error: str,
@@ -389,7 +386,7 @@ def validate_guided_action(
 ) -> GovernedValidation:
     """Check that a guided material's presentation or navigation action exists with the expected outcome kind."""
 
-    match find_declared(package.actions, action_id):
+    match find_declared(actions, action_id):
         None => return package_error(unknown_error)
         Some(action) =>
             if action.outcome_kind != expected_kind:
@@ -397,8 +394,39 @@ def validate_guided_action(
             return governed_validation_ok()
 
 
-def validate_guided_material(package: GovernedProfilePackage, material: GuidedMaterial) -> GovernedValidation:
-    """Check one guided material's identity, admission, memory and evidence relationships, actions, and steps."""
+def evidence_union_of_memory(
+    memory_evidence: Dict[str, list[EvidenceId]],
+    memory_ids: list[MemoryId],
+) -> list[EvidenceId]:
+    """
+    Collect the duplicate-free evidence union of the named memory atoms, in the order given.
+
+    An undeclared memory identifier yields an empty list, which never equals a nonempty evidence set.
+    """
+
+    mut result: list[EvidenceId] = []
+    for memory_id in memory_ids:
+        match memory_evidence.get(memory_id.text()):
+            None => return []
+            Some(evidence_ids) =>
+                for evidence_id in evidence_ids:
+                    if not result.contains(evidence_id):
+                        result.append(evidence_id)
+    return result
+
+
+def validate_guided_material(
+    material: GuidedMaterial,
+    actions: list[GovernedAction],
+    declared_evidence: Dict[str, bool],
+    memory_evidence: Dict[str, list[EvidenceId]],
+) -> GovernedValidation:
+    """
+    Check one guided material's identity, admission, memory and evidence relationships, actions, and steps.
+
+    ``declared_evidence`` holds the package's evidence identifiers and ``memory_evidence`` the evidence each memory
+    atom rests on, so the check costs the same for one material whatever the package holds.
+    """
 
     if not guided_identity_is_safe(material):
         return package_error("invalid_guided_material_identity")
@@ -411,23 +439,21 @@ def validate_guided_material(package: GovernedProfilePackage, material: GuidedMa
     if has_duplicate_identifiers(material.evidence_ids):
         return package_error("duplicate_guided_evidence")
     for memory_id in material.memory_ids:
-        match find_declared(package.memory, memory_id):
-            None => return package_error("unknown_guided_memory")
-            Some(_) => pass
+        if not memory_evidence.contains_key(memory_id.text()):
+            return package_error("unknown_guided_memory")
     for evidence_id in material.evidence_ids:
-        match find_declared(package.evidence, evidence_id):
-            None => return package_error("unknown_guided_evidence")
-            Some(_) => pass
-    if not identifier_sets_equal(material.evidence_ids, selected_evidence_for_memory(package, material.memory_ids)):
+        if not declared_evidence.contains_key(evidence_id.text()):
+            return package_error("unknown_guided_evidence")
+    if not identifier_sets_equal(material.evidence_ids, evidence_union_of_memory(memory_evidence, material.memory_ids)):
         return package_error("guided_memory_evidence_mismatch")
     for validation in [validate_guided_action(
-        package,
+        actions,
         material.presentation_action_id,
         GovernedOutcomeKind.GuidedMaterial,
         "unknown_guided_presentation_action",
         "invalid_guided_presentation_action",
     ), validate_guided_action(
-        package,
+        actions,
         material.navigation_action_id,
         GovernedOutcomeKind.GuidedNavigation,
         "unknown_guided_navigation_action",
@@ -437,15 +463,15 @@ def validate_guided_material(package: GovernedProfilePackage, material: GuidedMa
             return validation
     if has_duplicate_identifiers(material.steps):
         return package_error("duplicate_guided_step")
-    mut transition_keys: list[str] = []
+    mut transition_keys: Dict[str, bool] = {}
     for transition in material.transitions:
         validation = validate_transition(material, transition)
         if not validation.valid:
             return validation
         key = transition_key(transition.current_step_id, transition.next_step_id)
-        if transition_keys.contains(key):
+        if transition_keys.contains_key(key):
             return package_error("duplicate_guided_transition")
-        transition_keys.append(key)
+        transition_keys[key] = true
     return governed_validation_ok()
 
 
@@ -496,12 +522,14 @@ pub def validate_governed_profile_package(package: GovernedProfilePackage) -> Go
         package_revision=package.package_revision,
         profile_package_digest=package.profile_package_digest,
     )
+    mut memory_evidence: Dict[str, list[EvidenceId]] = {}
     for atom in package.memory:
         validation = validate_memory(identity, declared_evidence, atom)
         if not validation.valid:
             return validation
+        memory_evidence[atom.memory_id.text()] = atom.evidence_ids
     for material in package.guided_material:
-        validation = validate_guided_material(package, material)
+        validation = validate_guided_material(material, package.actions, declared_evidence, memory_evidence)
         if not validation.valid:
             return validation
     return validate_policy(package)

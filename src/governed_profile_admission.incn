@@ -27,6 +27,7 @@ from crate.governed_profile_models import (
     GovernedProposal,
     GovernedRequest,
     GovernedValidation,
+    GuidedMaterial,
 )
 from crate.governed_profile_validation import (
     MAX_PROPOSAL_EVIDENCE,
@@ -74,6 +75,7 @@ pub class AdmittedGovernedProfile:
     _package: GovernedProfilePackage
     _evidence_positions: Dict[str, int]
     _memory_positions: Dict[str, int]
+    _guided_positions: Dict[str, int]
 
     pub property profile_package_digest -> DigestIdType:
         """Return the package digest that admission verified."""
@@ -105,10 +107,10 @@ pub class AdmittedGovernedProfile:
         Return the admitted package narrowed to the records one proposal can touch.
 
         Kept, in package order: the memory atoms and evidence records the proposal nominates, the evidence those
-        atoms rest on, and the memory and evidence of every guided material (a bounded set). An identifier the
-        package does not declare is simply absent, so the evaluation rejects it as unknown exactly as it would
-        against the whole package. Header, digest, actions, guided material and policy are the admitted package's.
-        A proposal over the reference limit nominates nothing here; its identity check rejects it first.
+        atoms rest on, and the guided material the proposal nominates with its memory and evidence. An identifier
+        the package does not declare is simply absent, so the evaluation rejects it as unknown exactly as it would
+        against the whole package. Header, digest, actions and policy are the admitted package's. A proposal over
+        the reference limit nominates nothing here; its identity check rejects it first.
         """
 
         mut memory_wanted: Dict[int, bool] = {}
@@ -120,11 +122,15 @@ pub class AdmittedGovernedProfile:
         if len(proposal.evidence_ids) <= MAX_PROPOSAL_EVIDENCE and len(proposal.memory_ids) <= MAX_PROPOSAL_MEMORY:
             memory_names = [memory_id.text() for memory_id in proposal.memory_ids]
             evidence_names = [evidence_id.text() for evidence_id in proposal.evidence_ids]
-        for material in self._package.guided_material:
-            for memory_id in material.memory_ids:
-                memory_names.append(memory_id.text())
-            for evidence_id in material.evidence_ids:
-                evidence_names.append(evidence_id.text())
+        mut guided_material: list[GuidedMaterial] = []
+        if let Some(nominated) = proposal.guided_material_id:
+            if let Some(position) = self._guided_positions.get(nominated.text()):
+                material = self._package.guided_material[position]
+                for memory_id in material.memory_ids:
+                    memory_names.append(memory_id.text())
+                for evidence_id in material.evidence_ids:
+                    evidence_names.append(evidence_id.text())
+                guided_material.append(material)
         for name in memory_names:
             if let Some(position) = self._memory_positions.get(name):
                 if not memory_wanted.contains_key(position):
@@ -150,7 +156,7 @@ pub class AdmittedGovernedProfile:
             actions=self._package.actions,
             evidence=evidence,
             memory=memory,
-            guided_material=self._package.guided_material,
+            guided_material=guided_material,
             policy=self._package.policy,
         )
 
@@ -271,10 +277,14 @@ pub def admit_governed_profile_package(
     mut memory_positions: Dict[str, int] = {}
     for position, atom in enumerate(package.memory):
         memory_positions[atom.memory_id.text()] = position
+    mut guided_positions: Dict[str, int] = {}
+    for position, material in enumerate(package.guided_material):
+        guided_positions[material.guided_material_id.text()] = position
     return Ok(
         AdmittedGovernedProfile(
             _package=package,
             _evidence_positions=evidence_positions,
             _memory_positions=memory_positions,
+            _guided_positions=guided_positions,
         ),
     )

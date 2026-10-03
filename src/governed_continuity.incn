@@ -41,16 +41,8 @@ from crate.witness import (
 const CONTINUITY_DECLARATION_TYPE_TAG: str = "hees.ai/continuity-declaration/v0"
 # Type tag hashed ahead of a session state in its keyed witness, so no other projection's witness can stand in for it.
 const CONTINUITY_STATE_TYPE_TAG: str = "hees.ai/continuity-state/v0"
-# Most goals one package may declare.
-pub const MAX_CONTINUITY_GOALS: int = 16
-# Most schedules one package may declare.
-pub const MAX_CONTINUITY_SCHEDULES: int = 16
-# Most phases one schedule may declare; also bounds each goal's completion list and each phase's next-phase list.
-pub const MAX_SCHEDULE_PHASES: int = 32
-# Most clock sources one schedule may allow.
-pub const MAX_SCHEDULE_CLOCK_SOURCES: int = 8
-# Most action identifiers one goal or one phase may allow.
-pub const MAX_DECLARED_ACTIONS: int = 16
+# A package may declare any number of goals, schedules, phases, clock sources and allowed actions: what a package
+# holds is not bounded by a number. Only numeric values are bounded.
 # Largest accepted clock value, duration, or event index (2^53 - 1, exact in every JSON number implementation). Every
 # time and index the kernel compares stays within 0..=this bound first, so its arithmetic cannot overflow.
 pub const MAX_CONTINUITY_INTEGER: int = 9007199254740991
@@ -260,13 +252,13 @@ def admitted(proposal: ContinuityProposal, reason: str, state: SessionContinuity
 
 
 def has_duplicate_text(values: list[str]) -> bool:
-    """Return whether any entry repeats an earlier one; callers bound ``values`` before this quadratic scan."""
+    """Return whether any entry repeats an earlier one, in time linear in the number of entries."""
 
-    mut seen: list[str] = []
+    mut seen: Dict[str, bool] = {}
     for value in values:
-        if seen.contains(value):
+        if seen.contains_key(value):
             return true
-        seen.append(value)
+        seen[value] = true
     return false
 
 
@@ -285,32 +277,20 @@ def integer_in_range(value: int) -> bool:
     return value >= 0 and value <= MAX_CONTINUITY_INTEGER
 
 
-def goal_within_bounds(goal: GovernedGoal) -> bool:
-    """Return whether one goal's lists respect the declared collection bounds."""
-
-    return len(goal.completion_phase_ids) <= MAX_SCHEDULE_PHASES and len(goal.allowed_action_ids) <= MAX_DECLARED_ACTIONS
-
-
 def phase_within_bounds(phase: GovernedPhase) -> bool:
-    """Return whether one phase's lists and durations respect the declared bounds."""
+    """Return whether one phase's durations stay within the integer range the kernel compares in."""
 
     return (
-        len(phase.allowed_action_ids) <= MAX_DECLARED_ACTIONS
-        and len(phase.next_phase_ids) <= MAX_SCHEDULE_PHASES
-        and phase.minimum_seconds <= MAX_CONTINUITY_INTEGER
+        phase.minimum_seconds <= MAX_CONTINUITY_INTEGER
         and phase.target_seconds <= MAX_CONTINUITY_INTEGER
         and phase.maximum_seconds <= MAX_CONTINUITY_INTEGER
     )
 
 
 def schedule_within_bounds(schedule: GovernedSchedule) -> bool:
-    """Return whether one schedule, including every phase, respects the declared bounds."""
+    """Return whether one schedule's durations, including every phase's, stay within the integer range."""
 
-    if (
-        len(schedule.allowed_clock_sources) > MAX_SCHEDULE_CLOCK_SOURCES
-        or len(schedule.phases) > MAX_SCHEDULE_PHASES
-        or schedule.total_target_seconds > MAX_CONTINUITY_INTEGER
-    ):
+    if schedule.total_target_seconds > MAX_CONTINUITY_INTEGER:
         return false
     for phase in schedule.phases:
         if not phase_within_bounds(phase):
@@ -319,13 +299,13 @@ def schedule_within_bounds(schedule: GovernedSchedule) -> bool:
 
 
 def package_within_bounds(package: ContinuityPackage) -> bool:
-    """Return whether every package collection and duration respects the declared bounds."""
+    """
+    Return whether every duration in the package stays within the integer range.
 
-    if len(package.goals) > MAX_CONTINUITY_GOALS or len(package.schedules) > MAX_CONTINUITY_SCHEDULES:
-        return false
-    for goal in package.goals:
-        if not goal_within_bounds(goal):
-            return false
+    A package may declare any number of goals, schedules, phases, clock sources and allowed actions; only its
+    numbers are bounded.
+    """
+
     for schedule in package.schedules:
         if not schedule_within_bounds(schedule):
             return false
