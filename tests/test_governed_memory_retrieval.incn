@@ -703,3 +703,38 @@ def test_aggregate_context_bytes_above_the_profile_are_rejected() -> None:
 
     few = admit_memory_result(Some(package), large_request(package), complete_result(["large_atom_0", "large_atom_1"]))
     assert_eq(few.reason, "accepted_complete")
+
+
+def many_atoms_declaration(count: int) -> GovernedMemoryDeclaration:
+    """Return the fixture declaration with ``count`` eligible atoms."""
+
+    mut atoms: list[GovernedMemoryAtom] = []
+    for index in range(count):
+        atoms.append(atom(f"library_atom_{index}"))
+    mut candidate = declaration()
+    candidate.atoms = atoms
+    return candidate
+
+
+def test_a_package_may_hold_any_number_of_atoms_while_each_request_stays_bounded() -> None:
+    package = assert_is_ok(admit_memory_declaration(many_atoms_declaration(5000)))
+
+    last = admit_memory_result(
+        Some(package),
+        large_request(package),
+        complete_result(["library_atom_4999", "library_atom_0"]),
+    )
+    assert_eq(last.reason, "accepted_complete")
+    assert_eq(len(last.context.atoms), 2)
+    assert_eq(last.context.atoms[0].atom.id, "library_atom_4999")
+
+    mut too_many_nominations: list[str] = []
+    for index in range(MAX_MEMORY_INPUT_NOMINATIONS + 1):
+        too_many_nominations.append(f"library_atom_{index}")
+    rejected = admit_memory_result(Some(package), large_request(package), complete_result(too_many_nominations))
+    assert_eq(rejected.envelope_admission, MemoryEnvelopeAdmission.Rejected)
+    assert_eq(rejected.reason, "input_collection_bound_exceeded")
+    assert_eq(len(rejected.context.atoms), 0)
+
+    unknown = admit_memory_result(Some(package), large_request(package), complete_result(["library_atom_5000"]))
+    assert_eq(unknown.envelope_admission, MemoryEnvelopeAdmission.Rejected)

@@ -154,7 +154,7 @@ Every `provider_bindings` entry must contain exactly these six required string f
 
 #### Atom member payload
 
-After the common wrapper, a `governed_memory_atoms` member must contain exactly one required `items` field. `items` must be a non-empty ordered array of atom objects bounded by the RFC 005 profile resource envelope. It must not contain registry fields or package identity. The descriptor `record_count` must equal `len(items)`, and RFC 005 forms the package's logical atom list by concatenating atom-member arrays in descriptor order.
+After the common wrapper, a `governed_memory_atoms` member must contain exactly one required `items` field. `items` must be a non-empty ordered array of atom objects. The number of atoms in a package is not bounded: a package may hold as many atoms as its storage allows, and the per-request ceilings on nominations and materialized context are what bound one retrieval. It must not contain registry fields or package identity. The descriptor `record_count` must equal `len(items)`, and RFC 005 forms the package's logical atom list by concatenating atom-member arrays in descriptor order.
 
 Every atom object must contain exactly these required fields:
 

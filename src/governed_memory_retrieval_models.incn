@@ -32,8 +32,6 @@ pub const MAX_MEMORY_SOURCE_REF_BYTES: int = 256
 pub const MAX_MEMORY_ATOM_LABELS: int = 16
 # Most provider bindings, and most entries in each classification list, in one declaration.
 pub const MAX_MEMORY_REGISTRY_ENTRIES: int = 32
-# Most atoms in one declaration.
-pub const MAX_MEMORY_ATOMS: int = 1024
 # Most nominations a provider result may carry before any entry is retained.
 pub const MAX_MEMORY_INPUT_NOMINATIONS: int = 256
 # Most nominations the profile admits into one context.

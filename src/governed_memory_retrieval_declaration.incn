@@ -10,7 +10,6 @@ are package-admission reasons that RFC 005 will own, not RFC 003 runtime admissi
 from rust::std::string import String as RustString
 from std.serde import json
 from crate.governed_memory_retrieval_models import (
-    MAX_MEMORY_ATOMS,
     MAX_MEMORY_ATOM_LABELS,
     MAX_MEMORY_ATOM_TEXT_BYTES,
     MAX_MEMORY_INTEGER,
@@ -294,9 +293,14 @@ def atom_rejection(declaration: GovernedMemoryDeclaration, atom: GovernedMemoryA
 
 
 def declaration_is_bounded(declaration: GovernedMemoryDeclaration) -> bool:
-    """Return whether every collection in the declaration is within the profile resource envelope."""
+    """
+    Return whether every bounded collection in the declaration is within the profile resource envelope.
 
-    if len(declaration.provider_bindings) > MAX_MEMORY_REGISTRY_ENTRIES or len(declaration.atoms) > MAX_MEMORY_ATOMS:
+    The number of atoms is not bounded: a package may hold as many atoms as its storage allows. What one request may
+    nominate and materialize stays bounded.
+    """
+
+    if len(declaration.provider_bindings) > MAX_MEMORY_REGISTRY_ENTRIES:
         return false
     for values in [declaration.authority_class_ids, declaration.risk_class_ids, declaration.sensitivity_class_ids]:
         if len(values) > MAX_MEMORY_REGISTRY_ENTRIES:

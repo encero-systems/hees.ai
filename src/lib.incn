@@ -138,7 +138,6 @@ pub from governed_memory_operations import (
     validate_governed_memory_policy,
 )
 pub from governed_memory_retrieval_models import (
-    MAX_MEMORY_ATOMS,
     MAX_MEMORY_ATOM_LABELS,
     MAX_MEMORY_ATOM_TEXT_BYTES,
     MAX_MEMORY_CONTEXT_BYTES,
