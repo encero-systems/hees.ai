@@ -894,14 +894,14 @@ pub def unit_id(value: str) -> UnitId:
 
 
 pub def has_duplicate_identifiers[T with SymbolicIdentifier](values: list[T]) -> bool:
-    """Return whether any identifier repeats an earlier canonical text; callers bound ``values`` before this scan."""
+    """Return whether any identifier repeats an earlier canonical text, in time linear in the number of values."""
 
-    mut seen: list[str] = []
+    mut seen: Dict[str, bool] = {}
     for value in values:
         text = value.text()
-        if seen.contains(text):
+        if seen.contains_key(text):
             return true
-        seen.append(text)
+        seen[text] = true
     return false
 
 

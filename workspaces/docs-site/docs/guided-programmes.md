@@ -8,7 +8,7 @@ This contract lets one governed content package support direct questions, guided
 
 A programme declaration contains an exact programme and package identity, a revision, allowed languages and audiences, an entry card, a completion card, a progress policy and a bounded catalog of cards. Each card declares its reviewed and rights-allowed state, eligible evidence and memory identifiers, optional session-only choices, a deterministic forward edge and whether it is a completion card.
 
-The current contract permits at most 128 cards and 256 history entries. Programme validation rejects duplicate identities, unknown transitions, unreviewed or rights-blocked cards, unsupported language or audience declarations, invalid completion topology and required-progression cycles.
+A programme may declare any number of cards, and a session may carry any number of history entries. Programme validation rejects duplicate identities, unknown transitions, unreviewed or rights-blocked cards, unsupported language or audience declarations, invalid completion topology and required-progression cycles.
 
 ## Runtime input remains untrusted
 

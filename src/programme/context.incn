@@ -8,7 +8,6 @@ or terminal authority.
 
 from crate.identifiers import GuidedCardId, find_declared
 from crate.programme.models import (
-    MAX_GUIDED_PROGRAMME_HISTORY,
     GuidedProgramme,
     GuidedProgrammeCard,
     ProgrammeProgressSnapshot,
@@ -50,8 +49,6 @@ pub def runtime_frame_reason(programme: GuidedProgramme, frame: ProgrammeRuntime
         return Some("language_not_allowed")
     if frame.audience_id not in programme.audience_ids:
         return Some("audience_not_allowed")
-    if len(frame.history) > MAX_GUIDED_PROGRAMME_HISTORY:
-        return Some("history_limit_exceeded")
     if let Some(current_card_id) = frame.current_card_id:
         match find_declared(programme.cards, current_card_id):
             Some(_card) => pass
@@ -101,8 +98,6 @@ pub def progress_snapshot_reason(programme: GuidedProgramme, snapshot: Programme
         return Some("progress_programme_mismatch")
     if snapshot.revision != programme.revision:
         return Some("progress_revision_mismatch")
-    if len(snapshot.history) > MAX_GUIDED_PROGRAMME_HISTORY:
-        return Some("progress_history_limit_exceeded")
     match find_declared(programme.cards, snapshot.current_card_id):
         Some(_card) => pass
         None => return Some("progress_card_unknown")

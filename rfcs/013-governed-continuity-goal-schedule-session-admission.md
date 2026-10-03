@@ -113,15 +113,10 @@ An off-schedule attempt — an undeclared transition, an action the phase didn't
 
 ### Bounds
 
-The kernel declares these public bounds as constants in `governed_continuity.incn`:
+A package may declare any number of goals, schedules, phases per schedule, clock sources per schedule, and allowed actions per goal or phase; the lists that refer to phases may hold any number of entries. What a package holds is not bounded by a number. The kernel declares one public bound as a constant in `governed_continuity.incn`:
 
 | Constant | Value | Bounds |
 | --- | --- | --- |
-| `MAX_CONTINUITY_GOALS` | 16 | goals per package |
-| `MAX_CONTINUITY_SCHEDULES` | 16 | schedules per package |
-| `MAX_SCHEDULE_PHASES` | 32 | phases per schedule; entries in a goal's `completion_phase_ids`; entries in a phase's `next_phase_ids` |
-| `MAX_SCHEDULE_CLOCK_SOURCES` | 8 | entries in a schedule's `allowed_clock_sources` |
-| `MAX_DECLARED_ACTIONS` | 16 | entries in a goal's or a phase's `allowed_action_ids` |
 | `MAX_CONTINUITY_INTEGER` | 9007199254740991 (2^53 − 1) | every duration, `total_target_seconds`, clock value, and event index |
 
 Every identifier — including each clock-source name — must be canonical symbolic identifier text: 1 to 128 characters of lowercase ASCII letters, digits, `_`, and `-`, not starting with `_` or `-`. `package_revision` must be valid artifact-revision text and `continuity_declaration_digest` a lowercase `sha256:` digest. Constructing an identifier newtype directly skips its validating constructor, so the kernel re-checks identifier text rather than trusting the type.
@@ -133,7 +128,7 @@ Because every time value and event index is confined to `0..=MAX_CONTINUITY_INTE
 `ContinuityPackage` binds `GovernedGoal` and `GovernedSchedule` declarations to a package identity (`profile_id`, `package_id`, `domain_id`, `package_revision`, `continuity_declaration_digest`). `validate_continuity_package` checks, in this order, stopping at the first failure:
 
 1. at least one goal and one schedule are declared (`continuity_declarations_empty`);
-2. every collection and duration is within [Bounds](#bounds) (`continuity_bounds_exceeded`);
+2. every duration is within [Bounds](#bounds) (`continuity_bounds_exceeded`);
 3. every identifier, clock-source name, revision, and digest is canonical text (`invalid_continuity_identifier`);
 4. `continuity_declaration_digest` matches `digest_continuity_package`, recomputed from every other package field, goals (including `expiry_allowed`) and schedules included (`continuity_declaration_digest_mismatch`) — so a package mutated after its digest was stamped fails closed rather than carrying a stale identity;
 5. goal identifiers are unique (`duplicate_goal_id`), and schedule identifiers are unique (`duplicate_schedule_id`);

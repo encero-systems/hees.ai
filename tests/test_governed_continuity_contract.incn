@@ -5,12 +5,7 @@ from std.json import JsonValue
 from std.testing import assert_eq, assert_is_none, assert_is_ok, assert_is_some
 from crate.content_dna import digest_canonical_json
 from crate.governed_continuity import (
-    MAX_CONTINUITY_GOALS,
     MAX_CONTINUITY_INTEGER,
-    MAX_CONTINUITY_SCHEDULES,
-    MAX_DECLARED_ACTIONS,
-    MAX_SCHEDULE_CLOCK_SOURCES,
-    MAX_SCHEDULE_PHASES,
     ContinuityDecision,
     ContinuityOperationKind,
     ContinuityPackage,
@@ -57,6 +52,8 @@ from crate.witness import (
     unstamped_witness,
 )
 
+# A count far above any bound a collection once had; what a package holds is not bounded by a number.
+const MANY: int = 200
 const SESSION_START: int = 1000
 const PHASE_ONE_MINIMUM: int = 30
 const PHASE_ONE_TARGET: int = 120
@@ -1313,66 +1310,43 @@ def distinct_clock_sources(count: int) -> list[str]:
     return sources
 
 
-def test_goal_and_schedule_counts_at_bound_pass_and_one_over_are_rejected() -> None:
-    mut goals_at_bound = continuity_package()
-    goals_at_bound.goals = repeated_goals(MAX_CONTINUITY_GOALS)
-    assert_eq(validation_reason(rewitnessed(goals_at_bound)), "duplicate_goal_id")
-    mut goals_over = continuity_package()
-    goals_over.goals = repeated_goals(MAX_CONTINUITY_GOALS + 1)
-    assert_eq(validation_reason(rewitnessed(goals_over)), "continuity_bounds_exceeded")
+def test_a_package_may_declare_any_number_of_goals_schedules_and_phases() -> None:
+    # The repeated helpers reuse one identifier, so a large list reaches the duplicate check instead of a count bound.
+    mut many_goals = continuity_package()
+    many_goals.goals = repeated_goals(MANY)
+    assert_eq(validation_reason(rewitnessed(many_goals)), "duplicate_goal_id")
 
-    mut schedules_at_bound = continuity_package()
-    schedules_at_bound.schedules = repeated_schedules(MAX_CONTINUITY_SCHEDULES)
-    assert_eq(validation_reason(rewitnessed(schedules_at_bound)), "duplicate_schedule_id")
-    mut schedules_over = continuity_package()
-    schedules_over.schedules = repeated_schedules(MAX_CONTINUITY_SCHEDULES + 1)
-    assert_eq(validation_reason(rewitnessed(schedules_over)), "continuity_bounds_exceeded")
+    mut many_schedules = continuity_package()
+    many_schedules.schedules = repeated_schedules(MANY)
+    assert_eq(validation_reason(rewitnessed(many_schedules)), "duplicate_schedule_id")
+
+    assert_eq(validation_reason(with_phases(repeated_phases(MANY))), "duplicate_phase_id")
 
 
-def test_phase_count_at_bound_passes_and_one_over_is_rejected() -> None:
-    assert_eq(validation_reason(with_phases(repeated_phases(MAX_SCHEDULE_PHASES))), "duplicate_phase_id")
-    assert_eq(validation_reason(with_phases(repeated_phases(MAX_SCHEDULE_PHASES + 1))), "continuity_bounds_exceeded")
+def test_a_schedule_may_allow_any_number_of_clock_sources() -> None:
+    mut many = schedule_one()
+    many.allowed_clock_sources = distinct_clock_sources(MANY)
+    assert_eq(validation_reason(with_schedule(many)), "valid")
 
 
-def test_clock_source_count_at_bound_passes_and_one_over_is_rejected() -> None:
-    mut at_bound = schedule_one()
-    at_bound.allowed_clock_sources = distinct_clock_sources(MAX_SCHEDULE_CLOCK_SOURCES)
-    assert_eq(validation_reason(with_schedule(at_bound)), "valid")
-    mut over = schedule_one()
-    over.allowed_clock_sources = distinct_clock_sources(MAX_SCHEDULE_CLOCK_SOURCES + 1)
-    assert_eq(validation_reason(with_schedule(over)), "continuity_bounds_exceeded")
+def test_a_goal_or_phase_may_allow_any_number_of_actions() -> None:
+    mut phase = phase_one()
+    phase.allowed_action_ids = distinct_actions(MANY)
+    assert_eq(validation_reason(with_first_phase(phase)), "valid")
+
+    mut goal = goal_one()
+    goal.allowed_action_ids = distinct_actions(MANY)
+    assert_eq(validation_reason(with_goal(goal)), "valid")
 
 
-def test_action_counts_at_bound_pass_and_one_over_are_rejected() -> None:
-    mut phase_at_bound = phase_one()
-    phase_at_bound.allowed_action_ids = distinct_actions(MAX_DECLARED_ACTIONS)
-    assert_eq(validation_reason(with_first_phase(phase_at_bound)), "valid")
-    mut phase_over = phase_one()
-    phase_over.allowed_action_ids = distinct_actions(MAX_DECLARED_ACTIONS + 1)
-    assert_eq(validation_reason(with_first_phase(phase_over)), "continuity_bounds_exceeded")
+def test_phase_reference_lists_may_hold_any_number_of_entries() -> None:
+    mut completion = goal_one()
+    completion.completion_phase_ids = repeated_phase_two_ids(MANY)
+    assert_eq(validation_reason(with_goal(completion)), "valid")
 
-    mut goal_at_bound = goal_one()
-    goal_at_bound.allowed_action_ids = distinct_actions(MAX_DECLARED_ACTIONS)
-    assert_eq(validation_reason(with_goal(goal_at_bound)), "valid")
-    mut goal_over = goal_one()
-    goal_over.allowed_action_ids = distinct_actions(MAX_DECLARED_ACTIONS + 1)
-    assert_eq(validation_reason(with_goal(goal_over)), "continuity_bounds_exceeded")
-
-
-def test_phase_reference_counts_at_bound_pass_and_one_over_are_rejected() -> None:
-    mut completion_at_bound = goal_one()
-    completion_at_bound.completion_phase_ids = repeated_phase_two_ids(MAX_SCHEDULE_PHASES)
-    assert_eq(validation_reason(with_goal(completion_at_bound)), "valid")
-    mut completion_over = goal_one()
-    completion_over.completion_phase_ids = repeated_phase_two_ids(MAX_SCHEDULE_PHASES + 1)
-    assert_eq(validation_reason(with_goal(completion_over)), "continuity_bounds_exceeded")
-
-    mut next_at_bound = phase_one()
-    next_at_bound.next_phase_ids = repeated_phase_two_ids(MAX_SCHEDULE_PHASES)
-    assert_eq(validation_reason(with_first_phase(next_at_bound)), "valid")
-    mut next_over = phase_one()
-    next_over.next_phase_ids = repeated_phase_two_ids(MAX_SCHEDULE_PHASES + 1)
-    assert_eq(validation_reason(with_first_phase(next_over)), "continuity_bounds_exceeded")
+    mut next = phase_one()
+    next.next_phase_ids = repeated_phase_two_ids(MANY)
+    assert_eq(validation_reason(with_first_phase(next)), "valid")
 
 
 def test_seconds_at_bound_pass_and_one_over_are_rejected() -> None:

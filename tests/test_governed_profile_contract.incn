@@ -67,7 +67,6 @@ from crate.governed_profile_validation import (
     MAX_COMMITTEE_ROLES,
     MAX_GOVERNED_ACTIONS,
     MAX_PROPOSAL_EVIDENCE,
-    MAX_GOVERNED_GUIDED_MATERIAL,
     MAX_PROPOSAL_MEMORY,
     MAX_GUIDED_EVIDENCE,
     MAX_GUIDED_MEMORY,
@@ -1615,21 +1614,25 @@ def test_a_package_may_declare_any_number_of_memory_atoms_but_not_none() -> None
     assert_eq(rejection(empty), "invalid_memory_count")
 
 
-def test_guided_material_count_boundary() -> None:
+def test_a_package_may_declare_any_number_of_guided_materials() -> None:
     mut materials: list[GuidedMaterial] = [guide()]
-    for index in range(MAX_GOVERNED_GUIDED_MATERIAL - 1):
+    for index in range(200):
         mut copy = guide()
         copy.guided_material_id = guided_material_id(f"lantern_guide_copy_{index}")
         materials.append(copy)
-    mut at_limit = unwitnessed_package()
-    at_limit.guided_material = materials.clone()
-    assert_eq(acceptance(at_limit), "ok")
-    mut extra = guide()
-    extra.guided_material_id = guided_material_id("lantern_guide_one_too_many")
-    materials.append(extra)
-    mut over = unwitnessed_package()
-    over.guided_material = materials
-    assert_eq(rejection(over), "invalid_guided_material_count")
+    mut many = unwitnessed_package()
+    many.guided_material = materials
+    package = rewitnessed(many)
+    assert_eq(validate_governed_profile_package(package.clone()).reason, "ok")
+    # An admitted profile narrows to the one nominated guide and still gives the package's result.
+    admitted = assert_is_ok(admit_governed_profile_package(package.clone()))
+    bound = request("Which card first?")
+    presentation = guide_proposal(package, bound, "present_guided_card", no_guided_step(), no_guided_step())
+    committee = passed_committee(package, bound, presentation)
+    assert_eq(
+        admitted.evaluate(bound, presentation, committee.clone()).to_json(),
+        evaluate_governed_profile_with_artifacts(package, bound, presentation, committee).to_json(),
+    )
 
 
 def test_committee_role_count_boundary() -> None:
