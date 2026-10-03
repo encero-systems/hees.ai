@@ -20,6 +20,7 @@ from crate.governed_profile_models import (
     CommitteeObservation,
     CommitteeVerdict,
     CompleteGovernedEvaluation,
+    GovernedAction,
     GovernedEvidence,
     GovernedMemory,
     GovernedPackageIdentity,
@@ -48,20 +49,9 @@ from crate.identifiers import (
 
 
 def ascending(collected: list[int]) -> list[int]:
-    """
-    Return the collected positions in ascending order, so a narrowed package keeps the package's own order.
+    """Return the collected positions in ascending order, so a narrowed package keeps the package's own order."""
 
-    A selection sort: the list is the handful of records one proposal can touch, never the package.
-    """
-
-    mut positions = collected
-    for slot in range(len(positions)):
-        mut lowest = slot
-        for other in range(slot + 1, len(positions)):
-            if positions[other] < positions[lowest]:
-                lowest = other
-        positions.swap(slot, lowest)
-    return positions
+    return sorted(collected)
 
 
 @derive(Clone)
@@ -73,6 +63,7 @@ pub class AdmittedGovernedProfile:
     """
 
     _package: GovernedProfilePackage
+    _action_positions: Dict[str, int]
     _evidence_positions: Dict[str, int]
     _memory_positions: Dict[str, int]
     _guided_positions: Dict[str, int]
@@ -106,12 +97,16 @@ pub class AdmittedGovernedProfile:
         """
         Return the admitted package narrowed to the records one proposal can touch.
 
-        Kept, in package order: the memory atoms and evidence records the proposal nominates, the evidence those
-        atoms rest on, and the guided material the proposal nominates with its memory and evidence. An identifier
-        the package does not declare is simply absent, so the evaluation rejects it as unknown exactly as it would
-        against the whole package. Header, digest, actions and policy are the admitted package's. A proposal over
+        Kept, in package order: the action the proposal names, the memory atoms and evidence records it nominates,
+        the evidence those atoms rest on, and the guided material it nominates with its memory and evidence. An
+        identifier the package does not declare is simply absent, so the evaluation rejects it as unknown exactly as
+        it would against the whole package. Header, digest and policy are the admitted package's. A proposal over
         the reference limit nominates nothing here; its identity check rejects it first.
         """
+
+        mut actions: list[GovernedAction] = []
+        if let Some(position) = self._action_positions.get(proposal.action_id.text()):
+            actions.append(self._package.actions[position])
 
         mut memory_wanted: Dict[int, bool] = {}
         mut memory_order: list[int] = []
@@ -153,7 +148,7 @@ pub class AdmittedGovernedProfile:
             package_revision=self._package.package_revision,
             profile_package_digest=self._package.profile_package_digest,
             mission=self._package.mission,
-            actions=self._package.actions,
+            actions=actions,
             evidence=evidence,
             memory=memory,
             guided_material=guided_material,
@@ -271,6 +266,9 @@ pub def admit_governed_profile_package(
     validation = validate_governed_profile_package(package.clone())
     if not validation.valid:
         return Err(validation)
+    mut action_positions: Dict[str, int] = {}
+    for position, action in enumerate(package.actions):
+        action_positions[action.action_id.text()] = position
     mut evidence_positions: Dict[str, int] = {}
     for position, record in enumerate(package.evidence):
         evidence_positions[record.evidence_id.text()] = position
@@ -283,6 +281,7 @@ pub def admit_governed_profile_package(
     return Ok(
         AdmittedGovernedProfile(
             _package=package,
+            _action_positions=action_positions,
             _evidence_positions=evidence_positions,
             _memory_positions=memory_positions,
             _guided_positions=guided_positions,

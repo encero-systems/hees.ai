@@ -6,7 +6,7 @@ an untrusted proposal; Hees.ai checks structural authority before admitting the 
 """
 
 from std.serde import json
-from crate.identifiers import ActionId, DomainId, EvidenceId, PackageId
+from crate.identifiers import ActionId, DomainId, EvidenceId, PackageId, has_duplicate_identifiers
 
 const GOVERNED_PACKAGE_SCHEMA_VERSION: str = "0.1"
 
@@ -201,31 +201,19 @@ def source_ref_is_safe(value: str) -> bool:
 def has_duplicate_action_ids(actions: list[ActionContract]) -> bool:
     """Return whether package actions repeat an earlier identifier."""
 
-    for left in range(len(actions)):
-        for right in range(len(actions)):
-            if right > left and actions[left].id == actions[right].id:
-                return true
-    return false
+    return has_duplicate_identifiers([action.id for action in actions])
 
 
 def has_duplicate_evidence_ids(evidence: list[EvidenceRecord]) -> bool:
     """Return whether package evidence repeats an earlier identifier."""
 
-    for left in range(len(evidence)):
-        for right in range(len(evidence)):
-            if right > left and evidence[left].id == evidence[right].id:
-                return true
-    return false
+    return has_duplicate_identifiers([record.id for record in evidence])
 
 
 def has_duplicate_evidence_references(values: list[EvidenceId]) -> bool:
     """Return whether a proposal repeats an earlier evidence identifier."""
 
-    for left in range(len(values)):
-        for right in range(len(values)):
-            if right > left and values[left] == values[right]:
-                return true
-    return false
+    return has_duplicate_identifiers(values)
 
 
 pub def validate_governed_package(package: GovernedPackage) -> PackageValidation:
@@ -292,9 +280,11 @@ pub def admit_model_proposal(package: GovernedPackage, proposal: ModelProposal) 
     if evidence_required and len(proposal.evidence_ids) == 0:
         return rejected_admission("evidence_required", [])
 
-    package_evidence_ids = [record.id for record in package.evidence]
+    mut package_evidence_ids: Dict[str, bool] = {}
+    for record in package.evidence:
+        package_evidence_ids[record.id.text()] = true
     for evidence_id in proposal.evidence_ids:
-        if not package_evidence_ids.contains(evidence_id):
+        if not package_evidence_ids.contains_key(evidence_id.text()):
             return rejected_admission("unknown_evidence", [])
 
     return AdmissionResult(

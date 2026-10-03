@@ -128,14 +128,14 @@ After the common wrapper, a `governed_memory_registry` member must contain exact
 
 | Field | Value kind | Presence and meaning |
 | --- | --- | --- |
-| `provider_bindings` | array of provider-binding objects | Required, non-empty, ordered, and bounded by the RFC 005 profile resource envelope. |
-| `authority_class_ids` | array of text identifiers | Required, non-empty, ordered, and bounded by the RFC 005 profile resource envelope. |
-| `risk_class_ids` | array of text identifiers | Required, non-empty, ordered, and bounded by the RFC 005 profile resource envelope. |
-| `sensitivity_class_ids` | array of text identifiers | Required, non-empty, ordered, and bounded by the RFC 005 profile resource envelope. |
+| `provider_bindings` | array of provider-binding objects | Required, non-empty, and ordered. The number of entries is not bounded; each entry is bounded by the RFC 005 profile resource envelope. |
+| `authority_class_ids` | array of text identifiers | Required, non-empty, and ordered. The number of entries is not bounded; each entry is bounded by the RFC 005 profile resource envelope. |
+| `risk_class_ids` | array of text identifiers | Required, non-empty, and ordered. The number of entries is not bounded; each entry is bounded by the RFC 005 profile resource envelope. |
+| `sensitivity_class_ids` | array of text identifiers | Required, non-empty, and ordered. The number of entries is not bounded; each entry is bounded by the RFC 005 profile resource envelope. |
 
 Each classification array must contain values matching `[a-z0-9][a-z0-9_-]*`, with no duplicate inside that typed array. The same spelling may occur in different authority, risk, and sensitivity arrays because atom references are typed by their field. Array order is package semantic identity and must survive admission unchanged.
 
-The RFC 005 profile resource envelope owns registry, nomination, materialized-context, and text ceilings. A registry member cannot carry a second local limit or expand the profile envelope. The RFC 005 descriptor `record_count` must equal `len(provider_bindings) + len(authority_class_ids) + len(risk_class_ids) + len(sensitivity_class_ids)`. The registry member must not contain `items`.
+The RFC 005 profile resource envelope owns nomination, materialized-context, and text ceilings. It does not bound how many provider bindings or classification identifiers a registry declares. A registry member cannot carry a local limit or expand the profile envelope. The RFC 005 descriptor `record_count` must equal `len(provider_bindings) + len(authority_class_ids) + len(risk_class_ids) + len(sensitivity_class_ids)`. The registry member must not contain `items`.
 
 #### Provider-binding object
 
@@ -176,7 +176,7 @@ Every atom object must contain exactly these required fields:
 | `validity` | validity object | Closed temporal-validity shape defined below. |
 | `labels` | array of text identifiers | Ordered package-owned canonical labels. |
 
-`id`, the three classification references, and every label must match the identifier grammar and their field bounds. Atom identifiers are unique across the RFC 005-combined logical atom list. Labels may be empty, must be bounded by the RFC 005 profile resource envelope, and must not contain duplicates; their declared order is identity-bearing. `corpus_version` must match the version grammar. `corpus_fingerprint` and `source_fingerprint` must each be exactly 64 lowercase hexadecimal characters without a prefix. The atom's corpus fingerprint must equal at least one registry provider binding's `corpus_fingerprint`, and each typed classification reference must resolve exactly once in its corresponding registry array.
+`id`, the three classification references, and every label must match the identifier grammar and their field bounds. Atom identifiers are unique across the RFC 005-combined logical atom list. Labels may be empty and must not contain duplicates; their number is not bounded, each label is bounded by the RFC 005 profile resource envelope, and their declared order is identity-bearing. `corpus_version` must match the version grammar. `corpus_fingerprint` and `source_fingerprint` must each be exactly 64 lowercase hexadecimal characters without a prefix. The atom's corpus fingerprint must equal at least one registry provider binding's `corpus_fingerprint`, and each typed classification reference must resolve exactly once in its corresponding registry array.
 
 `claim`, `guidance`, and `applicability` must be non-empty, remain within their UTF-8 byte ceilings, and each contain at least one code point other than tab `U+0009`, line feed `U+000A`, carriage return `U+000D`, or space `U+0020`. A `source_ref` must be non-empty and within its byte ceiling; must not begin or end with that ASCII whitespace; must contain no C0 control code point `U+0000..U+001F`, delete `U+007F`, backslash, `..` substring, `file://` substring, or `:/` substring; and must not begin with `/`. These are shape checks only and do not dereference the reference or establish legal rights.
 
@@ -258,7 +258,7 @@ The complete `0.1` reason set is `Completed`, `CapacityLimited`, `DeadlineReache
 
 ### Bounds and profile resource envelope
 
-The RFC 005 Package profile resource envelope must declare closed exact ceilings for identifiers and revisions, source references, query text, atom claim/guidance/applicability text, atom labels, classification identifiers, provider bindings, nominations, materialized atoms, aggregate materialized context, parser nesting, normalized request/result bytes, retained materialized atom state, and record/receipt-source projection. The envelope must specify the accounting rule for aggregate context bytes: the UTF-8 bytes of every selected atom's `id`, `claim`, `guidance`, `applicability`, `source_ref`, and labels.
+The RFC 005 Package profile resource envelope must declare closed exact ceilings for identifiers and revisions, source references, query text, atom claim/guidance/applicability text, each atom label, each classification identifier, each provider-binding field, nominations, materialized atoms, aggregate materialized context, parser nesting, normalized request/result bytes, retained materialized atom state, and record/receipt-source projection. The envelope does not bound how many atoms, labels, classification identifiers, or provider bindings a package declares: it bounds each entry and each request. The envelope must specify the accounting rule for aggregate context bytes: the UTF-8 bytes of every selected atom's `id`, `claim`, `guidance`, `applicability`, `source_ref`, and labels.
 
 Versions and package revisions must match `[0-9]+(\.[0-9]+){1,2}`. `package_semantic_identity` and `package_admission_binding` must be valid registered RFC 011 identity values with their expected domains and contracts. The request cannot select a lower resource limit or override the closed profile envelope. Zero, negative, overflowing, malformed, or above-envelope values must fail validation rather than being clamped.
 
@@ -450,7 +450,7 @@ Not implemented:
 - [ ] RFC 005 package artifact admission. `admit_memory_declaration` stands in for it: it validates an in-memory declaration and returns the opaque `AdmittedMemoryPackage` that `admit_memory_result` requires. Its validation reasons are interim.
 - [ ] The serialized `governed_memory_registry` and `governed_memory_atoms` members, their exact bytes, descriptors, and sharding.
 - [ ] RFC 011 structural identities. `package_semantic_identity` and `package_admission_binding` are interim type-tagged SHA-256 digests, and the trusted identity has no `artifact_digest`.
-- [ ] The RFC 005 profile resource envelope. The ceilings are fixed constants in `governed_memory_retrieval_models.incn`.
+- [ ] The RFC 005 profile resource envelope. The per-request and text ceilings are fixed constants in `governed_memory_retrieval_models.incn`.
 - [ ] RFC 006 receipt projection.
 - [x] The handoff into proposal admission: `evaluate_governed_profile_in_memory_context` (RFC 015) rejects a proposal that nominates memory outside an accepted context for the same package and domain. The record is bound by package and domain identifier only; the two contracts use different revision grammars and different atom models, which is not yet reconciled.
 - [ ] Cross-implementation fixtures and the two synthetic provider adapters the acceptance obligations require.

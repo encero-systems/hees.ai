@@ -64,16 +64,9 @@ from crate.governed_profile_identity import (
 from crate.governed_profile_models import GovernedAnswerProjection, GovernedRequestDigestProjection
 from crate.witness import digest_tagged_json
 from crate.governed_profile_validation import (
-    MAX_COMMITTEE_ROLES,
-    MAX_GOVERNED_ACTIONS,
     MAX_PROPOSAL_EVIDENCE,
     MAX_PROPOSAL_MEMORY,
-    MAX_GUIDED_EVIDENCE,
-    MAX_GUIDED_MEMORY,
-    MAX_GUIDED_STEPS,
-    MAX_GUIDED_TRANSITIONS,
     MAX_LANGUAGE_LENGTH,
-    MAX_MEMORY_EVIDENCE,
     MAX_PACKAGE_LABEL_LENGTH,
     MAX_PACKAGE_TEXT_LENGTH,
     MAX_QUESTION_LENGTH,
@@ -1573,18 +1566,27 @@ def test_mission_length_boundary() -> None:
     assert_eq(rejection(blank), "invalid_mission")
 
 
-def test_action_count_boundary() -> None:
-    base_count = len(unwitnessed_package().actions)
-    mut at_limit = unwitnessed_package()
-    mut actions = at_limit.actions.clone()
-    for extra in refusal_actions(MAX_GOVERNED_ACTIONS - base_count):
+def test_a_package_may_declare_any_number_of_actions_but_not_none() -> None:
+    mut many = unwitnessed_package()
+    mut actions = many.actions.clone()
+    for extra in refusal_actions(200):
         actions.append(extra)
-    at_limit.actions = actions.clone()
-    assert_eq(acceptance(at_limit), "ok")
-    actions.append(action("refuse_one_too_many", GovernedOutcomeKind.Refusal, false, false))
-    mut over = unwitnessed_package()
-    over.actions = actions
-    assert_eq(rejection(over), "invalid_action_count")
+    many.actions = actions
+    package = rewitnessed(many)
+    assert_eq(validate_governed_profile_package(package.clone()).reason, "ok")
+    # An admitted profile narrows to the one action a proposal names and still gives the package's result.
+    admitted = assert_is_ok(admit_governed_profile_package(package.clone()))
+    bound = request("Which card first?")
+    answer = answer_proposal(package, bound)
+    committee = passed_committee(package, bound, answer)
+    assert_eq(
+        admitted.evaluate(bound, answer, committee.clone()).to_json(),
+        evaluate_governed_profile_with_artifacts(package.clone(), bound, answer, committee).to_json(),
+    )
+    undeclared = terminal_proposal(package, bound, "lantern_undeclared_action")
+    rejected = admitted.evaluate(bound, undeclared, [])
+    assert_rejected_with_receipt(rejected, "unknown_action")
+    assert_eq(rejected.to_json(), evaluate_governed_profile_with_artifacts(package, bound, undeclared, []).to_json())
     mut empty = unwitnessed_package()
     empty.actions = []
     assert_eq(rejection(empty), "invalid_action_count")
@@ -1635,36 +1637,37 @@ def test_a_package_may_declare_any_number_of_guided_materials() -> None:
     )
 
 
-def test_committee_role_count_boundary() -> None:
+def test_a_committee_may_require_any_number_of_roles_but_not_none() -> None:
     mut policy = unwitnessed_package().policy
-    policy.required_roles = [committee_role_id(f"role_{index}") for index in range(MAX_COMMITTEE_ROLES)]
-    assert_eq(acceptance(with_policy(policy.clone())), "ok")
-    policy.required_roles = [committee_role_id(f"role_{index}") for index in range(MAX_COMMITTEE_ROLES + 1)]
-    assert_eq(rejection(with_policy(policy.clone())), "invalid_committee_role_count")
+    policy.required_roles = [committee_role_id(f"role_{index}") for index in range(200)]
+    package = rewitnessed(with_policy(policy.clone()))
+    assert_eq(validate_governed_profile_package(package.clone()).reason, "ok")
+    # Every required role must still be observed exactly once.
+    bound = request("Which card first?")
+    answer = answer_proposal(package, bound)
+    committee = [observation(package, bound, answer, f"role_{index}", CommitteeVerdict.Pass) for index in range(200)]
+    delivered = evaluate_governed_profile_with_artifacts(package.clone(), bound, answer, committee.clone())
+    assert_eq(delivered.spectrum.decision, "deliver")
+    mut short = committee.clone()
+    short.pop()
+    assert_rejected_with_receipt(
+        evaluate_governed_profile_with_artifacts(package, bound, answer, short),
+        "committee_coverage_invalid",
+    )
     policy.required_roles = []
     assert_eq(rejection(with_policy(policy)), "invalid_committee_role_count")
 
 
-def test_memory_evidence_count_boundary() -> None:
+def test_a_memory_atom_may_rest_on_any_number_of_evidence_records_but_not_none() -> None:
     mut package = unwitnessed_package()
     mut records = package.evidence.clone()
-    for extra in extra_evidence("lantern_atom_source", MAX_MEMORY_EVIDENCE + 1):
+    for extra in extra_evidence("lantern_atom_source", 100):
         records.append(extra)
     package.evidence = records
-    mut at_limit = package.clone()
-    mut atoms = at_limit.memory.clone()
-    atoms.append(
-        memory_atom("lantern_wide_atom", [f"lantern_atom_source_{index}" for index in range(MAX_MEMORY_EVIDENCE)]),
-    )
-    at_limit.memory = atoms
-    assert_eq(acceptance(at_limit), "ok")
-    mut over = package.clone()
-    mut over_atoms = over.memory.clone()
-    over_atoms.append(
-        memory_atom("lantern_wide_atom", [f"lantern_atom_source_{index}" for index in range(MAX_MEMORY_EVIDENCE + 1)]),
-    )
-    over.memory = over_atoms
-    assert_eq(rejection(over), "invalid_memory_evidence_count")
+    mut atoms = package.memory.clone()
+    atoms.append(memory_atom("lantern_wide_atom", [f"lantern_atom_source_{index}" for index in range(100)]))
+    package.memory = atoms
+    assert_eq(acceptance(package), "ok")
     mut empty = unwitnessed_package()
     mut empty_atom = first_atom()
     empty_atom.evidence_ids = []
@@ -1672,8 +1675,8 @@ def test_memory_evidence_count_boundary() -> None:
     assert_eq(rejection(empty), "invalid_memory_evidence_count")
 
 
-def test_guided_memory_count_boundary() -> None:
-    extra_count = MAX_GUIDED_MEMORY - len(full_memory_ids())
+def test_guided_material_may_rest_on_any_number_of_memory_atoms_but_not_none() -> None:
+    extra_count = 40
     mut package = unwitnessed_package()
     mut records = package.evidence.clone()
     for extra in extra_evidence("lantern_guided_source", extra_count):
@@ -1688,24 +1691,20 @@ def test_guided_memory_count_boundary() -> None:
         guide_memory.append(memory_id(f"lantern_guided_atom_{index}"))
         guide_evidence.append(evidence_id(f"lantern_guided_source_{index}"))
     package.memory = atoms
-    material.memory_ids = guide_memory.clone()
-    material.evidence_ids = guide_evidence
-    package.guided_material = [material.clone()]
-    assert_eq(acceptance(package.clone()), "ok")
-    guide_memory.append(memory_id("lantern_atom_card_order"))
     material.memory_ids = guide_memory
-    assert_eq(rejection(with_guide(material)), "invalid_guided_memory_count")
+    material.evidence_ids = guide_evidence
+    package.guided_material = [material]
+    assert_eq(acceptance(package), "ok")
     mut empty = guide()
     empty.memory_ids = []
     assert_eq(rejection(with_guide(empty)), "invalid_guided_memory_count")
 
 
-def test_guided_evidence_count_boundary() -> None:
-    atom_count = MAX_GUIDED_MEMORY
-    assert_eq(2 * atom_count, MAX_GUIDED_EVIDENCE)
+def test_guided_material_may_rest_on_any_number_of_evidence_records_but_not_none() -> None:
+    atom_count = 20
     mut package = unwitnessed_package()
     mut records = package.evidence.clone()
-    for extra in extra_evidence("lantern_pair_source", MAX_GUIDED_EVIDENCE):
+    for extra in extra_evidence("lantern_pair_source", 2 * atom_count):
         records.append(extra)
     package.evidence = records
     mut atoms = package.memory.clone()
@@ -1721,45 +1720,34 @@ def test_guided_evidence_count_boundary() -> None:
     package.memory = atoms
     mut material = guide()
     material.memory_ids = guide_memory
-    material.evidence_ids = guide_evidence.clone()
-    package.guided_material = [material.clone()]
+    material.evidence_ids = guide_evidence
+    package.guided_material = [material]
     assert_eq(acceptance(package), "ok")
-    guide_evidence.append(evidence_id("lantern_evidence_card_order"))
-    mut over = guide()
-    over.evidence_ids = guide_evidence
-    assert_eq(rejection(with_guide(over)), "invalid_guided_evidence_count")
     mut empty = guide()
     empty.evidence_ids = []
     assert_eq(rejection(with_guide(empty)), "invalid_guided_evidence_count")
 
 
-def test_guided_step_and_transition_boundaries() -> None:
-    mut at_limit = guide()
-    at_limit.steps = step_ids(MAX_GUIDED_STEPS)
-    at_limit.transitions = every_transition(step_ids(MAX_GUIDED_STEPS))
-    assert_eq(len(at_limit.transitions), MAX_GUIDED_TRANSITIONS)
-    assert_eq(acceptance(with_guide(at_limit.clone())), "ok")
-    mut too_many_steps = guide()
-    too_many_steps.steps = step_ids(MAX_GUIDED_STEPS + 1)
-    too_many_steps.transitions = []
-    assert_eq(rejection(with_guide(too_many_steps)), "invalid_guided_steps")
+def test_guided_material_may_declare_any_number_of_steps_and_transitions_but_no_steps_is_rejected() -> None:
+    mut wide = guide()
+    wide.steps = step_ids(30)
+    wide.transitions = every_transition(step_ids(30))
+    assert_eq(len(wide.transitions), 30 * 29)
+    assert_eq(acceptance(with_guide(wide.clone())), "ok")
     mut no_steps = guide()
     no_steps.steps = []
     no_steps.transitions = []
     assert_eq(rejection(with_guide(no_steps)), "invalid_guided_steps")
-    mut too_many_transitions = at_limit.clone()
-    mut transitions = at_limit.transitions.clone()
-    transitions.append(at_limit.transitions[0].clone())
-    too_many_transitions.transitions = transitions
-    assert_eq(rejection(with_guide(too_many_transitions)), "invalid_guided_transition_count")
+    mut repeated_transition = wide.clone()
+    mut transitions = wide.transitions.clone()
+    transitions.append(wide.transitions[0].clone())
+    repeated_transition.transitions = transitions
+    assert_eq(rejection(with_guide(repeated_transition)), "duplicate_guided_transition")
 
 
-def test_collection_bounds_are_checked_before_the_package_digest() -> None:
+def test_required_collections_are_checked_before_the_package_digest() -> None:
     mut stale = lantern_package()
-    mut actions = stale.actions.clone()
-    for extra in refusal_actions(MAX_GOVERNED_ACTIONS):
-        actions.append(extra)
-    stale.actions = actions
+    stale.actions = []
     result = validate_governed_profile_package(stale)
     assert_eq(result.reason, "invalid_package")
     assert_eq(result.errors[0], "invalid_action_count")

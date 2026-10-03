@@ -10,10 +10,8 @@ are package-admission reasons that RFC 005 will own, not RFC 003 runtime admissi
 from rust::std::string import String as RustString
 from std.serde import json
 from crate.governed_memory_retrieval_models import (
-    MAX_MEMORY_ATOM_LABELS,
     MAX_MEMORY_ATOM_TEXT_BYTES,
     MAX_MEMORY_INTEGER,
-    MAX_MEMORY_REGISTRY_ENTRIES,
     MAX_MEMORY_SOURCE_REF_BYTES,
     MAX_MEMORY_VERSION_BYTES,
     AdmittedMemoryPackageIdentity,
@@ -94,13 +92,13 @@ pub def utf8_length(value: str) -> int:
 
 
 pub def has_duplicate_text(values: list[str]) -> bool:
-    """Return whether any text value occurs more than once."""
+    """Return whether any text value occurs more than once, in time linear in the number of values."""
 
-    mut seen: list[str] = []
+    mut seen: Dict[str, bool] = {}
     for value in values:
-        if seen.contains(value):
+        if seen.contains_key(value):
             return true
-        seen.append(value)
+        seen[value] = true
     return false
 
 
@@ -225,11 +223,8 @@ def provider_bindings_rejection(bindings: list[MemoryProviderBinding]) -> Option
     for binding in bindings:
         if not provider_binding_is_well_formed(binding):
             return Some("invalid_provider_binding")
-    mut seen: list[MemoryProviderBinding] = []
-    for binding in bindings:
-        if seen.contains(binding):
-            return Some("duplicate_provider_binding")
-        seen.append(binding)
+    if has_duplicate_text([binding.to_json() for binding in bindings]):
+        return Some("duplicate_provider_binding")
     return None
 
 
@@ -266,21 +261,53 @@ def atom_content_rejection(atom: GovernedMemoryAtom) -> Option[str]:
     return None
 
 
-def atom_registry_rejection(declaration: GovernedMemoryDeclaration, atom: GovernedMemoryAtom) -> Option[str]:
-    """Return why an atom's references into the registry do not resolve, or None."""
+@derive(Clone)
+class MemoryRegistryIndex:
+    """
+    The registry of one declaration as lookups, so resolving an atom's references costs the same whatever the
+    registry holds.
+    """
 
-    if not declaration.authority_class_ids.contains(atom.authority_class_id):
-        return Some("unknown_atom_classification")
-    if not declaration.risk_class_ids.contains(atom.risk_class_id):
-        return Some("unknown_atom_classification")
-    if not declaration.sensitivity_class_ids.contains(atom.sensitivity_class_id):
-        return Some("unknown_atom_classification")
-    if not [binding.corpus_fingerprint for binding in declaration.provider_bindings].contains(atom.corpus_fingerprint):
-        return Some("atom_corpus_not_bound")
-    return None
+    authority_class_ids: Dict[str, bool]
+    risk_class_ids: Dict[str, bool]
+    sensitivity_class_ids: Dict[str, bool]
+    corpus_fingerprints: Dict[str, bool]
+
+    def atom_rejection(self, atom: GovernedMemoryAtom) -> Option[str]:
+        """Return why an atom's references into the registry do not resolve, or None."""
+
+        if not self.authority_class_ids.contains_key(atom.authority_class_id):
+            return Some("unknown_atom_classification")
+        if not self.risk_class_ids.contains_key(atom.risk_class_id):
+            return Some("unknown_atom_classification")
+        if not self.sensitivity_class_ids.contains_key(atom.sensitivity_class_id):
+            return Some("unknown_atom_classification")
+        if not self.corpus_fingerprints.contains_key(atom.corpus_fingerprint):
+            return Some("atom_corpus_not_bound")
+        return None
 
 
-def atom_rejection(declaration: GovernedMemoryDeclaration, atom: GovernedMemoryAtom) -> Option[str]:
+def text_lookup(values: list[str]) -> Dict[str, bool]:
+    """Return the values as a lookup."""
+
+    mut lookup: Dict[str, bool] = {}
+    for value in values:
+        lookup[value] = true
+    return lookup
+
+
+def registry_index(declaration: GovernedMemoryDeclaration) -> MemoryRegistryIndex:
+    """Index the declaration's classification lists and the corpus fingerprints its provider bindings approve."""
+
+    return MemoryRegistryIndex(
+        authority_class_ids=text_lookup(declaration.authority_class_ids),
+        risk_class_ids=text_lookup(declaration.risk_class_ids),
+        sensitivity_class_ids=text_lookup(declaration.sensitivity_class_ids),
+        corpus_fingerprints=text_lookup([binding.corpus_fingerprint for binding in declaration.provider_bindings]),
+    )
+
+
+def atom_rejection(registry: MemoryRegistryIndex, atom: GovernedMemoryAtom) -> Option[str]:
     """Return the first reason one atom is invalid, in identity, content, then registry order, or None."""
 
     match atom_identity_rejection(atom):
@@ -289,26 +316,7 @@ def atom_rejection(declaration: GovernedMemoryDeclaration, atom: GovernedMemoryA
     match atom_content_rejection(atom):
         Some(reason) => return Some(reason)
         None => pass
-    return atom_registry_rejection(declaration, atom)
-
-
-def declaration_is_bounded(declaration: GovernedMemoryDeclaration) -> bool:
-    """
-    Return whether every bounded collection in the declaration is within the profile resource envelope.
-
-    The number of atoms is not bounded: a package may hold as many atoms as its storage allows. What one request may
-    nominate and materialize stays bounded.
-    """
-
-    if len(declaration.provider_bindings) > MAX_MEMORY_REGISTRY_ENTRIES:
-        return false
-    for values in [declaration.authority_class_ids, declaration.risk_class_ids, declaration.sensitivity_class_ids]:
-        if len(values) > MAX_MEMORY_REGISTRY_ENTRIES:
-            return false
-    for atom in declaration.atoms:
-        if len(atom.labels) > MAX_MEMORY_ATOM_LABELS:
-            return false
-    return true
+    return registry.atom_rejection(atom)
 
 
 def registry_rejection(declaration: GovernedMemoryDeclaration) -> Option[str]:
@@ -325,7 +333,11 @@ pub def validate_memory_declaration(declaration: GovernedMemoryDeclaration) -> M
     """
     Validate a governed-memory declaration against the RFC 003 registry and atom payload rules.
 
-    Checks run in this order and stop at the first failure: collection bounds (``declaration_bounds_exceeded``), package
+    No collection in a declaration is bounded by a number: the registry lists, the atoms, and the labels of an atom
+    may each hold any number of entries. Each text field is bounded, and what one request may nominate and
+    materialize is bounded by the retrieval request, not here.
+
+    Checks run in this order and stop at the first failure: package
     identity text (``invalid_declaration_identity``), the classification lists and provider bindings
     (``registry_list_empty``, ``invalid_classification_id``, ``duplicate_classification_id``,
     ``invalid_provider_binding``, ``duplicate_provider_binding``), a non-empty atom list (``atoms_empty``) with unique
@@ -336,8 +348,6 @@ pub def validate_memory_declaration(declaration: GovernedMemoryDeclaration) -> M
     nomination eligibility acts on them.
     """
 
-    if not declaration_is_bounded(declaration):
-        return invalid("declaration_bounds_exceeded")
     if not package_identity_text_is_safe(declaration.package_id, declaration.domain_id, declaration.package_revision):
         return invalid("invalid_declaration_identity")
     match registry_rejection(declaration):
@@ -347,8 +357,9 @@ pub def validate_memory_declaration(declaration: GovernedMemoryDeclaration) -> M
         return invalid("atoms_empty")
     if has_duplicate_text([atom.id for atom in declaration.atoms]):
         return invalid("duplicate_atom_id")
+    registry = registry_index(declaration)
     for atom in declaration.atoms:
-        match atom_rejection(declaration, atom):
+        match atom_rejection(registry, atom):
             Some(reason) => return invalid(reason)
             None => pass
     return valid()

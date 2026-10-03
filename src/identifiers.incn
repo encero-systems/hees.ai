@@ -906,15 +906,18 @@ pub def has_duplicate_identifiers[T with SymbolicIdentifier](values: list[T]) ->
 
 
 pub def identifier_sets_equal[T with SymbolicIdentifier](left: list[T], right: list[T]) -> bool:
-    """Return whether two duplicate-free identifier lists hold the same canonical text in any order."""
+    """
+    Return whether two duplicate-free identifier lists hold the same canonical text in any order, in time linear in
+    their length.
+    """
 
     if len(left) != len(right):
         return false
-    mut right_text: list[str] = []
+    mut right_text: Dict[str, bool] = {}
     for value in right:
-        right_text.append(value.text())
+        right_text[value.text()] = true
     for value in left:
-        if not right_text.contains(value.text()):
+        if not right_text.contains_key(value.text()):
             return false
     return true
 

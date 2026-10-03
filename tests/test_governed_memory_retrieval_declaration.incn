@@ -7,8 +7,6 @@ from crate.governed_memory_retrieval_declaration import (
     validate_memory_declaration,
 )
 from crate.governed_memory_retrieval_models import (
-    MAX_MEMORY_ATOM_LABELS,
-    MAX_MEMORY_REGISTRY_ENTRIES,
     GovernedMemoryAtom,
     GovernedMemoryDeclaration,
     MemoryProviderBinding,
@@ -124,23 +122,26 @@ def test_package_without_memory_is_admitted_without_a_declaration() -> None:
     )
 
 
-def test_bounds_and_identity_are_checked_first() -> None:
-    mut oversized = declaration()
-    mut classes: list[str] = []
-    for index in range(MAX_MEMORY_REGISTRY_ENTRIES + 1):
+def test_registry_lists_and_atom_labels_are_not_bounded_by_a_number() -> None:
+    mut wide = declaration()
+    mut classes: list[str] = ["low"]
+    for index in range(500):
         classes.append(f"class_{index}")
-    oversized.risk_class_ids = classes
-    oversized.package_id = "Lantern Path"
-    assert_invalid(oversized, "declaration_bounds_exceeded")
+    wide.risk_class_ids = classes
+    assert_eq(validate_memory_declaration(wide).reason, "valid")
 
     mut labelled = atom("lantern_card_order")
     mut labels: list[str] = []
-    for index in range(MAX_MEMORY_ATOM_LABELS + 1):
+    for index in range(500):
         labels.append(f"label_{index}")
     labelled.labels = labels
-    assert_invalid(with_atom(labelled), "declaration_bounds_exceeded")
+    assert_eq(validate_memory_declaration(with_atom(labelled)).reason, "valid")
+    assert_is_ok(admit_memory_declaration(with_atom(labelled)))
 
+
+def test_identity_is_checked_first() -> None:
     mut misnamed = declaration()
+    misnamed.risk_class_ids = []
     misnamed.package_id = "Lantern Path"
     assert_invalid(misnamed, "invalid_declaration_identity")
     mut unversioned = declaration()

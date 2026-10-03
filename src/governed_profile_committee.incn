@@ -62,11 +62,15 @@ def roles_match_exactly(required: list[CommitteeRoleId], observations: list[Comm
 
     if len(required) != len(observations):
         return false
-    mut seen: list[CommitteeRoleId] = []
+    mut required_roles: Dict[str, bool] = {}
+    for role in required:
+        required_roles[role.text()] = true
+    mut seen: Dict[str, bool] = {}
     for observation in observations:
-        if seen.contains(observation.role) or not required.contains(observation.role):
+        role = observation.role.text()
+        if seen.contains_key(role) or not required_roles.contains_key(role):
             return false
-        seen.append(observation.role)
+        seen[role] = true
     return true
 
 
@@ -124,7 +128,7 @@ pub def assess_committee(
     if not roles_match_exactly(package.policy.required_roles, observations):
         return assessment(false, "committee_coverage_invalid", [])
     candidate_digest = digest_governed_proposal(proposal)
-    mut observation_ids: list[str] = []
+    mut observation_ids: Dict[str, bool] = {}
     for observation in observations:
         if observation.contract_version.text() != GOVERNED_OBSERVATION_CONTRACT:
             return assessment(false, "unsupported_committee_contract", [])
@@ -133,9 +137,9 @@ pub def assess_committee(
         if not observation_identity_matches(package, request, observation, candidate_digest):
             return assessment(false, "committee_identity_mismatch", [])
         observation_text = observation.observation_id.text()
-        if observation_ids.contains(observation_text):
+        if observation_ids.contains_key(observation_text):
             return assessment(false, "committee_coverage_invalid", [])
-        observation_ids.append(observation_text)
+        observation_ids[observation_text] = true
     findings = [derive_finding(package, observation) for observation in observations]
     for observation in observations:
         if observation.verdict == CommitteeVerdict.Fail:
