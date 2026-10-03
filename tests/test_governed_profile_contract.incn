@@ -24,9 +24,11 @@ from crate.governed_profile import (
     GovernedVisibleOutputSource,
     GuidedMaterial,
     GuidedTransition,
+    admit_governed_profile_package,
     bind_governed_request,
     committee_observation,
     digest_governed_memory_provenance,
+    digest_governed_memory_provenance_for,
     digest_governed_profile_package,
     digest_governed_proposal,
     evaluate_governed_profile_in_memory_context,
@@ -64,9 +66,9 @@ from crate.witness import digest_tagged_json
 from crate.governed_profile_validation import (
     MAX_COMMITTEE_ROLES,
     MAX_GOVERNED_ACTIONS,
-    MAX_GOVERNED_EVIDENCE,
+    MAX_PROPOSAL_EVIDENCE,
     MAX_GOVERNED_GUIDED_MATERIAL,
-    MAX_GOVERNED_MEMORY,
+    MAX_PROPOSAL_MEMORY,
     MAX_GUIDED_EVIDENCE,
     MAX_GUIDED_MEMORY,
     MAX_GUIDED_STEPS,
@@ -128,6 +130,8 @@ const CARD_DIGEST: str = "sha256:ddddddddddddddddddddddddddddddddddddddddddddddd
 const EVALUATOR_DIGEST: str = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 const OTHER_DIGEST: str = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 const GUIDE_ID: str = "lantern_guide_practice_0_1"
+# Extra records for a package far larger than any per-proposal bound; a library is not bounded by a number.
+const LIBRARY_RECORDS: int = 2000
 const AUDIENCE: str = "general_audience"
 const HASHED_DECISION_ID_LENGTH: int = 73
 const REFUSAL_TEXT: str = "The reviewed Lantern Path package does not cover that request."
@@ -1010,15 +1014,15 @@ def test_proposal_reference_counts_are_bounded_before_duplicate_scans() -> None:
     package = lantern_package()
     bound = request("Which card first?")
     mut at_limit = answer_proposal(package, bound)
-    at_limit.evidence_ids = [evidence_id(f"lantern_unknown_{index}") for index in range(MAX_GOVERNED_EVIDENCE)]
+    at_limit.evidence_ids = [evidence_id(f"lantern_unknown_{index}") for index in range(MAX_PROPOSAL_EVIDENCE)]
     assert_rejected_with_receipt(identity_rejection(at_limit), "unknown_evidence")
     mut over_evidence = answer_proposal(package, bound)
     over_evidence.evidence_ids = [evidence_id("lantern_evidence_card_order") for _index in range(
-        MAX_GOVERNED_EVIDENCE + 1,
+        MAX_PROPOSAL_EVIDENCE + 1,
     )]
     assert_rejected_without_receipt(identity_rejection(over_evidence), "proposal_reference_limit_exceeded")
     mut over_memory = answer_proposal(package, bound)
-    over_memory.memory_ids = [memory_id("lantern_atom_card_order") for _index in range(MAX_GOVERNED_MEMORY + 1)]
+    over_memory.memory_ids = [memory_id("lantern_atom_card_order") for _index in range(MAX_PROPOSAL_MEMORY + 1)]
     assert_rejected_without_receipt(identity_rejection(over_memory), "proposal_reference_limit_exceeded")
 
 
@@ -1587,35 +1591,25 @@ def test_action_count_boundary() -> None:
     assert_eq(rejection(empty), "invalid_action_count")
 
 
-def test_evidence_count_boundary() -> None:
-    base_count = len(unwitnessed_package().evidence)
-    mut at_limit = unwitnessed_package()
-    mut records = at_limit.evidence.clone()
-    for extra in extra_evidence("lantern_extra_evidence", MAX_GOVERNED_EVIDENCE - base_count):
+def test_a_package_may_declare_any_number_of_evidence_records_but_not_none() -> None:
+    mut library = unwitnessed_package()
+    mut records = library.evidence.clone()
+    for extra in extra_evidence("lantern_extra_evidence", LIBRARY_RECORDS):
         records.append(extra)
-    at_limit.evidence = records.clone()
-    assert_eq(acceptance(at_limit), "ok")
-    records.append(evidence("lantern_one_too_many", "fictional_lantern_appendix:99"))
-    mut over = unwitnessed_package()
-    over.evidence = records
-    assert_eq(rejection(over), "invalid_evidence_count")
+    library.evidence = records
+    assert_eq(acceptance(library), "ok")
     mut empty = unwitnessed_package()
     empty.evidence = []
     assert_eq(rejection(empty), "invalid_evidence_count")
 
 
-def test_memory_count_boundary() -> None:
-    base_count = len(unwitnessed_package().memory)
-    mut at_limit = unwitnessed_package()
-    mut atoms = at_limit.memory.clone()
-    for extra in extra_atoms("lantern_extra_atom", MAX_GOVERNED_MEMORY - base_count):
+def test_a_package_may_declare_any_number_of_memory_atoms_but_not_none() -> None:
+    mut library = unwitnessed_package()
+    mut atoms = library.memory.clone()
+    for extra in extra_atoms("lantern_extra_atom", LIBRARY_RECORDS):
         atoms.append(extra)
-    at_limit.memory = atoms.clone()
-    assert_eq(acceptance(at_limit), "ok")
-    atoms.append(memory_atom("lantern_one_too_many", ["lantern_evidence_card_order"]))
-    mut over = unwitnessed_package()
-    over.memory = atoms
-    assert_eq(rejection(over), "invalid_memory_count")
+    library.memory = atoms
+    assert_eq(acceptance(library), "ok")
     mut empty = unwitnessed_package()
     empty.memory = []
     assert_eq(rejection(empty), "invalid_memory_count")
@@ -2143,3 +2137,168 @@ def test_invalid_package_still_rejects_before_the_memory_context_rule() -> None:
     proposal = answer_proposal(lantern_package(), bound)
     result = evaluate_governed_profile_in_memory_context(package, bound, proposal, [], record)
     assert_rejected_without_receipt(result, "invalid_package")
+
+
+def library_package() -> GovernedProfilePackage:
+    """Return the fictional package extended with ``LIBRARY_RECORDS`` evidence records and as many memory atoms."""
+
+    mut library = unwitnessed_package()
+    mut records = library.evidence.clone()
+    for extra in extra_evidence("lantern_library_evidence", LIBRARY_RECORDS):
+        records.append(extra)
+    library.evidence = records
+    mut atoms = library.memory.clone()
+    for extra in extra_atoms("lantern_library_atom", LIBRARY_RECORDS):
+        atoms.append(extra)
+    library.memory = atoms
+    return rewitnessed(library)
+
+
+def test_admission_validates_the_package_and_exposes_its_verified_digest() -> None:
+    package = lantern_package()
+    admitted = assert_is_ok(admit_governed_profile_package(package.clone()))
+    assert_eq(admitted.profile_package_digest, package.profile_package_digest)
+    assert_eq(admitted.evidence_count, len(package.evidence))
+    assert_eq(admitted.memory_count, len(package.memory))
+
+
+def test_admission_rejects_what_package_validation_rejects() -> None:
+    mut mutated = lantern_package()
+    mutated.mission = "A mutated mission."
+    match admit_governed_profile_package(mutated):
+        Ok(_) => assert_eq("admitted", "rejected")
+        Err(validation) =>
+            assert_eq(validation.reason, "invalid_package")
+            assert_eq(validation.errors[0], "profile_package_digest_mismatch")
+
+
+def test_an_admitted_profile_gives_the_results_of_the_package_it_was_admitted_from() -> None:
+    package = lantern_package()
+    admitted = assert_is_ok(admit_governed_profile_package(package.clone()))
+    bound = request("Which card first?")
+    answer = answer_proposal(package, bound)
+    committee = passed_committee(package, bound, answer)
+    delivered = admitted.evaluate(bound, answer, committee.clone())
+    assert_eq(delivered.spectrum.decision, "deliver")
+    assert_eq(
+        delivered.to_json(),
+        evaluate_governed_profile_with_artifacts(package.clone(), bound, answer, committee).to_json(),
+    )
+    refusal_request = request("Give me an apple pie recipe.")
+    refusal = terminal_proposal(package, refusal_request, "refuse_unsupported")
+    refused = admitted.evaluate(refusal_request, refusal, [])
+    assert_eq(refused.spectrum.decision, "refuse")
+    assert_eq(
+        refused.to_json(),
+        evaluate_governed_profile_with_artifacts(package.clone(), refusal_request, refusal, []).to_json(),
+    )
+    mut unknown = answer_proposal(package, bound)
+    unknown.evidence_ids = [evidence_id("lantern_unknown_evidence")]
+    rejected = admitted.evaluate(bound, unknown, [])
+    assert_eq(rejected.spectrum.decision, "reject")
+    assert_eq(
+        rejected.to_json(),
+        evaluate_governed_profile_with_artifacts(package.clone(), bound, unknown, []).to_json(),
+    )
+    presentation = guide_proposal(package, bound, "present_guided_card", no_guided_step(), no_guided_step())
+    guide_committee = passed_committee(package, bound, presentation)
+    assert_eq(
+        admitted.evaluate(bound, presentation, guide_committee.clone()).to_json(),
+        evaluate_governed_profile_with_artifacts(package, bound, presentation, guide_committee).to_json(),
+    )
+
+
+def test_an_admitted_profile_applies_the_memory_context_rule() -> None:
+    package = lantern_package()
+    admitted = assert_is_ok(admit_governed_profile_package(package.clone()))
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    committee = passed_committee(package, bound, proposal)
+    inside = retrieval_record(
+        "lantern_path_lessons",
+        "complete",
+        "completed",
+        ["lantern_atom_pacing", "lantern_atom_card_order", "lantern_atom_reflection"],
+    )
+    assert_eq(
+        admitted.evaluate_in_memory_context(bound, proposal, committee.clone(), inside.clone()).to_json(),
+        evaluate_governed_profile_in_memory_context(package.clone(), bound, proposal, committee.clone(), inside).to_json(),
+    )
+    outside = retrieval_record("lantern_path_lessons", "complete", "completed", ["lantern_atom_pacing"])
+    rejected = admitted.evaluate_in_memory_context(bound, proposal, committee.clone(), outside.clone())
+    assert_rejected_with_receipt(rejected, "memory_not_in_accepted_context")
+    assert_eq(
+        rejected.to_json(),
+        evaluate_governed_profile_in_memory_context(package, bound, proposal, committee, outside).to_json(),
+    )
+
+
+def test_a_library_is_admitted_once_and_each_proposal_is_evaluated_against_it() -> None:
+    package = library_package()
+    admitted = assert_is_ok(admit_governed_profile_package(package.clone()))
+    assert_eq(admitted.evidence_count, len(unwitnessed_package().evidence) + LIBRARY_RECORDS)
+    assert_eq(admitted.memory_count, len(unwitnessed_package().memory) + LIBRARY_RECORDS)
+    bound = request("Which card first?")
+    proposal = answer_proposal(package, bound)
+    committee = passed_committee(package, bound, proposal)
+    for _round in range(25):
+        assert_eq(admitted.evaluate(bound, proposal, committee.clone()).spectrum.decision, "deliver")
+    delivered = admitted.evaluate(bound, proposal, committee.clone())
+    assert_eq(
+        delivered.to_json(),
+        evaluate_governed_profile_with_artifacts(package, bound, proposal, committee).to_json(),
+    )
+
+
+def test_the_proposal_reference_limit_holds_for_an_admitted_profile() -> None:
+    package = lantern_package()
+    admitted = assert_is_ok(admit_governed_profile_package(package.clone()))
+    bound = request("Which card first?")
+    mut over = answer_proposal(package, bound)
+    over.evidence_ids = [evidence_id("lantern_evidence_card_order") for _index in range(MAX_PROPOSAL_EVIDENCE + 1)]
+    assert_rejected_without_receipt(admitted.evaluate(bound, over, []), "proposal_reference_limit_exceeded")
+
+
+def test_an_admitted_profile_binds_proposals_and_observations_like_the_package_does() -> None:
+    package = lantern_package()
+    admitted = assert_is_ok(admit_governed_profile_package(package.clone()))
+    bound = request("Which card first?")
+    from_package = answer_proposal(package, bound)
+    from_admitted = admitted.propose(
+        bound,
+        from_package.proposal_id,
+        from_package.action_id,
+        from_package.visible_output,
+        from_package.evidence_ids,
+        from_package.memory_ids,
+        no_guided_material(),
+        no_guided_step(),
+        no_guided_step(),
+    )
+    assert_eq(from_admitted.to_json(), from_package.to_json())
+    role = required_role_names()[0]
+    observed = observation(package, bound, from_package, role, CommitteeVerdict.Pass)
+    rebound = admitted.observe(
+        bound,
+        from_admitted,
+        observed.observation_id,
+        observed.role,
+        CommitteeVerdict.Pass,
+        observed.evaluator_fingerprint,
+    )
+    assert_eq(rebound.to_json(), observed.to_json())
+
+
+def test_memory_provenance_from_the_identity_fields_equals_provenance_from_the_package() -> None:
+    package = lantern_package()
+    for atom in package.memory:
+        assert_eq(
+            digest_governed_memory_provenance_for(
+                package.package_id,
+                package.domain_id,
+                package.package_revision,
+                package.profile_package_digest,
+                atom.clone(),
+            ),
+            digest_governed_memory_provenance(package.clone(), atom),
+        )

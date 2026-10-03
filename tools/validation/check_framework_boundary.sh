@@ -105,6 +105,7 @@ required_files=(
     src/governed_memory_retrieval_declaration.incn
     src/governed_memory_retrieval_models.incn
     src/governed_profile.incn
+    src/governed_profile_admission.incn
     src/governed_profile_artifacts.incn
     src/governed_profile_committee.incn
     src/governed_profile_evaluation.incn
@@ -176,6 +177,7 @@ allowed_source_modules=(
     src/governed_memory_retrieval_declaration.incn
     src/governed_memory_retrieval_models.incn
     src/governed_profile.incn
+    src/governed_profile_admission.incn
     src/governed_profile_artifacts.incn
     src/governed_profile_committee.incn
     src/governed_profile_evaluation.incn

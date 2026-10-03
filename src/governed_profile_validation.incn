@@ -1,7 +1,7 @@
 """Fail-closed validation for generic governed packages, requests, and proposals."""
 
 from crate.governed_profile_identity import (
-    digest_governed_memory_provenance,
+    digest_memory_provenance_bound_to,
     digest_governed_profile_package,
     digest_governed_request_fields,
 )
@@ -13,6 +13,7 @@ from crate.governed_profile_models import (
     GovernedEvidence,
     GovernedMemory,
     GovernedOutcomeKind,
+    GovernedPackageIdentity,
     GovernedProfilePackage,
     GovernedProposal,
     GovernedRequest,
@@ -34,10 +35,14 @@ from crate.identifiers import (
 )
 
 # Collection bounds for package contract 0.1. Every bound is checked before any duplicate scan and before the
-# package digest is recomputed, so oversized input is rejected without quadratic or digest work.
+# package digest is recomputed, so oversized input is rejected without that work.
+#
+# A package may declare any number of evidence records and memory atoms: a library is not bounded by a number.
+# What is bounded is each record, each relationship, and each proposal, which may nominate at most
+# ``MAX_PROPOSAL_EVIDENCE`` evidence records and ``MAX_PROPOSAL_MEMORY`` memory atoms.
 pub const MAX_GOVERNED_ACTIONS: int = 16
-pub const MAX_GOVERNED_EVIDENCE: int = 64
-pub const MAX_GOVERNED_MEMORY: int = 64
+pub const MAX_PROPOSAL_EVIDENCE: int = 64
+pub const MAX_PROPOSAL_MEMORY: int = 64
 pub const MAX_GOVERNED_GUIDED_MATERIAL: int = 16
 pub const MAX_MEMORY_EVIDENCE: int = 8
 pub const MAX_GUIDED_MEMORY: int = 8
@@ -93,13 +98,13 @@ def proposal_error(reason: str) -> GovernedValidation:
 
 
 def has_duplicate_strings(values: list[str]) -> bool:
-    """Return whether one bounded text projection repeats an earlier value."""
+    """Return whether one text projection repeats an earlier value, in time linear in its length."""
 
-    mut seen: list[str] = []
+    mut seen: Dict[str, bool] = {}
     for value in values:
-        if seen.contains(value):
+        if seen.contains_key(value):
             return true
-        seen.append(value)
+        seen[value] = true
     return false
 
 
@@ -222,9 +227,9 @@ def validate_package_bounds(package: GovernedProfilePackage) -> GovernedValidati
         return package_error("invalid_mission")
     if not count_is_within(len(package.actions), 1, MAX_GOVERNED_ACTIONS):
         return package_error("invalid_action_count")
-    if not count_is_within(len(package.evidence), 1, MAX_GOVERNED_EVIDENCE):
+    if len(package.evidence) == 0:
         return package_error("invalid_evidence_count")
-    if not count_is_within(len(package.memory), 1, MAX_GOVERNED_MEMORY):
+    if len(package.memory) == 0:
         return package_error("invalid_memory_count")
     if len(package.guided_material) > MAX_GOVERNED_GUIDED_MATERIAL:
         return package_error("invalid_guided_material_count")
@@ -320,8 +325,17 @@ def validate_evidence(record: GovernedEvidence) -> GovernedValidation:
     return governed_validation_ok()
 
 
-def validate_memory(package: GovernedProfilePackage, atom: GovernedMemory) -> GovernedValidation:
-    """Check one memory atom's identity, concept, evidence relationships, admission state, and provenance digest."""
+def validate_memory(
+    identity: GovernedPackageIdentity,
+    declared_evidence: Dict[str, bool],
+    atom: GovernedMemory,
+) -> GovernedValidation:
+    """
+    Check one memory atom's identity, concept, evidence relationships, admission state, and provenance digest.
+
+    ``identity`` is the package identity the provenance digest binds to and ``declared_evidence`` the identifiers of
+    the package's evidence records, so the check costs the same for an atom of a small package and of a library.
+    """
 
     if not identifier_text_is_safe(atom.memory_id.text()):
         return package_error("invalid_memory_id")
@@ -330,14 +344,13 @@ def validate_memory(package: GovernedProfilePackage, atom: GovernedMemory) -> Go
     if has_duplicate_identifiers(atom.evidence_ids):
         return package_error("duplicate_memory_evidence")
     for evidence_id in atom.evidence_ids:
-        match find_declared(package.evidence, evidence_id):
-            None => return package_error("unknown_memory_evidence")
-            Some(_) => pass
+        if not declared_evidence.contains_key(evidence_id.text()):
+            return package_error("unknown_memory_evidence")
     if not review_admits(atom.review_state, atom.rights_state):
         return package_error("memory_not_admitted")
     if not digest_id_text_is_safe(atom.provenance_digest.text()):
         return package_error("invalid_memory_provenance")
-    if atom.provenance_digest != digest_governed_memory_provenance(package, atom.clone()):
+    if atom.provenance_digest != digest_memory_provenance_bound_to(identity, atom.clone()):
         return package_error("memory_provenance_mismatch")
     return governed_validation_ok()
 
@@ -471,12 +484,20 @@ pub def validate_governed_profile_package(package: GovernedProfilePackage) -> Go
         validation = validate_action(action)
         if not validation.valid:
             return validation
+    mut declared_evidence: Dict[str, bool] = {}
     for record in package.evidence:
         validation = validate_evidence(record)
         if not validation.valid:
             return validation
+        declared_evidence[record.evidence_id.text()] = true
+    identity = GovernedPackageIdentity(
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        profile_package_digest=package.profile_package_digest,
+    )
     for atom in package.memory:
-        validation = validate_memory(package, atom)
+        validation = validate_memory(identity, declared_evidence, atom)
         if not validation.valid:
             return validation
     for material in package.guided_material:
@@ -545,7 +566,7 @@ pub def validate_governed_proposal_identity(
         return governed_validation_error("invalid_proposal", "invalid_proposal_id")
     if len(proposal.visible_output) > MAX_VISIBLE_OUTPUT_LENGTH:
         return governed_validation_error("missing_visible_output", "invalid_visible_output")
-    if len(proposal.evidence_ids) > MAX_GOVERNED_EVIDENCE or len(proposal.memory_ids) > MAX_GOVERNED_MEMORY:
+    if len(proposal.evidence_ids) > MAX_PROPOSAL_EVIDENCE or len(proposal.memory_ids) > MAX_PROPOSAL_MEMORY:
         return proposal_error("proposal_reference_limit_exceeded")
     return governed_validation_ok()
 
