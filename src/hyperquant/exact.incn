@@ -1,7 +1,6 @@
 """Deterministic full-precision Hyperquant oracle and small-corpus fallback."""
 
 from crate.hyperquant.models import (
-    MAX_HYPERQUANT_ENTRIES,
     MAX_HYPERQUANT_TOP_K,
     HyperquantError,
     HyperquantErrorKind,
@@ -122,19 +121,32 @@ pub def hyperquant_entry(memory_id: MemoryId, values: list[float]) -> Result[Hyp
     return normalize_vector(values).map((normalized) => HyperquantEntry(_memory_id=memory_id, _values=normalized))
 
 
+pub def stored_hyperquant_entry(memory_id: MemoryId, values: list[float]) -> Result[HyperquantEntry, HyperquantError]:
+    """
+    Rebuild one index entry from a stored, already normalized vector without renormalizing it.
+
+    A stored index must reproduce the exact reranking scores it had when it was built, so the coordinates are kept
+    as stored. The vector must still be finite and of unit length within a tight tolerance; anything else is rejected.
+    """
+
+    if len(values) == 0:
+        return Err(HyperquantError.from_kind(HyperquantErrorKind.EmptyVector, "vector must contain at least one value"))
+    mut squared_norm = 0.0
+    for value in values:
+        if not value.is_finite():
+            return Err(HyperquantError.from_kind(HyperquantErrorKind.NonFiniteValue, "vector values must all be finite"))
+        squared_norm += value * value
+    if squared_norm < 0.999999 or squared_norm > 1.000001:
+        return Err(HyperquantError.from_kind(HyperquantErrorKind.NonCanonicalPayload, "stored vector is not normalized"))
+    return Ok(HyperquantEntry(_memory_id=memory_id, _values=values))
+
+
 pub def exact_index(entries: list[HyperquantEntry]) -> Result[HyperquantExactIndex, HyperquantError]:
-    """Build a bounded exact index from validated entries."""
+    """Build an exact index from validated entries. The index may hold any number of entries; a query is bounded."""
 
     if len(entries) == 0:
         return Err(
             HyperquantError.from_kind(HyperquantErrorKind.EmptyIndex, "exact index must contain at least one entry"),
-        )
-    if len(entries) > MAX_HYPERQUANT_ENTRIES:
-        return Err(
-            HyperquantError.from_kind(
-                HyperquantErrorKind.IndexTooLarge,
-                f"exact index exceeds the {MAX_HYPERQUANT_ENTRIES}-entry contract bound",
-            ),
         )
 
     mut index = HyperquantExactIndex(_dimensions=0, _entries=entries)

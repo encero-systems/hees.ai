@@ -737,6 +737,12 @@ pub def memory_id(value: str) -> MemoryId:
     return MemoryId(trusted_symbolic_id(value))
 
 
+pub def memory_id_from_text(value: str) -> Result[MemoryId, ValidationError]:
+    """Validate untrusted text, such as an identifier read from a stored index, before constructing a memory identity."""
+
+    return symbolic_id_from_text(value).map((identifier) => MemoryId(identifier))
+
+
 pub def memory_class_id(value: str) -> MemoryClassId:
     """Wrap trusted canonical text as a memory-class identity."""
 

@@ -21,9 +21,12 @@ All notable changes will be recorded here.
 - Sanitized diagnostic evidence for the separately proven native GPT-5.6 proposal and six-call live-committee paths, including the exact remaining combined release-binary limitation.
 - Native packaging and release-validation workflows for Linux and macOS candidates, including checksums, provenance, dependency notices, leakage scans, and extracted-archive smoke tests. macOS artifacts are not Developer ID-signed and not notarized; linker ad-hoc signing may exist solely for local execution and conveys no publisher identity. The tagged Release is the sole source of artifact availability and platform claims.
 - Governance-profile, architecture, testing, release, video, and Devpost documentation for the bounded Console profile and its permanent product direction.
+- Bounded approximate TurboQuant nomination with exact reranking (`turboquant_index`, `turboquant_query`, and `TurboquantIndex.nominate` for an index that is queried repeatedly), and dense transforms up to 1,024 dimensions.
+- A stored form of a TurboQuant index, built once when a package is made: codes and identifiers in one part (`TurboquantIndex.codes_to_bytes`) and exact vectors in another (`vectors_to_bytes`), loaded with `turboquant_code_index_from_bytes` into a `TurboquantCodeIndex` that scans codes and reranks from the candidate vectors the caller reads from storage. Loading verifies digests, configuration, identifiers and the index fingerprint and fails closed.
 
 ### Changed
 
+- A Hyperquant index, exact or TurboQuant, may hold any number of entries; the 65,536-entry ceiling (`MAX_HYPERQUANT_ENTRIES`) and its `index_too_large` error kind are removed. A query stays bounded by `top_k` and its candidate count.
 - The repository builds with commit-pinned Incan `0.6.0-dev.6`. Manifests are named `loaf.toml` and the canonical lock is `oven.lock`. CI builds the pinned compiler from source.
 - Identifier and revision types expose their canonical text through one `.text()` method, supplied by the new `SymbolicIdentifier` and `DigestIdentifier` traits for nominal identifiers; the per-type `*_id_text`, `id_type_text`, `symbolic_id_type_text`, `digest_id_type_text`, `revision_text`, and `artifact_revision_text` functions and their root exports are removed.
 

@@ -141,7 +141,7 @@ def validate_codebook(
     return Ok(None)
 
 
-def write_bytes(writer: _BytesIO, value: bytes, detail: str) -> Result[None, HyperquantError]:
+pub def write_bytes(writer: _BytesIO, value: bytes, detail: str) -> Result[None, HyperquantError]:
     """Write one raw section and translate stream failure into a codec error."""
 
     written: Result[int, IoError] = writer.write(value)
@@ -149,7 +149,11 @@ def write_bytes(writer: _BytesIO, value: bytes, detail: str) -> Result[None, Hyp
     return Ok(None)
 
 
-def write_numeric(writer: _BytesIO, value: Union[u8, u16, u32, u64, f64], detail: str) -> Result[None, HyperquantError]:
+pub def write_numeric(
+    writer: _BytesIO,
+    value: Union[u8, u16, u32, u64, f64],
+    detail: str,
+) -> Result[None, HyperquantError]:
     """
     Write one exact-width numeric value in canonical big-endian order.
 
@@ -180,7 +184,7 @@ def write_numeric(writer: _BytesIO, value: Union[u8, u16, u32, u64, f64], detail
                 .map_err((_error) => failure(HyperquantErrorKind.NumericalFailure, detail))
 
 
-def read_exact(reader: _BytesIO, count: int, detail: str) -> Result[bytes, HyperquantError]:
+pub def read_exact(reader: _BytesIO, count: int, detail: str) -> Result[bytes, HyperquantError]:
     """Read an exact bounded raw section or return a truncated-payload error."""
 
     read_value: Result[bytes, IoError] = reader.read_exact(count)
@@ -198,7 +202,7 @@ def read_raw_u8(reader: _BytesIO) -> Result[u8, IoError]:
     return Ok(value)
 
 
-def read_u8(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
+pub def read_u8(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
     """Read one unsigned byte, translate IO failure, and widen it for codec arithmetic."""
 
     value = read_raw_u8(reader).map_err((_error) => io_failure(detail))?
@@ -216,7 +220,7 @@ def read_raw_u16(reader: _BytesIO) -> Result[u16, IoError]:
     return Ok(value)
 
 
-def read_u16(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
+pub def read_u16(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
     """Read one big-endian unsigned 16-bit value, translate IO failure, and widen it."""
 
     value = read_raw_u16(reader).map_err((_error) => io_failure(detail))?
@@ -235,7 +239,7 @@ def read_raw_u32(reader: _BytesIO) -> Result[u32, IoError]:
     return Ok(value)
 
 
-def read_u32(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
+pub def read_u32(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
     """Read one big-endian unsigned 32-bit value, translate IO failure, and widen it."""
 
     value = read_raw_u32(reader).map_err((_error) => io_failure(detail))?
@@ -271,7 +275,7 @@ def read_raw_f64(reader: _BytesIO) -> Result[f64, IoError]:
     return Ok(value)
 
 
-def read_f64(reader: _BytesIO, detail: str) -> Result[float, HyperquantError]:
+pub def read_f64(reader: _BytesIO, detail: str) -> Result[float, HyperquantError]:
     """Read one big-endian IEEE-754 binary64 value and translate IO failure."""
 
     return read_raw_f64(reader).map_err((_error) => io_failure(detail))
@@ -739,6 +743,42 @@ pub class TurboquantConfiguration:
         if not estimate.is_finite():
             return Err(failure(HyperquantErrorKind.NumericalFailure, "TurboQuant estimate is non-finite"))
         return Ok(estimate)
+
+    def rotated_query(self, normalized_query: list[float]) -> list[float]:
+        """Rotate one normalized query once so MSE codes can be scored without reconstruction."""
+
+        return self._rotation.multiply(normalized_query)
+
+    def projected_query(self, normalized_query: list[float]) -> list[float]:
+        """Project one normalized query through the QJL matrix; the MSE profile has no projection."""
+
+        if self._profile == HyperquantProfile.TurboquantMse01:
+            return []
+        return self._qjl_projection.multiply(normalized_query)
+
+    def estimate_transformed(
+        self,
+        rotated_query: list[float],
+        projected_query: list[float],
+        code: TurboquantCode,
+    ) -> float:
+        """
+        Estimate one inner product in transform space.
+
+        `dot(q, R^T c)` equals `dot(R q, c)` and `dot(q, S^T s)` equals `dot(S q, s)`, so a query transformed once
+        scores each bound code in linear time. The value agrees with `estimate` up to binary64 rounding.
+        """
+
+        mut mse_estimate = 0.0
+        for index in range(self._dimensions):
+            mse_estimate += rotated_query[index] * self._centroids[code.mse_index(index)]
+        if self._profile == HyperquantProfile.TurboquantMse01:
+            return mse_estimate
+        mut qjl_estimate = 0.0
+        for index in range(self._dimensions):
+            qjl_estimate += projected_query[index] * float(code.qjl_sign(index))
+        scale = math.sqrt(math.PI / 2.0) * code.residual_norm() / float(self._dimensions)
+        return mse_estimate + scale * qjl_estimate
 
     def nearest_centroid(self, value: float) -> int:
         """Choose the first nearest configured centroid without cloning the codebook."""
