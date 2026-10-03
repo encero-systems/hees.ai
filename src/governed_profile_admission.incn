@@ -1,0 +1,280 @@
+"""
+Admission of a governed profile package once, and evaluation of many proposals against it.
+
+``evaluate_governed_profile_with_artifacts`` takes an untrusted package projection and revalidates it on every call,
+including both digests. That is the right contract for a caller holding a small package, and the wrong cost for a
+library: validating a package and recomputing its digest is work proportional to the package, and nothing about one
+proposal can change the result.
+
+``admit_governed_profile_package`` does that work once. The ``AdmittedGovernedProfile`` it returns can only be
+built by a successful admission, so holding one is the proof that the package was validated. Its ``evaluate``
+methods then do work proportional to the proposal: they hand the evaluation the admitted package narrowed to the
+records that proposal can touch, under the admitted package's own identity and digest. Nothing is revalidated and
+no digest of the package is recomputed per proposal.
+"""
+
+from crate.governed_memory_retrieval_models import MemoryAdmissionRecord
+from crate.governed_profile_evaluation import evaluate_validated_package
+from crate.governed_profile_identity import committee_observation_bound_to, governed_proposal_bound_to
+from crate.governed_profile_models import (
+    CommitteeObservation,
+    CommitteeVerdict,
+    CompleteGovernedEvaluation,
+    GovernedEvidence,
+    GovernedMemory,
+    GovernedPackageIdentity,
+    GovernedProfilePackage,
+    GovernedProposal,
+    GovernedRequest,
+    GovernedValidation,
+)
+from crate.governed_profile_validation import (
+    MAX_PROPOSAL_EVIDENCE,
+    MAX_PROPOSAL_MEMORY,
+    validate_governed_profile_package,
+)
+from crate.identifiers import (
+    ActionId,
+    CommitteeRoleId,
+    DigestIdType,
+    EvidenceId,
+    GuidedMaterialId,
+    GuidedStepId,
+    MemoryId,
+    ObservationId,
+    ProposalId,
+)
+
+
+def ascending(collected: list[int]) -> list[int]:
+    """
+    Return the collected positions in ascending order, so a narrowed package keeps the package's own order.
+
+    A selection sort: the list is the handful of records one proposal can touch, never the package.
+    """
+
+    mut positions = collected
+    for slot in range(len(positions)):
+        mut lowest = slot
+        for other in range(slot + 1, len(positions)):
+            if positions[other] < positions[lowest]:
+                lowest = other
+        positions.swap(slot, lowest)
+    return positions
+
+
+@derive(Clone)
+pub class AdmittedGovernedProfile:
+    """
+    A governed profile package that passed ``validate_governed_profile_package``, with its records indexed.
+
+    Its fields are private, so only ``admit_governed_profile_package`` constructs one.
+    """
+
+    _package: GovernedProfilePackage
+    _evidence_positions: Dict[str, int]
+    _memory_positions: Dict[str, int]
+
+    pub property profile_package_digest -> DigestIdType:
+        """Return the package digest that admission verified."""
+
+        return self._package.profile_package_digest
+
+    pub property evidence_count -> int:
+        """Return how many evidence records the admitted package declares."""
+
+        return len(self._package.evidence)
+
+    pub property memory_count -> int:
+        """Return how many memory atoms the admitted package declares."""
+
+        return len(self._package.memory)
+
+    def bound_identity(self) -> GovernedPackageIdentity:
+        """Return the identity established by admission, for binding proposals and observations to it."""
+
+        return GovernedPackageIdentity(
+            package_id=self._package.package_id,
+            domain_id=self._package.domain_id,
+            package_revision=self._package.package_revision,
+            profile_package_digest=self._package.profile_package_digest,
+        )
+
+    def proposal_scope(self, proposal: GovernedProposal) -> GovernedProfilePackage:
+        """
+        Return the admitted package narrowed to the records one proposal can touch.
+
+        Kept, in package order: the memory atoms and evidence records the proposal nominates, the evidence those
+        atoms rest on, and the memory and evidence of every guided material (a bounded set). An identifier the
+        package does not declare is simply absent, so the evaluation rejects it as unknown exactly as it would
+        against the whole package. Header, digest, actions, guided material and policy are the admitted package's.
+        A proposal over the reference limit nominates nothing here; its identity check rejects it first.
+        """
+
+        mut memory_wanted: Dict[int, bool] = {}
+        mut memory_order: list[int] = []
+        mut evidence_wanted: Dict[int, bool] = {}
+        mut evidence_order: list[int] = []
+        mut memory_names: list[str] = []
+        mut evidence_names: list[str] = []
+        if len(proposal.evidence_ids) <= MAX_PROPOSAL_EVIDENCE and len(proposal.memory_ids) <= MAX_PROPOSAL_MEMORY:
+            memory_names = [memory_id.text() for memory_id in proposal.memory_ids]
+            evidence_names = [evidence_id.text() for evidence_id in proposal.evidence_ids]
+        for material in self._package.guided_material:
+            for memory_id in material.memory_ids:
+                memory_names.append(memory_id.text())
+            for evidence_id in material.evidence_ids:
+                evidence_names.append(evidence_id.text())
+        for name in memory_names:
+            if let Some(position) = self._memory_positions.get(name):
+                if not memory_wanted.contains_key(position):
+                    memory_wanted[position] = true
+                    memory_order.append(position)
+                    for evidence_id in self._package.memory[position].evidence_ids:
+                        evidence_names.append(evidence_id.text())
+        for name in evidence_names:
+            if let Some(position) = self._evidence_positions.get(name):
+                if not evidence_wanted.contains_key(position):
+                    evidence_wanted[position] = true
+                    evidence_order.append(position)
+        evidence: list[GovernedEvidence] = [self._package.evidence[position] for position in ascending(evidence_order)]
+        memory: list[GovernedMemory] = [self._package.memory[position] for position in ascending(memory_order)]
+        return GovernedProfilePackage(
+            contract_version=self._package.contract_version,
+            profile_id=self._package.profile_id,
+            package_id=self._package.package_id,
+            domain_id=self._package.domain_id,
+            package_revision=self._package.package_revision,
+            profile_package_digest=self._package.profile_package_digest,
+            mission=self._package.mission,
+            actions=self._package.actions,
+            evidence=evidence,
+            memory=memory,
+            guided_material=self._package.guided_material,
+            policy=self._package.policy,
+        )
+
+    def propose(
+        self,
+        request: GovernedRequest,
+        proposal_id: ProposalId,
+        action_id: ActionId,
+        visible_output: str,
+        evidence_ids: list[EvidenceId],
+        memory_ids: list[MemoryId],
+        guided_material_id: Option[GuidedMaterialId],
+        current_step_id: Option[GuidedStepId],
+        next_step_id: Option[GuidedStepId],
+    ) -> GovernedProposal:
+        """
+        Construct an untrusted proposal bound to the admitted package and a request.
+
+        The same proposal ``governed_proposal`` constructs from the package itself; this one reads only the
+        admitted identity.
+        """
+
+        return governed_proposal_bound_to(
+            self._package.profile_id,
+            self.bound_identity(),
+            request,
+            proposal_id,
+            action_id,
+            visible_output,
+            evidence_ids,
+            memory_ids,
+            guided_material_id,
+            current_step_id,
+            next_step_id,
+        )
+
+    def observe(
+        self,
+        request: GovernedRequest,
+        proposal: GovernedProposal,
+        observation_id: ObservationId,
+        role: CommitteeRoleId,
+        verdict: CommitteeVerdict,
+        evaluator_fingerprint: DigestIdType,
+    ) -> CommitteeObservation:
+        """
+        Bind one non-authoritative verdict to the admitted package, a request and a candidate.
+
+        The same observation ``committee_observation`` constructs from the package itself.
+        """
+
+        return committee_observation_bound_to(
+            self._package.profile_id,
+            self.bound_identity(),
+            request,
+            proposal,
+            observation_id,
+            role,
+            verdict,
+            evaluator_fingerprint,
+        )
+
+    def evaluate(
+        self,
+        request: GovernedRequest,
+        proposal: GovernedProposal,
+        observations: list[CommitteeObservation],
+    ) -> CompleteGovernedEvaluation:
+        """
+        Evaluate one proposal against the admitted package.
+
+        Returns what ``evaluate_governed_profile_with_artifacts`` returns for the same package, request, proposal
+        and observations, without validating the package again.
+        """
+
+        return evaluate_validated_package(self.proposal_scope(proposal), request, proposal, observations, None)
+
+    def evaluate_in_memory_context(
+        self,
+        request: GovernedRequest,
+        proposal: GovernedProposal,
+        observations: list[CommitteeObservation],
+        memory_record: MemoryAdmissionRecord,
+    ) -> CompleteGovernedEvaluation:
+        """
+        Evaluate one proposal that may cite only memory an accepted retrieval context materialized.
+
+        Returns what ``evaluate_governed_profile_in_memory_context`` returns for the same inputs, without validating
+        the package again.
+        """
+
+        return evaluate_validated_package(
+            self.proposal_scope(proposal),
+            request,
+            proposal,
+            observations,
+            Some(memory_record),
+        )
+
+
+pub def admit_governed_profile_package(
+    package: GovernedProfilePackage,
+) -> Result[AdmittedGovernedProfile, GovernedValidation]:
+    """
+    Validate one package and return it admitted, or the validation that rejected it.
+
+    This is the only place the package is validated and its digest recomputed. The error is the
+    ``GovernedValidation`` of ``validate_governed_profile_package``: reason ``invalid_package`` with the specific
+    code in ``errors[0]``.
+    """
+
+    validation = validate_governed_profile_package(package.clone())
+    if not validation.valid:
+        return Err(validation)
+    mut evidence_positions: Dict[str, int] = {}
+    for position, record in enumerate(package.evidence):
+        evidence_positions[record.evidence_id.text()] = position
+    mut memory_positions: Dict[str, int] = {}
+    for position, atom in enumerate(package.memory):
+        memory_positions[atom.memory_id.text()] = position
+    return Ok(
+        AdmittedGovernedProfile(
+            _package=package,
+            _evidence_positions=evidence_positions,
+            _memory_positions=memory_positions,
+        ),
+    )

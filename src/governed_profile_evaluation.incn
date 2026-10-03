@@ -509,6 +509,25 @@ def evaluate_governed_profile(
     package_validation = validate_governed_profile_package(package)
     if not package_validation.valid:
         return rejected_without_receipt(proposal, package_validation.reason, None, [])
+    return evaluate_validated_package(package, request, proposal, observations, memory_record)
+
+
+pub def evaluate_validated_package(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observations: list[CommitteeObservation],
+    memory_record: Option[MemoryAdmissionRecord],
+) -> CompleteGovernedEvaluation:
+    """
+    Evaluate one proposal against a package that has already passed ``validate_governed_profile_package``.
+
+    Internal to the crate and not re-exported: the callers are ``evaluate_governed_profile``, which has just
+    validated ``package``, and ``AdmittedGovernedProfile``, which holds a package validated at admission and passes
+    it narrowed to the records the proposal can touch. Everything after package validation runs here, in the same
+    order for both.
+    """
+
     request_validation = validate_governed_request(request)
     if not request_validation.valid:
         return rejected_without_receipt(proposal, request_validation.reason, None, [])

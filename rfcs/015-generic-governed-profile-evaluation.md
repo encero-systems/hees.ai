@@ -162,8 +162,8 @@ Text lengths are measured with `len`. Blank means empty after trimming.
 | Field | Bound |
 | --- | --- |
 | `actions` | 1 to 16 |
-| `evidence` | 1 to 64 |
-| `memory` | 1 to 64 |
+| `evidence` | at least 1; no upper bound |
+| `memory` | at least 1; no upper bound |
 | `guided_material` | 0 to 16 |
 | `policy.required_roles` | 1 to 16 |
 | memory atom `evidence_ids` | 1 to 8 |
@@ -181,6 +181,26 @@ Text lengths are measured with `len`. Blank means empty after trimming.
 | action `boundary_text` | present, not blank, at most 4096 for a refusal or escalation; absent otherwise |
 | symbolic identifiers (package, action, evidence, memory, request, proposal, observation, role, ...) | canonical lowercase identifiers of at most 128 characters |
 | `package_revision`, guided `artifact_revision` | 1 to 64 lowercase revision characters starting with a digit |
+
+A package may declare any number of evidence records and memory atoms: a library is not bounded by a number. Every record, every relationship between records, and every proposal stays bounded, so the work one proposal causes does not grow with the package once the package is admitted (see [Admitting a package once](#admitting-a-package-once)).
+
+### Admitting a package once
+
+Validating a package and recomputing its digest is work proportional to the package, and nothing about one proposal can change its result. `evaluate_governed_profile_with_artifacts` still does that work on every call, because it is handed an untrusted package projection each time. A caller that evaluates many proposals against one package admits it instead:
+
+```incan
+admitted = admit_governed_profile_package(package)?
+proposal = admitted.propose(request, proposal_id, action_id, visible_output, evidence_ids, memory_ids, None, None, None)
+result = admitted.evaluate(request, proposal, observations)
+```
+
+- `admit_governed_profile_package(package)` runs `validate_governed_profile_package` once and returns an `AdmittedGovernedProfile`, or the rejecting `GovernedValidation` (reason `invalid_package`, the specific code in `errors[0]`). The type's fields are private; only a successful admission constructs one, so holding one is the proof that the package was validated.
+- `admitted.evaluate(request, proposal, observations)` returns exactly what `evaluate_governed_profile_with_artifacts(package, request, proposal, observations)` returns for the package it was admitted from, starting at step 2 of the evaluation order. `admitted.evaluate_in_memory_context(request, proposal, observations, memory_record)` corresponds to `evaluate_governed_profile_in_memory_context` the same way.
+- `admitted.propose(...)` and `admitted.observe(...)` construct the same proposal and committee observation as `governed_proposal` and `committee_observation`, reading only the admitted identity.
+- `admitted.profile_package_digest`, `admitted.evidence_count` and `admitted.memory_count` expose the verified package digest and the package's size.
+- `digest_governed_memory_provenance_for(package_id, domain_id, package_revision, profile_package_digest, atom)` gives the digest `digest_governed_memory_provenance(package, atom)` gives, from the stamped package's four identity fields alone, so stamping the atoms of a large package is linear in their number.
+
+Per proposal, an admitted profile resolves only the records that proposal can touch: the memory atoms and evidence records it nominates, the evidence those atoms rest on, and the memory and evidence of the package's guided material. Those records, in package order, together with the admitted package's header, digest, actions, guided material and policy, are what the evaluation sees. An identifier the package does not declare is absent from that set and is rejected as `unknown_evidence` or `unknown_memory`, as it is against the whole package. No package digest and no memory provenance digest is recomputed per proposal, and no record the proposal cannot touch is read.
 
 ### Committee assessment
 

@@ -23,9 +23,11 @@ All notable changes will be recorded here.
 - Governance-profile, architecture, testing, release, video, and Devpost documentation for the bounded Console profile and its permanent product direction.
 - Retrieval-result admission into governed memory context (the runtime part of RFC 003): `admit_memory_result` with its eight stages and 39 reasons, and in-memory declaration admission standing in for RFC 005 package admission. A declaration may hold any number of atoms; the interim resource envelope bounds each request (nominations, materialized context, text fields), not the package.
 - `evaluate_governed_profile_in_memory_context`: a profile proposal may nominate only memory that an accepted retrieval context materialized.
+- `admit_governed_profile_package` and `AdmittedGovernedProfile`: a profile package is validated and its digest recomputed once; `evaluate`, `evaluate_in_memory_context`, `propose` and `observe` on the admitted profile then cost the same per proposal whatever the size of the package, and return what the package-taking functions return. `digest_governed_memory_provenance_for` stamps a memory atom from the package identity alone.
 
 ### Changed
 
+- A governed profile package (Draft RFC 015) may declare any number of evidence records and memory atoms; the ceilings of 64 each are removed. A proposal may still nominate at most 64 of each, now named `MAX_PROPOSAL_EVIDENCE` and `MAX_PROPOSAL_MEMORY` (previously `MAX_GOVERNED_EVIDENCE` and `MAX_GOVERNED_MEMORY`). Package validation is linear in the number of records.
 - The repository builds with commit-pinned Incan `0.6.0-dev.6`. Manifests are named `loaf.toml` and the canonical lock is `oven.lock`. CI builds the pinned compiler from source.
 - Identifier and revision types expose their canonical text through one `.text()` method, supplied by the new `SymbolicIdentifier` and `DigestIdentifier` traits for nominal identifiers; the per-type `*_id_text`, `id_type_text`, `symbolic_id_type_text`, `digest_id_type_text`, `revision_text`, and `artifact_revision_text` functions and their root exports are removed.
 

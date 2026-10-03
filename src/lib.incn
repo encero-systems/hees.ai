@@ -182,6 +182,7 @@ pub from governed_memory_retrieval_declaration import (
 )
 pub from governed_memory_retrieval import admit_memory_result
 pub from governed_profile import (
+    AdmittedGovernedProfile,
     AdmittedGuidedMaterial,
     CommitteeObservation,
     CommitteeVerdict,
@@ -202,9 +203,11 @@ pub from governed_profile import (
     GovernedVisibleOutputSource,
     GuidedMaterial,
     GuidedTransition,
+    admit_governed_profile_package,
     bind_governed_request,
     committee_observation,
     digest_governed_memory_provenance,
+    digest_governed_memory_provenance_for,
     digest_governed_profile_package,
     digest_governed_proposal,
     evaluate_governed_profile_in_memory_context,

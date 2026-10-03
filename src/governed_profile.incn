@@ -5,12 +5,18 @@ Callers may supply package projections, requests, proposals, and committee obser
 relationships and returns one atomic terminal result. This surface does not author packages, retrieve memory, invoke
 models, or materialize guided payloads.
 
+A caller that evaluates many proposals against one package admits it once with ``admit_governed_profile_package`` and
+calls ``evaluate`` on the result; the package is then validated and its digest recomputed a single time, whatever its
+size. ``evaluate_governed_profile_with_artifacts`` keeps validating the package it is handed on every call.
+
 A caller builds a valid package in two phases: stamp ``profile_package_digest`` with ``digest_governed_profile_package``,
 then stamp each memory atom's ``provenance_digest`` with ``digest_governed_memory_provenance`` against the stamped
-package. The Content DNA and receipt types describe the JSON returned in ``content_dna_json`` and ``receipt_json``;
-Hees.ai never accepts them as input.
+package. For a package with many atoms, ``digest_governed_memory_provenance_for`` takes the stamped package's four
+identity fields instead of the package and gives the same digest. The Content DNA and receipt types describe the JSON
+returned in ``content_dna_json`` and ``receipt_json``; Hees.ai never accepts them as input.
 """
 
+pub from crate.governed_profile_admission import AdmittedGovernedProfile, admit_governed_profile_package
 pub from crate.governed_profile_evaluation import (
     evaluate_governed_profile_in_memory_context,
     evaluate_governed_profile_json,
@@ -20,6 +26,7 @@ pub from crate.governed_profile_identity import (
     bind_governed_request,
     committee_observation,
     digest_governed_memory_provenance,
+    digest_governed_memory_provenance_for,
     digest_governed_proposal,
     digest_governed_profile_package,
     governed_proposal,
