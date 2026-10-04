@@ -141,47 +141,18 @@ def validate_codebook(
     return Ok(None)
 
 
-pub def write_bytes(writer: _BytesIO, value: bytes, detail: str) -> Result[None, HyperquantError]:
-    """Write one raw section and translate stream failure into a codec error."""
-
-    written: Result[int, IoError] = writer.write(value)
-    written.map_err((_error) => failure(HyperquantErrorKind.NumericalFailure, detail))?
-    return Ok(None)
-
-
-pub def write_numeric(
-    writer: _BytesIO,
-    value: Union[u8, u16, u32, u64, f64],
-    detail: str,
-) -> Result[None, HyperquantError]:
+pub def written(encoded: Result[bytes, IoError], artifact: str) -> Result[bytes, HyperquantError]:
     """
-    Write one exact-width numeric value in canonical big-endian order.
+    Translate a failed write of one stored artifact into a codec error that names the artifact.
 
-    The closed union preserves the wire width selected by the caller while keeping IO failure translation in one
-    place. Call sites perform any integer resizing explicitly so a schema width cannot be inferred accidentally.
+    Every artifact is written to an in-memory stream by a function that returns ``Result[bytes, IoError]`` and
+    propagates each write with ``?``. The translation happens here, once per artifact, and the message is built only
+    when a write failed.
     """
 
-    match value:
-        u8(item) =>
-            return writer
-                .write(item, Endian.Big)
-                .map_err((_error) => failure(HyperquantErrorKind.NumericalFailure, detail))
-        u16(item) =>
-            return writer
-                .write(item, Endian.Big)
-                .map_err((_error) => failure(HyperquantErrorKind.NumericalFailure, detail))
-        u32(item) =>
-            return writer
-                .write(item, Endian.Big)
-                .map_err((_error) => failure(HyperquantErrorKind.NumericalFailure, detail))
-        u64(item) =>
-            return writer
-                .write(item, Endian.Big)
-                .map_err((_error) => failure(HyperquantErrorKind.NumericalFailure, detail))
-        f64(item) =>
-            return writer
-                .write(item, Endian.Big)
-                .map_err((_error) => failure(HyperquantErrorKind.NumericalFailure, detail))
+    return encoded.map_err(
+        (_error) => failure(HyperquantErrorKind.NumericalFailure, f"TurboQuant {artifact} could not be written"),
+    )
 
 
 pub def read_exact(reader: _BytesIO, count: int, detail: str) -> Result[bytes, HyperquantError]:
@@ -800,30 +771,43 @@ def encode_configuration(
     seed: u64,
     centroids: list[float],
 ) -> Result[bytes, HyperquantError]:
-    """
-    Encode the exact canonical numerical configuration.
+    """Encode the exact canonical numerical configuration."""
 
-    Each local exact-width value documents the binary schema before the union-dispatched writer serializes it.
+    profile_wire: u8 = profile_kind(profile)?.wrapping_resize()
+    bit_width_wire: u8 = bit_width.wrapping_resize()
+    dimensions_wire: u32 = dimensions.wrapping_resize()
+    return written(configuration_wire(profile_wire, bit_width_wire, dimensions_wire, seed, centroids), "configuration")
+
+
+def configuration_wire(
+    profile_wire: u8,
+    bit_width_wire: u8,
+    dimensions_wire: u32,
+    seed: u64,
+    centroids: list[float],
+) -> Result[bytes, IoError]:
+    """
+    Write the configuration's canonical big-endian bytes.
+
+    Each exact-width value documents the binary schema: the width of a field on the wire is the width of the value
+    written.
     """
 
     writer = BytesIO()
     major: u8 = 0
     minor: u8 = 1
-    profile_wire: u8 = profile_kind(profile)?.wrapping_resize()
-    bit_width_wire: u8 = bit_width.wrapping_resize()
-    dimensions_wire: u32 = dimensions.wrapping_resize()
     centroid_count_wire: u16 = len(centroids).wrapping_resize()
-    write_bytes(writer, b"HQTQCFG0", "TurboQuant configuration magic could not be written")?
-    write_numeric(writer, major, "TurboQuant configuration version could not be written")?
-    write_numeric(writer, minor, "TurboQuant configuration version could not be written")?
-    write_numeric(writer, profile_wire, "TurboQuant profile kind could not be written")?
-    write_numeric(writer, bit_width_wire, "TurboQuant bit width could not be written")?
-    write_numeric(writer, dimensions_wire, "TurboQuant dimensions could not be written")?
-    write_numeric(writer, seed, "TurboQuant seed could not be written")?
-    write_numeric(writer, centroid_count_wire, "TurboQuant centroid count could not be written")?
+    writer.write(b"HQTQCFG0")?
+    writer.write(major, Endian.Big)?
+    writer.write(minor, Endian.Big)?
+    writer.write(profile_wire, Endian.Big)?
+    writer.write(bit_width_wire, Endian.Big)?
+    writer.write(dimensions_wire, Endian.Big)?
+    writer.write(seed, Endian.Big)?
+    writer.write(centroid_count_wire, Endian.Big)?
     for centroid in centroids:
         centroid_wire: f64 = centroid
-        write_numeric(writer, centroid_wire, "TurboQuant centroid could not be written")?
+        writer.write(centroid_wire, Endian.Big)?
     return Ok(writer.into_bytes())
 
 
@@ -843,24 +827,51 @@ def encode_code(
     validated transform and codebook, while the final digest protects the complete physical representation.
     """
 
-    writer = BytesIO()
-    major: u8 = 0
-    minor: u8 = 1
     profile_wire: u8 = profile_kind(profile)?.wrapping_resize()
     bit_width_wire: u8 = bit_width.wrapping_resize()
     dimensions_wire: u32 = dimensions.wrapping_resize()
-    write_bytes(writer, b"HQTQCODE", "TurboQuant code magic could not be written")?
-    write_numeric(writer, major, "TurboQuant code version could not be written")?
-    write_numeric(writer, minor, "TurboQuant code version could not be written")?
-    write_numeric(writer, profile_wire, "TurboQuant code profile could not be written")?
-    write_numeric(writer, bit_width_wire, "TurboQuant code width could not be written")?
-    write_numeric(writer, dimensions_wire, "TurboQuant code dimensions could not be written")?
-    write_bytes(writer, configuration_digest, "TurboQuant configuration digest could not be written")?
-    write_bytes(writer, packed_indices, "TurboQuant MSE section could not be written")?
-    if profile == HyperquantProfile.TurboquantProduct01:
-        write_bytes(writer, packed_qjl, "TurboQuant QJL section could not be written")?
+    return written(
+        code_wire(
+            profile_wire,
+            bit_width_wire,
+            dimensions_wire,
+            configuration_digest,
+            packed_indices,
+            packed_qjl,
+            residual_norm,
+            profile == HyperquantProfile.TurboquantProduct01,
+        ),
+        "code",
+    )
+
+
+def code_wire(
+    profile_wire: u8,
+    bit_width_wire: u8,
+    dimensions_wire: u32,
+    configuration_digest: bytes,
+    packed_indices: bytes,
+    packed_qjl: bytes,
+    residual_norm: float,
+    has_product_sections: bool,
+) -> Result[bytes, IoError]:
+    """Write one code's canonical bytes: header, packed sections, and the digest of everything before it."""
+
+    writer = BytesIO()
+    major: u8 = 0
+    minor: u8 = 1
+    writer.write(b"HQTQCODE")?
+    writer.write(major, Endian.Big)?
+    writer.write(minor, Endian.Big)?
+    writer.write(profile_wire, Endian.Big)?
+    writer.write(bit_width_wire, Endian.Big)?
+    writer.write(dimensions_wire, Endian.Big)?
+    writer.write(configuration_digest)?
+    writer.write(packed_indices)?
+    if has_product_sections:
+        writer.write(packed_qjl)?
         residual_norm_wire: f64 = residual_norm
-        write_numeric(writer, residual_norm_wire, "TurboQuant residual norm could not be written")?
+        writer.write(residual_norm_wire, Endian.Big)?
     body = writer.into_bytes()
-    write_bytes(writer, sha256.digest(body), "TurboQuant envelope digest could not be written")?
+    writer.write(sha256.digest(body))?
     return Ok(writer.into_bytes())

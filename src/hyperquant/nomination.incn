@@ -10,7 +10,7 @@ memory.
 
 from std.encoding.hex import hexlify
 from std.hash import sha256
-from std.io import BytesIO
+from std.io import BytesIO, Endian, IoError
 from rust::std::string import FromUtf8Error, String as RustString
 from crate.hyperquant.exact import HyperquantEntry, stored_hyperquant_entry
 from crate.hyperquant.models import (
@@ -28,8 +28,7 @@ from crate.hyperquant.turboquant import (
     read_u16,
     read_u32,
     read_u8,
-    write_bytes,
-    write_numeric,
+    written,
 )
 from crate.hyperquant.vector import normalize_vector, relevance_basis_points
 from crate.identifiers import MemoryId, memory_id_from_text
@@ -157,22 +156,29 @@ pub class TurboquantIndex:
         Only the candidates of a query are ever reranked, so only their vectors need to be read.
         """
 
+        return written(self.vectors_wire(), "vectors")
+
+    def vectors_wire(self) -> Result[bytes, IoError]:
+        """Write the stored vectors' canonical bytes: header, coordinates, and the digest of everything before it."""
+
         writer = BytesIO()
         major: u8 = 0
         minor: u8 = 1
         dimensions_wire: u32 = self.dimensions().wrapping_resize()
         entry_count_wire: u32 = len(self._entries).wrapping_resize()
-        write_bytes(writer, b"HQTQVEC0", "TurboQuant vectors magic could not be written")?
-        write_numeric(writer, major, "TurboQuant vectors version could not be written")?
-        write_numeric(writer, minor, "TurboQuant vectors version could not be written")?
-        write_numeric(writer, dimensions_wire, "TurboQuant vectors dimensions could not be written")?
-        write_numeric(writer, entry_count_wire, "TurboQuant vectors entry count could not be written")?
+        writer.write(b"HQTQVEC0")?
+        writer.write(major, Endian.Big)?
+        writer.write(minor, Endian.Big)?
+        writer.write(dimensions_wire, Endian.Big)?
+        writer.write(entry_count_wire, Endian.Big)?
+        dimensions = self.dimensions()
         for position in range(len(self._entries)):
-            for dimension in range(self.dimensions()):
-                coordinate: f64 = self._entries[position].coordinate(dimension)
-                write_numeric(writer, coordinate, "TurboQuant vector could not be written")?
+            entry = self._entries[position]
+            for dimension in range(dimensions):
+                coordinate: f64 = entry.coordinate(dimension)
+                writer.write(coordinate, Endian.Big)?
         body = writer.into_bytes()
-        write_bytes(writer, sha256.digest(body), "TurboQuant vectors digest could not be written")?
+        writer.write(sha256.digest(body))?
         return Ok(writer.into_bytes())
 
     def codes_to_bytes(self, vectors_digest: bytes) -> Result[bytes, HyperquantError]:
@@ -186,6 +192,11 @@ pub class TurboquantIndex:
 
         if len(vectors_digest) != INDEX_DIGEST_BYTES:
             return Err(failure(HyperquantErrorKind.NonCanonicalPayload, "vectors digest must be a SHA-256 digest"))
+        return written(self.codes_wire(vectors_digest), "index")
+
+    def codes_wire(self, vectors_digest: bytes) -> Result[bytes, IoError]:
+        """Write the stored codes' canonical bytes: header, one record per entry, and the digest of everything before it."""
+
         writer = BytesIO()
         major: u8 = 0
         minor: u8 = 2
@@ -195,27 +206,27 @@ pub class TurboquantIndex:
         entry_count_wire: u32 = len(self._entries).wrapping_resize()
         fingerprint_bytes = RustString.from(self._fingerprint).into_bytes()
         fingerprint_length: u16 = len(fingerprint_bytes).wrapping_resize()
-        write_bytes(writer, b"HQTQIDX0", "TurboQuant index magic could not be written")?
-        write_numeric(writer, major, "TurboQuant index version could not be written")?
-        write_numeric(writer, minor, "TurboQuant index version could not be written")?
-        write_numeric(writer, configuration_length, "TurboQuant index configuration length could not be written")?
-        write_bytes(writer, configuration_bytes, "TurboQuant index configuration could not be written")?
-        write_numeric(writer, dimensions_wire, "TurboQuant index dimensions could not be written")?
-        write_numeric(writer, entry_count_wire, "TurboQuant index entry count could not be written")?
-        write_numeric(writer, fingerprint_length, "TurboQuant index fingerprint length could not be written")?
-        write_bytes(writer, fingerprint_bytes, "TurboQuant index fingerprint could not be written")?
-        write_bytes(writer, vectors_digest, "TurboQuant index vectors digest could not be written")?
+        writer.write(b"HQTQIDX0")?
+        writer.write(major, Endian.Big)?
+        writer.write(minor, Endian.Big)?
+        writer.write(configuration_length, Endian.Big)?
+        writer.write(configuration_bytes)?
+        writer.write(dimensions_wire, Endian.Big)?
+        writer.write(entry_count_wire, Endian.Big)?
+        writer.write(fingerprint_length, Endian.Big)?
+        writer.write(fingerprint_bytes)?
+        writer.write(vectors_digest)?
         for position in range(len(self._entries)):
             identifier = RustString.from(self._entries[position].memory_id.text()).into_bytes()
             identifier_length: u16 = len(identifier).wrapping_resize()
             code_bytes = self._codes[position].to_bytes()
             code_length: u32 = len(code_bytes).wrapping_resize()
-            write_numeric(writer, identifier_length, "TurboQuant index identifier length could not be written")?
-            write_bytes(writer, identifier, "TurboQuant index identifier could not be written")?
-            write_numeric(writer, code_length, "TurboQuant index code length could not be written")?
-            write_bytes(writer, code_bytes, "TurboQuant index code could not be written")?
+            writer.write(identifier_length, Endian.Big)?
+            writer.write(identifier)?
+            writer.write(code_length, Endian.Big)?
+            writer.write(code_bytes)?
         body = writer.into_bytes()
-        write_bytes(writer, sha256.digest(body), "TurboQuant index digest could not be written")?
+        writer.write(sha256.digest(body))?
         return Ok(writer.into_bytes())
 
     def nominate(
