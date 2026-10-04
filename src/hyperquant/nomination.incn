@@ -28,6 +28,7 @@ from crate.hyperquant.turboquant import (
     read_u16,
     read_u32,
     read_u8,
+    StoredArtifact,
     written,
 )
 from crate.hyperquant.vector import normalize_vector, relevance_basis_points
@@ -156,7 +157,7 @@ pub class TurboquantIndex:
         Only the candidates of a query are ever reranked, so only their vectors need to be read.
         """
 
-        return written(self.vectors_wire(), "vectors")
+        return written(self.vectors_wire(), StoredArtifact.Vectors)
 
     def vectors_wire(self) -> Result[bytes, IoError]:
         """Write the stored vectors' canonical bytes: header, coordinates, and the digest of everything before it."""
@@ -192,7 +193,7 @@ pub class TurboquantIndex:
 
         if len(vectors_digest) != INDEX_DIGEST_BYTES:
             return Err(failure(HyperquantErrorKind.NonCanonicalPayload, "vectors digest must be a SHA-256 digest"))
-        return written(self.codes_wire(vectors_digest), "index")
+        return written(self.codes_wire(vectors_digest), StoredArtifact.Index)
 
     def codes_wire(self, vectors_digest: bytes) -> Result[bytes, IoError]:
         """Write the stored codes' canonical bytes: header, one record per entry, and the digest of everything before it."""
@@ -548,35 +549,35 @@ pub def turboquant_code_index_from_bytes(
     """
 
     if len(payload) < INDEX_HEADER_BYTES + INDEX_DIGEST_BYTES:
-        return Err(failure(HyperquantErrorKind.TruncatedPayload, "TurboQuant index is truncated"))
+        return Err(failure(HyperquantErrorKind.TruncatedPayload, "truncated TurboQuant index"))
     body_bytes = len(payload) - INDEX_DIGEST_BYTES
     if payload[body_bytes:] != sha256.digest(payload[:body_bytes]):
         return Err(failure(HyperquantErrorKind.IntegrityMismatch, "TurboQuant index digest does not match its content"))
 
     reader = BytesIO(payload)
-    if read_exact(reader, 8, "TurboQuant index magic is truncated")? != b"HQTQIDX0":
+    if read_exact(reader, 8, StoredArtifact.Index)? != b"HQTQIDX0":
         return Err(failure(HyperquantErrorKind.NonCanonicalPayload, "invalid TurboQuant index magic"))
-    major = read_u8(reader, "TurboQuant index version is truncated")?
-    minor = read_u8(reader, "TurboQuant index version is truncated")?
+    major = read_u8(reader, StoredArtifact.Index)?
+    minor = read_u8(reader, StoredArtifact.Index)?
     if major != 0 or minor != 2:
         return Err(failure(HyperquantErrorKind.UnsupportedVersion, "unsupported TurboQuant index version"))
-    configuration_length = read_u32(reader, "TurboQuant index configuration length is truncated")?
-    if read_exact(reader, configuration_length, "TurboQuant index configuration is truncated")? != configuration.to_bytes():
+    configuration_length = read_u32(reader, StoredArtifact.Index)?
+    if read_exact(reader, configuration_length, StoredArtifact.Index)? != configuration.to_bytes():
         return Err(
             failure(
                 HyperquantErrorKind.ConfigurationMismatch,
                 "TurboQuant index was built with a different configuration",
             ),
         )
-    dimensions = read_u32(reader, "TurboQuant index dimensions are truncated")?
+    dimensions = read_u32(reader, StoredArtifact.Index)?
     if dimensions != configuration.dimensions():
         return Err(failure(HyperquantErrorKind.DimensionMismatch, "TurboQuant index dimension does not match"))
-    entry_count = read_u32(reader, "TurboQuant index entry count is truncated")?
+    entry_count = read_u32(reader, StoredArtifact.Index)?
     if entry_count == 0:
         return Err(failure(HyperquantErrorKind.EmptyIndex, "TurboQuant index must contain at least one entry"))
-    fingerprint_length = read_u16(reader, "TurboQuant index fingerprint length is truncated")?
-    stored_fingerprint = read_exact(reader, fingerprint_length, "TurboQuant index fingerprint is truncated")?
-    vectors_digest = read_exact(reader, INDEX_DIGEST_BYTES, "TurboQuant index vectors digest is truncated")?
+    fingerprint_length = read_u16(reader, StoredArtifact.Index)?
+    stored_fingerprint = read_exact(reader, fingerprint_length, StoredArtifact.Index)?
+    vectors_digest = read_exact(reader, INDEX_DIGEST_BYTES, StoredArtifact.Index)?
     mut consumed = INDEX_HEADER_BYTES + configuration_length + 10 + fingerprint_length + INDEX_DIGEST_BYTES
 
     mut canonical_ids: dict[str, bool] = {}
@@ -584,8 +585,8 @@ pub def turboquant_code_index_from_bytes(
     mut codes: list[TurboquantCode] = []
     mut identity_lines: list[str] = [configuration.configuration_fingerprint()]
     for _position in range(entry_count):
-        identifier_length = read_u16(reader, "TurboQuant index identifier length is truncated")?
-        identifier_bytes = read_exact(reader, identifier_length, "TurboQuant index identifier is truncated")?
+        identifier_length = read_u16(reader, StoredArtifact.Index)?
+        identifier_bytes = read_exact(reader, identifier_length, StoredArtifact.Index)?
         decoded: Result[str, FromUtf8Error] = RustString.from_utf8(identifier_bytes)
         canonical_id = decoded.map_err(
             (_error) => failure(HyperquantErrorKind.NonCanonicalPayload, "index identifier is not text"),
@@ -598,8 +599,8 @@ pub def turboquant_code_index_from_bytes(
         memory_id = memory_id_from_text(canonical_id).map_err(
             (_error) => failure(HyperquantErrorKind.NonCanonicalPayload, "index identifier is not canonical"),
         )?
-        code_length = read_u32(reader, "TurboQuant index code length is truncated")?
-        code = configuration.decode(read_exact(reader, code_length, "TurboQuant index code is truncated")?)?
+        code_length = read_u32(reader, StoredArtifact.Index)?
+        code = configuration.decode(read_exact(reader, code_length, StoredArtifact.Index)?)?
         consumed += 6 + identifier_length + code_length
         memory_ids.append(memory_id)
         identity_lines.append(f"{canonical_id} {code.content_fingerprint()}")
@@ -632,7 +633,7 @@ pub def stored_vector_from_bytes(payload: bytes, dimensions: int) -> Result[list
     reader = BytesIO(payload)
     mut values: list[float] = []
     for _dimension in range(dimensions):
-        values.append(read_f64(reader, "stored vector is truncated")?)
+        values.append(read_f64(reader, StoredArtifact.Vectors)?)
     return Ok(values)
 
 

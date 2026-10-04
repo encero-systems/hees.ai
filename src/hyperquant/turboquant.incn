@@ -54,6 +54,36 @@ def io_failure(detail: str) -> HyperquantError:
     return failure(HyperquantErrorKind.TruncatedPayload, detail)
 
 
+pub enum StoredArtifact:
+    """
+    The stored binary forms of this codec.
+
+    A read or write names the artifact it belongs to with one of these instead of a message, so nothing is built per
+    call; the message is built from the artifact only when a read or write fails.
+    """
+
+    Configuration
+    Code
+    Index
+    Vectors
+
+
+def artifact_label(artifact: StoredArtifact) -> str:
+    """Return the artifact's name as it appears in an error detail."""
+
+    return match artifact:
+        StoredArtifact.Configuration => "configuration"
+        StoredArtifact.Code => "code"
+        StoredArtifact.Index => "index"
+        StoredArtifact.Vectors => "vectors"
+
+
+def truncated(artifact: StoredArtifact) -> HyperquantError:
+    """Construct the error for an artifact that ended before a field it must contain."""
+
+    return io_failure(f"truncated TurboQuant {artifact_label(artifact)}")
+
+
 def profile_kind(profile: HyperquantProfile) -> Result[int, HyperquantError]:
     """Map a supported profile to its canonical one-byte wire kind."""
 
@@ -141,7 +171,7 @@ def validate_codebook(
     return Ok(None)
 
 
-pub def written(encoded: Result[bytes, IoError], artifact: str) -> Result[bytes, HyperquantError]:
+pub def written(encoded: Result[bytes, IoError], artifact: StoredArtifact) -> Result[bytes, HyperquantError]:
     """
     Translate a failed write of one stored artifact into a codec error that names the artifact.
 
@@ -151,15 +181,18 @@ pub def written(encoded: Result[bytes, IoError], artifact: str) -> Result[bytes,
     """
 
     return encoded.map_err(
-        (_error) => failure(HyperquantErrorKind.NumericalFailure, f"TurboQuant {artifact} could not be written"),
+        (_error) => failure(
+            HyperquantErrorKind.NumericalFailure,
+            f"TurboQuant {artifact_label(artifact)} could not be written",
+        ),
     )
 
 
-pub def read_exact(reader: _BytesIO, count: int, detail: str) -> Result[bytes, HyperquantError]:
+pub def read_exact(reader: _BytesIO, count: int, artifact: StoredArtifact) -> Result[bytes, HyperquantError]:
     """Read an exact bounded raw section or return a truncated-payload error."""
 
     read_value: Result[bytes, IoError] = reader.read_exact(count)
-    return read_value.map_err((_error) => io_failure(detail))
+    return read_value.map_err((_error) => truncated(artifact))
 
 
 def read_raw_u8(reader: _BytesIO) -> Result[u8, IoError]:
@@ -173,10 +206,10 @@ def read_raw_u8(reader: _BytesIO) -> Result[u8, IoError]:
     return Ok(value)
 
 
-pub def read_u8(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
+pub def read_u8(reader: _BytesIO, artifact: StoredArtifact) -> Result[int, HyperquantError]:
     """Read one unsigned byte, translate IO failure, and widen it for codec arithmetic."""
 
-    value = read_raw_u8(reader).map_err((_error) => io_failure(detail))?
+    value = read_raw_u8(reader).map_err((_error) => truncated(artifact))?
     return Ok(int(value))
 
 
@@ -191,10 +224,10 @@ def read_raw_u16(reader: _BytesIO) -> Result[u16, IoError]:
     return Ok(value)
 
 
-pub def read_u16(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
+pub def read_u16(reader: _BytesIO, artifact: StoredArtifact) -> Result[int, HyperquantError]:
     """Read one big-endian unsigned 16-bit value, translate IO failure, and widen it."""
 
-    value = read_raw_u16(reader).map_err((_error) => io_failure(detail))?
+    value = read_raw_u16(reader).map_err((_error) => truncated(artifact))?
     return Ok(int(value))
 
 
@@ -210,10 +243,10 @@ def read_raw_u32(reader: _BytesIO) -> Result[u32, IoError]:
     return Ok(value)
 
 
-pub def read_u32(reader: _BytesIO, detail: str) -> Result[int, HyperquantError]:
+pub def read_u32(reader: _BytesIO, artifact: StoredArtifact) -> Result[int, HyperquantError]:
     """Read one big-endian unsigned 32-bit value, translate IO failure, and widen it."""
 
-    value = read_raw_u32(reader).map_err((_error) => io_failure(detail))?
+    value = read_raw_u32(reader).map_err((_error) => truncated(artifact))?
     return Ok(int(value))
 
 
@@ -229,10 +262,10 @@ def read_raw_u64(reader: _BytesIO) -> Result[u64, IoError]:
     return Ok(value)
 
 
-def read_u64(reader: _BytesIO, detail: str) -> Result[u64, HyperquantError]:
+def read_u64(reader: _BytesIO, artifact: StoredArtifact) -> Result[u64, HyperquantError]:
     """Read one big-endian unsigned 64-bit value and translate IO failure."""
 
-    return read_raw_u64(reader).map_err((_error) => io_failure(detail))
+    return read_raw_u64(reader).map_err((_error) => truncated(artifact))
 
 
 def read_raw_f64(reader: _BytesIO) -> Result[f64, IoError]:
@@ -246,10 +279,10 @@ def read_raw_f64(reader: _BytesIO) -> Result[f64, IoError]:
     return Ok(value)
 
 
-pub def read_f64(reader: _BytesIO, detail: str) -> Result[float, HyperquantError]:
+pub def read_f64(reader: _BytesIO, artifact: StoredArtifact) -> Result[float, HyperquantError]:
     """Read one big-endian IEEE-754 binary64 value and translate IO failure."""
 
-    return read_raw_f64(reader).map_err((_error) => io_failure(detail))
+    return read_raw_f64(reader).map_err((_error) => truncated(artifact))
 
 
 def canonical_projection_sign(value: float) -> int:
@@ -438,21 +471,21 @@ pub class TurboquantConfiguration:
         if len(payload) < CONFIGURATION_HEADER_BYTES:
             return Err(io_failure("TurboQuant configuration is truncated"))
         reader = BytesIO(payload)
-        if read_exact(reader, 8, "TurboQuant configuration magic is truncated")? != b"HQTQCFG0":
+        if read_exact(reader, 8, StoredArtifact.Configuration)? != b"HQTQCFG0":
             return Err(failure(HyperquantErrorKind.NonCanonicalPayload, "invalid TurboQuant configuration magic"))
-        major = read_u8(reader, "TurboQuant configuration version is truncated")?
-        minor = read_u8(reader, "TurboQuant configuration version is truncated")?
+        major = read_u8(reader, StoredArtifact.Configuration)?
+        minor = read_u8(reader, StoredArtifact.Configuration)?
         if major != 0 or minor != 1:
             return Err(failure(HyperquantErrorKind.UnsupportedVersion, "unsupported TurboQuant configuration version"))
-        profile = profile_from_kind(read_u8(reader, "TurboQuant profile kind is truncated")?)?
-        bit_width = read_u8(reader, "TurboQuant bit width is truncated")?
+        profile = profile_from_kind(read_u8(reader, StoredArtifact.Configuration)?)?
+        bit_width = read_u8(reader, StoredArtifact.Configuration)?
         validate_bit_width(bit_width)?
 
         # Dimensions and codebook cardinality are untrusted wire values. Bound both before reading the codebook.
-        dimensions = read_u32(reader, "TurboQuant dimensions are truncated")?
+        dimensions = read_u32(reader, StoredArtifact.Configuration)?
         validate_dimensions(dimensions)?
-        seed = read_u64(reader, "TurboQuant seed is truncated")?
-        centroid_count = read_u16(reader, "TurboQuant centroid count is truncated")?
+        seed = read_u64(reader, StoredArtifact.Configuration)?
+        centroid_count = read_u16(reader, StoredArtifact.Configuration)?
         expected_count = expected_centroid_count(profile, bit_width)
         if centroid_count != expected_count or centroid_count <= 0 or centroid_count > MAX_CENTROIDS:
             return Err(failure(HyperquantErrorKind.InvalidCodebook, "TurboQuant centroid count is invalid"))
@@ -465,7 +498,7 @@ pub class TurboquantConfiguration:
         # Decode only the exact bounded centroid section described by the validated header.
         mut centroids: list[float] = []
         for _index in range(centroid_count):
-            centroids.append(read_f64(reader, "TurboQuant centroid section is truncated")?)
+            centroids.append(read_f64(reader, StoredArtifact.Configuration)?)
 
         # Reconstructing through the ordinary constructor reuses all semantic validation and freezes one encoding.
         configuration = TurboquantConfiguration.create(profile, dimensions, bit_width, seed, centroids)?
@@ -589,16 +622,16 @@ pub class TurboquantConfiguration:
             return Err(io_failure("TurboQuant code envelope is truncated"))
 
         reader = BytesIO(payload)
-        if read_exact(reader, 8, "TurboQuant code magic is truncated")? != b"HQTQCODE":
+        if read_exact(reader, 8, StoredArtifact.Code)? != b"HQTQCODE":
             return Err(failure(HyperquantErrorKind.NonCanonicalPayload, "invalid TurboQuant code magic"))
-        major = read_u8(reader, "TurboQuant code version is truncated")?
-        minor = read_u8(reader, "TurboQuant code version is truncated")?
+        major = read_u8(reader, StoredArtifact.Code)?
+        minor = read_u8(reader, StoredArtifact.Code)?
         if major != 0 or minor != 1:
             return Err(failure(HyperquantErrorKind.UnsupportedVersion, "unsupported TurboQuant code version"))
-        profile = profile_from_kind(read_u8(reader, "TurboQuant code profile is truncated")?)?
-        bit_width = read_u8(reader, "TurboQuant code width is truncated")?
-        dimensions = read_u32(reader, "TurboQuant code dimensions are truncated")?
-        configuration_digest = read_exact(reader, DIGEST_BYTES, "TurboQuant configuration digest is truncated")?
+        profile = profile_from_kind(read_u8(reader, StoredArtifact.Code)?)?
+        bit_width = read_u8(reader, StoredArtifact.Code)?
+        dimensions = read_u32(reader, StoredArtifact.Code)?
+        configuration_digest = read_exact(reader, DIGEST_BYTES, StoredArtifact.Code)?
         if (
             profile != self._profile
             or bit_width != self._bit_width
@@ -630,7 +663,7 @@ pub class TurboquantConfiguration:
             return Err(failure(HyperquantErrorKind.IntegrityMismatch, "TurboQuant code envelope digest does not match"))
 
         # Decode the MSE section and prove every index is valid for this configuration's scalar codebook.
-        packed_indices = read_exact(reader, mse_bytes, "TurboQuant MSE section is truncated")?
+        packed_indices = read_exact(reader, mse_bytes, StoredArtifact.Code)?
         mut indices = [0 for _dimension in range(self._dimensions)]
         if mse_width > 0:
             indices = unpack_unsigned_msb(packed_indices, self._dimensions, mse_width)?
@@ -645,7 +678,7 @@ pub class TurboquantConfiguration:
         mut signs: list[int] = []
         mut residual_norm = 0.0
         if self._profile == HyperquantProfile.TurboquantProduct01:
-            packed_qjl = read_exact(reader, qjl_bytes, "TurboQuant QJL section is truncated")?
+            packed_qjl = read_exact(reader, qjl_bytes, StoredArtifact.Code)?
             mut decoded_signs: list[int] = []
             for bit in unpack_unsigned_msb(packed_qjl, self._dimensions, 1)?:
                 mut sign = -1
@@ -653,7 +686,7 @@ pub class TurboquantConfiguration:
                     sign = 1
                 decoded_signs.append(sign)
             signs = decoded_signs
-            residual_norm = read_f64(reader, "TurboQuant residual norm is truncated")?
+            residual_norm = read_f64(reader, StoredArtifact.Code)?
             if not residual_norm.is_finite() or residual_norm < 0.0:
                 return Err(
                     failure(
@@ -776,7 +809,10 @@ def encode_configuration(
     profile_wire: u8 = profile_kind(profile)?.wrapping_resize()
     bit_width_wire: u8 = bit_width.wrapping_resize()
     dimensions_wire: u32 = dimensions.wrapping_resize()
-    return written(configuration_wire(profile_wire, bit_width_wire, dimensions_wire, seed, centroids), "configuration")
+    return written(
+        configuration_wire(profile_wire, bit_width_wire, dimensions_wire, seed, centroids),
+        StoredArtifact.Configuration,
+    )
 
 
 def configuration_wire(
@@ -841,7 +877,7 @@ def encode_code(
             residual_norm,
             profile == HyperquantProfile.TurboquantProduct01,
         ),
-        "code",
+        StoredArtifact.Code,
     )
 
 
