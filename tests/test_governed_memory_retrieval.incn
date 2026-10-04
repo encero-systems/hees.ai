@@ -1,10 +1,10 @@
 """Contract tests for admission of retrieval provider results into governed memory context (RFC 003)."""
 
 from std.testing import assert_eq, assert_is_none, assert_is_ok, assert_is_some
-from crate.governed_memory_retrieval import admit_memory_result
-from crate.governed_memory_retrieval_declaration import (
+from crate.governed_memory_retrieval import (
     AdmittedMemoryPackage,
     admit_memory_declaration,
+    admit_memory_result,
     admit_package_without_memory,
 )
 from crate.governed_memory_retrieval_models import (
@@ -738,3 +738,47 @@ def test_a_package_may_hold_any_number_of_atoms_while_each_request_stays_bounded
 
     unknown = admit_memory_result(Some(package), large_request(package), complete_result(["library_atom_5000"]))
     assert_eq(unknown.envelope_admission, MemoryEnvelopeAdmission.Rejected)
+
+
+def test_an_admitted_package_admits_each_result_through_its_index() -> None:
+    package = assert_is_ok(admit_memory_declaration(many_atoms_declaration(5000)))
+    assert_eq(package.atom_count, 5000)
+    bound = large_request(package)
+
+    nominated = complete_result(["library_atom_4999", "library_atom_0", "library_atom_2500"])
+    for _round in range(25):
+        assert_eq(package.admit_result(bound.clone(), nominated.clone()).reason, "accepted_complete")
+    accepted = package.admit_result(bound.clone(), nominated.clone())
+    assert_eq(
+        [materialized.atom.id for materialized in accepted.context.atoms],
+        ["library_atom_4999", "library_atom_0", "library_atom_2500"],
+    )
+    assert_eq(accepted.to_json(), admit_memory_result(Some(package), bound, nominated).to_json())
+
+    unknown = complete_result(["library_atom_0", "library_atom_5000"])
+    rejected = package.admit_result(bound.clone(), unknown.clone())
+    assert_eq(rejected.stage, MemoryAdmissionStage.Atoms)
+    assert_eq(rejected.reason, "unknown_memory_id")
+    assert_eq(len(rejected.context.atoms), 0)
+    assert_eq(rejected.to_json(), admit_memory_result(Some(package), bound, unknown).to_json())
+    assert_eq(assert_is_some(rejected.normalized).evaluated_package == package.identity, true)
+
+    mut other_binding = complete_result(["library_atom_0"])
+    other_binding.binding.index_fingerprint = f"{SOURCE_FINGERPRINT}"
+    unapproved = package.admit_result(bound.clone(), other_binding)
+    assert_eq(unapproved.stage, MemoryAdmissionStage.Provider)
+    assert_eq(unapproved.reason, "provider_binding_not_admitted")
+
+    repeated = package.admit_result(bound.clone(), complete_result(["library_atom_7", "library_atom_7"]))
+    assert_eq(repeated.stage, MemoryAdmissionStage.Nominations)
+    assert_eq(repeated.reason, "duplicate_nomination_id")
+
+    without_memory = assert_is_ok(
+        admit_package_without_memory("lantern_path_lessons", "fictional_lesson_support", "1.0"),
+    )
+    assert_eq(without_memory.atom_count, 0)
+    assert_pre_normalization(
+        without_memory.admit_result(request(), eligible_result()),
+        MemoryAdmissionStage.Package,
+        "memory_registry_not_admitted",
+    )

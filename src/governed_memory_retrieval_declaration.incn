@@ -1,10 +1,11 @@
 """
-In-memory admission of a governed-memory declaration (RFC 003 package stage).
+In-memory validation of a governed-memory declaration (RFC 003 package stage).
 
-RFC 005 owns package artifact admission. Until it is implemented, ``admit_memory_declaration`` is the only way to
-obtain an ``AdmittedMemoryPackage``: it validates the registry and atom payload rules RFC 003 defines and binds the
-declaration to a trusted identity. It does not read serialized members, and its validation reasons are interim: they
-are package-admission reasons that RFC 005 will own, not RFC 003 runtime admission reasons.
+RFC 005 owns package artifact admission. Until it is implemented, ``validate_memory_declaration`` checks the
+registry and atom payload rules RFC 003 defines, and ``admit_memory_declaration`` in ``governed_memory_retrieval``
+turns a valid declaration into an ``AdmittedMemoryPackage``. Validation does not read serialized members, and its
+reasons are interim: they are package-admission reasons that RFC 005 will own, not RFC 003 runtime admission
+reasons.
 """
 
 from rust::std::string import String as RustString
@@ -14,7 +15,6 @@ from crate.governed_memory_retrieval_models import (
     MAX_MEMORY_INTEGER,
     MAX_MEMORY_SOURCE_REF_BYTES,
     MAX_MEMORY_VERSION_BYTES,
-    AdmittedMemoryPackageIdentity,
     GovernedMemoryAtom,
     GovernedMemoryDeclaration,
     MemoryDeclarationValidation,
@@ -22,55 +22,9 @@ from crate.governed_memory_retrieval_models import (
     MemoryValidity,
     MemoryValidityMode,
 )
-from crate.identifiers import DigestIdType, identifier_text_is_safe
-from crate.witness import digest_tagged_json
+from crate.identifiers import identifier_text_is_safe
 
-const MEMORY_DECLARATION_TYPE_TAG: str = "hees.ai/memory-declaration/v0"
-const PACKAGE_WITHOUT_MEMORY_TYPE_TAG: str = "hees.ai/package-without-memory/v0"
-const MEMORY_ADMISSION_BINDING_TYPE_TAG: str = "hees.ai/memory-admission-binding/v0"
 const FINGERPRINT_LENGTH: int = 64
-
-
-@derive(Clone)
-pub class AdmittedMemoryPackage:
-    """
-    Opaque result of package admission, standing in for the RFC 005 admitted package.
-
-    Its fields are private, so only this module can construct one: ``admit_memory_declaration`` for a package that
-    declares governed memory, and ``admit_package_without_memory`` for one that does not.
-    """
-
-    _identity: AdmittedMemoryPackageIdentity
-    _declaration: Option[GovernedMemoryDeclaration]
-
-    pub property identity -> AdmittedMemoryPackageIdentity:
-        """Return the trusted identity established by admission."""
-
-        return self._identity
-
-    pub property declaration -> Option[GovernedMemoryDeclaration]:
-        """Return the admitted governed-memory declaration, or None when the package declares none."""
-
-        return self._declaration
-
-
-@derive(Clone, json)
-model PackageIdentityProjection:
-    """The package fields a package without governed memory is identified by."""
-
-    package_id: str
-    domain_id: str
-    package_revision: str
-
-
-@derive(Clone, json)
-model AdmissionBindingProjection:
-    """The identity fields the admission binding digest covers."""
-
-    package_id: str
-    domain_id: str
-    package_revision: str
-    package_semantic_identity: DigestIdType
 
 
 def valid() -> MemoryDeclarationValidation:
@@ -363,69 +317,3 @@ pub def validate_memory_declaration(declaration: GovernedMemoryDeclaration) -> M
             Some(reason) => return invalid(reason)
             None => pass
     return valid()
-
-
-def admission_binding(package_id: str, domain_id: str, package_revision: str, semantic: DigestIdType) -> DigestIdType:
-    """Return the interim admission-binding digest over the package identity and its semantic identity."""
-
-    projection = AdmissionBindingProjection(
-        package_id=package_id,
-        domain_id=domain_id,
-        package_revision=package_revision,
-        package_semantic_identity=semantic,
-    )
-    return digest_tagged_json(MEMORY_ADMISSION_BINDING_TYPE_TAG, projection.to_json()).unwrap()
-
-
-pub def admit_memory_declaration(declaration: GovernedMemoryDeclaration) -> Result[AdmittedMemoryPackage, str]:
-    """
-    Admit a package that declares governed memory, or return the ``validate_memory_declaration`` reason.
-
-    The returned package carries the declaration unchanged and a trusted identity. The semantic identity is the
-    type-tagged SHA-256 digest of the declaration's JSON, and the admission binding is the type-tagged digest of the
-    identity fields; both are interim and do not conform to RFC 011. Serializing a derived ``json`` model always
-    yields valid JSON, so the ``unwrap`` calls cannot fail.
-    """
-
-    validation = validate_memory_declaration(declaration)
-    if not validation.valid:
-        return Err(validation.reason)
-    semantic = digest_tagged_json(MEMORY_DECLARATION_TYPE_TAG, declaration.to_json()).unwrap()
-    identity = AdmittedMemoryPackageIdentity(
-        package_id=declaration.package_id,
-        domain_id=declaration.domain_id,
-        package_revision=declaration.package_revision,
-        package_semantic_identity=semantic,
-        package_admission_binding=admission_binding(
-            declaration.package_id,
-            declaration.domain_id,
-            declaration.package_revision,
-            semantic,
-        ),
-    )
-    return Ok(AdmittedMemoryPackage(_identity=identity, _declaration=Some(declaration)))
-
-
-pub def admit_package_without_memory(
-    package_id: str,
-    domain_id: str,
-    package_revision: str,
-) -> Result[AdmittedMemoryPackage, str]:
-    """
-    Admit a package that declares no governed memory, or return ``invalid_declaration_identity``.
-
-    Retrieval admission against such a package is rejected with ``memory_registry_not_admitted``.
-    """
-
-    if not package_identity_text_is_safe(package_id, domain_id, package_revision):
-        return Err("invalid_declaration_identity")
-    projection = PackageIdentityProjection(package_id=package_id, domain_id=domain_id, package_revision=package_revision)
-    semantic = digest_tagged_json(PACKAGE_WITHOUT_MEMORY_TYPE_TAG, projection.to_json()).unwrap()
-    identity = AdmittedMemoryPackageIdentity(
-        package_id=package_id,
-        domain_id=domain_id,
-        package_revision=package_revision,
-        package_semantic_identity=semantic,
-        package_admission_binding=admission_binding(package_id, domain_id, package_revision, semantic),
-    )
-    return Ok(AdmittedMemoryPackage(_identity=identity, _declaration=None))

@@ -37,8 +37,7 @@ from crate.governed_profile import (
     validate_governed_profile_package,
 )
 from crate.content_dna import digest_canonical_json
-from crate.governed_memory_retrieval import admit_memory_result
-from crate.governed_memory_retrieval_declaration import AdmittedMemoryPackage, admit_memory_declaration
+from crate.governed_memory_retrieval import AdmittedMemoryPackage, admit_memory_declaration, admit_memory_result
 from crate.governed_memory_retrieval_models import (
     GovernedMemoryAtom,
     GovernedMemoryDeclaration,

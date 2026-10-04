@@ -1,11 +1,8 @@
 """Contract tests for in-memory admission of a governed-memory declaration."""
 
 from std.testing import assert_eq, assert_is_err, assert_is_none, assert_is_ok, assert_is_some
-from crate.governed_memory_retrieval_declaration import (
-    admit_memory_declaration,
-    admit_package_without_memory,
-    validate_memory_declaration,
-)
+from crate.governed_memory_retrieval import admit_memory_declaration, admit_package_without_memory
+from crate.governed_memory_retrieval_declaration import validate_memory_declaration
 from crate.governed_memory_retrieval_models import (
     GovernedMemoryAtom,
     GovernedMemoryDeclaration,

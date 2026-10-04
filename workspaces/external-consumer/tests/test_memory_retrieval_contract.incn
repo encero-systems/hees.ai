@@ -124,6 +124,18 @@ def test_external_dependency_can_admit_a_retrieval_result() -> None:
     assert_eq(assert_is_some(record.normalized).materialized_memory_ids, ["ember_opening"])
 
 
+def test_external_dependency_can_admit_many_results_against_one_held_package() -> None:
+    package = admitted_package()
+    for _round in range(3):
+        record = package.admit_result(request(package), nominating("ember_opening"))
+        assert_eq(record.reason, "accepted_complete")
+        assert_eq(assert_is_some(record.normalized).materialized_memory_ids, ["ember_opening"])
+    assert_eq(
+        package.admit_result(request(package), nominating("ember_opening")).to_json(),
+        admit_memory_result(Some(package), request(package), nominating("ember_opening")).to_json(),
+    )
+
+
 def test_external_dependency_sees_an_unreviewed_atom_rejected() -> None:
     package = admitted_package()
     record = admit_memory_result(Some(package), request(package), nominating("ember_draft"))

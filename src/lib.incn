@@ -167,13 +167,13 @@ pub from governed_memory_retrieval_models import (
     MemoryValidityMode,
     NormalizedMemoryAdmission,
 )
-pub from governed_memory_retrieval_declaration import (
+pub from governed_memory_retrieval_declaration import validate_memory_declaration
+pub from governed_memory_retrieval import (
     AdmittedMemoryPackage,
     admit_memory_declaration,
+    admit_memory_result,
     admit_package_without_memory,
-    validate_memory_declaration,
 )
-pub from governed_memory_retrieval import admit_memory_result
 pub from governed_profile import (
     AdmittedGovernedProfile,
     AdmittedGuidedMaterial,

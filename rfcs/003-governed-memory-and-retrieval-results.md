@@ -440,6 +440,7 @@ Implemented in `governed_memory_retrieval.incn`, `governed_memory_retrieval_decl
 
 - [x] Request, provider result, nomination, provider state and reason, and admission-record models.
 - [x] `admit_memory_result`: all eight stages and all 39 reasons, with strict stage and within-stage precedence.
+- [x] `AdmittedMemoryPackage.admit_result`: the same record for a held package. Admission indexes the package's atoms and provider bindings once, and each result is then admitted against the nominated atoms and its own binding alone.
 - [x] Both record variants: `Normalized` with the trusted evaluated identity and untrusted echoes, and the minimal `PreNormalizationRejected`.
 - [x] Materialization of package-owned atoms in rank order, with the aggregate context-byte rule.
 - [x] The registry and atom payload rules, validated in memory by `validate_memory_declaration`.
