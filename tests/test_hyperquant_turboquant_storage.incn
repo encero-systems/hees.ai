@@ -1,0 +1,206 @@
+"""Contract tests for storing a TurboQuant index as codes and vectors and loading it without rebuilding."""
+
+from std.testing import assert_eq, assert_is_err, assert_is_ok
+from crate.hyperquant import (
+    STORED_COORDINATE_BYTES,
+    STORED_VECTORS_HEADER_BYTES,
+    HyperquantEntry,
+    HyperquantErrorKind,
+    HyperquantNomination,
+    HyperquantProfile,
+    TurboquantApproximate,
+    TurboquantCodeIndex,
+    TurboquantConfiguration,
+    TurboquantIndex,
+    hyperquant_entry,
+    stored_vector_from_bytes,
+    turboquant_code_index_from_bytes,
+    turboquant_index,
+)
+from crate.identifiers import memory_id
+
+const DIMENSIONS: int = 8
+const ENTRY_COUNT: int = 12
+const DIGEST_BYTES: int = 32
+
+
+def synthetic_vector(dimensions: int, phase: int) -> list[float]:
+    """Return one deterministic, non-degenerate vector."""
+
+    mut values: list[float] = []
+    for index in range(dimensions):
+        values.append(float(((index * 7 + phase * 13) % 23) - 11) + float(phase % 5) * 0.25)
+    return values
+
+
+def synthetic_entries(dimensions: int, count: int) -> list[HyperquantEntry]:
+    mut entries: list[HyperquantEntry] = []
+    for position in range(count):
+        entries.append(
+            assert_is_ok(hyperquant_entry(memory_id(f"atom_{position}"), synthetic_vector(dimensions, position + 1))),
+        )
+    return entries
+
+
+def configuration(profile: HyperquantProfile, bit_width: int, seed: u64) -> TurboquantConfiguration:
+    return assert_is_ok(TurboquantConfiguration.create(profile, DIMENSIONS, bit_width, seed, [-0.53, -0.16, 0.16, 0.53]))
+
+
+def mse_configuration() -> TurboquantConfiguration:
+    return configuration(HyperquantProfile.TurboquantMse01, 2, 20261001)
+
+
+def built_index() -> TurboquantIndex:
+    return assert_is_ok(turboquant_index(mse_configuration(), synthetic_entries(DIMENSIONS, ENTRY_COUNT)))
+
+
+def stored_vectors(index: TurboquantIndex) -> bytes:
+    return assert_is_ok(index.vectors_to_bytes())
+
+
+def stored_codes(index: TurboquantIndex, vectors: bytes) -> bytes:
+    return assert_is_ok(index.codes_to_bytes(vectors[len(vectors) - DIGEST_BYTES:]))
+
+
+def candidate_vectors(vectors: bytes, approximate: list[TurboquantApproximate]) -> list[list[float]]:
+    """Read each candidate's vector from the stored vectors by position, as a caller reading from disk would."""
+
+    mut result: list[list[float]] = []
+    for slot in range(len(approximate)):
+        start = STORED_VECTORS_HEADER_BYTES + approximate[slot].position * DIMENSIONS * STORED_COORDINATE_BYTES
+        result.append(
+            assert_is_ok(
+                stored_vector_from_bytes(vectors[start:start + DIMENSIONS * STORED_COORDINATE_BYTES], DIMENSIONS),
+            ),
+        )
+    return result
+
+
+def nomination_ids(nominations: list[HyperquantNomination]) -> list[str]:
+    return [nomination.memory_id.text() for nomination in nominations]
+
+
+def test_a_stored_index_reproduces_the_built_index() -> None:
+    index = built_index()
+    vectors = stored_vectors(index)
+    loaded = assert_is_ok(turboquant_code_index_from_bytes(mse_configuration(), stored_codes(index, vectors)))
+    assert_eq(loaded.index_fingerprint(), index.index_fingerprint())
+    assert_eq(loaded.entry_count(), ENTRY_COUNT)
+    assert_eq(loaded.dimensions(), DIMENSIONS)
+    assert_eq(loaded.matches_stored_vectors(vectors), true)
+
+    for phase in [3, 17, 40]:
+        query = synthetic_vector(DIMENSIONS, phase)
+        expected = assert_is_ok(index.nominate(query, 4, 6))
+        approximate = assert_is_ok(loaded.approximate(query, 6))
+        result = assert_is_ok(loaded.rerank(query, approximate, candidate_vectors(vectors, approximate), 4))
+        assert_eq(nomination_ids(result.nominations), nomination_ids(expected.nominations))
+        for position in range(4):
+            assert_eq(result.nominations[position].relevance_bps, expected.nominations[position].relevance_bps)
+        assert_eq(result.index_fingerprint, expected.index_fingerprint)
+
+
+def test_stored_codes_fail_closed() -> None:
+    index = built_index()
+    vectors = stored_vectors(index)
+    codes = stored_codes(index, vectors)
+
+    assert_eq(
+        assert_is_err(turboquant_code_index_from_bytes(mse_configuration(), codes[:20])).kind(),
+        HyperquantErrorKind.TruncatedPayload,
+    )
+    assert_eq(
+        assert_is_err(turboquant_code_index_from_bytes(mse_configuration(), codes[:len(codes) - 1])).kind(),
+        HyperquantErrorKind.IntegrityMismatch,
+    )
+    assert_eq(
+        assert_is_err(turboquant_code_index_from_bytes(mse_configuration(), codes[1:])).kind(),
+        HyperquantErrorKind.IntegrityMismatch,
+    )
+    other_seed = configuration(HyperquantProfile.TurboquantMse01, 2, 7)
+    assert_eq(
+        assert_is_err(turboquant_code_index_from_bytes(other_seed, codes)).kind(),
+        HyperquantErrorKind.ConfigurationMismatch,
+    )
+    other_profile = configuration(HyperquantProfile.TurboquantProduct01, 3, 20261001)
+    assert_eq(
+        assert_is_err(turboquant_code_index_from_bytes(other_profile, codes)).kind(),
+        HyperquantErrorKind.ConfigurationMismatch,
+    )
+    assert_eq(
+        assert_is_err(index.codes_to_bytes(vectors[len(vectors) - 4:])).kind(),
+        HyperquantErrorKind.NonCanonicalPayload,
+    )
+
+
+def test_stored_vectors_must_belong_to_the_codes() -> None:
+    index = built_index()
+    vectors = stored_vectors(index)
+    loaded = assert_is_ok(turboquant_code_index_from_bytes(mse_configuration(), stored_codes(index, vectors)))
+    assert_eq(loaded.matches_stored_vectors(vectors[:len(vectors) - 1]), false)
+    assert_eq(loaded.matches_stored_vectors(vectors[1:]), false)
+
+    other = assert_is_ok(turboquant_index(mse_configuration(), synthetic_entries(DIMENSIONS, ENTRY_COUNT + 1)))
+    assert_eq(loaded.matches_stored_vectors(stored_vectors(other)), false)
+
+    mut shifted: list[HyperquantEntry] = []
+    for position in range(ENTRY_COUNT):
+        shifted.append(
+            assert_is_ok(hyperquant_entry(memory_id(f"atom_{position}"), synthetic_vector(DIMENSIONS, position + 30))),
+        )
+    same_size = assert_is_ok(turboquant_index(mse_configuration(), shifted))
+    assert_eq(loaded.matches_stored_vectors(stored_vectors(same_size)), false)
+
+
+def test_reranking_from_supplied_vectors_fails_closed() -> None:
+    index = built_index()
+    vectors = stored_vectors(index)
+    loaded = assert_is_ok(turboquant_code_index_from_bytes(mse_configuration(), stored_codes(index, vectors)))
+    query = synthetic_vector(DIMENSIONS, 5)
+    approximate = assert_is_ok(loaded.approximate(query, 5))
+    exact = candidate_vectors(vectors, approximate)
+
+    assert_eq(assert_is_err(loaded.rerank(query, approximate, exact, 0)).kind(), HyperquantErrorKind.InvalidTopK)
+    assert_eq(assert_is_err(loaded.rerank(query, approximate, exact, 6)).kind(), HyperquantErrorKind.InvalidTopK)
+
+    missing_one = [exact[slot] for slot in range(4)]
+    assert_eq(
+        assert_is_err(loaded.rerank(query, approximate, missing_one, 3)).kind(),
+        HyperquantErrorKind.DimensionMismatch,
+    )
+
+    mut short_vector = [exact[slot] for slot in range(5)]
+    short_vector[2] = [exact[2][dimension] for dimension in range(DIMENSIONS - 1)]
+    assert_eq(
+        assert_is_err(loaded.rerank(query, approximate, short_vector, 3)).kind(),
+        HyperquantErrorKind.DimensionMismatch,
+    )
+
+    mut not_normalized = [exact[slot] for slot in range(5)]
+    not_normalized[1] = synthetic_vector(DIMENSIONS, 4)
+    assert_eq(
+        assert_is_err(loaded.rerank(query, approximate, not_normalized, 3)).kind(),
+        HyperquantErrorKind.NonCanonicalPayload,
+    )
+
+    assert_eq(assert_is_err(loaded.approximate(query, 0)).kind(), HyperquantErrorKind.InvalidTopK)
+    assert_eq(assert_is_err(loaded.approximate(query, ENTRY_COUNT + 1)).kind(), HyperquantErrorKind.InvalidTopK)
+    assert_eq(
+        assert_is_err(loaded.approximate(synthetic_vector(DIMENSIONS + 1, 5), 3)).kind(),
+        HyperquantErrorKind.DimensionMismatch,
+    )
+
+
+def test_a_stored_vector_must_have_the_exact_length() -> None:
+    vectors = stored_vectors(built_index())
+    start = STORED_VECTORS_HEADER_BYTES
+    exact = vectors[start:start + DIMENSIONS * STORED_COORDINATE_BYTES]
+    assert_eq(len(assert_is_ok(stored_vector_from_bytes(exact, DIMENSIONS))), DIMENSIONS)
+    assert_eq(
+        assert_is_err(stored_vector_from_bytes(exact[:len(exact) - 1], DIMENSIONS)).kind(),
+        HyperquantErrorKind.TruncatedPayload,
+    )
+    assert_eq(
+        assert_is_err(stored_vector_from_bytes(exact, DIMENSIONS + 1)).kind(),
+        HyperquantErrorKind.TruncatedPayload,
+    )

@@ -211,7 +211,7 @@ Implemented now:
 - a small in-memory governed-package contract;
 - fail-closed structural package validation;
 - fail-closed proposal admission against package-owned actions and reviewed, rights-allowed evidence records;
-- exact and faithful compressed Hyperquant profiles that nominate bounded package-owned memory identifiers without granting authority;
+- exact and faithful compressed Hyperquant profiles that nominate bounded package-owned memory identifiers without granting authority, including bounded approximate TurboQuant nomination with exact reranking;
 - guided-programme declaration validation and operation eligibility with closed action payloads, deterministic topology, bounded progress and non-authoritative support nominations;
 - goal, schedule, and session-continuity admission over package-declared phase graphs, with caller-supplied time, a governed ending for overrun sessions, and caller-held session state authenticated under a host-held key (Draft [RFC 013](rfcs/013-governed-continuity-goal-schedule-session-admission.md));
 - memory-operation admission for prompt selection, inspection, write, revoke, and supersede against package-declared memory classes, returning key-authenticated records without storage mutation (Draft [RFC 014](rfcs/014-governed-memory-lifecycle-operations.md));
