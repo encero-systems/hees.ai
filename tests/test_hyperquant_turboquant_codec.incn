@@ -343,7 +343,7 @@ def test_configuration_rejects_unbounded_malformed_and_nonfinite_values_before_w
         HyperquantErrorKind.EmptyVector,
     )
     assert_eq(
-        assert_is_err(TurboquantConfiguration.create(HyperquantProfile.TurboquantMse01, 257, 1, 1, [-0.5, 0.5])).kind(),
+        assert_is_err(TurboquantConfiguration.create(HyperquantProfile.TurboquantMse01, 1025, 1, 1, [-0.5, 0.5])).kind(),
         HyperquantErrorKind.VectorTooLarge,
     )
     assert_eq(

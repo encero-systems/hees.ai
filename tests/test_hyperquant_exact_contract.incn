@@ -113,3 +113,13 @@ def test_exact_query_does_not_mutate_caller_values() -> None:
 
     assert_eq(source_values, [3.0, 4.0])
     assert_eq(query_values, [4.0, 3.0])
+
+
+def test_an_exact_index_holds_more_entries_than_any_fixed_number() -> None:
+    mut entries = [entry("target", [1.0, 0.0])]
+    for position in range(70000):
+        entries.append(entry(f"far_{position}", [1.0, float(position + 1)]))
+    built = index(entries)
+    result = assert_is_ok(exact_query(built, [1.0, 0.0], 3))
+    assert_eq(nomination_ids(result.nominations), ["target", "far_0", "far_1"])
+    assert_eq(len(result.candidates), 3)

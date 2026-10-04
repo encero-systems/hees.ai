@@ -4,7 +4,6 @@ from std.traits.error import Error
 from crate.identifiers import MemoryId
 
 pub const MAX_HYPERQUANT_DIMENSIONS: int = 8192
-pub const MAX_HYPERQUANT_ENTRIES: int = 65536
 pub const MAX_HYPERQUANT_TOP_K: int = 64
 
 
@@ -22,7 +21,6 @@ pub enum HyperquantErrorKind(str):
     """Closed failure categories for vector, index, and query validation."""
 
     EmptyIndex = "empty_index"
-    IndexTooLarge = "index_too_large"
     EmptyVector = "empty_vector"
     VectorTooLarge = "vector_too_large"
     ZeroVector = "zero_vector"
