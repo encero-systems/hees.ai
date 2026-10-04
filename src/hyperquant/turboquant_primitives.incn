@@ -207,6 +207,8 @@ def uniform_samples(count: int, seed: u64, domain: str) -> Result[list[float], H
     if count < 0 or count > MAX_DENSE_TURBOQUANT_DIMENSIONS * MAX_DENSE_TURBOQUANT_DIMENSIONS:
         return Err(failure(HyperquantErrorKind.VectorTooLarge, "TurboQuant random sample count exceeds its bound"))
 
+    # One SHA-256 block per counter value gives 32 bytes, read as four big-endian 64-bit words. The counter advances
+    # until enough samples exist, so the stream depends only on the domain, the seed and the count.
     mut samples: list[float] = []
     mut counter: u64 = 0
     while len(samples) < count:
@@ -216,6 +218,9 @@ def uniform_samples(count: int, seed: u64, domain: str) -> Result[list[float], H
             word = read_big_u64(reader).map_err(
                 (_error) => failure(HyperquantErrorKind.NumericalFailure, "TurboQuant SHA-256 block could not be read"),
             )?
+
+            # Keep the top 53 bits, the size of a binary64 mantissa, and divide by 2^53. The added half keeps the
+            # sample off zero.
             mantissa = word >> 11
             sample = (float(mantissa) + 0.5) / 9007199254740992.0
             if not sample.is_finite() or sample <= 0.0 or sample >= 1.0:
@@ -238,6 +243,8 @@ def normal_samples(uniforms: list[float]) -> Result[list[float], HyperquantError
     if len(uniforms) % 2 != 0:
         return Err(failure(HyperquantErrorKind.NumericalFailure, "TurboQuant uniform stream must contain pairs"))
 
+    # Box-Muller: each pair of uniforms gives a radius and an angle, and the two coordinates of that point are two
+    # independent standard Gaussian samples.
     mut result: list[float] = []
     mut index = 0
     while index < len(uniforms):
@@ -270,6 +277,9 @@ pub def gaussian_matrix(dimensions: int, seed: u64, domain: str) -> Result[Gener
             ),
         )
 
+    # The matrix needs one Gaussian per cell, and Box-Muller produces them in pairs. An odd cell count is rounded up
+    # to a whole pair and the surplus sample is dropped from both streams, so they stay the same length as the
+    # matrix.
     sample_count = dimensions * dimensions
     mut uniform_count = sample_count
     if uniform_count % 2 != 0:
@@ -320,6 +330,8 @@ def householder_q(matrix: DenseMatrix) -> Result[DenseMatrix, HyperquantError]:
         if not norm.is_finite() or norm <= 1.0e-15:
             return Err(failure(HyperquantErrorKind.NumericalFailure, "TurboQuant Gaussian matrix is rank deficient"))
 
+        # The reflector maps the active column onto `alpha` times the unit axis. `alpha` takes the sign opposite to
+        # the diagonal entry, so the subtraction below adds magnitudes instead of cancelling them.
         mut alpha = -norm
         if r.coordinate(column, column) < 0.0:
             alpha = norm
@@ -328,6 +340,7 @@ def householder_q(matrix: DenseMatrix) -> Result[DenseMatrix, HyperquantError]:
             householder[row] = r.coordinate(row, column)
         householder[column] -= alpha
 
+        # Scale the reflector to unit length, so applying it is `x - 2 * v * (v . x)`.
         mut householder_squared_norm = 0.0
         for row in range(column, dimensions):
             householder_squared_norm += householder[row] * householder[row]
@@ -337,7 +350,8 @@ def householder_q(matrix: DenseMatrix) -> Result[DenseMatrix, HyperquantError]:
         for row in range(column, dimensions):
             householder[row] /= householder_norm
 
-        # Apply the reflector to the remaining R columns, then accumulate the same transform into Q.
+        # Apply the reflector from the left to the remaining R columns, which zeroes the active column below the
+        # diagonal.
         for output_column in range(column, dimensions):
             mut projection = 0.0
             for row in range(column, dimensions):
@@ -346,6 +360,7 @@ def householder_q(matrix: DenseMatrix) -> Result[DenseMatrix, HyperquantError]:
                 value = r.coordinate(row, output_column) - 2.0 * householder[row] * projection
                 r.set_coordinate(row, output_column, value)
 
+        # Accumulate the same reflector into Q from the right, so Q stays the product of every reflector so far.
         for row in range(dimensions):
             mut projection = 0.0
             for inner in range(column, dimensions):
@@ -420,6 +435,8 @@ pub def pack_unsigned_msb(values: list[int], width: int) -> Result[bytes, Hyperq
                 byte = 0
                 occupied = 0
             shift -= 1
+
+    # A partial final byte is moved to the high bits, leaving the unused low bits zero.
     if occupied > 0:
         byte <<= 8 - occupied
         encoded: u8 = byte.wrapping_resize()
@@ -456,6 +473,8 @@ pub def unpack_unsigned_msb(payload: bytes, count: int, width: int) -> Result[li
             bit_offset += 1
         result.append(value)
 
+    # The unused low bits of the last byte must be zero. Otherwise two different byte strings would decode to the
+    # same values.
     padding_bits = expected_bytes * 8 - count * width
     if padding_bits > 0 and len(payload) > 0:
         padding_mask = (1 << padding_bits) - 1

@@ -435,10 +435,14 @@ pub class TurboquantConfiguration:
     ) -> Result[Self, HyperquantError]:
         """Validate a complete configuration and construct its deterministic transforms."""
 
+        # Validate every declared parameter first; the canonical bytes are only produced for a valid configuration.
         validate_dimensions(dimensions)?
         profile_kind(profile)?
         validate_codebook(profile, bit_width, centroids)?
         payload = encode_configuration(profile, dimensions, bit_width, seed, centroids)?
+
+        # Both matrices are generated from the seed alone, so two configurations with the same bytes always hold the
+        # same transforms. Only the product profile needs the second matrix.
         rotation = rotation_matrix(dimensions, seed)?.into_matrix()
         mut projection = DenseMatrix.empty()
         if profile == HyperquantProfile.TurboquantProduct01:
@@ -720,6 +724,9 @@ pub class TurboquantConfiguration:
             return Err(
                 failure(HyperquantErrorKind.ConfigurationMismatch, "TurboQuant code does not match its configuration"),
             )
+
+        # MSE stage: replace each index by its centroid, then undo the rotation. The rotation is orthonormal, so
+        # its transpose is its inverse.
         quantized = [self._centroids[code.mse_index(index)] for index in range(self._dimensions)]
         mse_reconstructed = self._rotation.transpose_multiply(quantized)
         if self._profile == HyperquantProfile.TurboquantMse01:
@@ -773,11 +780,15 @@ pub class TurboquantConfiguration:
         scores each bound code in linear time. The value agrees with `estimate` up to binary64 rounding.
         """
 
+        # MSE stage: the rotated query against the code's centroids. This is the whole estimate for the MSE profile.
         mut mse_estimate = 0.0
         for index in range(self._dimensions):
             mse_estimate += rotated_query[index] * self._centroids[code.mse_index(index)]
         if self._profile == HyperquantProfile.TurboquantMse01:
             return mse_estimate
+
+        # Product profile: add the residual's contribution, estimated from its sign sketch. The scale is the same
+        # one `reconstruct` applies.
         mut qjl_estimate = 0.0
         for index in range(self._dimensions):
             qjl_estimate += projected_query[index] * float(code.qjl_sign(index))
@@ -829,6 +840,8 @@ def configuration_wire(
     written.
     """
 
+    # Header: magic and version, then the parameters that determine the transforms (profile, bit width, dimensions,
+    # seed) and the number of centroids that follow.
     writer = BytesIO()
     major: u8 = 0
     minor: u8 = 1
@@ -841,6 +854,9 @@ def configuration_wire(
     writer.write(dimensions_wire, Endian.Big)?
     writer.write(seed, Endian.Big)?
     writer.write(centroid_count_wire, Endian.Big)?
+
+    # The scalar codebook, one binary64 per centroid. The matrices are not stored: they are regenerated from the
+    # seed.
     for centroid in centroids:
         centroid_wire: f64 = centroid
         writer.write(centroid_wire, Endian.Big)?
@@ -893,6 +909,7 @@ def code_wire(
 ) -> Result[bytes, IoError]:
     """Write one code's canonical bytes: header, packed sections, and the digest of everything before it."""
 
+    # Header: magic and version, the shape of the code, and the digest of the configuration that made it.
     writer = BytesIO()
     major: u8 = 0
     minor: u8 = 1
@@ -903,11 +920,16 @@ def code_wire(
     writer.write(bit_width_wire, Endian.Big)?
     writer.write(dimensions_wire, Endian.Big)?
     writer.write(configuration_digest)?
+
+    # Sections, with no length prefixes: their sizes follow from the profile, bit width and dimensions above. The
+    # product profile appends its sign sketch and the residual norm.
     writer.write(packed_indices)?
     if has_product_sections:
         writer.write(packed_qjl)?
         residual_norm_wire: f64 = residual_norm
         writer.write(residual_norm_wire, Endian.Big)?
+
+    # Close the envelope with the digest of everything written so far.
     body = writer.into_bytes()
     writer.write(sha256.digest(body))?
     return Ok(writer.into_bytes())

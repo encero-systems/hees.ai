@@ -105,8 +105,14 @@ pub class TurboquantIndex:
     def approximate_candidates(self, normalized_query: list[float], candidate_count: int) -> list[ScoredPosition]:
         """Score every code in transform space and retain the bounded best estimates."""
 
+        # Transform the query once. Every code is then scored against the same rotated and projected query, so the
+        # per-code work is the estimate alone.
         rotated = self._configuration.rotated_query(normalized_query)
         projected = self._configuration.projected_query(normalized_query)
+
+        # Keep the best `candidate_count` estimates in order while scanning. Each new estimate is appended and
+        # moved up to its place, and the worst one is dropped once the list is over the bound, so the list never
+        # holds more than `candidate_count + 1` items however many codes the index has.
         mut retained: list[ScoredPosition] = []
         for position in range(len(self._codes)):
             estimate = self._configuration.estimate_transformed(rotated, projected, self._codes[position])
@@ -131,6 +137,7 @@ pub class TurboquantIndex:
 
         mut candidates: list[TurboquantCandidate] = []
         for scored in approximate:
+            # Both vectors are unit length, so their dot product is the exact cosine similarity.
             entry = self._entries[scored.position]
             mut cosine_similarity = 0.0
             for dimension in range(len(normalized_query)):
@@ -143,6 +150,8 @@ pub class TurboquantIndex:
                     relevance_bps=relevance_basis_points(cosine_similarity),
                 ),
             )
+
+            # Move the new candidate up to its place, so the list stays ordered by exact similarity.
             mut slot = len(candidates) - 1
             while slot > 0 and candidate_precedes(candidates[slot], candidates[slot - 1]):
                 candidates.swap(slot, slot - 1)
@@ -162,6 +171,8 @@ pub class TurboquantIndex:
     def vectors_wire(self) -> Result[bytes, IoError]:
         """Write the stored vectors' canonical bytes: header, coordinates, and the digest of everything before it."""
 
+        # Header: magic, version, and the two counts a reader needs to find any vector by position. The width of
+        # each typed value is its width on the wire.
         writer = BytesIO()
         major: u8 = 0
         minor: u8 = 1
@@ -172,12 +183,18 @@ pub class TurboquantIndex:
         writer.write(minor, Endian.Big)?
         writer.write(dimensions_wire, Endian.Big)?
         writer.write(entry_count_wire, Endian.Big)?
+
+        # Body: every entry's coordinates in index order, with no per-entry framing, so vector `p` starts at a
+        # fixed offset. The entry is taken once per vector; indexing `self._entries` per coordinate would copy it
+        # each time.
         dimensions = self.dimensions()
         for position in range(len(self._entries)):
             entry = self._entries[position]
             for dimension in range(dimensions):
                 coordinate: f64 = entry.coordinate(dimension)
                 writer.write(coordinate, Endian.Big)?
+
+        # Close the file with the digest of everything written so far. The stored codes record the same digest.
         body = writer.into_bytes()
         writer.write(sha256.digest(body))?
         return Ok(writer.into_bytes())
@@ -198,6 +215,9 @@ pub class TurboquantIndex:
     def codes_wire(self, vectors_digest: bytes) -> Result[bytes, IoError]:
         """Write the stored codes' canonical bytes: header, one record per entry, and the digest of everything before it."""
 
+        # Header: magic and version, then the configuration the codes were made with, the index shape, the index
+        # fingerprint, and the digest of the stored vectors file this index belongs with. Variable-length fields
+        # are preceded by their length.
         writer = BytesIO()
         major: u8 = 0
         minor: u8 = 2
@@ -217,6 +237,9 @@ pub class TurboquantIndex:
         writer.write(fingerprint_length, Endian.Big)?
         writer.write(fingerprint_bytes)?
         writer.write(vectors_digest)?
+
+        # Body: one record per entry in index order, the memory identifier and then its code, each preceded by its
+        # length.
         for position in range(len(self._entries)):
             identifier = RustString.from(self._entries[position].memory_id.text()).into_bytes()
             identifier_length: u16 = len(identifier).wrapping_resize()
@@ -226,6 +249,8 @@ pub class TurboquantIndex:
             writer.write(identifier)?
             writer.write(code_length, Endian.Big)?
             writer.write(code_bytes)?
+
+        # Close the file with the digest of everything written so far.
         body = writer.into_bytes()
         writer.write(sha256.digest(body))?
         return Ok(writer.into_bytes())
@@ -243,6 +268,8 @@ pub class TurboquantIndex:
         stage; `top_k` bounds the nominations returned after exact reranking.
         """
 
+        # Bound the request before any scoring: `top_k` nominations out of `candidate_count` approximate
+        # candidates, each within the contract bound and the size of the index.
         if top_k <= 0 or top_k > MAX_HYPERQUANT_TOP_K or top_k > self.entry_count():
             return Err(
                 failure(
@@ -258,6 +285,8 @@ pub class TurboquantIndex:
                 ),
             )
 
+        # Stored vectors are unit length, so the query is normalized too; the dimension check comes after, on the
+        # normalized form.
         normalized_query = normalize_vector(query_values)?
         if len(normalized_query) != self.dimensions():
             return Err(
@@ -267,6 +296,9 @@ pub class TurboquantIndex:
                 ),
             )
 
+        # Two stages: an approximate scan over every code keeps `candidate_count` candidates, then those are
+        # reordered by exact cosine similarity. The first `top_k` of the exact order become the nominations, ranked
+        # from zero.
         candidates = self.reranked(normalized_query, self.approximate_candidates(normalized_query, candidate_count))
         mut nominations: list[HyperquantNomination] = []
         mut rank = 0
@@ -346,12 +378,16 @@ pub class TurboquantCodeIndex:
         its content and equals the digest recorded in this index.
         """
 
+        # The size is fully determined by this index: header, one fixed-size vector per entry, closing digest.
         expected = STORED_VECTORS_HEADER_BYTES + self.entry_count() * self.dimensions() * STORED_COORDINATE_BYTES + INDEX_DIGEST_BYTES
         if len(payload) != expected:
             return false
         body_bytes = len(payload) - INDEX_DIGEST_BYTES
         if payload[:8] != b"HQTQVEC0":
             return false
+
+        # The cheap comparison first: the closing digest must be the one this index recorded. Only then hash the
+        # body, which proves the file's content is what that digest names.
         if payload[body_bytes:] != self._vectors_digest:
             return false
         return payload[body_bytes:] == sha256.digest(payload[:body_bytes])
@@ -378,6 +414,10 @@ pub class TurboquantCodeIndex:
                     "query vector dimension does not match the TurboQuant index",
                 ),
             )
+
+        # Transform the query once, then score every code against it. The best `candidate_count` estimates are kept
+        # in order while scanning: each new one is appended and moved up to its place, and the worst is dropped once
+        # the list is over the bound.
         rotated = self._configuration.rotated_query(normalized_query)
         projected = self._configuration.projected_query(normalized_query)
         mut retained: list[TurboquantApproximate] = []
@@ -429,6 +469,11 @@ pub class TurboquantCodeIndex:
                     "query vector dimension does not match the TurboQuant index",
                 ),
             )
+
+        # Score each candidate against the vector the caller supplied for it. The vectors come from outside this
+        # index, so each is checked for dimension here and for being finite and unit length by
+        # `stored_hyperquant_entry`; one bad vector rejects the whole rerank. Candidates are kept ordered by exact
+        # similarity as they are added.
         mut candidates: list[TurboquantCandidate] = []
         for slot_index in range(len(approximate)):
             scored = approximate[slot_index]
@@ -450,6 +495,8 @@ pub class TurboquantCodeIndex:
             while slot > 0 and candidate_precedes(candidates[slot], candidates[slot - 1]):
                 candidates.swap(slot, slot - 1)
                 slot -= 1
+
+        # The first `top_k` candidates of the exact order become the nominations, ranked from zero.
         mut nominations: list[HyperquantNomination] = []
         mut rank = 0
         for candidate in candidates:
@@ -503,10 +550,14 @@ pub def turboquant_index(
     if len(entries) == 0:
         return Err(failure(HyperquantErrorKind.EmptyIndex, "TurboQuant index must contain at least one entry"))
 
+    # Encode every entry in the order given. That order is the index order: position `p` names the same entry in
+    # the codes, in the stored vectors, and in the fingerprint.
     mut canonical_ids: dict[str, bool] = {}
     mut codes: list[TurboquantCode] = []
     mut identity_lines: list[str] = [configuration.configuration_fingerprint()]
     for entry in entries:
+        # An identifier may appear once: a nomination names a memory, so two entries with one name would be
+        # ambiguous.
         canonical_id = entry.memory_id.text()
         if canonical_id in canonical_ids:
             return Err(
@@ -524,6 +575,9 @@ pub def turboquant_index(
         identity_lines.append(f"{canonical_id} {code.content_fingerprint()}")
         codes.append(code)
 
+    # The fingerprint is the digest of the configuration fingerprint followed by one line per entry, identifier and
+    # code fingerprint, in index order. Any change to the configuration, the order, an identifier or a code changes
+    # it.
     identity = RustString.from("\n".join(identity_lines)).into_bytes()
     return Ok(
         TurboquantIndex(
@@ -548,12 +602,16 @@ pub def turboquant_code_index_from_bytes(
     re-encoded: the cost is reading and checking, not building. The exact vectors are not loaded here.
     """
 
+    # Check the closing digest over the whole body before interpreting any field, so every length read below comes
+    # from content that is exactly what was written.
     if len(payload) < INDEX_HEADER_BYTES + INDEX_DIGEST_BYTES:
         return Err(failure(HyperquantErrorKind.TruncatedPayload, "truncated TurboQuant index"))
     body_bytes = len(payload) - INDEX_DIGEST_BYTES
     if payload[body_bytes:] != sha256.digest(payload[:body_bytes]):
         return Err(failure(HyperquantErrorKind.IntegrityMismatch, "TurboQuant index digest does not match its content"))
 
+    # Header: framing and version, then the stored configuration, which must be byte-for-byte the one the caller
+    # holds. Codes are only meaningful under the configuration that made them.
     reader = BytesIO(payload)
     if read_exact(reader, 8, StoredArtifact.Index)? != b"HQTQIDX0":
         return Err(failure(HyperquantErrorKind.NonCanonicalPayload, "invalid TurboQuant index magic"))
@@ -578,13 +636,20 @@ pub def turboquant_code_index_from_bytes(
     fingerprint_length = read_u16(reader, StoredArtifact.Index)?
     stored_fingerprint = read_exact(reader, fingerprint_length, StoredArtifact.Index)?
     vectors_digest = read_exact(reader, INDEX_DIGEST_BYTES, StoredArtifact.Index)?
+
+    # Count the bytes read so far, to detect bytes after the last entry: the fixed header, the configuration, the
+    # ten bytes of dimensions (4), entry count (4) and fingerprint length (2), the fingerprint, and the vectors
+    # digest.
     mut consumed = INDEX_HEADER_BYTES + configuration_length + 10 + fingerprint_length + INDEX_DIGEST_BYTES
 
+    # Entries, in index order. Each record is an identifier and a code, each preceded by its length. The
+    # fingerprint lines are rebuilt from what is read, exactly as `turboquant_index` builds them.
     mut canonical_ids: dict[str, bool] = {}
     mut memory_ids: list[MemoryId] = []
     mut codes: list[TurboquantCode] = []
     mut identity_lines: list[str] = [configuration.configuration_fingerprint()]
     for _position in range(entry_count):
+        # The identifier must be text, unique in this index, and a canonical memory identifier.
         identifier_length = read_u16(reader, StoredArtifact.Index)?
         identifier_bytes = read_exact(reader, identifier_length, StoredArtifact.Index)?
         decoded: Result[str, FromUtf8Error] = RustString.from_utf8(identifier_bytes)
@@ -599,8 +664,12 @@ pub def turboquant_code_index_from_bytes(
         memory_id = memory_id_from_text(canonical_id).map_err(
             (_error) => failure(HyperquantErrorKind.NonCanonicalPayload, "index identifier is not canonical"),
         )?
+
+        # The code is decoded, not copied: `decode` checks it belongs to this configuration and is well formed.
         code_length = read_u32(reader, StoredArtifact.Index)?
         code = configuration.decode(read_exact(reader, code_length, StoredArtifact.Index)?)?
+
+        # Six bytes of framing per record: identifier length (2) and code length (4).
         consumed += 6 + identifier_length + code_length
         memory_ids.append(memory_id)
         identity_lines.append(f"{canonical_id} {code.content_fingerprint()}")
@@ -608,6 +677,8 @@ pub def turboquant_code_index_from_bytes(
     if consumed != body_bytes:
         return Err(failure(HyperquantErrorKind.TrailingPayload, "TurboQuant index has bytes after its last entry"))
 
+    # The fingerprint recomputed from the loaded entries must equal the stored one. This ties the header's claim
+    # to the entries actually read.
     identity = RustString.from("\n".join(identity_lines)).into_bytes()
     fingerprint = f"sha256:{hexlify(sha256.digest(identity))}"
     if RustString.from(fingerprint).into_bytes() != stored_fingerprint:
