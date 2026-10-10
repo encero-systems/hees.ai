@@ -48,9 +48,27 @@ from crate.identifiers import (
 )
 
 
-def ascending(collected: list[int]) -> list[int]:
-    """Return the collected positions in ascending order, so a narrowed package keeps the package's own order."""
+def within_reference_limit(proposal: GovernedProposal) -> bool:
+    """Return whether the proposal nominates no more than a proposal may; one over the limit nominates nothing here."""
 
+    return len(proposal.evidence_ids) <= MAX_PROPOSAL_EVIDENCE and len(proposal.memory_ids) <= MAX_PROPOSAL_MEMORY
+
+
+def declared_positions(positions: Dict[str, int], names: list[str]) -> list[int]:
+    """
+    Resolve names through a position index: each declared name once, in package order.
+
+    An undeclared name is simply absent, so the evaluation rejects it as unknown exactly as it would against the
+    whole package.
+    """
+
+    mut wanted: Dict[int, bool] = {}
+    mut collected: list[int] = []
+    for name in names:
+        if let Some(position) = positions.get(name):
+            if not wanted.contains_key(position):
+                wanted[position] = true
+                collected.append(position)
     return sorted(collected)
 
 
@@ -103,43 +121,9 @@ pub class AdmittedGovernedProfile:
         it would against the whole package. Header, digest and policy are the admitted package's. A proposal over
         the reference limit nominates nothing here; its identity check rejects it first.
         """
-
-        mut actions: list[GovernedAction] = []
-        if let Some(position) = self._action_positions.get(proposal.action_id.text()):
-            actions.append(self._package.actions[position])
-
-        mut memory_wanted: Dict[int, bool] = {}
-        mut memory_order: list[int] = []
-        mut evidence_wanted: Dict[int, bool] = {}
-        mut evidence_order: list[int] = []
-        mut memory_names: list[str] = []
-        mut evidence_names: list[str] = []
-        if len(proposal.evidence_ids) <= MAX_PROPOSAL_EVIDENCE and len(proposal.memory_ids) <= MAX_PROPOSAL_MEMORY:
-            memory_names = [memory_id.text() for memory_id in proposal.memory_ids]
-            evidence_names = [evidence_id.text() for evidence_id in proposal.evidence_ids]
-        mut guided_material: list[GuidedMaterial] = []
-        if let Some(nominated) = proposal.guided_material_id:
-            if let Some(position) = self._guided_positions.get(nominated.text()):
-                material = self._package.guided_material[position]
-                for memory_id in material.memory_ids:
-                    memory_names.append(memory_id.text())
-                for evidence_id in material.evidence_ids:
-                    evidence_names.append(evidence_id.text())
-                guided_material.append(material)
-        for name in memory_names:
-            if let Some(position) = self._memory_positions.get(name):
-                if not memory_wanted.contains_key(position):
-                    memory_wanted[position] = true
-                    memory_order.append(position)
-                    for evidence_id in self._package.memory[position].evidence_ids:
-                        evidence_names.append(evidence_id.text())
-        for name in evidence_names:
-            if let Some(position) = self._evidence_positions.get(name):
-                if not evidence_wanted.contains_key(position):
-                    evidence_wanted[position] = true
-                    evidence_order.append(position)
-        evidence: list[GovernedEvidence] = [self._package.evidence[position] for position in ascending(evidence_order)]
-        memory: list[GovernedMemory] = [self._package.memory[position] for position in ascending(memory_order)]
+        guided_material = self.nominated_guided_material(proposal.guided_material_id)
+        memory = self.nominated_memory(proposal, guided_material)
+        evidence = self.nominated_evidence(proposal, guided_material, memory)
         return GovernedProfilePackage(
             contract_version=self._package.contract_version,
             profile_id=self._package.profile_id,
@@ -148,12 +132,66 @@ pub class AdmittedGovernedProfile:
             package_revision=self._package.package_revision,
             profile_package_digest=self._package.profile_package_digest,
             mission=self._package.mission,
-            actions=actions,
+            actions=self.nominated_action(proposal.action_id),
             evidence=evidence,
             memory=memory,
             guided_material=guided_material,
             policy=self._package.policy,
         )
+
+    def nominated_action(self, action_id: ActionId) -> list[GovernedAction]:
+        """Return the action the proposal names, when the package declares it."""
+
+        match self._action_positions.get(action_id.text()):
+            Some(position) => return [self._package.actions[position]]
+            None => return []
+
+    def nominated_guided_material(self, nominated: Option[GuidedMaterialId]) -> list[GuidedMaterial]:
+        """Return the guided material the proposal names, when it names one the package declares."""
+
+        match nominated:
+            None => return []
+            Some(identifier) =>
+                match self._guided_positions.get(identifier.text()):
+                    Some(position) => return [self._package.guided_material[position]]
+                    None => return []
+
+    def nominated_memory(
+        self,
+        proposal: GovernedProposal,
+        guided_material: list[GuidedMaterial],
+    ) -> list[GovernedMemory]:
+        """Return the declared memory atoms the proposal and its guided material name, in package order."""
+
+        mut names: list[str] = []
+        if within_reference_limit(proposal):
+            names = [memory_id.text() for memory_id in proposal.memory_ids]
+        for material in guided_material:
+            for memory_id in material.memory_ids:
+                names.append(memory_id.text())
+        return [self._package.memory[position] for position in declared_positions(self._memory_positions, names)]
+
+    def nominated_evidence(
+        self,
+        proposal: GovernedProposal,
+        guided_material: list[GuidedMaterial],
+        memory: list[GovernedMemory],
+    ) -> list[GovernedEvidence]:
+        """
+        Return the declared evidence the proposal touches, in package order: what it and its guided material
+        nominate, and what its memory atoms rest on.
+        """
+
+        mut names: list[str] = []
+        if within_reference_limit(proposal):
+            names = [evidence_id.text() for evidence_id in proposal.evidence_ids]
+        for material in guided_material:
+            for evidence_id in material.evidence_ids:
+                names.append(evidence_id.text())
+        for atom in memory:
+            for evidence_id in atom.evidence_ids:
+                names.append(evidence_id.text())
+        return [self._package.evidence[position] for position in declared_positions(self._evidence_positions, names)]
 
     def propose(
         self,
