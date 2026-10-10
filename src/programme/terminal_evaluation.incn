@@ -11,7 +11,12 @@ from std.hash import sha256
 from std.serde.json import Serialize
 from crate.identifiers import DecisionId, EvidenceId, GuidedCardId, InputId, MemoryId, decision_id, find_declared
 from crate.programme.evaluation import evaluate_programme_action
-from crate.programme.models import GuidedProgrammeCard, ProgrammeActionKind, ProgrammeMemoryOperation
+from crate.programme.models import (
+    GuidedProgrammeCard,
+    ProgrammeActionKind,
+    ProgrammeDecisionTrace,
+    ProgrammeMemoryOperation,
+)
 from crate.programme.terminal_artifacts import (
     construct_programme_content_dna,
     construct_programme_receipt,
@@ -213,19 +218,38 @@ def selected_support(
     package: ProgrammeAuthorityPackage,
     positions: Dict[str, int],
     card: GuidedProgrammeCard,
-) -> Option[list[ProgrammeSupportAtom]]:
+) -> Result[list[ProgrammeSupportAtom], str]:
     """Derive selected support only from the admitted card, never from extra caller nominations."""
 
     mut selected: list[ProgrammeSupportAtom] = []
     for memory_id in card.memory_ids:
         match positions.get(memory_id.text()):
-            None => return None
+            None => return Err("selected_support_invalid")
             Some(position) =>
                 atom = package.support_atoms[position]
                 if not card.evidence_ids.contains(atom.evidence_id):
-                    return None
+                    return Err("selected_support_invalid")
                 selected.append(atom)
-    return Some(selected)
+    return Ok(selected)
+
+
+def renderable_card_id(trace: ProgrammeDecisionTrace) -> Result[GuidedCardId, str]:
+    """Return the card the operation lands on: the next card, or the current card when it stays in place."""
+
+    match trace.next_card_id:
+        Some(card_id) => return Ok(card_id)
+        None => pass
+    match trace.current_card_id:
+        Some(card_id) => return Ok(card_id)
+        None => return Err("operation_has_no_renderable_card")
+
+
+def declared_card(package: ProgrammeAuthorityPackage, card_id: GuidedCardId) -> Result[GuidedProgrammeCard, str]:
+    """Return the declared card an eligible operation resolved to; eligibility proved it exists."""
+
+    match find_declared(package.programme.cards, card_id):
+        Some(card) => return Ok(card)
+        None => return Err("selected_support_invalid")
 
 
 def admitted_card(
@@ -246,29 +270,60 @@ def admitted_card(
     )
 
 
-def admitted(
+def sealed(
     package: ProgrammeAuthorityPackage,
     interaction: ProgrammeInteraction,
     terminal: ProgrammeTerminalResult,
     card: AdmittedProgrammeCard,
     selected: list[ProgrammeSupportAtom],
-) -> CompleteProgrammeEvaluation:
-    """Seal Content DNA and the receipt for an admitted operation; either failing rejects the operation."""
+) -> Result[CompleteProgrammeEvaluation, str]:
+    """Seal Content DNA and the receipt for an admitted operation."""
 
-    match construct_programme_content_dna(package, interaction, terminal.clone(), Some(card), selected):
-        None => return rejected(package, interaction, "content_dna_projection_failed", None)
-        Some(content_dna) =>
-            receipt_json = match construct_programme_receipt(
-                package,
-                interaction,
-                terminal.clone(),
-                Some(card),
-                Some(content_dna.content_dna_id),
-            ):
-                Some(receipt) => Some(receipt.to_json())
-                None => None
+    content_dna = match construct_programme_content_dna(package, interaction, terminal.clone(), Some(card), selected):
+        Some(value) => value
+        None => return Err("content_dna_projection_failed")
 
-            return complete(terminal, selected, Some(card), Some(content_dna.to_json()), receipt_json)
+    receipt_json = match construct_programme_receipt(
+        package,
+        interaction,
+        terminal.clone(),
+        Some(card),
+        Some(content_dna.content_dna_id),
+    ):
+        Some(receipt) => Some(receipt.to_json())
+        None => None
+
+    return Ok(complete(terminal, selected, Some(card), Some(content_dna.to_json()), receipt_json))
+
+
+def admitted(
+    package: ProgrammeAuthorityPackage,
+    interaction: ProgrammeInteraction,
+    trace: ProgrammeDecisionTrace,
+) -> Result[CompleteProgrammeEvaluation, str]:
+    """
+    Turn an eligible operation into an admitted evaluation, or return the reason it cannot be admitted.
+
+    Resolves the card the operation lands on, derives that card's support from the declaration alone, and seals
+    Content DNA and a receipt.
+    """
+
+    card_id = renderable_card_id(trace)?
+    card = declared_card(package, card_id)?
+    selected = selected_support(package, support_positions(package.support_atoms), card)?
+    terminal = terminal_result(
+        interaction.input_id,
+        true,
+        "admitted_programme_operation",
+        None,
+        trace.action,
+        trace.current_card_id,
+        trace.next_card_id,
+        trace.memory_operation,
+        [atom.evidence_id for atom in selected],
+        [atom.memory_id for atom in selected],
+    )
+    return sealed(package, interaction, terminal, admitted_card(package, interaction, card_id), selected)
 
 
 pub def evaluate_programme_terminal(
@@ -292,36 +347,6 @@ pub def evaluate_programme_terminal(
     if not eligibility.trace.eligible:
         return rejected(package, interaction, eligibility.trace.reason, Some(eligibility.trace.reason))
 
-    # The renderable card is the one the operation moves to, or the current card when it stays in place.
-    resolved_card_id = match eligibility.trace.next_card_id:
-        Some(value) => Some(value)
-        None => eligibility.trace.current_card_id
-
-    match resolved_card_id:
-        None => return rejected(package, interaction, "operation_has_no_renderable_card", None)
-        Some(card_id) =>
-            match find_declared(package.programme.cards, card_id):
-                None => return rejected(package, interaction, "selected_support_invalid", None)
-                Some(declared_card) =>
-                    match selected_support(package, support_positions(package.support_atoms), declared_card):
-                        None => return rejected(package, interaction, "selected_support_invalid", None)
-                        Some(selected) =>
-                            terminal = terminal_result(
-                                interaction.input_id,
-                                true,
-                                "admitted_programme_operation",
-                                None,
-                                eligibility.trace.action,
-                                eligibility.trace.current_card_id,
-                                eligibility.trace.next_card_id,
-                                eligibility.trace.memory_operation,
-                                [atom.evidence_id for atom in selected],
-                                [atom.memory_id for atom in selected],
-                            )
-                            return admitted(
-                                package,
-                                interaction,
-                                terminal,
-                                admitted_card(package, interaction, card_id),
-                                selected,
-                            )
+    match admitted(package, interaction, eligibility.trace):
+        Ok(evaluation) => return evaluation
+        Err(reason) => return rejected(package, interaction, reason, None)
