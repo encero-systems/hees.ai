@@ -115,15 +115,15 @@ required_files=(
     src/governed_profile_validation.incn
     src/identifiers.incn
     src/package_loader.incn
-    src/programme/mod.incn
-    src/programme/models.incn
-    src/programme/context.incn
-    src/programme/decision.incn
-    src/programme/evaluation.incn
-    src/programme/terminal_artifacts.incn
-    src/programme/terminal_evaluation.incn
-    src/programme/terminal_models.incn
-    src/programme/validation.incn
+    src/program/mod.incn
+    src/program/models.incn
+    src/program/context.incn
+    src/program/decision.incn
+    src/program/evaluation.incn
+    src/program/terminal_artifacts.incn
+    src/program/terminal_evaluation.incn
+    src/program/terminal_models.incn
+    src/program/validation.incn
     src/runtime.incn
     src/witness.incn
     tests/test_console_profile_contract.incn
@@ -135,8 +135,8 @@ required_files=(
     tests/test_governed_profile_contract.incn
     tests/test_identifier_contract.incn
     tests/test_package_loader_contract.incn
-    tests/test_programme_eligibility_contract.incn
-    tests/test_programme_terminal_contract.incn
+    tests/test_program_eligibility_contract.incn
+    tests/test_program_terminal_contract.incn
     tests/test_runtime_contract.incn
     tests/test_witness_contract.incn
     tools/validation/test_framework_boundary.sh
@@ -208,10 +208,10 @@ for path in src/*.incn; do
     fi
 done
 
-for path in src/programme/*.incn; do
+for path in src/program/*.incn; do
     case "$path" in
-        src/programme/context.incn | src/programme/decision.incn | src/programme/evaluation.incn | src/programme/mod.incn | src/programme/models.incn | src/programme/terminal_artifacts.incn | src/programme/terminal_evaluation.incn | src/programme/terminal_models.incn | src/programme/validation.incn) ;;
-        *) fail "guided-programme module is outside the public allowlist: $path" ;;
+        src/program/context.incn | src/program/decision.incn | src/program/evaluation.incn | src/program/mod.incn | src/program/models.incn | src/program/terminal_artifacts.incn | src/program/terminal_evaluation.incn | src/program/terminal_models.incn | src/program/validation.incn) ;;
+        *) fail "guided-program module is outside the public allowlist: $path" ;;
     esac
 done
 
@@ -225,7 +225,7 @@ allowed_docs=(
     workspaces/docs-site/docs/development.md
     workspaces/docs-site/docs/getting-started.md
     workspaces/docs-site/docs/governance-profiles.md
-    workspaces/docs-site/docs/guided-programmes.md
+    workspaces/docs-site/docs/guided-programs.md
     workspaces/docs-site/docs/hyperquant.md
     workspaces/docs-site/docs/hyperquant-turboquant-reference.md
     workspaces/docs-site/docs/index.md

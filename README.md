@@ -14,13 +14,13 @@ The implementation is Incan-authored under `src/hyperquant/`. Until Incan suppor
 
 See the [Hyperquant retrieval guide](workspaces/docs-site/docs/hyperquant.md) for its authority boundary, bounds, API, and profile roadmap.
 
-## Guided programmes
+## Guided programs
 
-The guided-programme boundary defines bounded programme, card, choice, transition, progress and learner-operation contracts in Incan. A programme declaration is validated for exact topology, reviewed and rights-allowed cards, language and audience catalogs, support references, completion and package-owned progress policy. The terminal evaluator then rechecks the original package and interaction, derives the admitted card and selected source-backed memory, and produces Content DNA and a receipt.
+The guided-program boundary defines bounded program, card, choice, transition, progress and learner-operation contracts in Incan. A program declaration is validated for exact topology, reviewed and rights-allowed cards, language and audience catalogs, support references, completion and package-owned progress policy. The terminal evaluator then rechecks the original package and interaction, derives the admitted card and selected source-backed memory, and produces Content DNA and a receipt.
 
 This is a runtime-ready package-projection boundary, not a card renderer, model provider, retrieval engine, package-file loader or durable-progress store. Runtime nominations remain untrusted; applications may render only the exact card identity and support set that the terminal Hees.ai decision admits.
 
-See the [guided-programme guide](workspaces/docs-site/docs/guided-programmes.md) for the complete public boundary and current limitations.
+See the [guided-program guide](workspaces/docs-site/docs/guided-programs.md) for the complete public boundary and current limitations.
 
 ## hees.ai console
 
@@ -212,7 +212,7 @@ Implemented now:
 - fail-closed structural package validation;
 - fail-closed proposal admission against package-owned actions and reviewed, rights-allowed evidence records;
 - exact and faithful compressed Hyperquant profiles that nominate bounded package-owned memory identifiers without granting authority, including bounded approximate TurboQuant nomination with exact reranking;
-- guided-programme declaration validation, operation eligibility and terminal admission with closed action payloads, deterministic topology, bounded progress, support derived from the declared card, Content DNA and receipts;
+- guided-program declaration validation, operation eligibility and terminal admission with closed action payloads, deterministic topology, bounded progress, support derived from the declared card, Content DNA and receipts;
 - goal, schedule, and session-continuity admission over package-declared phase graphs, with caller-supplied time, a governed ending for overrun sessions, and caller-held session state authenticated under a host-held key (Draft [RFC 013](rfcs/013-governed-continuity-goal-schedule-session-admission.md));
 - memory-operation admission for prompt selection, inspection, write, revoke, and supersede against package-declared memory classes, returning key-authenticated records without storage mutation (Draft [RFC 014](rfcs/014-governed-memory-lifecycle-operations.md));
 - retrieval-result admission: a provider nominates package-owned memory identifiers, and Hees.ai validates the complete request and result envelope against an admitted in-memory declaration and materializes only that package's atoms, with a closed stage and reason table (the runtime part of [RFC 003](rfcs/003-governed-memory-and-retrieval-results.md), in progress; package artifact admission is not implemented);
@@ -230,7 +230,7 @@ Not implemented by the checked `0.0.1` library:
 
 - a bundled local model inference engine; the implemented remote provider adapter remains optional and explicitly selected;
 - governed retrieval-result admission, selected-memory materialization, RAG composition, or semantic claim verification;
-- canonical guided-programme package admission, a package-file loader that verifies the artifact on disk, or Spectrum adjudication of programme operations;
+- canonical guided-program package admission, a package-file loader that verifies the artifact on disk, or Spectrum adjudication of program operations;
 - generic filesystem package loading or archive handling outside the closed in-memory console profile;
 - an authoritative semantic evaluator: the console profile consumes bounded provider observations, then classifies and applies them under package policy;
 - proof of source ownership, licensing, or content rights outside the explicit package status value;

@@ -1,0 +1,48 @@
+"""
+Public guided-program contracts.
+
+Implementation packages declare reviewed card topology, bounded choices, source-backed support identifiers and progress
+policy. Hees.ai validates those declarations, evaluates the original learner operation, and—through the terminal
+evaluator—derives the one admitted card, selected support, Content DNA, and receipt an application may inspect.
+
+The module does not load package files, retrieve additional memory, render cards, call a model, or mutate durable
+progress. A caller-supplied frame or nomination cannot manufacture authority; the terminal evaluator derives support
+only from the installed package projection.
+"""
+
+pub from crate.program.decision import ProgramEvaluation
+pub from crate.program.terminal_evaluation import evaluate_program_terminal, validate_program_authority_package
+pub from crate.program.evaluation import evaluate_program_action
+pub from crate.program.models import (
+    GuidedProgram,
+    GuidedProgramCard,
+    GuidedProgramChoice,
+    ProgramAction,
+    ProgramActionKind,
+    ProgramChoiceAction,
+    ProgramCurrentCardAction,
+    ProgramDecisionTrace,
+    ProgramEnterAction,
+    ProgramMemoryOperation,
+    ProgramOperationProjection,
+    ProgramProgressPolicy,
+    ProgramProgressSnapshot,
+    ProgramRuntimeFrame,
+    ProgramTransitionAction,
+    ProgramValidation,
+)
+pub from crate.program.terminal_models import (
+    AdmittedProgramCard,
+    CompleteProgramEvaluation,
+    ProgramAuthorityPackage,
+    ProgramAuthorityPolicy,
+    ProgramAuthorityValidation,
+    ProgramContentDna,
+    ProgramContentDnaBody,
+    ProgramInteraction,
+    ProgramReceiptBody,
+    ProgramSupportAtom,
+    ProgramTerminalDecision,
+    ProgramTerminalResult,
+)
+pub from crate.program.validation import validate_guided_program

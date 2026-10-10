@@ -3,7 +3,7 @@
 - [Hees.ai](index.md)
 - [hees.ai console](console.md)
 - [Governance profiles](governance-profiles.md)
-- [Guided programmes](guided-programmes.md)
+- [Guided programs](guided-programs.md)
 - [Hyperquant retrieval](hyperquant.md)
   - [TurboQuant reference contract](hyperquant-turboquant-reference.md)
 - [Console profile 0.1 bounds](console-profile-0-1.md)

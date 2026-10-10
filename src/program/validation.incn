@@ -1,12 +1,12 @@
 """
-Closed validation for package-declared guided programmes.
+Closed validation for package-declared guided programs.
 
 Validation checks catalogue bounds, review and rights state, identifier uniqueness, declared support and complete
 progression topology. It produces diagnostics only and does not grant runtime or persistence authority.
 """
 
 from crate.identifiers import GuidedCardId, has_duplicate_identifiers
-from crate.programme.models import GuidedProgramme, GuidedProgrammeCard, ProgrammeValidation
+from crate.program.models import GuidedProgram, GuidedProgramCard, ProgramValidation
 from crate.runtime import ReviewStatus, RightsStatus
 
 
@@ -28,53 +28,53 @@ def contains_duplicate(values: list[str]) -> bool:
     return false
 
 
-def declared_card_ids(programme: GuidedProgramme) -> Dict[str, bool]:
-    """Index every card identity declared by the programme."""
+def declared_card_ids(program: GuidedProgram) -> Dict[str, bool]:
+    """Index every card identity declared by the program."""
 
-    return {card.card_id.text(): true for card in programme.cards}
+    return {card.card_id.text(): true for card in program.cards}
 
 
-def find_card_by_text(programme: GuidedProgramme, card_id: str) -> Option[GuidedProgrammeCard]:
+def find_card_by_text(program: GuidedProgram, card_id: str) -> Option[GuidedProgramCard]:
     """Return one declared card by its canonical wire identity."""
 
-    for card in programme.cards:
+    for card in program.cards:
         if card.card_id.text() == card_id:
             return Some(card)
     return None
 
 
-def catalogue_errors(programme: GuidedProgramme) -> list[str]:
-    """Validate programme-level language and audience catalogues."""
+def catalogue_errors(program: GuidedProgram) -> list[str]:
+    """Validate program-level language and audience catalogues."""
 
     mut errors: list[str] = []
-    if len(programme.language_ids) == 0 or contains_duplicate(programme.language_ids):
-        errors.append("invalid_programme_languages")
-    if len(programme.audience_ids) == 0 or contains_duplicate(programme.audience_ids):
-        errors.append("invalid_programme_audiences")
-    for language_id in programme.language_ids:
+    if len(program.language_ids) == 0 or contains_duplicate(program.language_ids):
+        errors.append("invalid_program_languages")
+    if len(program.audience_ids) == 0 or contains_duplicate(program.audience_ids):
+        errors.append("invalid_program_audiences")
+    for language_id in program.language_ids:
         if not text_is_bounded(language_id):
-            errors.append("invalid_programme_language")
-    for audience_id in programme.audience_ids:
+            errors.append("invalid_program_language")
+    for audience_id in program.audience_ids:
         if not text_is_bounded(audience_id):
-            errors.append("invalid_programme_audience")
+            errors.append("invalid_program_audience")
     return errors
 
 
-def card_errors(programme: GuidedProgramme) -> list[str]:
+def card_errors(program: GuidedProgram) -> list[str]:
     """Validate every reviewed card, support reference, choice, and forward edge."""
 
     mut errors: list[str] = []
-    known_cards = declared_card_ids(programme)
+    known_cards = declared_card_ids(program)
     mut seen_cards: Dict[str, bool] = {}
     mut seen_choices: Dict[str, bool] = {}
 
-    for card in programme.cards:
+    for card in program.cards:
         canonical_card_id = card.card_id.text()
         if canonical_card_id in seen_cards:
             errors.append("duplicate_card_id")
         seen_cards.insert(canonical_card_id, true)
 
-        # Every visible card must already be reviewed, rights-allowed and scoped to the programme's catalogues.
+        # Every visible card must already be reviewed, rights-allowed and scoped to the program's catalogues.
         if card.review_status != ReviewStatus.Approved:
             errors.append("card_review_not_approved")
         if card.rights_status != RightsStatus.Allowed:
@@ -84,10 +84,10 @@ def card_errors(programme: GuidedProgramme) -> list[str]:
         if len(card.audience_ids) == 0 or contains_duplicate(card.audience_ids):
             errors.append("invalid_card_audiences")
         for language_id in card.language_ids:
-            if language_id not in programme.language_ids:
+            if language_id not in program.language_ids:
                 errors.append("unknown_card_language")
         for audience_id in card.audience_ids:
-            if audience_id not in programme.audience_ids:
+            if audience_id not in program.audience_ids:
                 errors.append("unknown_card_audience")
         if not card.completion and (len(card.evidence_ids) == 0 or len(card.memory_ids) == 0):
             errors.append("guided_card_without_support")
@@ -96,7 +96,7 @@ def card_errors(programme: GuidedProgramme) -> list[str]:
         if has_duplicate_identifiers(card.memory_ids):
             errors.append("duplicate_card_memory")
 
-        # Choice identifiers are global inside one programme because progress actions refer to them independently.
+        # Choice identifiers are global inside one program because progress actions refer to them independently.
         for choice in card.choices:
             canonical_choice_id = choice.choice_id.text()
             if canonical_choice_id in seen_choices:
@@ -115,13 +115,13 @@ def card_errors(programme: GuidedProgramme) -> list[str]:
     return errors
 
 
-def progression_errors(programme: GuidedProgramme) -> list[str]:
+def progression_errors(program: GuidedProgram) -> list[str]:
     """Require one acyclic path from the entry card through every card to completion."""
 
     mut errors: list[str] = []
-    known_cards = declared_card_ids(programme)
-    entry_id = programme.entry_card_id.text()
-    completion_id = programme.completion_card_id.text()
+    known_cards = declared_card_ids(program)
+    entry_id = program.entry_card_id.text()
+    completion_id = program.completion_card_id.text()
     if entry_id not in known_cards:
         errors.append("unknown_entry_card")
         return errors
@@ -131,13 +131,13 @@ def progression_errors(programme: GuidedProgramme) -> list[str]:
 
     mut visited: Dict[str, bool] = {}
     mut current_id = entry_id
-    for _step in range(len(programme.cards) + 1):
-        # The programme is deliberately linear: one path from entry through all cards to the declared completion card.
+    for _step in range(len(program.cards) + 1):
+        # The program is deliberately linear: one path from entry through all cards to the declared completion card.
         if current_id in visited:
             errors.append("required_progression_cycle")
             return errors
         visited.insert(current_id, true)
-        match find_card_by_text(programme, current_id):
+        match find_card_by_text(program, current_id):
             Some(card) =>
                 if current_id == completion_id:
                     if not card.completion:
@@ -158,13 +158,13 @@ def progression_errors(programme: GuidedProgramme) -> list[str]:
     return errors
 
 
-pub def validate_guided_programme(programme: GuidedProgramme) -> ProgrammeValidation:
+pub def validate_guided_program(program: GuidedProgram) -> ProgramValidation:
     """Validate a complete declaration without granting runtime or persistence authority."""
 
     mut errors: list[str] = []
-    if len(programme.cards) == 0:
+    if len(program.cards) == 0:
         errors.append("invalid_card_count")
-    errors.extend(catalogue_errors(programme))
-    errors.extend(card_errors(programme))
-    errors.extend(progression_errors(programme))
-    return ProgrammeValidation(valid=len(errors) == 0, errors=errors)
+    errors.extend(catalogue_errors(program))
+    errors.extend(card_errors(program))
+    errors.extend(progression_errors(program))
+    return ProgramValidation(valid=len(errors) == 0, errors=errors)
