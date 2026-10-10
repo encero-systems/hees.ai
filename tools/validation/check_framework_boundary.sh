@@ -120,6 +120,9 @@ required_files=(
     src/programme/context.incn
     src/programme/decision.incn
     src/programme/evaluation.incn
+    src/programme/terminal_artifacts.incn
+    src/programme/terminal_evaluation.incn
+    src/programme/terminal_models.incn
     src/programme/validation.incn
     src/runtime.incn
     src/witness.incn
@@ -133,6 +136,7 @@ required_files=(
     tests/test_identifier_contract.incn
     tests/test_package_loader_contract.incn
     tests/test_programme_eligibility_contract.incn
+    tests/test_programme_terminal_contract.incn
     tests/test_runtime_contract.incn
     tests/test_witness_contract.incn
     tools/validation/test_framework_boundary.sh
@@ -206,7 +210,7 @@ done
 
 for path in src/programme/*.incn; do
     case "$path" in
-        src/programme/context.incn | src/programme/decision.incn | src/programme/evaluation.incn | src/programme/mod.incn | src/programme/models.incn | src/programme/validation.incn) ;;
+        src/programme/context.incn | src/programme/decision.incn | src/programme/evaluation.incn | src/programme/mod.incn | src/programme/models.incn | src/programme/terminal_artifacts.incn | src/programme/terminal_evaluation.incn | src/programme/terminal_models.incn | src/programme/validation.incn) ;;
         *) fail "guided-programme module is outside the public allowlist: $path" ;;
     esac
 done

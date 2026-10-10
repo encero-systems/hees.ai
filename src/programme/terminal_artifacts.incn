@@ -1,0 +1,92 @@
+"""
+Content DNA and receipt construction for terminal guided-programme operations.
+
+These functions bind the original package projection, interaction, policy identity, closed decision, admitted card and
+selected support into the existing Hees provenance envelopes. They do not accept a renderer projection or a copied
+eligibility trace in place of those original inputs.
+"""
+
+from std.serde.json import Serialize
+from crate.content_dna import ProfileReceipt, construct_profile_receipt_json, digest_canonical_json
+from crate.identifiers import ContentDnaId, contract_id
+from crate.programme.terminal_models import (
+    AdmittedProgrammeCard,
+    ProgrammeAuthorityPackage,
+    ProgrammeContentDna,
+    ProgrammeContentDnaBody,
+    ProgrammeInteraction,
+    ProgrammeReceiptBody,
+    ProgrammeSupportAtom,
+    ProgrammeTerminalResult,
+)
+
+
+pub def construct_programme_content_dna(
+    package: ProgrammeAuthorityPackage,
+    interaction: ProgrammeInteraction,
+    terminal: ProgrammeTerminalResult,
+    card: Option[AdmittedProgrammeCard],
+    selected_memory: list[ProgrammeSupportAtom],
+) -> Option[ProgrammeContentDna]:
+    """Seal the original admitted operation and the exact source-safe support it selected."""
+
+    body = ProgrammeContentDnaBody(
+        contract_version=contract_id("guided_programme_content_dna_0_1"),
+        state="admitted_programme_operation",
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        programme_id=package.programme.programme_id,
+        policy=package.policy,
+        input_id=interaction.input_id,
+        action=interaction.action,
+        frame=interaction.frame,
+        decision_id=terminal.decision_id,
+        decision=terminal.decision,
+        reason_namespace=terminal.reason_namespace,
+        reason=terminal.reason,
+        card=card,
+        selected_memory=selected_memory,
+    )
+    match digest_canonical_json(body.to_json()):
+        Ok(identity) => return Some(ProgrammeContentDna(body=body, content_dna_id=ContentDnaId(identity)))
+        Err(_) => return None
+
+
+pub def construct_programme_receipt(
+    package: ProgrammeAuthorityPackage,
+    interaction: ProgrammeInteraction,
+    terminal: ProgrammeTerminalResult,
+    card: Option[AdmittedProgrammeCard],
+    content_dna_id: Option[ContentDnaId],
+) -> Option[ProfileReceipt]:
+    """Seal the complete terminal projection after package and input identity have been validated."""
+
+    body = ProgrammeReceiptBody(
+        contract_version=contract_id("guided_programme_receipt_0_1"),
+        profile_id=package.profile_id,
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        programme_id=package.programme.programme_id,
+        policy=package.policy,
+        input_id=interaction.input_id,
+        action=interaction.action,
+        terminal=terminal,
+        admitted_card=card,
+        content_dna_id=content_dna_id,
+    )
+    return construct_profile_receipt_json(body.to_json())
+
+
+pub def construct_rejected_programme_receipt(
+    package: ProgrammeAuthorityPackage,
+    interaction: ProgrammeInteraction,
+    terminal: ProgrammeTerminalResult,
+) -> Option[ProfileReceipt]:
+    """Seal an identity-safe rejection without admitting a card or Content DNA projection."""
+
+    return construct_programme_receipt(package, interaction, terminal, None, None)
