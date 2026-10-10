@@ -2,8 +2,10 @@
 
 from std.serde.json import Serialize
 from crate.governed_profile_artifacts import construct_governed_content_dna, construct_governed_receipt
+from crate.governed_memory_retrieval_models import MemoryAdmissionRecord
 from crate.governed_profile_committee import assess_committee
 from crate.governed_profile_identity import derive_bounded_identifier_text
+from crate.governed_profile_memory_context import memory_context_rejection
 from crate.governed_profile_models import (
     GOVERNED_REASON_NAMESPACE,
     AdmittedGuidedMaterial,
@@ -486,18 +488,88 @@ pub def evaluate_governed_profile_with_artifacts(
         Visible output is never exposed without the artifacts its decision requires.
     """
 
+    return evaluate_governed_profile(package, request, proposal, observations, None)
+
+
+def evaluate_governed_profile(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observations: list[CommitteeObservation],
+    memory_record: Option[MemoryAdmissionRecord],
+) -> CompleteGovernedEvaluation:
+    """
+    Validate the package, request, and proposal, apply the memory-context rule when a record is supplied, then
+    evaluate the matched action.
+
+    The memory-context check runs after proposal validation, so its rejection carries a receipt like every other
+    rejection past the proposal-identity boundary.
+    """
+
     package_validation = validate_governed_profile_package(package)
     if not package_validation.valid:
         return rejected_without_receipt(proposal, package_validation.reason, None, [])
+    return evaluate_validated_package(package, request, proposal, observations, memory_record)
+
+
+pub def evaluate_validated_package(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observations: list[CommitteeObservation],
+    memory_record: Option[MemoryAdmissionRecord],
+) -> CompleteGovernedEvaluation:
+    """
+    Evaluate one proposal against a package that has already passed ``validate_governed_profile_package``.
+
+    Internal to the crate and not re-exported: the callers are ``evaluate_governed_profile``, which has just
+    validated ``package``, and ``AdmittedGovernedProfile``, which holds a package validated at admission and passes
+    it narrowed to the records the proposal can touch. Everything after package validation runs here, in the same
+    order for both.
+    """
+
     request_validation = validate_governed_request(request)
     if not request_validation.valid:
         return rejected_without_receipt(proposal, request_validation.reason, None, [])
     proposal_validation = validate_governed_proposal(package, request, proposal)
     if not proposal_validation.valid:
         return reject_after_identity(package, request, proposal, proposal_validation.reason, None, [])
+    if let Some(record) = memory_record:
+        if let Some(reason) = memory_context_rejection(package, proposal, record):
+            return reject_after_identity(package, request, proposal, reason, None, [])
     match find_declared(package.actions, proposal.action_id):
         None => return reject_after_identity(package, request, proposal, "unknown_action", None, [])
         Some(action) => return evaluate_validated_action(package, request, proposal, observations, action)
+
+
+pub def evaluate_governed_profile_in_memory_context(
+    package: GovernedProfilePackage,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observations: list[CommitteeObservation],
+    memory_record: MemoryAdmissionRecord,
+) -> CompleteGovernedEvaluation:
+    """
+    Evaluate one proposal that may cite only memory an accepted retrieval context materialized.
+
+    This is ``evaluate_governed_profile_with_artifacts`` with one more rule, applied after proposal validation:
+    ``memory_record`` must be an accepted RFC 003 admission record for this package and domain
+    (``memory_context_not_accepted``, ``memory_context_package_mismatch``), and every memory identifier the proposal
+    nominates must be in that record's materialized context (``memory_not_in_accepted_context``). Each of those
+    rejections carries a receipt.
+
+    Args:
+        package: Untrusted package projection; revalidated on every call, including both digests.
+        request: Request whose ``request_digest`` must bind its exact fields.
+        proposal: Untrusted candidate behavior, bound to the package and request identity.
+        observations: Untrusted committee observations; required exactly when the matched action requires them.
+        memory_record: The record ``admit_memory_result`` returned for the retrieval that preceded this proposal.
+
+    Returns:
+        The same ``CompleteGovernedEvaluation`` shape as ``evaluate_governed_profile_with_artifacts``.
+    """
+
+    return evaluate_governed_profile(package, request, proposal, observations, Some(memory_record))
 
 
 pub def evaluate_governed_profile_json(

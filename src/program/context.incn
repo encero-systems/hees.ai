@@ -1,33 +1,23 @@
 """
-Guided-programme topology and runtime-context checks.
+Guided-program topology and runtime-context checks.
 
 These helpers validate untrusted history, current-card identity, language, audience, support nominations and progress
-against one structurally valid programme declaration. They do not retrieve or select memory and do not grant package
+against one structurally valid program declaration. They do not retrieve or select memory and do not grant package
 or terminal authority.
 """
 
 from crate.identifiers import GuidedCardId, find_declared
-from crate.programme.models import (
-    MAX_GUIDED_PROGRAMME_HISTORY,
-    GuidedProgramme,
-    GuidedProgrammeCard,
-    ProgrammeProgressSnapshot,
-    ProgrammeRuntimeFrame,
-)
+from crate.program.models import GuidedProgram, GuidedProgramCard, ProgramProgressSnapshot, ProgramRuntimeFrame
 
 
-def history_follows_programme(
-    programme: GuidedProgramme,
-    history: list[GuidedCardId],
-    current_card_id: GuidedCardId,
-) -> bool:
+def history_follows_program(program: GuidedProgram, history: list[GuidedCardId], current_card_id: GuidedCardId) -> bool:
     """Check that untrusted prior cards form the exact declared path to the current card."""
 
-    mut expected_card_id = programme.entry_card_id.text()
+    mut expected_card_id = program.entry_card_id.text()
     for history_card_id in history:
         if history_card_id.text() != expected_card_id:
             return false
-        maybe_card = find_declared(programme.cards, history_card_id)
+        maybe_card = find_declared(program.cards, history_card_id)
         if maybe_card is None:
             return false
         match maybe_card.unwrap().next_card_id:
@@ -37,30 +27,28 @@ def history_follows_programme(
     return current_card_id.text() == expected_card_id
 
 
-pub def runtime_frame_reason(programme: GuidedProgramme, frame: ProgrammeRuntimeFrame) -> Option[str]:
-    """Return the first reason an untrusted runtime frame cannot belong to the programme."""
+pub def runtime_frame_reason(program: GuidedProgram, frame: ProgramRuntimeFrame) -> Option[str]:
+    """Return the first reason an untrusted runtime frame cannot belong to the program."""
 
-    if frame.package_id != programme.package_id:
+    if frame.package_id != program.package_id:
         return Some("package_id_mismatch")
-    if frame.programme_id != programme.programme_id:
-        return Some("programme_id_mismatch")
-    if frame.revision != programme.revision:
-        return Some("programme_revision_mismatch")
-    if frame.language_id not in programme.language_ids:
+    if frame.program_id != program.program_id:
+        return Some("program_id_mismatch")
+    if frame.revision != program.revision:
+        return Some("program_revision_mismatch")
+    if frame.language_id not in program.language_ids:
         return Some("language_not_allowed")
-    if frame.audience_id not in programme.audience_ids:
+    if frame.audience_id not in program.audience_ids:
         return Some("audience_not_allowed")
-    if len(frame.history) > MAX_GUIDED_PROGRAMME_HISTORY:
-        return Some("history_limit_exceeded")
     if let Some(current_card_id) = frame.current_card_id:
-        match find_declared(programme.cards, current_card_id):
+        match find_declared(program.cards, current_card_id):
             Some(_card) => pass
             None => return Some("current_card_unknown")
         for history_card_id in frame.history:
-            match find_declared(programme.cards, history_card_id):
+            match find_declared(program.cards, history_card_id):
                 Some(_card) => pass
                 None => return Some("history_card_unknown")
-        if not history_follows_programme(programme, frame.history, current_card_id):
+        if not history_follows_program(program, frame.history, current_card_id):
             return Some("history_not_declared")
         return None
     if len(frame.history) > 0:
@@ -68,7 +56,7 @@ pub def runtime_frame_reason(programme: GuidedProgramme, frame: ProgrammeRuntime
     return None
 
 
-pub def card_nomination_reason(card: GuidedProgrammeCard, frame: ProgrammeRuntimeFrame) -> Option[str]:
+pub def card_nomination_reason(card: GuidedProgramCard, frame: ProgramRuntimeFrame) -> Option[str]:
     """Return why nominated support cannot make the card eligible for this language and audience."""
 
     if frame.language_id not in card.language_ids:
@@ -84,7 +72,7 @@ pub def card_nomination_reason(card: GuidedProgrammeCard, frame: ProgrammeRuntim
     return None
 
 
-pub def action_origin_reason(frame: ProgrammeRuntimeFrame, from_card_id: GuidedCardId) -> Option[str]:
+pub def action_origin_reason(frame: ProgramRuntimeFrame, from_card_id: GuidedCardId) -> Option[str]:
     """Require an operation's explicit origin to match the runtime's current card."""
 
     if Some(from_card_id) != frame.current_card_id:
@@ -92,24 +80,22 @@ pub def action_origin_reason(frame: ProgrammeRuntimeFrame, from_card_id: GuidedC
     return None
 
 
-pub def progress_snapshot_reason(programme: GuidedProgramme, snapshot: ProgrammeProgressSnapshot) -> Option[str]:
-    """Return why a durable snapshot cannot resume the exact programme revision and path."""
+pub def progress_snapshot_reason(program: GuidedProgram, snapshot: ProgramProgressSnapshot) -> Option[str]:
+    """Return why a durable snapshot cannot resume the exact program revision and path."""
 
-    if snapshot.package_id != programme.package_id:
+    if snapshot.package_id != program.package_id:
         return Some("progress_package_mismatch")
-    if snapshot.programme_id != programme.programme_id:
-        return Some("progress_programme_mismatch")
-    if snapshot.revision != programme.revision:
+    if snapshot.program_id != program.program_id:
+        return Some("progress_program_mismatch")
+    if snapshot.revision != program.revision:
         return Some("progress_revision_mismatch")
-    if len(snapshot.history) > MAX_GUIDED_PROGRAMME_HISTORY:
-        return Some("progress_history_limit_exceeded")
-    match find_declared(programme.cards, snapshot.current_card_id):
+    match find_declared(program.cards, snapshot.current_card_id):
         Some(_card) => pass
         None => return Some("progress_card_unknown")
     for card_id in snapshot.history:
-        match find_declared(programme.cards, card_id):
+        match find_declared(program.cards, card_id):
             Some(_card) => pass
             None => return Some("progress_history_card_unknown")
-    if not history_follows_programme(programme, snapshot.history, snapshot.current_card_id):
+    if not history_follows_program(program, snapshot.history, snapshot.current_card_id):
         return Some("progress_history_not_declared")
     return None

@@ -1,0 +1,259 @@
+"""Contract tests for in-memory admission of a governed-memory declaration."""
+
+from std.testing import assert_eq, assert_is_err, assert_is_none, assert_is_ok, assert_is_some
+from crate.governed_memory_retrieval import admit_memory_declaration, admit_package_without_memory
+from crate.governed_memory_retrieval_declaration import validate_memory_declaration
+from crate.governed_memory_retrieval_models import (
+    GovernedMemoryAtom,
+    GovernedMemoryDeclaration,
+    MemoryProviderBinding,
+    MemoryReviewStatus,
+    MemoryRuntimeRights,
+    MemoryValidity,
+    MemoryValidityMode,
+)
+
+const CORPUS_FINGERPRINT: str = "1111111111111111111111111111111111111111111111111111111111111111"
+const INDEX_FINGERPRINT: str = "2222222222222222222222222222222222222222222222222222222222222222"
+const CONFIGURATION_FINGERPRINT: str = "3333333333333333333333333333333333333333333333333333333333333333"
+const SOURCE_FINGERPRINT: str = "4444444444444444444444444444444444444444444444444444444444444444"
+const OTHER_FINGERPRINT: str = "5555555555555555555555555555555555555555555555555555555555555555"
+
+
+def binding() -> MemoryProviderBinding:
+    """Return the fixture's approved provider binding."""
+
+    return MemoryProviderBinding(
+        provider_id="lantern_retriever",
+        provider_contract_version="0.1",
+        adapter_version="1.2.0",
+        configuration_fingerprint=CONFIGURATION_FINGERPRINT,
+        index_fingerprint=INDEX_FINGERPRINT,
+        corpus_fingerprint=CORPUS_FINGERPRINT,
+    )
+
+
+def atom(identifier: str) -> GovernedMemoryAtom:
+    """Return an approved, allowed, indefinitely valid fictional atom named ``identifier``."""
+
+    return GovernedMemoryAtom(
+        id=identifier,
+        corpus_version="1.0",
+        corpus_fingerprint=CORPUS_FINGERPRINT,
+        claim="The first Lantern Path card introduces the lantern.",
+        guidance="Start with the first card.",
+        applicability="Applies when a reader asks where to begin.",
+        source_ref="lantern-path/cards/first",
+        source_fingerprint=SOURCE_FINGERPRINT,
+        review_status=MemoryReviewStatus.Approved,
+        runtime_rights=MemoryRuntimeRights.Allowed,
+        authority_class_id="reviewed_lesson",
+        risk_class_id="low",
+        sensitivity_class_id="public",
+        validity=MemoryValidity(mode=MemoryValidityMode.Indefinite, valid_from_ms=0, valid_until_ms=None),
+        labels=["card_order"],
+    )
+
+
+def declaration() -> GovernedMemoryDeclaration:
+    """Return a valid fictional declaration with one binding and two atoms."""
+
+    return GovernedMemoryDeclaration(
+        package_id="lantern_path_lessons",
+        domain_id="fictional_lesson_support",
+        package_revision="1.0",
+        provider_bindings=[binding()],
+        authority_class_ids=["reviewed_lesson"],
+        risk_class_ids=["low"],
+        sensitivity_class_ids=["public"],
+        atoms=[atom("lantern_card_order"), atom("lantern_card_review")],
+    )
+
+
+def assert_invalid(candidate: GovernedMemoryDeclaration, reason: str) -> None:
+    """Assert that validation and admission both fail with ``reason``."""
+
+    validation = validate_memory_declaration(candidate)
+    assert_eq(validation.valid, false)
+    assert_eq(validation.reason, reason)
+    assert_eq(assert_is_err(admit_memory_declaration(candidate)), reason)
+
+
+def with_atom(changed: GovernedMemoryAtom) -> GovernedMemoryDeclaration:
+    """Return the fixture declaration with its first atom replaced by ``changed``."""
+
+    mut candidate = declaration()
+    candidate.atoms = [changed, atom("lantern_card_review")]
+    return candidate
+
+
+def test_valid_declaration_is_admitted_with_a_trusted_identity() -> None:
+    assert_eq(validate_memory_declaration(declaration()).reason, "valid")
+    admitted = assert_is_ok(admit_memory_declaration(declaration()))
+    identity = admitted.identity
+    assert_eq(identity.package_id, "lantern_path_lessons")
+    assert_eq(identity.domain_id, "fictional_lesson_support")
+    assert_eq(identity.package_revision, "1.0")
+    assert_eq(len(assert_is_some(admitted.declaration).atoms), 2)
+
+    again = assert_is_ok(admit_memory_declaration(declaration()))
+    assert_eq(again.identity == identity, true)
+
+
+def test_identity_changes_when_the_declaration_changes() -> None:
+    first = assert_is_ok(admit_memory_declaration(declaration())).identity
+    mut changed_atom = atom("lantern_card_order")
+    changed_atom.guidance = "Start with the second card."
+    second = assert_is_ok(admit_memory_declaration(with_atom(changed_atom))).identity
+    assert_eq(first.package_semantic_identity == second.package_semantic_identity, false)
+    assert_eq(first.package_admission_binding == second.package_admission_binding, false)
+
+
+def test_package_without_memory_is_admitted_without_a_declaration() -> None:
+    admitted = assert_is_ok(admit_package_without_memory("lantern_path_lessons", "fictional_lesson_support", "1.0"))
+    assert_is_none(admitted.declaration)
+    assert_eq(admitted.identity.package_id, "lantern_path_lessons")
+    assert_eq(
+        assert_is_err(admit_package_without_memory("Lantern Path", "fictional_lesson_support", "1.0")),
+        "invalid_declaration_identity",
+    )
+
+
+def test_registry_lists_and_atom_labels_are_not_bounded_by_a_number() -> None:
+    mut wide = declaration()
+    mut classes: list[str] = ["low"]
+    for index in range(500):
+        classes.append(f"class_{index}")
+    wide.risk_class_ids = classes
+    assert_eq(validate_memory_declaration(wide).reason, "valid")
+
+    mut labelled = atom("lantern_card_order")
+    mut labels: list[str] = []
+    for index in range(500):
+        labels.append(f"label_{index}")
+    labelled.labels = labels
+    assert_eq(validate_memory_declaration(with_atom(labelled)).reason, "valid")
+    assert_is_ok(admit_memory_declaration(with_atom(labelled)))
+
+
+def test_identity_is_checked_first() -> None:
+    mut misnamed = declaration()
+    misnamed.risk_class_ids = []
+    misnamed.package_id = "Lantern Path"
+    assert_invalid(misnamed, "invalid_declaration_identity")
+    mut unversioned = declaration()
+    unversioned.package_revision = "1"
+    assert_invalid(unversioned, "invalid_declaration_identity")
+
+
+def test_registry_lists_must_be_non_empty_canonical_and_unique() -> None:
+    mut empty = declaration()
+    empty.authority_class_ids = []
+    assert_invalid(empty, "registry_list_empty")
+    mut unbound = declaration()
+    unbound.provider_bindings = []
+    assert_invalid(unbound, "registry_list_empty")
+
+    mut malformed = declaration()
+    malformed.risk_class_ids = ["Low Risk"]
+    assert_invalid(malformed, "invalid_classification_id")
+    mut repeated = declaration()
+    repeated.sensitivity_class_ids = ["public", "public"]
+    assert_invalid(repeated, "duplicate_classification_id")
+
+
+def test_provider_bindings_must_be_well_formed_and_unique() -> None:
+    mut prefixed = binding()
+    prefixed.index_fingerprint = f"sha256:{INDEX_FINGERPRINT}"
+    mut malformed = declaration()
+    malformed.provider_bindings = [prefixed]
+    assert_invalid(malformed, "invalid_provider_binding")
+
+    mut versionless = binding()
+    versionless.adapter_version = "latest"
+    mut unversioned = declaration()
+    unversioned.provider_bindings = [versionless]
+    assert_invalid(unversioned, "invalid_provider_binding")
+
+    mut repeated = declaration()
+    repeated.provider_bindings = [binding(), binding()]
+    assert_invalid(repeated, "duplicate_provider_binding")
+
+    mut second = binding()
+    second.index_fingerprint = f"{OTHER_FINGERPRINT}"
+    mut distinct = declaration()
+    distinct.provider_bindings = [binding(), second]
+    assert_eq(validate_memory_declaration(distinct).reason, "valid")
+
+
+def test_atoms_must_exist_and_be_uniquely_identified() -> None:
+    mut empty = declaration()
+    empty.atoms = []
+    assert_invalid(empty, "atoms_empty")
+    mut repeated = declaration()
+    repeated.atoms = [atom("lantern_card_order"), atom("lantern_card_order")]
+    assert_invalid(repeated, "duplicate_atom_id")
+
+
+def test_atom_identity_fields_are_validated() -> None:
+    assert_invalid(with_atom(atom("Lantern Card")), "invalid_atom_identifier")
+    mut versionless = atom("lantern_card_order")
+    versionless.corpus_version = "v1"
+    assert_invalid(with_atom(versionless), "invalid_atom_version")
+    mut short = atom("lantern_card_order")
+    short.source_fingerprint = "abc"
+    assert_invalid(with_atom(short), "invalid_atom_fingerprint")
+
+
+def test_atom_content_fields_are_validated() -> None:
+    mut blank = atom("lantern_card_order")
+    blank.guidance = " \t\n"
+    assert_invalid(with_atom(blank), "invalid_atom_text")
+
+    for unsafe_ref in ["/absolute/path", "lantern/../cards", "file://cards/first", "https://cards/first", " padded"]:
+        mut unsafe = atom("lantern_card_order")
+        unsafe.source_ref = unsafe_ref
+        assert_invalid(with_atom(unsafe), "invalid_atom_source_ref")
+
+    mut labelled = atom("lantern_card_order")
+    labelled.labels = ["card_order", "card_order"]
+    assert_invalid(with_atom(labelled), "invalid_atom_labels")
+
+
+def test_validity_shape_must_match_its_mode() -> None:
+    mut ended = atom("lantern_card_order")
+    ended.validity = MemoryValidity(mode=MemoryValidityMode.Indefinite, valid_from_ms=0, valid_until_ms=Some(10))
+    assert_invalid(with_atom(ended), "invalid_atom_validity")
+    mut endless = atom("lantern_card_order")
+    endless.validity = MemoryValidity(mode=MemoryValidityMode.Bounded, valid_from_ms=0, valid_until_ms=None)
+    assert_invalid(with_atom(endless), "invalid_atom_validity")
+    mut inverted = atom("lantern_card_order")
+    inverted.validity = MemoryValidity(mode=MemoryValidityMode.Bounded, valid_from_ms=10, valid_until_ms=Some(10))
+    assert_invalid(with_atom(inverted), "invalid_atom_validity")
+    mut negative = atom("lantern_card_order")
+    negative.validity = MemoryValidity(mode=MemoryValidityMode.Indefinite, valid_from_ms=-1, valid_until_ms=None)
+    assert_invalid(with_atom(negative), "invalid_atom_validity")
+
+    mut bounded = atom("lantern_card_order")
+    bounded.validity = MemoryValidity(mode=MemoryValidityMode.Bounded, valid_from_ms=10, valid_until_ms=Some(11))
+    assert_eq(validate_memory_declaration(with_atom(bounded)).reason, "valid")
+
+
+def test_atom_references_must_resolve_in_the_registry() -> None:
+    mut unclassified = atom("lantern_card_order")
+    unclassified.risk_class_id = "high"
+    assert_invalid(with_atom(unclassified), "unknown_atom_classification")
+    mut unbound = atom("lantern_card_order")
+    unbound.corpus_fingerprint = f"{OTHER_FINGERPRINT}"
+    assert_invalid(with_atom(unbound), "atom_corpus_not_bound")
+
+
+def test_every_review_and_rights_state_is_admissible_at_package_admission() -> None:
+    for status in [MemoryReviewStatus.Pending, MemoryReviewStatus.Rejected]:
+        mut unreviewed = atom("lantern_card_order")
+        unreviewed.review_status = status
+        assert_eq(validate_memory_declaration(with_atom(unreviewed)).reason, "valid")
+    for rights in [MemoryRuntimeRights.Restricted, MemoryRuntimeRights.Denied]:
+        mut restricted = atom("lantern_card_order")
+        restricted.runtime_rights = rights
+        assert_eq(validate_memory_declaration(with_atom(restricted)).reason, "valid")

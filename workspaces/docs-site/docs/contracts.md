@@ -80,6 +80,38 @@ A `GovernedMemoryPolicy` declares memory classes and operations. Each class name
 
 The decision reports the terminal result, one reason, the operation and memory identifiers, and, for an admitted `write`, `revoke`, or `supersede`, the resulting record. Hees.ai builds and stamps that record: a new record for `write`, and the existing record marked revoked or superseded for the other two. Hees.ai performs no storage mutation; the host stores the returned record unchanged. The record witness is an HMAC-SHA256 tag under the host's `WitnessKey`, with the same properties as the continuity state witness. It proves that Hees.ai returned the record, not that the record is the latest version; the host's store decides which version is current. Before proposing a `write`, the host supplies any record it already holds for that identifier, revoked and superseded versions included, so that Hees.ai rejects the write.
 
+## Governed memory retrieval admission
+
+The retrieval-admission API exports:
+
+- declaration models `GovernedMemoryDeclaration`, `GovernedMemoryAtom`, `MemoryProviderBinding`, `MemoryValidity`, `MemoryValidityMode`, `MemoryReviewStatus`, and `MemoryRuntimeRights`
+- package admission `validate_memory_declaration`, `admit_memory_declaration`, `admit_package_without_memory`, `AdmittedMemoryPackage`, `AdmittedMemoryPackageIdentity`, and `MemoryDeclarationValidation`
+- envelope models `MemoryRequest`, `MemoryProviderResult`, and `MemoryNomination`
+- `admit_memory_result`
+- record models `MemoryAdmissionRecord`, `NormalizedMemoryAdmission`, `MemoryContext`, `MaterializedMemoryAtom`, `MemoryRecordVariant`, `MemoryEnvelopeAdmission`, `MemoryAdmissionStage`, `MemoryResultState`, and `MemoryResultReason`
+- the contract version, the reason namespace, and the `MAX_MEMORY_*` and `MAX_RELEVANCE_BPS` bounds
+
+This is the runtime part of [RFC 003](https://github.com/encero-systems/hees.ai/blob/main/rfcs/003-governed-memory-and-retrieval-results.md), which is in progress; this exported surface may change with it.
+
+A `GovernedMemoryDeclaration` holds a package's memory atoms, its approved provider bindings, and its authority, risk, and sensitivity classification lists. Each atom carries bounded claim, guidance, and applicability text, a source reference and fingerprint, a review status, runtime rights, classification references, a validity interval, and labels. `admit_memory_declaration` validates the declaration once and returns an `AdmittedMemoryPackage` with a trusted identity and an index of its atoms and approved provider bindings. A caller cannot construct that value directly. A declaration may hold any number of atoms, registry entries, and labels per atom; each text field and each request is bounded.
+
+`admit_memory_result` takes the admitted package, a `MemoryRequest`, and a `MemoryProviderResult`, and returns one `MemoryAdmissionRecord`. `AdmittedMemoryPackage.admit_result(request, result)` returns the same record for a package the caller holds: it resolves the nominated atoms and the result's binding through the index, so its work depends on the result and not on the size of the package. A provider result contains memory identifiers, ranks, and relevance values only. Admission runs eight stages in order and stops at the first failure:
+
+1. `normalization`: bounds and the syntax of every field.
+2. `package`: an admitted package that declares governed memory.
+3. `request`: the contract version, each package claim against the trusted identity, and the result's echo of the request.
+4. `provider`: a binding that exactly equals an approved one, and a nomination count the provider state permits.
+5. `nominations`: count, unique identifiers, dense zero-based ranks, and relevance in `0..10000`.
+6. `atoms`: every identifier resolves, under the binding's corpus, to an approved, rights-allowed atom valid at the request's evaluation time.
+7. `context`: the aggregate bytes of the selected atoms.
+8. `complete`: `accepted_complete`, `accepted_partial`, or `accepted_unavailable`.
+
+One invalid item rejects the whole result. An accepted `complete` or `partial` result returns the package's atoms in rank order; an accepted `unavailable` result and every rejection return none. A rejection in the first two stages returns a record with no package identity and no input other than caller identifiers that are themselves canonical. Every later rejection returns the trusted evaluated identity and the bounded request and result as untrusted echoes.
+
+Acceptance establishes structural eligibility and provenance binding. It does not establish that an atom supports a claim, and relevance carries no authority. Hees.ai reads no clock: every time-dependent check uses the request's `evaluation_time_ms`.
+
+Package artifact admission is not implemented. `admit_memory_declaration` validates an in-memory declaration in its place, the identity digests are type-tagged SHA-256 digests that do not conform to RFC 011, and the bounds are fixed constants.
+
 ## Generic governed profile evaluation
 
 The generic governed profile API exports:
@@ -88,7 +120,7 @@ The generic governed profile API exports:
 - package stamping helpers `digest_governed_profile_package` and `digest_governed_memory_provenance`
 - request and proposal models and constructors `GovernedRequest`, `bind_governed_request`, `GovernedProposal`, `governed_proposal`, and `digest_governed_proposal`
 - committee inputs `CommitteeObservation`, `CommitteeVerdict`, and `committee_observation`
-- `validate_governed_profile_package`, `evaluate_governed_profile_with_artifacts`, and `evaluate_governed_profile_json`
+- `validate_governed_profile_package`, `evaluate_governed_profile_with_artifacts`, `evaluate_governed_profile_in_memory_context`, and `evaluate_governed_profile_json`
 - result types `CompleteGovernedEvaluation`, `GovernedSpectrumResult`, `GovernedFinding`, `AdmittedGuidedMaterial`, `GovernedContentDna`, `GovernedReceipt`, and `GovernedVisibleOutputSource`
 
 Its design is under review in Draft [RFC 015](https://github.com/encero-systems/hees.ai/blob/main/rfcs/015-generic-governed-profile-evaluation.md); this exported surface may change with it.
@@ -96,6 +128,8 @@ Its design is under review in Draft [RFC 015](https://github.com/encero-systems/
 A `GovernedProfilePackage` declares actions with their outcome kinds, reviewed evidence, reviewed memory atoms, optional guided material, and a committee policy that names the required evaluator roles. Each refusal or escalation action declares the `boundary_text` shown for that outcome. The caller stamps the package's `profile_package_digest` with `digest_governed_profile_package` and each memory atom's `provenance_digest` with `digest_governed_memory_provenance`; `validate_governed_profile_package` recomputes both and rejects any mismatch.
 
 `evaluate_governed_profile_with_artifacts` validates the package, the request, and the proposal's binding to both. It then delegates declared-action and reviewed-evidence checks to `admit_model_proposal`, validates the committee observations against the package's required roles and derives Hees.ai-owned findings from them, resolves the selected memory and any guided material, and maps the declared action's outcome kind to a `deliver`, `refuse`, or `escalate` decision. A `deliver` result carries the visible output, the selected memory, any admitted guided-material identity, and JSON projections of Content DNA and a receipt. A `refuse` or `escalate` result carries the package's `boundary_text` as its visible output and a receipt, but no selected memory or Content DNA; a proposal that supplies its own text for such an action is rejected. An admitted receipt records whether the visible output came from the proposal or from the package, and the digest of the text shown. A rejected result carries no visible output, selected memory, or Content DNA; it carries a redacted receipt only once the package, request, and proposal identity are established. `evaluate_governed_profile_json` returns the same complete result as JSON.
+
+`evaluate_governed_profile_in_memory_context` runs the same evaluation with one more rule. It takes the `MemoryAdmissionRecord` from retrieval admission and rejects a proposal unless that record is an accepted record for the same package and domain identifier and every memory identifier the proposal nominates is in its materialized context. Each of those rejections carries a receipt. The package revision is not compared, because retrieval admission and profile evaluation use different revision grammars.
 
 Committee observations remain non-authoritative inputs. The surface does not author packages, retrieve memory, invoke models, or materialize guided payloads.
 

@@ -436,11 +436,11 @@ pub type ProfileId = newtype SymbolicIdType with SymbolicIdentifier:
 
 
 @derive(Clone, Eq, json)
-pub type ProgrammeId = newtype SymbolicIdType with SymbolicIdentifier:
-    """Nominal identity for one package-declared guided programme."""
+pub type ProgramId = newtype SymbolicIdType with SymbolicIdentifier:
+    """Nominal identity for one package-declared guided program."""
 
     def underlying(self) -> SymbolicIdType:
-        """Return the symbolic base of a guided-programme identity."""
+        """Return the symbolic base of a guided-program identity."""
 
         return self.0
 
@@ -467,7 +467,7 @@ pub type ChoiceId = newtype SymbolicIdType with SymbolicIdentifier:
 
 @derive(Clone, Eq, json)
 pub type ProgressId = newtype SymbolicIdType with SymbolicIdentifier:
-    """Nominal identity for one explicit guided-programme progress record."""
+    """Nominal identity for one explicit guided-program progress record."""
 
     def underlying(self) -> SymbolicIdType:
         """Return the symbolic base of a progress-record identity."""
@@ -622,13 +622,13 @@ def symbolic_id_from_text(value: str) -> Result[SymbolicIdType, ValidationError]
 
 
 def trusted_symbolic_id(value: str) -> SymbolicIdType:
-    """Validate programmer-authored symbolic text before nominal wrapping."""
+    """Validate PROGRAMR_KEEP-authored symbolic text before nominal wrapping."""
 
     return symbolic_id_from_text(value).unwrap()
 
 
 def trusted_digest_id(value: str) -> DigestIdType:
-    """Validate a programmer-authored digest before nominal wrapping."""
+    """Validate a PROGRAMR_KEEP-authored digest before nominal wrapping."""
 
     bounded = IdType.from_underlying(value).unwrap()
     return DigestIdType.from_underlying(bounded).unwrap()
@@ -779,10 +779,10 @@ pub def profile_id(value: str) -> ProfileId:
     return ProfileId(trusted_symbolic_id(value))
 
 
-pub def programme_id(value: str) -> ProgrammeId:
-    """Wrap trusted canonical text as a guided-programme identity."""
+pub def program_id(value: str) -> ProgramId:
+    """Wrap trusted canonical text as a guided-program identity."""
 
-    return ProgrammeId(trusted_symbolic_id(value))
+    return ProgramId(trusted_symbolic_id(value))
 
 
 pub def guided_card_id(value: str) -> GuidedCardId:
@@ -900,27 +900,30 @@ pub def unit_id(value: str) -> UnitId:
 
 
 pub def has_duplicate_identifiers[T with SymbolicIdentifier](values: list[T]) -> bool:
-    """Return whether any identifier repeats an earlier canonical text; callers bound ``values`` before this scan."""
+    """Return whether any identifier repeats an earlier canonical text, in time linear in the number of values."""
 
-    mut seen: list[str] = []
+    mut seen: Dict[str, bool] = {}
     for value in values:
         text = value.text()
-        if seen.contains(text):
+        if seen.contains_key(text):
             return true
-        seen.append(text)
+        seen[text] = true
     return false
 
 
 pub def identifier_sets_equal[T with SymbolicIdentifier](left: list[T], right: list[T]) -> bool:
-    """Return whether two duplicate-free identifier lists hold the same canonical text in any order."""
+    """
+    Return whether two duplicate-free identifier lists hold the same canonical text in any order, in time linear in
+    their length.
+    """
 
     if len(left) != len(right):
         return false
-    mut right_text: list[str] = []
+    mut right_text: Dict[str, bool] = {}
     for value in right:
-        right_text.append(value.text())
+        right_text[value.text()] = true
     for value in left:
-        if not right_text.contains(value.text()):
+        if not right_text.contains_key(value.text()):
             return false
     return true
 

@@ -216,6 +216,12 @@ pub def construct_rejected_receipt(body: RejectedReceiptBody) -> Option[ProfileR
     return construct_profile_receipt(body.to_json())
 
 
+pub def construct_profile_receipt_json(body_source: str) -> Option[ProfileReceipt]:
+    """Seal a profile-specific typed receipt body through the shared canonical receipt envelope."""
+
+    return construct_profile_receipt(body_source)
+
+
 pub def profile_receipt_identity(value: ProfileReceipt) -> str:
     """Expose the receipt digest while keeping its sealed body non-constructible."""
     return value.receipt_id.text()

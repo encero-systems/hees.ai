@@ -1020,18 +1020,17 @@ def test_empty_memory_policy_is_rejected() -> None:
     assert_eq(validate_governed_memory_policy(rewitnessed(no_operations)).reason, "memory_policy_empty")
 
 
-def test_memory_policy_collection_bounds_are_enforced() -> None:
+def test_a_memory_class_may_allow_any_number_of_keys() -> None:
+    mut many_keys = fixture_class(2)
+    many_keys.allowed_keys = [f"key_{index}" for index in range(200)]
+    assert_eq(validate_governed_memory_policy(with_class(2, many_keys)).reason, "valid")
+
+
+def test_operation_rules_and_required_provenance_stay_bounded() -> None:
+    # One rule per operation kind, and a class may not require more provenance than one request can carry.
     mut extra_operation = unwitnessed_memory_policy()
     extra_operation.operations = extra_operation.operations + [fixture_operation(0)]
     assert_eq(validate_governed_memory_policy(rewitnessed(extra_operation)).reason, "memory_policy_too_large")
-
-    mut keys_at_bound = fixture_class(2)
-    keys_at_bound.allowed_keys = [f"key_{index}" for index in range(32)]
-    assert_eq(validate_governed_memory_policy(with_class(2, keys_at_bound)).reason, "valid")
-
-    mut keys_over_bound = fixture_class(2)
-    keys_over_bound.allowed_keys = [f"key_{index}" for index in range(33)]
-    assert_eq(validate_governed_memory_policy(with_class(2, keys_over_bound)).reason, "memory_policy_too_large")
 
     mut provenance_at_bound = fixture_class(2)
     provenance_at_bound.required_provenance = [f"field_{index}" for index in range(16)]

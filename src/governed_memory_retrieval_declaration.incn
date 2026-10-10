@@ -1,0 +1,319 @@
+"""
+In-memory validation of a governed-memory declaration (RFC 003 package stage).
+
+RFC 005 owns package artifact admission. Until it is implemented, ``validate_memory_declaration`` checks the
+registry and atom payload rules RFC 003 defines, and ``admit_memory_declaration`` in ``governed_memory_retrieval``
+turns a valid declaration into an ``AdmittedMemoryPackage``. Validation does not read serialized members, and its
+reasons are interim: they are package-admission reasons that RFC 005 will own, not RFC 003 runtime admission
+reasons.
+"""
+
+from rust::std::string import String as RustString
+from std.serde import json
+from crate.governed_memory_retrieval_models import (
+    MAX_MEMORY_ATOM_TEXT_BYTES,
+    MAX_MEMORY_INTEGER,
+    MAX_MEMORY_SOURCE_REF_BYTES,
+    MAX_MEMORY_VERSION_BYTES,
+    GovernedMemoryAtom,
+    GovernedMemoryDeclaration,
+    MemoryDeclarationValidation,
+    MemoryProviderBinding,
+    MemoryValidity,
+    MemoryValidityMode,
+)
+from crate.identifiers import identifier_text_is_safe
+
+const FINGERPRINT_LENGTH: int = 64
+
+
+def valid() -> MemoryDeclarationValidation:
+    """Construct the successful declaration validation result."""
+
+    return MemoryDeclarationValidation(valid=true, reason="valid")
+
+
+def invalid(reason: str) -> MemoryDeclarationValidation:
+    """Construct one failed declaration validation result carrying its reason."""
+
+    return MemoryDeclarationValidation(valid=false, reason=reason)
+
+
+pub def utf8_length(value: str) -> int:
+    """Return the exact UTF-8 byte length that every memory text bound is measured in."""
+
+    return len(RustString.from(value).into_bytes())
+
+
+pub def has_duplicate_text(values: list[str]) -> bool:
+    """Return whether any text value occurs more than once, in time linear in the number of values."""
+
+    mut seen: Dict[str, bool] = {}
+    for value in values:
+        if seen.contains_key(value):
+            return true
+        seen[value] = true
+    return false
+
+
+def is_decimal_digits(value: str) -> bool:
+    """Return whether ``value`` is a nonempty run of ASCII digits."""
+
+    if value == "":
+        return false
+    for character in value:
+        if not "0123456789".contains(character):
+            return false
+    return true
+
+
+pub def memory_version_text_is_safe(value: str) -> bool:
+    """Accept one bounded version or revision: two or three dot-separated runs of ASCII digits."""
+
+    if utf8_length(value) > MAX_MEMORY_VERSION_BYTES:
+        return false
+    parts = value.split(".")
+    if len(parts) < 2 or len(parts) > 3:
+        return false
+    for part in parts:
+        if not is_decimal_digits(part):
+            return false
+    return true
+
+
+pub def memory_fingerprint_text_is_safe(value: str) -> bool:
+    """Accept one SHA-256 fingerprint: exactly 64 lowercase hexadecimal characters with no prefix."""
+
+    if len(value) != FINGERPRINT_LENGTH:
+        return false
+    for character in value:
+        if not "0123456789abcdef".contains(character):
+            return false
+    return true
+
+
+pub def provider_binding_is_well_formed(binding: MemoryProviderBinding) -> bool:
+    """Return whether every field of a provider binding is canonical text for its kind."""
+
+    if not identifier_text_is_safe(binding.provider_id):
+        return false
+    if not memory_version_text_is_safe(binding.provider_contract_version):
+        return false
+    if not memory_version_text_is_safe(binding.adapter_version):
+        return false
+    if not memory_fingerprint_text_is_safe(binding.configuration_fingerprint):
+        return false
+    if not memory_fingerprint_text_is_safe(binding.index_fingerprint):
+        return false
+    return memory_fingerprint_text_is_safe(binding.corpus_fingerprint)
+
+
+pub def package_identity_text_is_safe(package_id: str, domain_id: str, package_revision: str) -> bool:
+    """Return whether a package identifier, domain identifier, and revision are canonical text."""
+
+    return identifier_text_is_safe(package_id) and identifier_text_is_safe(domain_id) and memory_version_text_is_safe(
+        package_revision,
+    )
+
+
+def atom_text_has_content(value: str) -> bool:
+    """Return whether bounded atom text holds at least one character other than tab, line feed, carriage return, or space."""
+
+    if value == "" or utf8_length(value) > MAX_MEMORY_ATOM_TEXT_BYTES:
+        return false
+    for character in value:
+        if not "\t\n\r ".contains(character):
+            return true
+    return false
+
+
+def source_ref_is_safe(value: str) -> bool:
+    """Accept one bounded source-safe reference; this checks shape only and dereferences nothing."""
+
+    if value == "" or utf8_length(value) > MAX_MEMORY_SOURCE_REF_BYTES:
+        return false
+    if value.strip() != value or value.startswith("/"):
+        return false
+    if value.contains("\\") or value.contains("..") or value.contains("file://") or value.contains(":/"):
+        return false
+    for byte in RustString.from(value).into_bytes():
+        if byte < 32 or byte == 127:
+            return false
+    return true
+
+
+def validity_is_well_formed(validity: MemoryValidity) -> bool:
+    """Return whether a validity object has exactly the shape its mode permits, with exact non-negative times."""
+
+    if validity.valid_from_ms < 0 or validity.valid_from_ms > MAX_MEMORY_INTEGER:
+        return false
+    return match validity.valid_until_ms:
+        None => validity.mode == MemoryValidityMode.Indefinite
+        Some(valid_until_ms) => (
+            validity.mode == MemoryValidityMode.Bounded
+            and valid_until_ms > validity.valid_from_ms
+            and valid_until_ms <= MAX_MEMORY_INTEGER
+        )
+
+
+def classification_list_rejection(values: list[str]) -> Option[str]:
+    """Return why one typed classification list is invalid, or None when it is non-empty, canonical, and duplicate-free."""
+
+    if len(values) == 0:
+        return Some("registry_list_empty")
+    for value in values:
+        if not identifier_text_is_safe(value):
+            return Some("invalid_classification_id")
+    if has_duplicate_text(values):
+        return Some("duplicate_classification_id")
+    return None
+
+
+def provider_bindings_rejection(bindings: list[MemoryProviderBinding]) -> Option[str]:
+    """Return why the provider bindings are invalid, or None when they are non-empty, well formed, and unique."""
+
+    if len(bindings) == 0:
+        return Some("registry_list_empty")
+    for binding in bindings:
+        if not provider_binding_is_well_formed(binding):
+            return Some("invalid_provider_binding")
+    if has_duplicate_text([binding.to_json() for binding in bindings]):
+        return Some("duplicate_provider_binding")
+    return None
+
+
+def atom_identity_rejection(atom: GovernedMemoryAtom) -> Option[str]:
+    """Return why an atom's identifier, version, or fingerprints are invalid, or None."""
+
+    if not identifier_text_is_safe(atom.id):
+        return Some("invalid_atom_identifier")
+    if not memory_version_text_is_safe(atom.corpus_version):
+        return Some("invalid_atom_version")
+    if not memory_fingerprint_text_is_safe(atom.corpus_fingerprint) or not memory_fingerprint_text_is_safe(
+        atom.source_fingerprint,
+    ):
+        return Some("invalid_atom_fingerprint")
+    return None
+
+
+def atom_content_rejection(atom: GovernedMemoryAtom) -> Option[str]:
+    """Return why an atom's text, source reference, validity, or labels are invalid, or None."""
+
+    if not atom_text_has_content(atom.claim) or not atom_text_has_content(atom.guidance) or not atom_text_has_content(
+        atom.applicability,
+    ):
+        return Some("invalid_atom_text")
+    if not source_ref_is_safe(atom.source_ref):
+        return Some("invalid_atom_source_ref")
+    if not validity_is_well_formed(atom.validity):
+        return Some("invalid_atom_validity")
+    for label in atom.labels:
+        if not identifier_text_is_safe(label):
+            return Some("invalid_atom_labels")
+    if has_duplicate_text(atom.labels):
+        return Some("invalid_atom_labels")
+    return None
+
+
+@derive(Clone)
+class MemoryRegistryIndex:
+    """
+    The registry of one declaration as lookups, so resolving an atom's references costs the same whatever the
+    registry holds.
+    """
+
+    authority_class_ids: Dict[str, bool]
+    risk_class_ids: Dict[str, bool]
+    sensitivity_class_ids: Dict[str, bool]
+    corpus_fingerprints: Dict[str, bool]
+
+    def atom_rejection(self, atom: GovernedMemoryAtom) -> Option[str]:
+        """Return why an atom's references into the registry do not resolve, or None."""
+
+        if not self.authority_class_ids.contains_key(atom.authority_class_id):
+            return Some("unknown_atom_classification")
+        if not self.risk_class_ids.contains_key(atom.risk_class_id):
+            return Some("unknown_atom_classification")
+        if not self.sensitivity_class_ids.contains_key(atom.sensitivity_class_id):
+            return Some("unknown_atom_classification")
+        if not self.corpus_fingerprints.contains_key(atom.corpus_fingerprint):
+            return Some("atom_corpus_not_bound")
+        return None
+
+
+def text_lookup(values: list[str]) -> Dict[str, bool]:
+    """Return the values as a lookup."""
+
+    mut lookup: Dict[str, bool] = {}
+    for value in values:
+        lookup[value] = true
+    return lookup
+
+
+def registry_index(declaration: GovernedMemoryDeclaration) -> MemoryRegistryIndex:
+    """Index the declaration's classification lists and the corpus fingerprints its provider bindings approve."""
+
+    return MemoryRegistryIndex(
+        authority_class_ids=text_lookup(declaration.authority_class_ids),
+        risk_class_ids=text_lookup(declaration.risk_class_ids),
+        sensitivity_class_ids=text_lookup(declaration.sensitivity_class_ids),
+        corpus_fingerprints=text_lookup([binding.corpus_fingerprint for binding in declaration.provider_bindings]),
+    )
+
+
+def atom_rejection(registry: MemoryRegistryIndex, atom: GovernedMemoryAtom) -> Option[str]:
+    """Return the first reason one atom is invalid, in identity, content, then registry order, or None."""
+
+    match atom_identity_rejection(atom):
+        Some(reason) => return Some(reason)
+        None => pass
+    match atom_content_rejection(atom):
+        Some(reason) => return Some(reason)
+        None => pass
+    return registry.atom_rejection(atom)
+
+
+def registry_rejection(declaration: GovernedMemoryDeclaration) -> Option[str]:
+    """Return the first reason the registry lists are invalid: classifications in typed order, then bindings."""
+
+    for values in [declaration.authority_class_ids, declaration.risk_class_ids, declaration.sensitivity_class_ids]:
+        match classification_list_rejection(values):
+            Some(reason) => return Some(reason)
+            None => pass
+    return provider_bindings_rejection(declaration.provider_bindings)
+
+
+pub def validate_memory_declaration(declaration: GovernedMemoryDeclaration) -> MemoryDeclarationValidation:
+    """
+    Validate a governed-memory declaration against the RFC 003 registry and atom payload rules.
+
+    No collection in a declaration is bounded by a number: the registry lists, the atoms, and the labels of an atom
+    may each hold any number of entries. Each text field is bounded, and what one request may nominate and
+    materialize is bounded by the retrieval request, not here.
+
+    Checks run in this order and stop at the first failure: package
+    identity text (``invalid_declaration_identity``), the classification lists and provider bindings
+    (``registry_list_empty``, ``invalid_classification_id``, ``duplicate_classification_id``,
+    ``invalid_provider_binding``, ``duplicate_provider_binding``), a non-empty atom list (``atoms_empty``) with unique
+    identifiers (``duplicate_atom_id``), then each atom in declared order (``invalid_atom_identifier``,
+    ``invalid_atom_version``, ``invalid_atom_fingerprint``, ``invalid_atom_text``, ``invalid_atom_source_ref``,
+    ``invalid_atom_validity``, ``invalid_atom_labels``, ``unknown_atom_classification``, ``atom_corpus_not_bound``).
+    Review status and runtime rights are not checked here: every recognized state is admissible, and only runtime
+    nomination eligibility acts on them.
+    """
+
+    if not package_identity_text_is_safe(declaration.package_id, declaration.domain_id, declaration.package_revision):
+        return invalid("invalid_declaration_identity")
+    match registry_rejection(declaration):
+        Some(reason) => return invalid(reason)
+        None => pass
+    if len(declaration.atoms) == 0:
+        return invalid("atoms_empty")
+    if has_duplicate_text([atom.id for atom in declaration.atoms]):
+        return invalid("duplicate_atom_id")
+    registry = registry_index(declaration)
+    for atom in declaration.atoms:
+        match atom_rejection(registry, atom):
+            Some(reason) => return invalid(reason)
+            None => pass
+    return valid()

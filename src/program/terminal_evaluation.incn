@@ -1,0 +1,347 @@
+"""
+Terminal admission for package-declared guided-program operations.
+
+This is deliberately not a UI state machine. The caller supplies an untrusted interaction; Hees.ai re-evaluates the
+original declaration and derives the one card and source-backed memory set that may be rendered or persisted.
+"""
+
+from rust::std::string import String as RustString
+from std.encoding.hex import hexlify
+from std.hash import sha256
+from std.serde.json import Serialize
+from crate.identifiers import DecisionId, EvidenceId, GuidedCardId, InputId, MemoryId, decision_id, find_declared
+from crate.program.evaluation import evaluate_program_action
+from crate.program.models import GuidedProgramCard, ProgramActionKind, ProgramDecisionTrace, ProgramMemoryOperation
+from crate.program.terminal_artifacts import (
+    construct_program_content_dna,
+    construct_program_receipt,
+    construct_rejected_program_receipt,
+)
+from crate.program.terminal_models import (
+    AdmittedProgramCard,
+    CompleteProgramEvaluation,
+    ProgramAuthorityPackage,
+    ProgramAuthorityValidation,
+    ProgramInteraction,
+    ProgramSupportAtom,
+    ProgramTerminalDecision,
+    ProgramTerminalResult,
+)
+from crate.program.validation import validate_guided_program
+from crate.runtime import ReviewStatus, RightsStatus
+
+const REASON_NAMESPACE: str = "guided_program_admission_0_1"
+const CONTRACT_VERSION: str = "guided_program_authority_0_1"
+
+
+def source_text_is_safe(value: str) -> bool:
+    """Require short source-safe identifiers rather than raw document paths or opaque payloads."""
+
+    if value == "" or len(value) > 256 or value.strip() != value:
+        return false
+    return not value.contains("\n") and not value.contains("\r")
+
+
+def support_positions(support_atoms: list[ProgramSupportAtom]) -> Dict[str, int]:
+    """
+    Index the package's support atoms by memory identifier.
+
+    Built once per evaluation, so resolving a card's support costs the same whatever the package holds. When an
+    identifier repeats, the first atom keeps the position; validation reports the repeat.
+    """
+
+    mut positions: Dict[str, int] = {}
+    for position, atom in enumerate(support_atoms):
+        key = atom.memory_id.text()
+        if not positions.contains_key(key):
+            positions[key] = position
+    return positions
+
+
+def support_atom_errors(package: ProgramAuthorityPackage, positions: Dict[str, int]) -> list[str]:
+    """Validate reviewed source-safe support independently from untrusted runtime nominations."""
+
+    mut errors: list[str] = []
+
+    # Each atom must be unique by memory identifier, name a safe source, and be reviewed and rights-allowed.
+    mut seen_memory: Dict[str, bool] = {}
+    for atom in package.support_atoms:
+        canonical_memory_id = atom.memory_id.text()
+        if seen_memory.contains_key(canonical_memory_id):
+            errors.append("duplicate_support_memory_id")
+        seen_memory[canonical_memory_id] = true
+        if not source_text_is_safe(atom.source_ref) or not source_text_is_safe(atom.source_kind):
+            errors.append("unsafe_support_source")
+        if atom.review_status != ReviewStatus.Approved:
+            errors.append("support_review_not_approved")
+        if atom.rights_status != RightsStatus.Allowed:
+            errors.append("support_rights_not_allowed")
+        if atom.authority_class.strip() == "" or atom.evidence_kind.strip() == "":
+            errors.append("support_classification_missing")
+
+    # Every memory a card names must have a support atom whose evidence the card also names.
+    for card in package.program.cards:
+        for memory_id in card.memory_ids:
+            match positions.get(memory_id.text()):
+                None => errors.append("card_support_memory_missing")
+                Some(position) =>
+                    if not card.evidence_ids.contains(package.support_atoms[position].evidence_id):
+                        errors.append("card_support_evidence_mismatch")
+    return errors
+
+
+pub def validate_program_authority_package(package: ProgramAuthorityPackage) -> ProgramAuthorityValidation:
+    """Validate the complete terminal package projection before evaluating an interaction."""
+
+    mut errors = validate_guided_program(package.program).errors
+    if package.contract_version.text() != CONTRACT_VERSION:
+        errors.append("unsupported_program_authority_contract")
+    if package.program.package_id != package.package_id:
+        errors.append("program_package_id_mismatch")
+    if package.program.revision != package.package_revision:
+        errors.append("program_revision_mismatch")
+    errors.extend(support_atom_errors(package, support_positions(package.support_atoms)))
+    return ProgramAuthorityValidation(valid=len(errors) == 0, errors=errors)
+
+
+def terminal_result(
+    input_id: InputId,
+    admitted: bool,
+    reason: str,
+    structural_reason: Option[str],
+    action: ProgramActionKind,
+    current_card_id: Option[GuidedCardId],
+    next_card_id: Option[GuidedCardId],
+    memory_operation: ProgramMemoryOperation,
+    evidence_ids: list[EvidenceId],
+    memory_ids: list[MemoryId],
+) -> ProgramTerminalResult:
+    """Create the one terminal result shape used by both admitted and rejected paths."""
+
+    mut decision = ProgramTerminalDecision.Reject
+    if admitted:
+        decision = ProgramTerminalDecision.Admit
+    return ProgramTerminalResult(
+        decision_id=derived_terminal_decision_id(input_id),
+        admitted=admitted,
+        decision=decision,
+        reason_namespace=REASON_NAMESPACE,
+        reason=reason,
+        structural_reason=structural_reason,
+        action=action,
+        current_card_id=current_card_id,
+        next_card_id=next_card_id,
+        memory_operation=memory_operation,
+        admitted_evidence_ids=evidence_ids,
+        selected_memory_ids=memory_ids,
+    )
+
+
+def derived_terminal_decision_id(input_id: InputId) -> DecisionId:
+    """Derive a bounded collision-resistant symbolic decision identity from any valid input ID."""
+
+    digest = hexlify(sha256.digest(RustString.from(input_id.text()).into_bytes()))
+    return decision_id(f"program_{digest}")
+
+
+def complete(
+    terminal: ProgramTerminalResult,
+    selected_memory: list[ProgramSupportAtom],
+    admitted_card: Option[AdmittedProgramCard],
+    content_dna_json: Option[str],
+    receipt_json: Option[str],
+) -> CompleteProgramEvaluation:
+    """Keep all externally visible program outputs in one atomic terminal projection."""
+
+    return CompleteProgramEvaluation(
+        terminal=terminal,
+        selected_memory=selected_memory,
+        admitted_card=admitted_card,
+        content_dna_json=content_dna_json,
+        receipt_json=receipt_json,
+    )
+
+
+def rejected_result(
+    interaction: ProgramInteraction,
+    reason: str,
+    structural_reason: Option[str],
+) -> ProgramTerminalResult:
+    """Build the terminal result of a rejection: no card, no support, no memory operation."""
+
+    return terminal_result(
+        interaction.input_id,
+        false,
+        reason,
+        structural_reason,
+        interaction.action.kind(),
+        interaction.frame.current_card_id,
+        None,
+        ProgramMemoryOperation.None,
+        [],
+        [],
+    )
+
+
+def rejected(
+    package: ProgramAuthorityPackage,
+    interaction: ProgramInteraction,
+    reason: str,
+    structural_reason: Option[str],
+) -> CompleteProgramEvaluation:
+    """Return a closed rejection and a receipt only after package validation has established identity."""
+
+    terminal = rejected_result(interaction, reason, structural_reason)
+    receipt_json = match construct_rejected_program_receipt(package, interaction, terminal.clone()):
+        Some(value) => Some(value.to_json())
+        None => None
+
+    return complete(terminal, [], None, None, receipt_json)
+
+
+def rejected_without_receipt(
+    interaction: ProgramInteraction,
+    reason: str,
+    structural_reason: Option[str],
+) -> CompleteProgramEvaluation:
+    """Reject malformed package input without exporting artifacts that could imply package admission."""
+
+    return complete(rejected_result(interaction, reason, structural_reason), [], None, None, None)
+
+
+def selected_support(
+    package: ProgramAuthorityPackage,
+    positions: Dict[str, int],
+    card: GuidedProgramCard,
+) -> Result[list[ProgramSupportAtom], str]:
+    """Derive selected support only from the admitted card, never from extra caller nominations."""
+
+    mut selected: list[ProgramSupportAtom] = []
+    for memory_id in card.memory_ids:
+        match positions.get(memory_id.text()):
+            None => return Err("selected_support_invalid")
+            Some(position) =>
+                atom = package.support_atoms[position]
+                if not card.evidence_ids.contains(atom.evidence_id):
+                    return Err("selected_support_invalid")
+                selected.append(atom)
+    return Ok(selected)
+
+
+def renderable_card_id(trace: ProgramDecisionTrace) -> Result[GuidedCardId, str]:
+    """Return the card the operation lands on: the next card, or the current card when it stays in place."""
+
+    match trace.next_card_id:
+        Some(card_id) => return Ok(card_id)
+        None => pass
+    match trace.current_card_id:
+        Some(card_id) => return Ok(card_id)
+        None => return Err("operation_has_no_renderable_card")
+
+
+def declared_card(package: ProgramAuthorityPackage, card_id: GuidedCardId) -> Result[GuidedProgramCard, str]:
+    """Return the declared card an eligible operation resolved to; eligibility proved it exists."""
+
+    match find_declared(package.program.cards, card_id):
+        Some(card) => return Ok(card)
+        None => return Err("selected_support_invalid")
+
+
+def admitted_card(
+    package: ProgramAuthorityPackage,
+    interaction: ProgramInteraction,
+    card_id: GuidedCardId,
+) -> AdmittedProgramCard:
+    """Project only the exact reviewed card identity that the application may render."""
+
+    return AdmittedProgramCard(
+        package_id=package.package_id,
+        package_revision=package.package_revision,
+        artifact_digest=package.artifact_digest,
+        program_id=package.program.program_id,
+        card_id=card_id,
+        language_id=interaction.frame.language_id,
+        audience_id=interaction.frame.audience_id,
+    )
+
+
+def sealed(
+    package: ProgramAuthorityPackage,
+    interaction: ProgramInteraction,
+    terminal: ProgramTerminalResult,
+    card: AdmittedProgramCard,
+    selected: list[ProgramSupportAtom],
+) -> Result[CompleteProgramEvaluation, str]:
+    """Seal Content DNA and the receipt for an admitted operation."""
+
+    content_dna = match construct_program_content_dna(package, interaction, terminal.clone(), Some(card), selected):
+        Some(value) => value
+        None => return Err("content_dna_projection_failed")
+
+    receipt_json = match construct_program_receipt(
+        package,
+        interaction,
+        terminal.clone(),
+        Some(card),
+        Some(content_dna.content_dna_id),
+    ):
+        Some(receipt) => Some(receipt.to_json())
+        None => None
+
+    return Ok(complete(terminal, selected, Some(card), Some(content_dna.to_json()), receipt_json))
+
+
+def admitted(
+    package: ProgramAuthorityPackage,
+    interaction: ProgramInteraction,
+    trace: ProgramDecisionTrace,
+) -> Result[CompleteProgramEvaluation, str]:
+    """
+    Turn an eligible operation into an admitted evaluation, or return the reason it cannot be admitted.
+
+    Resolves the card the operation lands on, derives that card's support from the declaration alone, and seals
+    Content DNA and a receipt.
+    """
+
+    card_id = renderable_card_id(trace)?
+    card = declared_card(package, card_id)?
+    selected = selected_support(package, support_positions(package.support_atoms), card)?
+    terminal = terminal_result(
+        interaction.input_id,
+        true,
+        "admitted_program_operation",
+        None,
+        trace.action,
+        trace.current_card_id,
+        trace.next_card_id,
+        trace.memory_operation,
+        [atom.evidence_id for atom in selected],
+        [atom.memory_id for atom in selected],
+    )
+    return sealed(package, interaction, terminal, admitted_card(package, interaction, card_id), selected)
+
+
+pub def evaluate_program_terminal(
+    package: ProgramAuthorityPackage,
+    interaction: ProgramInteraction,
+) -> CompleteProgramEvaluation:
+    """
+    Admit or reject one original interaction, then derive every visible program projection from that decision.
+
+    Stages, in order: the package projection is validated (a malformed package is rejected without a receipt, since
+    no package identity is established); the original action is evaluated for eligibility; the card the operation
+    lands on is resolved; the card's support is derived from the declaration alone; Content DNA and a receipt are
+    sealed. Every rejection after package validation carries a receipt.
+    """
+
+    validation = validate_program_authority_package(package)
+    if not validation.valid:
+        return rejected_without_receipt(interaction, "invalid_program_authority_package", None)
+
+    eligibility = evaluate_program_action(package.program, interaction.frame, interaction.action)
+    if not eligibility.trace.eligible:
+        return rejected(package, interaction, eligibility.trace.reason, Some(eligibility.trace.reason))
+
+    match admitted(package, interaction, eligibility.trace):
+        Ok(evaluation) => return evaluation
+        Err(reason) => return rejected(package, interaction, reason, None)

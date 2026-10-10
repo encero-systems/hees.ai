@@ -1,21 +1,29 @@
-from std.testing import assert_eq, assert_is_ok
+from std.testing import assert_eq, assert_is_ok, assert_is_some
 from pub::hees_ai import (
-    GuidedProgramme,
-    GuidedProgrammeCard,
+    ProgramAuthorityPackage,
+    ProgramAuthorityPolicy,
+    ProgramInteraction,
+    GuidedProgram,
+    GuidedProgramCard,
     HyperquantEntry,
     HyperquantProfile,
     PackageLoaderDescriptor,
     PackageLoaderValidation,
-    ProgrammeAction,
-    ProgrammeActionKind,
-    ProgrammeEnterAction,
-    ProgrammeMemoryOperation,
-    ProgrammeProgressPolicy,
-    ProgrammeRuntimeFrame,
+    ProgramAction,
+    ProgramActionKind,
+    ProgramEnterAction,
+    ProgramMemoryOperation,
+    ProgramProgressPolicy,
+    ProgramRuntimeFrame,
     ReviewStatus,
     RightsStatus,
     TurboquantConfiguration,
-    evaluate_programme_action,
+    evaluate_program_action,
+    evaluate_program_terminal,
+    constraint_plan_id,
+    contract_id,
+    digest_id_type,
+    domain_id,
     exact_index,
     exact_query,
     guided_card_id,
@@ -24,8 +32,10 @@ from pub::hees_ai import (
     package_loader_descriptor,
     package_loader_summary,
     package_id,
-    programme_id,
+    profile_id,
+    program_id,
     revision,
+    input_id,
     validate_package_loader_descriptor,
 )
 
@@ -85,20 +95,20 @@ def test_external_dependency_can_encode_and_decode_faithful_turboquant() -> None
     assert_eq(decoded.to_bytes(), code.to_bytes())
 
 
-def test_external_dependency_can_request_a_guided_programme_operation() -> None:
+def test_external_dependency_can_request_a_guided_program_operation() -> None:
     """Prove a non-authoritative eligibility result crosses the public library boundary."""
 
     card_id = guided_card_id("completion")
-    programme = GuidedProgramme(
-        programme_id=programme_id("one_card_programme"),
+    program = GuidedProgram(
+        program_id=program_id("one_card_program"),
         package_id=package_id("consumer_fixture"),
         revision=revision("1.0.0"),
         language_ids=["en"],
         audience_ids=["adult_learner"],
         entry_card_id=card_id,
         completion_card_id=card_id,
-        progress_policy=ProgrammeProgressPolicy.SessionOnly,
-        cards=[GuidedProgrammeCard(
+        progress_policy=ProgramProgressPolicy.SessionOnly,
+        cards=[GuidedProgramCard(
             card_id=card_id,
             evidence_ids=[],
             memory_ids=[],
@@ -111,9 +121,9 @@ def test_external_dependency_can_request_a_guided_programme_operation() -> None:
             rights_status=RightsStatus.Allowed,
         )],
     )
-    frame = ProgrammeRuntimeFrame(
+    frame = ProgramRuntimeFrame(
         package_id=package_id("consumer_fixture"),
-        programme_id=programme_id("one_card_programme"),
+        program_id=program_id("one_card_program"),
         revision=revision("1.0.0"),
         current_card_id=None,
         history=[],
@@ -122,9 +132,9 @@ def test_external_dependency_can_request_a_guided_programme_operation() -> None:
         nominated_memory_ids=[],
         nominated_evidence_ids=[],
     )
-    action = ProgrammeAction.Enter(ProgrammeEnterAction(target_card_id=card_id))
+    action = ProgramAction.Enter(ProgramEnterAction(target_card_id=card_id))
 
-    evaluation = evaluate_programme_action(programme, frame, action)
+    evaluation = evaluate_program_action(program, frame, action)
     trace = evaluation.trace
     projection = evaluation.operation
 
@@ -132,7 +142,71 @@ def test_external_dependency_can_request_a_guided_programme_operation() -> None:
     assert_eq(trace.reason, "eligible")
     match projection:
         Some(operation) =>
-            assert_eq(operation.action, ProgrammeActionKind.Enter)
+            assert_eq(operation.action, ProgramActionKind.Enter)
             assert_eq(operation.next_card_id, Some(card_id))
-            assert_eq(operation.memory_operation, ProgrammeMemoryOperation.None)
+            assert_eq(operation.memory_operation, ProgramMemoryOperation.None)
         None => assert_eq(true, false)
+
+
+def test_external_dependency_can_admit_a_terminal_guided_program_operation() -> None:
+    """Prove the terminal authority boundary is usable through the generated public-library manifest."""
+
+    card_id = guided_card_id("completion")
+    program = GuidedProgram(
+        program_id=program_id("one_card_program"),
+        package_id=package_id("consumer_fixture"),
+        revision=revision("1.0.0"),
+        language_ids=["en"],
+        audience_ids=["adult_learner"],
+        entry_card_id=card_id,
+        completion_card_id=card_id,
+        progress_policy=ProgramProgressPolicy.SessionOnly,
+        cards=[GuidedProgramCard(
+            card_id=card_id,
+            evidence_ids=[],
+            memory_ids=[],
+            language_ids=["en"],
+            audience_ids=["adult_learner"],
+            choices=[],
+            next_card_id=None,
+            completion=true,
+            review_status=ReviewStatus.Approved,
+            rights_status=RightsStatus.Allowed,
+        )],
+    )
+    package = ProgramAuthorityPackage(
+        contract_version=contract_id("guided_program_authority_0_1"),
+        profile_id=profile_id("consumer_profile"),
+        package_id=package_id("consumer_fixture"),
+        domain_id=domain_id("consumer_domain"),
+        package_revision=revision("1.0.0"),
+        artifact_digest=digest_id_type("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+        program=program,
+        support_atoms=[],
+        policy=ProgramAuthorityPolicy(
+            constraint_plan_id=constraint_plan_id("consumer_policy"),
+            constraint_plan_revision=revision("1.0.0"),
+        ),
+    )
+    interaction = ProgramInteraction(
+        input_id=input_id("consumer_interaction"),
+        frame=ProgramRuntimeFrame(
+            package_id=package_id("consumer_fixture"),
+            program_id=program_id("one_card_program"),
+            revision=revision("1.0.0"),
+            current_card_id=None,
+            history=[],
+            language_id="en",
+            audience_id="adult_learner",
+            nominated_memory_ids=[],
+            nominated_evidence_ids=[],
+        ),
+        action=ProgramAction.Enter(ProgramEnterAction(target_card_id=card_id)),
+    )
+
+    evaluation = evaluate_program_terminal(package, interaction)
+
+    assert_eq(evaluation.terminal.admitted, true)
+    assert_eq(assert_is_some(evaluation.admitted_card).card_id, card_id)
+    assert_is_some(evaluation.content_dna_json)
+    assert_is_some(evaluation.receipt_json)

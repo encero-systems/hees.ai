@@ -17,6 +17,7 @@ from crate.governed_profile_models import (
     GovernedMemory,
     GovernedMemoryArtifactProjection,
     GovernedMemoryProvenanceProjection,
+    GovernedPackageIdentity,
     GovernedProfilePackage,
     GovernedProfilePackageArtifactProjection,
     GovernedProposal,
@@ -25,14 +26,18 @@ from crate.governed_profile_models import (
 )
 from crate.identifiers import (
     ActionId,
+    ArtifactRevisionType,
     AudienceId,
     CommitteeRoleId,
     DigestIdType,
+    DomainId,
     EvidenceId,
     GuidedMaterialId,
     GuidedStepId,
     MemoryId,
     ObservationId,
+    PackageId,
+    ProfileId,
     ProposalId,
     RequestId,
     contract_id,
@@ -114,11 +119,54 @@ pub def digest_governed_profile_package(package: GovernedProfilePackage) -> Dige
 pub def digest_governed_memory_provenance(package: GovernedProfilePackage, atom: GovernedMemory) -> DigestIdType:
     """Bind one memory atom's core fields to the exact, already-established package identity."""
 
+    return digest_governed_memory_provenance_for(
+        package.package_id,
+        package.domain_id,
+        package.package_revision,
+        package.profile_package_digest,
+        atom,
+    )
+
+
+pub def digest_governed_memory_provenance_for(
+    package_id: PackageId,
+    domain_id: DomainId,
+    package_revision: ArtifactRevisionType,
+    profile_package_digest: DigestIdType,
+    atom: GovernedMemory,
+) -> DigestIdType:
+    """
+    Bind one memory atom's core fields to the identity fields of an already-stamped package.
+
+    Gives the digest ``digest_governed_memory_provenance`` gives for the package those four fields come from. A
+    caller stamping the atoms of a large package passes the fields instead of the package, so the work is
+    proportional to the atom.
+    """
+
+    return digest_memory_provenance_bound_to(
+        GovernedPackageIdentity(
+            package_id=package_id,
+            domain_id=domain_id,
+            package_revision=package_revision,
+            profile_package_digest=profile_package_digest,
+        ),
+        atom,
+    )
+
+
+pub def digest_memory_provenance_bound_to(identity: GovernedPackageIdentity, atom: GovernedMemory) -> DigestIdType:
+    """
+    Bind one memory atom's core fields to a package identity. Internal to the crate and not re-exported.
+
+    Package validation checks every atom of a package against one identity; taking only the identity keeps that
+    work proportional to the atom, whatever the size of the package.
+    """
+
     projection = GovernedMemoryProvenanceProjection(
-        package_id=package.package_id,
-        domain_id=package.domain_id,
-        package_revision=package.package_revision,
-        profile_package_digest=package.profile_package_digest,
+        package_id=identity.package_id,
+        domain_id=identity.domain_id,
+        package_revision=identity.package_revision,
+        profile_package_digest=identity.profile_package_digest,
         memory_id=atom.memory_id,
         concept=atom.concept,
         evidence_ids=atom.evidence_ids,
@@ -192,13 +240,52 @@ pub def governed_proposal(
 ) -> GovernedProposal:
     """Construct an untrusted proposal bound to the caller-supplied package and request identity."""
 
+    return governed_proposal_bound_to(
+        package.profile_id,
+        GovernedPackageIdentity(
+            package_id=package.package_id,
+            domain_id=package.domain_id,
+            package_revision=package.package_revision,
+            profile_package_digest=package.profile_package_digest,
+        ),
+        request,
+        proposal_id,
+        action_id,
+        visible_output,
+        evidence_ids,
+        memory_ids,
+        guided_material_id,
+        current_step_id,
+        next_step_id,
+    )
+
+
+pub def governed_proposal_bound_to(
+    profile: ProfileId,
+    identity: GovernedPackageIdentity,
+    request: GovernedRequest,
+    proposal_id: ProposalId,
+    action_id: ActionId,
+    visible_output: str,
+    evidence_ids: list[EvidenceId],
+    memory_ids: list[MemoryId],
+    guided_material_id: Option[GuidedMaterialId],
+    current_step_id: Option[GuidedStepId],
+    next_step_id: Option[GuidedStepId],
+) -> GovernedProposal:
+    """
+    Construct an untrusted proposal bound to a package identity and a request, without needing the package.
+
+    ``governed_proposal`` and ``AdmittedGovernedProfile.propose`` both construct through this function.
+    """
+
     return GovernedProposal(
         contract_version=contract_id(GOVERNED_PROPOSAL_CONTRACT),
-        profile_id=package.profile_id,
-        package_id=package.package_id,
-        domain_id=package.domain_id,
-        package_revision=package.package_revision,
-        profile_package_digest=package.profile_package_digest,
+        profile_id=profile,
+        package_id=identity.package_id,
+        domain_id=identity.domain_id,
+        package_revision=identity.package_revision,
+        profile_package_digest=identity.profile_package_digest,
         request_id=request.request_id,
         request_digest=request.request_digest,
         proposal_id=proposal_id,
@@ -228,16 +315,49 @@ pub def committee_observation(
     The observation is still untrusted input: ``evaluate_governed_profile_with_artifacts`` re-validates every field.
     """
 
+    return committee_observation_bound_to(
+        package.profile_id,
+        GovernedPackageIdentity(
+            package_id=package.package_id,
+            domain_id=package.domain_id,
+            package_revision=package.package_revision,
+            profile_package_digest=package.profile_package_digest,
+        ),
+        request,
+        proposal,
+        observation_id,
+        role,
+        verdict,
+        evaluator_fingerprint,
+    )
+
+
+pub def committee_observation_bound_to(
+    profile: ProfileId,
+    identity: GovernedPackageIdentity,
+    request: GovernedRequest,
+    proposal: GovernedProposal,
+    observation_id: ObservationId,
+    role: CommitteeRoleId,
+    verdict: CommitteeVerdict,
+    evaluator_fingerprint: DigestIdType,
+) -> CommitteeObservation:
+    """
+    Bind one non-authoritative verdict to a package identity, a request and a candidate, without needing the package.
+
+    ``committee_observation`` and ``AdmittedGovernedProfile.observe`` both construct through this function.
+    """
+
     return CommitteeObservation(
         contract_version=contract_id(GOVERNED_OBSERVATION_CONTRACT),
-        profile_id=package.profile_id,
+        profile_id=profile,
         observation_id=observation_id,
         role=role,
         verdict=verdict,
-        package_id=package.package_id,
-        domain_id=package.domain_id,
-        package_revision=package.package_revision,
-        profile_package_digest=package.profile_package_digest,
+        package_id=identity.package_id,
+        domain_id=identity.domain_id,
+        package_revision=identity.package_revision,
+        profile_package_digest=identity.profile_package_digest,
         request_id=request.request_id,
         request_digest=request.request_digest,
         candidate_digest=digest_governed_proposal(proposal),

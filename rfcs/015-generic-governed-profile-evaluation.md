@@ -128,7 +128,7 @@ An action declared `Refusal` or `Escalation` still produces a receipt (so the ou
 
 1. `validate_governed_profile_package(package)`. Every failure surfaces as reason `invalid_package`; a caller who wants the specific cause calls `validate_governed_profile_package` directly and reads `errors[0]`. Stages, in order:
     1. Header: `unsupported_package_contract` (contract must be `governed_profile_package_0_1`), `unsupported_profile` (profile must be `governed_profile_0_1`), `invalid_package_id`, `invalid_domain_id`, `invalid_package_revision`, `invalid_profile_package_digest`.
-    2. Bounds, checked before any duplicate scan and before the digest is recomputed (see [Bounds](#bounds)): `invalid_mission`, `invalid_action_count`, `invalid_evidence_count`, `invalid_memory_count`, `invalid_guided_material_count`, `invalid_committee_role_count`, `invalid_memory_evidence_count`, `invalid_guided_memory_count`, `invalid_guided_evidence_count`, `invalid_guided_steps`, `invalid_guided_transition_count`.
+    2. Bounds, checked before any duplicate scan and before the digest is recomputed (see [Bounds](#bounds)): `invalid_mission`, `invalid_action_count`, `invalid_evidence_count`, `invalid_memory_count`, `invalid_committee_role_count`, `invalid_memory_evidence_count`, `invalid_guided_memory_count`, `invalid_guided_evidence_count`, `invalid_guided_steps`. Each count code means a required collection is empty.
     3. Digest: `package.profile_package_digest` is recomputed from every other package field, including each action's `boundary_text` and excluding each atom's `provenance_digest` (`digest_governed_profile_package`); a difference is `profile_package_digest_mismatch`.
     4. Uniqueness: `duplicate_action_id`, `duplicate_evidence_id`, `duplicate_memory_id`, `duplicate_guided_material_id`.
     5. Each action: `invalid_action_id`; for a `Refusal` or `Escalation` action, `terminal_boundary_action_requires_support` (it sets `evidence_required` or `committee_required`; a boundary action must set neither), `boundary_text_missing` (it declares no `boundary_text`), and `boundary_text_invalid` (its `boundary_text` is blank or longer than the visible-output bound); for an `Answer`, `GuidedMaterial`, or `GuidedNavigation` action, `boundary_text_not_allowed` (it declares a `boundary_text`) and `deliverable_action_missing_evidence_requirement` (it does not require evidence).
@@ -161,16 +161,16 @@ Text lengths are measured with `len`. Blank means empty after trimming.
 
 | Field | Bound |
 | --- | --- |
-| `actions` | 1 to 16 |
-| `evidence` | 1 to 64 |
-| `memory` | 1 to 64 |
-| `guided_material` | 0 to 16 |
-| `policy.required_roles` | 1 to 16 |
-| memory atom `evidence_ids` | 1 to 8 |
-| guided material `memory_ids` | 1 to 8 |
-| guided material `evidence_ids` | 1 to 16 |
-| guided material `steps` | 1 to 8 |
-| guided material `transitions` | 0 to 56 (every distinct non-self edge between eight steps) |
+| `actions` | at least 1; no upper bound |
+| `evidence` | at least 1; no upper bound |
+| `memory` | at least 1; no upper bound |
+| `guided_material` | any number, including none |
+| `policy.required_roles` | at least 1; no upper bound |
+| memory atom `evidence_ids` | at least 1; no upper bound |
+| guided material `memory_ids` | at least 1; no upper bound |
+| guided material `evidence_ids` | at least 1; no upper bound |
+| guided material `steps` | at least 1; no upper bound |
+| guided material `transitions` | any number, including none; each joins two distinct declared steps and none repeats |
 | proposal `evidence_ids` / `memory_ids` | at most 64 each |
 | `mission`, evidence `claim`/`guidance`, memory `concept` | not blank, at most 512 |
 | evidence `source_kind`/`authority_class`/`evidence_kind` | not blank, at most 64 |
@@ -181,6 +181,28 @@ Text lengths are measured with `len`. Blank means empty after trimming.
 | action `boundary_text` | present, not blank, at most 4096 for a refusal or escalation; absent otherwise |
 | symbolic identifiers (package, action, evidence, memory, request, proposal, observation, role, ...) | canonical lowercase identifiers of at most 128 characters |
 | `package_revision`, guided `artifact_revision` | 1 to 64 lowercase revision characters starting with a digit |
+
+What a package declares is not bounded by a number: it may hold any number of actions, evidence records, memory atoms, guided materials, and committee roles, and a record may hold any number of relationships. Every text field and every proposal stays bounded, and the work one proposal causes does not grow with the package once the package is admitted (see [Admitting a package once](#admitting-a-package-once)).
+
+The proposal bound reaches into what can be nominated. A proposal must nominate exactly the evidence its memory rests on, and exactly the memory and evidence of the guided material it nominates. A memory atom that rests on more than 64 evidence records, or a guided material with more than 64 memory atoms or evidence records, is therefore valid in a package and cannot be nominated by any proposal.
+
+### Admitting a package once
+
+Validating a package and recomputing its digest is work proportional to the package, and nothing about one proposal can change its result. `evaluate_governed_profile_with_artifacts` still does that work on every call, because it is handed an untrusted package projection each time. A caller that evaluates many proposals against one package admits it instead:
+
+```incan
+admitted = admit_governed_profile_package(package)?
+proposal = admitted.propose(request, proposal_id, action_id, visible_output, evidence_ids, memory_ids, None, None, None)
+result = admitted.evaluate(request, proposal, observations)
+```
+
+- `admit_governed_profile_package(package)` runs `validate_governed_profile_package` once and returns an `AdmittedGovernedProfile`, or the rejecting `GovernedValidation` (reason `invalid_package`, the specific code in `errors[0]`). The type's fields are private; only a successful admission constructs one, so holding one is the proof that the package was validated.
+- `admitted.evaluate(request, proposal, observations)` returns exactly what `evaluate_governed_profile_with_artifacts(package, request, proposal, observations)` returns for the package it was admitted from, starting at step 2 of the evaluation order. `admitted.evaluate_in_memory_context(request, proposal, observations, memory_record)` corresponds to `evaluate_governed_profile_in_memory_context` the same way.
+- `admitted.propose(...)` and `admitted.observe(...)` construct the same proposal and committee observation as `governed_proposal` and `committee_observation`, reading only the admitted identity.
+- `admitted.profile_package_digest`, `admitted.evidence_count` and `admitted.memory_count` expose the verified package digest and the package's size.
+- `digest_governed_memory_provenance_for(package_id, domain_id, package_revision, profile_package_digest, atom)` gives the digest `digest_governed_memory_provenance(package, atom)` gives, from the stamped package's four identity fields alone, so stamping the atoms of a large package is linear in their number.
+
+Per proposal, an admitted profile resolves only the records that proposal can touch: the action it names, the memory atoms and evidence records it nominates, the evidence those atoms rest on, and the guided material it nominates with that material's memory and evidence. Those records, in package order, together with the admitted package's header, digest and policy, are what the evaluation sees. An identifier the package does not declare is absent from that set and is rejected as `unknown_action`, `unknown_evidence` or `unknown_memory`, as it is against the whole package. No package digest and no memory provenance digest is recomputed per proposal, and no record the proposal cannot touch is read.
 
 ### Committee assessment
 
@@ -258,6 +280,12 @@ RFC 001's Spectrum composes package, memory, constraint, behavior, and response 
 
 `console_profile_0_1` (implemented in the checked `0.0.1` library, per the top-level README) implements this pattern — profiles, evidence, memory, Training by Committee, governed interactions, terminal artifacts — for one fixed fictional Build Week package. This module is that pattern with the package itself as a runtime input instead of a hardcoded constant, so any package can use the same evaluation function. Whether RFC 010 comes to depend on this module, or the two remain independently evolving siblings, is an open question (see [Open questions](#open-questions)).
 
+### Relationship to RFC 003
+
+`evaluate_governed_profile_in_memory_context` is `evaluate_governed_profile_with_artifacts` with one more rule, applied after proposal validation (step 3) and before action resolution: the caller supplies the `MemoryAdmissionRecord` that RFC 003 retrieval admission returned, and the proposal may nominate only memory that record materialized. The rule rejects, in order, with `memory_context_not_accepted` (the record is not an accepted normalized record), `memory_context_package_mismatch` (it was evaluated for another package or domain identifier), and `memory_not_in_accepted_context` (the proposal nominates a memory identifier outside the record's materialized context). Each rejection carries a receipt. A proposal that nominates no memory, such as a refusal, passes against any accepted record, including an accepted `unavailable` one.
+
+The rule bridges the two contracts by identifier only. RFC 003 atoms and this module's `GovernedMemory` are separate models, and the nominated memory must still resolve in the profile package itself. The record is bound to the package by package and domain identifier; the package revision is not compared because the two contracts use different revision grammars.
+
 ### Relationship to RFC 013 and RFC 014
 
 Independent. This module never calls `evaluate_continuity` or `evaluate_memory_operation`, and neither of those calls this module. A caller may use all three together, but none has a structural dependency on another.
@@ -285,7 +313,7 @@ Three other RFCs (001, 002, 006) already claim ownership of the general shape of
 - **Public contract:** exported from the `governed_profile` facade and the library root:
     - types: `GovernedProfilePackage`, `GovernedAction`, `GovernedOutcomeKind`, `GovernedVisibleOutputSource`, `GovernedEvidence`, `GovernedMemory`, `GuidedMaterial`, `GuidedTransition`, `GovernedPolicy`, `GovernedRequest`, `GovernedProposal`, `CommitteeObservation`, `CommitteeVerdict`, `GovernedFinding`, `GovernedValidation`, `GovernedSpectrumResult`, `AdmittedGuidedMaterial`, `CompleteGovernedEvaluation`, `GovernedContentDna`, `GovernedReceipt`;
     - body types that only Hees.ai constructs, exported from the `governed_profile` facade but not from the library root: `GovernedContentDnaBody`, `GovernedContentDnaEntry`, `GovernedReceiptBody`, `GovernedPackageIdentity`. A caller reads their fields from a returned `GovernedContentDna` or `GovernedReceipt`;
-    - functions: `validate_governed_profile_package`, `digest_governed_profile_package`, `digest_governed_memory_provenance`, `bind_governed_request`, `governed_proposal`, `committee_observation`, `digest_governed_proposal`, `evaluate_governed_profile_with_artifacts`, `evaluate_governed_profile_json`;
+    - functions: `validate_governed_profile_package`, `digest_governed_profile_package`, `digest_governed_memory_provenance`, `bind_governed_request`, `governed_proposal`, `committee_observation`, `digest_governed_proposal`, `evaluate_governed_profile_with_artifacts`, `evaluate_governed_profile_in_memory_context`, `evaluate_governed_profile_json`;
     - identifier namespaces: `ArtifactRevisionType`, `AudienceId`, `CommitteeRoleId`, `GuidedMaterialId`, `GuidedStepId` with their constructors. Every identifier projects to text through its `text()` method.
 - **Runtime validation:** Package/request/proposal identity validation, delegation to the existing 0.0.1 structural-admission kernel, committee-coverage validation, memory/guided-material resolution, terminal-decision derivation, atomic Content DNA + receipt construction.
 - **Package compatibility:** Purely additive and opt-in, mirroring RFC 013/014.
@@ -309,3 +337,4 @@ Three other RFCs (001, 002, 006) already claim ownership of the general shape of
 - Does RFC 010's eventual stabilization come to depend on this module (replacing `console_profile_0_1`'s bespoke evaluation with a call to `evaluate_governed_profile_with_artifacts`), or do they remain independent siblings?
 - Should the single `"admitted_delivery"` Content DNA state gain an explicit `no_answer`-style counterpart for `refuse`/`escalate` outcomes, matching RFC 002, or is "simply absent" an acceptable permanent simplification?
 - Should the [bounds](#bounds) above be frozen as part of contract 0.1, or remain implementation limits that a later contract revision may change?
+- RFC 003 atoms and `GovernedMemory` are two models bridged by identifier, with different revision grammars. Should they be reconciled into one package-owned memory declaration, and should the memory-context rule then also bind the package revision and admission binding?

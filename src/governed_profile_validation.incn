@@ -1,7 +1,7 @@
 """Fail-closed validation for generic governed packages, requests, and proposals."""
 
 from crate.governed_profile_identity import (
-    digest_governed_memory_provenance,
+    digest_memory_provenance_bound_to,
     digest_governed_profile_package,
     digest_governed_request_fields,
 )
@@ -13,6 +13,7 @@ from crate.governed_profile_models import (
     GovernedEvidence,
     GovernedMemory,
     GovernedOutcomeKind,
+    GovernedPackageIdentity,
     GovernedProfilePackage,
     GovernedProposal,
     GovernedRequest,
@@ -33,19 +34,17 @@ from crate.identifiers import (
     identifier_text_is_safe,
 )
 
-# Collection bounds for package contract 0.1. Every bound is checked before any duplicate scan and before the
-# package digest is recomputed, so oversized input is rejected without quadratic or digest work.
-pub const MAX_GOVERNED_ACTIONS: int = 16
-pub const MAX_GOVERNED_EVIDENCE: int = 64
-pub const MAX_GOVERNED_MEMORY: int = 64
-pub const MAX_GOVERNED_GUIDED_MATERIAL: int = 16
-pub const MAX_MEMORY_EVIDENCE: int = 8
-pub const MAX_GUIDED_MEMORY: int = 8
-pub const MAX_GUIDED_EVIDENCE: int = 16
-pub const MAX_GUIDED_STEPS: int = 8
-# Eight steps admit at most 8 * 7 distinct non-self transitions; any longer list must repeat or self-loop.
-pub const MAX_GUIDED_TRANSITIONS: int = 56
-pub const MAX_COMMITTEE_ROLES: int = 16
+# Collection bounds for package contract 0.1.
+#
+# What a package declares is not bounded by a number: it may hold any number of actions, evidence records, memory
+# atoms, guided material and committee roles, and a record may hold any number of relationships. Each of those
+# collections that the contract requires must hold at least one entry. What is bounded is each text field and each
+# proposal, which may nominate at most ``MAX_PROPOSAL_EVIDENCE`` evidence records and ``MAX_PROPOSAL_MEMORY``
+# memory atoms. A proposal must nominate exactly the evidence its memory rests on, and exactly the memory and
+# evidence of the guided material it nominates, so a memory atom or guided material that needs more than that is
+# declarable but cannot be nominated.
+pub const MAX_PROPOSAL_EVIDENCE: int = 64
+pub const MAX_PROPOSAL_MEMORY: int = 64
 # Text bounds, measured with ``len``.
 pub const MAX_PACKAGE_TEXT_LENGTH: int = 512
 pub const MAX_PACKAGE_LABEL_LENGTH: int = 64
@@ -93,13 +92,13 @@ def proposal_error(reason: str) -> GovernedValidation:
 
 
 def has_duplicate_strings(values: list[str]) -> bool:
-    """Return whether one bounded text projection repeats an earlier value."""
+    """Return whether one text projection repeats an earlier value, in time linear in its length."""
 
-    mut seen: list[str] = []
+    mut seen: Dict[str, bool] = {}
     for value in values:
-        if seen.contains(value):
+        if seen.contains_key(value):
             return true
-        seen.append(value)
+        seen[value] = true
     return false
 
 
@@ -167,12 +166,14 @@ def selected_evidence_for_memory(package: GovernedProfilePackage, memory_ids: li
     """
 
     mut result: list[EvidenceId] = []
+    mut seen: Dict[str, bool] = {}
     for memory_id in memory_ids:
         match find_declared(package.memory, memory_id):
             None => return []
             Some(atom) =>
                 for evidence_id in atom.evidence_ids:
-                    if not result.contains(evidence_id):
+                    if not seen.contains_key(evidence_id.text()):
+                        seen[evidence_id.text()] = true
                         result.append(evidence_id)
     return result
 
@@ -195,43 +196,33 @@ def validate_package_header(package: GovernedProfilePackage) -> GovernedValidati
     return governed_validation_ok()
 
 
-def count_is_within(count: int, minimum: int, maximum: int) -> bool:
-    """Return whether one collection count lies in the inclusive range."""
-
-    return count >= minimum and count <= maximum
-
-
 def validate_guided_bounds(material: GuidedMaterial) -> GovernedValidation:
-    """Check the collection bounds of one guided material declaration."""
+    """Check that one guided material declares at least one memory atom, evidence record, and step."""
 
-    if not count_is_within(len(material.memory_ids), 1, MAX_GUIDED_MEMORY):
+    if len(material.memory_ids) == 0:
         return package_error("invalid_guided_memory_count")
-    if not count_is_within(len(material.evidence_ids), 1, MAX_GUIDED_EVIDENCE):
+    if len(material.evidence_ids) == 0:
         return package_error("invalid_guided_evidence_count")
-    if not count_is_within(len(material.steps), 1, MAX_GUIDED_STEPS):
+    if len(material.steps) == 0:
         return package_error("invalid_guided_steps")
-    if len(material.transitions) > MAX_GUIDED_TRANSITIONS:
-        return package_error("invalid_guided_transition_count")
     return governed_validation_ok()
 
 
 def validate_package_bounds(package: GovernedProfilePackage) -> GovernedValidation:
-    """Check every collection bound and the mission text before any duplicate scan or digest recomputation."""
+    """Check the mission text and every required collection before any duplicate scan or digest recomputation."""
 
     if not text_is_bounded(package.mission, MAX_PACKAGE_TEXT_LENGTH):
         return package_error("invalid_mission")
-    if not count_is_within(len(package.actions), 1, MAX_GOVERNED_ACTIONS):
+    if len(package.actions) == 0:
         return package_error("invalid_action_count")
-    if not count_is_within(len(package.evidence), 1, MAX_GOVERNED_EVIDENCE):
+    if len(package.evidence) == 0:
         return package_error("invalid_evidence_count")
-    if not count_is_within(len(package.memory), 1, MAX_GOVERNED_MEMORY):
+    if len(package.memory) == 0:
         return package_error("invalid_memory_count")
-    if len(package.guided_material) > MAX_GOVERNED_GUIDED_MATERIAL:
-        return package_error("invalid_guided_material_count")
-    if not count_is_within(len(package.policy.required_roles), 1, MAX_COMMITTEE_ROLES):
+    if len(package.policy.required_roles) == 0:
         return package_error("invalid_committee_role_count")
     for atom in package.memory:
-        if not count_is_within(len(atom.evidence_ids), 1, MAX_MEMORY_EVIDENCE):
+        if len(atom.evidence_ids) == 0:
             return package_error("invalid_memory_evidence_count")
     for material in package.guided_material:
         validation = validate_guided_bounds(material)
@@ -320,8 +311,17 @@ def validate_evidence(record: GovernedEvidence) -> GovernedValidation:
     return governed_validation_ok()
 
 
-def validate_memory(package: GovernedProfilePackage, atom: GovernedMemory) -> GovernedValidation:
-    """Check one memory atom's identity, concept, evidence relationships, admission state, and provenance digest."""
+def validate_memory(
+    identity: GovernedPackageIdentity,
+    declared_evidence: Dict[str, bool],
+    atom: GovernedMemory,
+) -> GovernedValidation:
+    """
+    Check one memory atom's identity, concept, evidence relationships, admission state, and provenance digest.
+
+    ``identity`` is the package identity the provenance digest binds to and ``declared_evidence`` the identifiers of
+    the package's evidence records, so the check costs the same for an atom of a small package and of a library.
+    """
 
     if not identifier_text_is_safe(atom.memory_id.text()):
         return package_error("invalid_memory_id")
@@ -330,14 +330,13 @@ def validate_memory(package: GovernedProfilePackage, atom: GovernedMemory) -> Go
     if has_duplicate_identifiers(atom.evidence_ids):
         return package_error("duplicate_memory_evidence")
     for evidence_id in atom.evidence_ids:
-        match find_declared(package.evidence, evidence_id):
-            None => return package_error("unknown_memory_evidence")
-            Some(_) => pass
+        if not declared_evidence.contains_key(evidence_id.text()):
+            return package_error("unknown_memory_evidence")
     if not review_admits(atom.review_state, atom.rights_state):
         return package_error("memory_not_admitted")
     if not digest_id_text_is_safe(atom.provenance_digest.text()):
         return package_error("invalid_memory_provenance")
-    if atom.provenance_digest != digest_governed_memory_provenance(package, atom.clone()):
+    if atom.provenance_digest != digest_memory_provenance_bound_to(identity, atom.clone()):
         return package_error("memory_provenance_mismatch")
     return governed_validation_ok()
 
@@ -357,10 +356,12 @@ def transition_is_declared(material: GuidedMaterial, current: GuidedStepId, next
     return false
 
 
-def validate_transition(material: GuidedMaterial, transition: GuidedTransition) -> GovernedValidation:
-    """Check that one transition joins two distinct declared steps."""
+def validate_transition(declared_steps: Dict[str, bool], transition: GuidedTransition) -> GovernedValidation:
+    """Check that one transition joins two distinct steps among the material's ``declared_steps``."""
 
-    if not material.steps.contains(transition.current_step_id) or not material.steps.contains(transition.next_step_id):
+    if not declared_steps.contains_key(transition.current_step_id.text()):
+        return package_error("unknown_guided_transition_step")
+    if not declared_steps.contains_key(transition.next_step_id.text()):
         return package_error("unknown_guided_transition_step")
     if transition.current_step_id == transition.next_step_id:
         return package_error("self_guided_transition")
@@ -368,24 +369,64 @@ def validate_transition(material: GuidedMaterial, transition: GuidedTransition) 
 
 
 def validate_guided_action(
-    package: GovernedProfilePackage,
+    actions: list[GovernedAction],
+    action_positions: Dict[str, int],
     action_id: ActionId,
     expected_kind: GovernedOutcomeKind,
     unknown_error: str,
     kind_error: str,
 ) -> GovernedValidation:
-    """Check that a guided material's presentation or navigation action exists with the expected outcome kind."""
+    """
+    Check that a guided material's presentation or navigation action exists with the expected outcome kind.
 
-    match find_declared(package.actions, action_id):
+    ``action_positions`` maps each declared action identifier to its position in ``actions``.
+    """
+
+    match action_positions.get(action_id.text()):
         None => return package_error(unknown_error)
-        Some(action) =>
-            if action.outcome_kind != expected_kind:
+        Some(position) =>
+            if actions[position].outcome_kind != expected_kind:
                 return package_error(kind_error)
             return governed_validation_ok()
 
 
-def validate_guided_material(package: GovernedProfilePackage, material: GuidedMaterial) -> GovernedValidation:
-    """Check one guided material's identity, admission, memory and evidence relationships, actions, and steps."""
+def evidence_union_of_memory(
+    memory_evidence: Dict[str, list[EvidenceId]],
+    memory_ids: list[MemoryId],
+) -> list[EvidenceId]:
+    """
+    Collect the duplicate-free evidence union of the named memory atoms, in the order given.
+
+    An undeclared memory identifier yields an empty list, which never equals a nonempty evidence set.
+    """
+
+    mut result: list[EvidenceId] = []
+    mut seen: Dict[str, bool] = {}
+    for memory_id in memory_ids:
+        match memory_evidence.get(memory_id.text()):
+            None => return []
+            Some(evidence_ids) =>
+                for evidence_id in evidence_ids:
+                    if not seen.contains_key(evidence_id.text()):
+                        seen[evidence_id.text()] = true
+                        result.append(evidence_id)
+    return result
+
+
+def validate_guided_material(
+    material: GuidedMaterial,
+    actions: list[GovernedAction],
+    action_positions: Dict[str, int],
+    declared_evidence: Dict[str, bool],
+    memory_evidence: Dict[str, list[EvidenceId]],
+) -> GovernedValidation:
+    """
+    Check one guided material's identity, admission, memory and evidence relationships, actions, and steps.
+
+    ``action_positions`` maps the package's action identifiers to their positions in ``actions``,
+    ``declared_evidence`` holds the package's evidence identifiers and ``memory_evidence`` the evidence each memory
+    atom rests on, so the check costs the same for one material whatever the package holds.
+    """
 
     if not guided_identity_is_safe(material):
         return package_error("invalid_guided_material_identity")
@@ -398,23 +439,23 @@ def validate_guided_material(package: GovernedProfilePackage, material: GuidedMa
     if has_duplicate_identifiers(material.evidence_ids):
         return package_error("duplicate_guided_evidence")
     for memory_id in material.memory_ids:
-        match find_declared(package.memory, memory_id):
-            None => return package_error("unknown_guided_memory")
-            Some(_) => pass
+        if not memory_evidence.contains_key(memory_id.text()):
+            return package_error("unknown_guided_memory")
     for evidence_id in material.evidence_ids:
-        match find_declared(package.evidence, evidence_id):
-            None => return package_error("unknown_guided_evidence")
-            Some(_) => pass
-    if not identifier_sets_equal(material.evidence_ids, selected_evidence_for_memory(package, material.memory_ids)):
+        if not declared_evidence.contains_key(evidence_id.text()):
+            return package_error("unknown_guided_evidence")
+    if not identifier_sets_equal(material.evidence_ids, evidence_union_of_memory(memory_evidence, material.memory_ids)):
         return package_error("guided_memory_evidence_mismatch")
     for validation in [validate_guided_action(
-        package,
+        actions,
+        action_positions,
         material.presentation_action_id,
         GovernedOutcomeKind.GuidedMaterial,
         "unknown_guided_presentation_action",
         "invalid_guided_presentation_action",
     ), validate_guided_action(
-        package,
+        actions,
+        action_positions,
         material.navigation_action_id,
         GovernedOutcomeKind.GuidedNavigation,
         "unknown_guided_navigation_action",
@@ -424,15 +465,18 @@ def validate_guided_material(package: GovernedProfilePackage, material: GuidedMa
             return validation
     if has_duplicate_identifiers(material.steps):
         return package_error("duplicate_guided_step")
-    mut transition_keys: list[str] = []
+    mut declared_steps: Dict[str, bool] = {}
+    for step in material.steps:
+        declared_steps[step.text()] = true
+    mut transition_keys: Dict[str, bool] = {}
     for transition in material.transitions:
-        validation = validate_transition(material, transition)
+        validation = validate_transition(declared_steps, transition)
         if not validation.valid:
             return validation
         key = transition_key(transition.current_step_id, transition.next_step_id)
-        if transition_keys.contains(key):
+        if transition_keys.contains_key(key):
             return package_error("duplicate_guided_transition")
-        transition_keys.append(key)
+        transition_keys[key] = true
     return governed_validation_ok()
 
 
@@ -467,20 +511,38 @@ pub def validate_governed_profile_package(package: GovernedProfilePackage) -> Go
     for validation in [validate_package_digest(package), validate_package_uniqueness(package)]:
         if not validation.valid:
             return validation
-    for action in package.actions:
-        validation = validate_action(action)
+    mut action_positions: Dict[str, int] = {}
+    for position in range(len(package.actions)):
+        validation = validate_action(package.actions[position])
         if not validation.valid:
             return validation
+        action_positions[package.actions[position].action_id.text()] = position
+    mut declared_evidence: Dict[str, bool] = {}
     for record in package.evidence:
         validation = validate_evidence(record)
         if not validation.valid:
             return validation
+        declared_evidence[record.evidence_id.text()] = true
+    identity = GovernedPackageIdentity(
+        package_id=package.package_id,
+        domain_id=package.domain_id,
+        package_revision=package.package_revision,
+        profile_package_digest=package.profile_package_digest,
+    )
+    mut memory_evidence: Dict[str, list[EvidenceId]] = {}
     for atom in package.memory:
-        validation = validate_memory(package, atom)
+        validation = validate_memory(identity, declared_evidence, atom)
         if not validation.valid:
             return validation
+        memory_evidence[atom.memory_id.text()] = atom.evidence_ids
     for material in package.guided_material:
-        validation = validate_guided_material(package, material)
+        validation = validate_guided_material(
+            material,
+            package.actions,
+            action_positions,
+            declared_evidence,
+            memory_evidence,
+        )
         if not validation.valid:
             return validation
     return validate_policy(package)
@@ -545,7 +607,7 @@ pub def validate_governed_proposal_identity(
         return governed_validation_error("invalid_proposal", "invalid_proposal_id")
     if len(proposal.visible_output) > MAX_VISIBLE_OUTPUT_LENGTH:
         return governed_validation_error("missing_visible_output", "invalid_visible_output")
-    if len(proposal.evidence_ids) > MAX_GOVERNED_EVIDENCE or len(proposal.memory_ids) > MAX_GOVERNED_MEMORY:
+    if len(proposal.evidence_ids) > MAX_PROPOSAL_EVIDENCE or len(proposal.memory_ids) > MAX_PROPOSAL_MEMORY:
         return proposal_error("proposal_reference_limit_exceeded")
     return governed_validation_ok()
 

@@ -1,0 +1,200 @@
+"""Behavioral contract tests for terminal guided-program admission and provenance."""
+
+from std.testing import assert_eq, assert_is_ok, assert_is_some
+from std.serde.json import Deserialize
+from crate.identifiers import (
+    constraint_plan_id,
+    contract_id,
+    digest_id_type,
+    domain_id,
+    evidence_id,
+    input_id,
+    memory_id,
+    package_id,
+    profile_id,
+    program_id,
+    guided_card_id,
+    revision,
+)
+from crate.program import (
+    CompleteProgramEvaluation,
+    GuidedProgram,
+    GuidedProgramCard,
+    ProgramAction,
+    ProgramAuthorityPackage,
+    ProgramAuthorityPolicy,
+    ProgramContentDna,
+    ProgramEnterAction,
+    ProgramInteraction,
+    ProgramProgressPolicy,
+    ProgramRuntimeFrame,
+    ProgramSupportAtom,
+    evaluate_program_terminal,
+)
+from crate.runtime import ReviewStatus, RightsStatus
+
+const DIGEST_A: str = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+const DIGEST_B: str = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+const DIGEST_C: str = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+
+
+def program() -> GuidedProgram:
+    """Return a short source-backed program with one visible entry card and a completion card."""
+
+    entry = GuidedProgramCard(
+        card_id=guided_card_id("wind_down_entry"),
+        evidence_ids=[evidence_id("wind_down_evidence")],
+        memory_ids=[memory_id("wind_down_memory")],
+        language_ids=["en"],
+        audience_ids=["adult"],
+        choices=[],
+        next_card_id=Some(guided_card_id("wind_down_complete")),
+        completion=false,
+        review_status=ReviewStatus.Approved,
+        rights_status=RightsStatus.Allowed,
+    )
+    completion = GuidedProgramCard(
+        card_id=guided_card_id("wind_down_complete"),
+        evidence_ids=[],
+        memory_ids=[],
+        language_ids=["en"],
+        audience_ids=["adult"],
+        choices=[],
+        next_card_id=None,
+        completion=true,
+        review_status=ReviewStatus.Approved,
+        rights_status=RightsStatus.Allowed,
+    )
+    return GuidedProgram(
+        program_id=program_id("wind_down_program"),
+        package_id=package_id("sleep_learning"),
+        revision=revision("1.0.0"),
+        language_ids=["en"],
+        audience_ids=["adult"],
+        entry_card_id=guided_card_id("wind_down_entry"),
+        completion_card_id=guided_card_id("wind_down_complete"),
+        progress_policy=ProgramProgressPolicy.SessionOnly,
+        cards=[entry, completion],
+    )
+
+
+def support(evidence: str = "wind_down_evidence") -> ProgramSupportAtom:
+    """Return the reviewed package support record for the entry card."""
+
+    return ProgramSupportAtom(
+        memory_id=memory_id("wind_down_memory"),
+        evidence_id=evidence_id(evidence),
+        source_ref="sleep_handbook:pages_10_12",
+        source_kind="book",
+        source_fingerprint=digest_id_type(DIGEST_A),
+        provenance_digest=digest_id_type(DIGEST_B),
+        review_status=ReviewStatus.Approved,
+        review_revision=revision("1.0.0"),
+        rights_status=RightsStatus.Allowed,
+        authority_class="educational",
+        evidence_kind="reviewed_paraphrase",
+    )
+
+
+def authority_package() -> ProgramAuthorityPackage:
+    """Return the complete installed package projection evaluated by the terminal boundary."""
+
+    return ProgramAuthorityPackage(
+        contract_version=contract_id("guided_program_authority_0_1"),
+        profile_id=profile_id("guided_program_0_1"),
+        package_id=package_id("sleep_learning"),
+        domain_id=domain_id("sleep_education"),
+        package_revision=revision("1.0.0"),
+        artifact_digest=digest_id_type(DIGEST_C),
+        program=program(),
+        support_atoms=[support()],
+        policy=ProgramAuthorityPolicy(
+            constraint_plan_id=constraint_plan_id("sleep_learning_policy"),
+            constraint_plan_revision=revision("1.0.0"),
+        ),
+    )
+
+
+def interaction(nominated_memory_ids: list[str], nominated_evidence_ids: list[str]) -> ProgramInteraction:
+    """Return an untrusted entry operation with caller-nominated support identifiers."""
+
+    return ProgramInteraction(
+        input_id=input_id("interaction_entry"),
+        frame=ProgramRuntimeFrame(
+            package_id=package_id("sleep_learning"),
+            program_id=program_id("wind_down_program"),
+            revision=revision("1.0.0"),
+            current_card_id=None,
+            history=[],
+            language_id="en",
+            audience_id="adult",
+            nominated_memory_ids=[memory_id(value) for value in nominated_memory_ids],
+            nominated_evidence_ids=[evidence_id(value) for value in nominated_evidence_ids],
+        ),
+        action=ProgramAction.Enter(ProgramEnterAction(target_card_id=guided_card_id("wind_down_entry"))),
+    )
+
+
+def assert_admitted(result: CompleteProgramEvaluation) -> None:
+    """Assert the common terminal properties of one source-backed entry admission."""
+
+    assert_eq(result.terminal.admitted, true)
+    assert_eq(result.terminal.reason, "admitted_program_operation")
+    assert_eq(len(result.selected_memory), 1)
+    assert_eq(result.selected_memory[0].memory_id, memory_id("wind_down_memory"))
+    assert_eq(assert_is_some(result.admitted_card).card_id, guided_card_id("wind_down_entry"))
+
+
+def test_admits_reviewed_entry_and_seals_content_dna_and_receipt() -> None:
+    result = evaluate_program_terminal(authority_package(), interaction(["wind_down_memory"], ["wind_down_evidence"]))
+
+    assert_admitted(result)
+    content_dna = assert_is_ok(ProgramContentDna.from_json(assert_is_some(result.content_dna_json)))
+    receipt_json = assert_is_some(result.receipt_json)
+    assert_eq(content_dna.body.state, "admitted_program_operation")
+    assert_eq(content_dna.body.profile_id, profile_id("guided_program_0_1"))
+    assert_eq(content_dna.body.policy.constraint_plan_id, constraint_plan_id("sleep_learning_policy"))
+    assert_eq(content_dna.body.selected_memory[0].memory_id, memory_id("wind_down_memory"))
+    assert_eq(receipt_json.contains("\"profile_id\":\"guided_program_0_1\""), true)
+    assert_eq(receipt_json.contains("\"constraint_plan_id\":\"sleep_learning_policy\""), true)
+    assert_eq(receipt_json.contains("\"receipt_id\":\"sha256:"), true)
+
+
+def test_rejects_when_the_original_interaction_lacks_declared_support() -> None:
+    result = evaluate_program_terminal(authority_package(), interaction([], ["wind_down_evidence"]))
+
+    assert_eq(result.terminal.admitted, false)
+    assert_eq(result.terminal.reason, "card_memory_not_nominated")
+    assert_eq(len(result.selected_memory), 0)
+    assert_is_some(result.receipt_json)
+
+
+def test_ignores_extra_caller_nominations_when_deriving_selected_memory() -> None:
+    result = evaluate_program_terminal(
+        authority_package(),
+        interaction(["wind_down_memory", "injected_memory"], ["wind_down_evidence", "injected_evidence"]),
+    )
+
+    assert_admitted(result)
+    assert_eq(result.terminal.selected_memory_ids, [memory_id("wind_down_memory")])
+    assert_eq(result.terminal.admitted_evidence_ids, [evidence_id("wind_down_evidence")])
+
+
+def test_rejects_malformed_package_support_without_exporting_a_receipt() -> None:
+    mut malformed = authority_package()
+    malformed.support_atoms = [support("undeclared_evidence")]
+    result = evaluate_program_terminal(malformed, interaction(["wind_down_memory"], ["wind_down_evidence"]))
+
+    assert_eq(result.terminal.admitted, false)
+    assert_eq(result.terminal.reason, "invalid_program_authority_package")
+    assert_eq(result.receipt_json, None)
+
+
+def test_rejects_an_unsupported_authority_contract_before_evaluating_the_action() -> None:
+    mut unsupported = authority_package()
+    unsupported.contract_version = contract_id("guided_program_authority_legacy")
+    result = evaluate_program_terminal(unsupported, interaction(["wind_down_memory"], ["wind_down_evidence"]))
+
+    assert_eq(result.terminal.admitted, false)
+    assert_eq(result.terminal.reason, "invalid_program_authority_package")
+    assert_eq(result.receipt_json, None)

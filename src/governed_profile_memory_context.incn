@@ -1,0 +1,52 @@
+"""
+Handoff from retrieval admission (RFC 003) into governed profile evaluation (RFC 015).
+
+RFC 003 lets later governance cite only memory identifiers present in an accepted context. This module checks that
+for a profile proposal: the admission record must be an accepted record for the same package, and every memory
+identifier the proposal nominates must be one that record materialized.
+
+The check binds the record to the package by package and domain identifier. The two contracts use different revision
+grammars, so the revision is not compared; the proposal's memory must still resolve in the profile package itself.
+"""
+
+from crate.governed_memory_retrieval_models import (
+    MemoryAdmissionRecord,
+    MemoryEnvelopeAdmission,
+    MemoryRecordVariant,
+    NormalizedMemoryAdmission,
+)
+from crate.governed_profile_models import GovernedProfilePackage, GovernedProposal
+
+
+def cited_outside_context(proposal: GovernedProposal, normalized: NormalizedMemoryAdmission) -> bool:
+    """Return whether the proposal nominates any memory identifier the accepted context did not materialize."""
+
+    cited = [memory_id.text() for memory_id in proposal.memory_ids]
+    return len([memory_id for memory_id in cited if not normalized.materialized_memory_ids.contains(memory_id)]) > 0
+
+
+pub def memory_context_rejection(
+    package: GovernedProfilePackage,
+    proposal: GovernedProposal,
+    record: MemoryAdmissionRecord,
+) -> Option[str]:
+    """
+    Return why ``proposal`` may not rely on ``record``, or None when every memory it nominates is in that context.
+
+    Checks run in this order: the record is an accepted normalized record (``memory_context_not_accepted``), it was
+    evaluated for this package and domain (``memory_context_package_mismatch``), and every nominated memory identifier
+    is one it materialized (``memory_not_in_accepted_context``). A proposal that nominates no memory passes once the
+    record itself is acceptable, including against an accepted ``unavailable`` context.
+    """
+
+    if record.variant != MemoryRecordVariant.Normalized or record.envelope_admission != MemoryEnvelopeAdmission.Accepted:
+        return Some("memory_context_not_accepted")
+    match record.normalized:
+        None => return Some("memory_context_not_accepted")
+        Some(normalized) =>
+            evaluated = normalized.evaluated_package
+            if evaluated.package_id != package.package_id.text() or evaluated.domain_id != package.domain_id.text():
+                return Some("memory_context_package_mismatch")
+            if cited_outside_context(proposal, normalized):
+                return Some("memory_not_in_accepted_context")
+            return None
